@@ -19,12 +19,17 @@
     #include <sys/time.h>
 #endif
 
+#include "optparse.h"
 /*
+**funcnames***
+*/
+#if 0
+{
 
+collections_strndup
+collections_strdup
+hash_string
 src_pos_make
-arcane_timer_platform_supported
-arcane_timer_start
-arcane_timer_get_elapsed_ms
 compilation_scope_make
 compilation_scope_destroy
 compilation_scope_orphan_result
@@ -52,26 +57,26 @@ parse_classic_for_loop
 parse_function_statement
 parse_code_block
 parse_expression
-parse_identifier
-parse_number_literal
-parse_bool_literal
-parse_string_literal
-parse_template_string_literal
-parse_null_literal
-parse_array_literal
-parse_map_literal
-parse_prefix_expression
-parse_infix_expression
-parse_grouped_expression
-parse_function_literal
+mc_parser_parseident
+mc_parser_parseliteralnumber
+mc_parser_parseliteralbool
+mc_parser_parseliteralstring
+mc_parser_parseliteraltemplatestring
+mc_parser_parseliteralnull
+mc_parser_parseliteralarray
+mc_parser_parseliteralmap
+mc_parser_parseprefixexpr
+mc_parser_parseinfixexpr
+mc_parser_parsegroupedexpr
+mc_parser_parseliteralfunction
 parse_function_parameters
 parse_call_expression
 parse_expression_list
-parse_index_expression
-parse_assign_expression
+mc_parser_parseindexexpr
+mc_parser_parseassignexpr
 parse_logical_expression
 parse_ternary_expression
-parse_incdec_prefix_expression
+mc_parser_parseincdecprefixexpr
 parse_incdec_postfix_expression
 parse_dot_expression
 get_precedence
@@ -79,22 +84,10 @@ token_to_operator
 escape_char
 process_and_copy_string
 wrap_expression_in_function_call
-arcane_execute
-arcane_call
-arcane_clear_errors
-arcane_set_global_constant
-arcane_get_object
-arcane_object_make_error
-arcane_object_make_errorf
-arcane_object_is_null
-arcane_set_runtime_error
-arcane_set_runtime_errorf
 object_get_type
 object_is_numeric
 object_is_null
 object_is_callable
-arcane_object_get_type_name
-arcane_object_get_string
 object_make_native_function
 object_make_array
 object_make_array_with_capacity
@@ -109,24 +102,6 @@ object_deinit
 object_data_deinit
 object_is_allocated
 object_get_mem
-arcane_error_get_message
-arcane_error_get_filepath
-arcane_error_get_line
-arcane_error_get_line_number
-arcane_error_get_column_number
-arcane_error_get_type
-arcane_error_get_type_string
-arcane_error_type_to_string
-arcane_error_get_traceback
-arcane_traceback_get_depth
-arcane_traceback_get_filepath
-arcane_traceback_get_line
-arcane_traceback_get_line_number
-arcane_traceback_get_column_number
-arcane_traceback_get_function_name
-arcane_deinit
-arcane_native_fn_wrapper
-arcane_object_make_native_function_with_name
 reset_state
 set_default_config
 read_file_default
@@ -181,107 +156,11 @@ builtins_get_fn
 builtins_get_name
 code_to_string
 code_read_operands
-collections_strndup
-collections_strdup
-dict_make_
-dict_destroy
-dict_destroy_with_items
-dict_copy_with_items
-dict_set
-dict_get
-dict_get_value_at
-dict_get_key_at
-dict_count
-dict_remove
-dict_init
-dict_deinit
-dict_get_cell_ix
-hash_string
-dict_grow_and_rehash
-dict_set_internal
-valdict_init
-valdict_deinit
-valdict_make_
-valdict_make_with_capacity
-valdict_destroy
-valdict_set_hash_function
-valdict_set_equals_function
-valdict_set
-valdict_get
-valdict_get_key_at
-valdict_get_value_at
-valdict_get_capacity
-valdict_set_value_at
-valdict_count
-valdict_remove
-valdict_clear
-valdict_get_cell_ix
-valdict_grow_and_rehash
-valdict_set_key_at
-valdict_keys_are_equal
-valdict_hash_key
-array_make
-array_make_with_capacity
-array_destroy
-array_destroy_with_items_
-array_copy
-array_add
-array_addn
-array_add_array
-array_push
-array_pop
-array_top
-array_set
-array_setn
-array_get
-array_get_const
-array_get_last
-array_count
-array_get_capacity
-array_remove_at
-array_remove_item
-array_clear
-array_clear_and_deinit_items_
-array_lock_capacity
-array_get_index
-array_contains
-array_data
-array_const_data
-array_orphan_data
-array_reverse
-array_init_with_capacity
-array_deinit
-ptrarray_make
-ptrarray_make_with_capacity
-ptrarray_destroy
-ptrarray_destroy_with_items_
-ptrarray_copy
-ptrarray_copy_with_items_
-ptrarray_push
-ptrarray_get
-ptrarray_pop
-ptrarray_top
-ptrarray_count
-ptrarray_remove_at
-ptrarray_clear
-ptrarray_clear_and_destroy_items_
-ptrarray_lock_capacity
-ptrarray_get_index
-ptrarray_contains
-ptrarray_get_addr
-ptrarray_data
-ptrarray_reverse
 kg_split_string
 kg_join
 kg_canonicalise_path
 kg_is_path_absolute
 kg_streq
-errors_init
-errors_deinit
-errors_add_error
-errors_add_errorf
-errors_clear
-errors_get_count
 errors_get
 errors_getc
 error_type_to_string
@@ -317,46 +196,13 @@ object_is_hashable
 object_get_type_name
 object_get_type_union_name
 object_serialize
-mc_value_copydeep
-mc_value_copyflat
-mc_value_compare
 object_equals
 object_get_external_data
 object_set_external_destroy_function
 object_get_allocated_data
 object_get_bool
 object_get_number
-mc_value_stringgetdata
-mc_value_stringgetlength
 object_set_string_length
-mc_value_stringgetcapacity
-mc_value_stringgetmutabledata
-mc_value_stringgethash
-mc_value_functiongetscriptfunction
-mc_value_functiongetnativefunction
-mc_value_functiongetname
-mc_value_functiongetfreevalat
-mc_value_functionsetfreevalat
-mc_value_functiongetfreevals
-mc_value_errorgetmessage
-mc_value_errorsettraceback
-mc_value_errorgettraceback
-mc_value_setexternaldata
-mc_value_setexternalcopyfunction
-mc_value_arraygetvalueat
-mc_value_arraysetvalueat
-mc_value_arraypush
-mv_value_arraygetlength
-mc_value_arrayremovevalueat
-mc_value_mapgetlength
-mc_value_mapgetkeyat
-mc_value_mapgetvalueat
-mc_value_mapsetvalueat
-mc_value_mapgetkvpairat
-mc_value_mapsetvalue
-mc_value_mapgetvalue
-mc_value_maphaskey
-mc_value_copydeepintern
 object_equals_wrapped
 object_hash
 object_hash_string
@@ -364,35 +210,9 @@ object_hash_double
 object_get_allocated_array
 object_is_number
 freevals_are_allocated
-mc_value_stringgetdataintern
-mc_value_stringreservecapacity
-symbol_make
-symbol_destroy
-symbol_copy
-mc_symtable_make
-mc_symtable_destroy
-symbol_table_copy
-symbol_table_add_module_symbol
-symbol_table_define
-symbol_table_define_free
-symbol_table_define_function_name
-symbol_table_define_this
-symbol_table_resolve
-symbol_table_symbol_is_defined
-symbol_table_push_block_scope
-symbol_table_pop_block_scope
-symbol_table_get_block_scope
-symbol_table_is_module_global_scope
-symbol_table_is_top_block_scope
-symbol_table_is_top_global_scope
-symbol_table_get_module_global_symbol_count
-symbol_table_get_module_global_symbol_at
 block_scope_make
 block_scope_destroy
 block_scope_copy
-set_symbol
-next_symbol_index
-count_num_definitions
 token_init
 token_duplicate_literal
 token_type_to_string
@@ -424,14 +244,14 @@ run_gc
 check_assign
 try_overload_operator
 read_file
-
-*/
+main
+}
+#endif
 
 /*
 SPDX-License-Identifier: MIT
 
-arcane
-https://github.com/kgabis/arcane
+https://github.com/kgabis/ape
 Copyright (c) 2023 Krzysztof Gabis
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -479,6 +299,11 @@ THE SOFTWARE.
     #define __attribute__(x)
 #endif
 
+#ifdef COLLECTIONS_DEBUG
+    #define COLLECTIONS_ASSERT(x) assert(x)
+#else
+    #define COLLECTIONS_ASSERT(x)
+#endif
 
 #define MC_UTIL_STREQ(a, b) (strcmp((a), (b)) == 0)
 #define MC_UTIL_STRNEQ(a, b, n) (strncmp((a), (b), (n)) == 0)
@@ -491,16 +316,27 @@ THE SOFTWARE.
     #define MC_ASSERT(x) ((void)0)
 #endif
 
-
 #define IS_NULLSTR(str) ((str) == NULL || (str)[0] == '\0')
 
-/*
-#define MC_CONF_OBJECT_PATTERN 0xfff8000000000000
-#define MC_CONF_OBJECT_HEADERMASK 0xffff000000000000
-#define MC_CONF_OBJECT_HDRALLOCATED 0xfffc000000000000
-#define MC_CONF_OBJECT_HDRBOOL 0xfff9000000000000
-#define MC_CONF_OBJECT_NULLPATTERN 0xfffa000000000000
-*/
+#define VM_STACK_SIZE 2048
+#define VM_MAX_GLOBALS 2048
+#define VM_MAX_FRAMES 2048
+#define VM_THIS_STACK_SIZE 2048
+#define NATIVE_FN_MAX_DATA_LEN 24
+
+#define MC_CONF_OBJECT_STRING_BUF_SIZE 24
+
+#define GCMEM_POOL_SIZE 2048
+#define GCMEM_POOLS_NUM 3
+#define GCMEM_SWEEP_INTERVAL 128
+
+#define MC_CONF_ERROR_MAXERRORCOUNT 16
+#define MC_CONF_ERROR_MSGMAXLENGTH 255
+#define DICT_INVALID_IX UINT_MAX
+#define DICT_INITIAL_SIZE 32
+
+#define VALDICT_INVALID_IX UINT_MAX
+
 
 enum mcerrtype_t
 {
@@ -1103,8 +939,6 @@ struct mcastexpression_t
     mcastlocation_t pos;
 };
 
-#define MC_CONF_OBJECT_STRING_BUF_SIZE 24
-
 
 struct mcobjfuncscript_t
 {
@@ -1126,8 +960,6 @@ struct mcobjfuncscript_t
     int free_vals_count;
     bool owns_data;
 };
-
-#define NATIVE_FN_MAX_DATA_LEN 24
 
 struct mcobjfuncnative_t
 {
@@ -1221,10 +1053,6 @@ struct mcastsymtable_t
 };
 
 
-#define GCMEM_POOL_SIZE 2048
-#define GCMEM_POOLS_NUM 3
-#define GCMEM_SWEEP_INTERVAL 128
-
 struct mcgcobjdatapool_t
 {
     mcobjdata_t* data[GCMEM_POOL_SIZE];
@@ -1270,8 +1098,7 @@ struct mcastcompiledfile_t
     mcptrarray_t* lines;
 };
 
-#define MC_CONF_ERROR_MAXERRORCOUNT 16
-#define MC_CONF_ERROR_MSGMAXLENGTH 255
+
 
 struct mcerror_t
 {
@@ -1352,12 +1179,6 @@ struct mctraceback_t
     mcbasicarray_t* items;
 };
 
-
-#define VM_STACK_SIZE 2048
-#define VM_MAX_GLOBALS 2048
-#define VM_MAX_FRAMES 2048
-#define VM_THIS_STACK_SIZE 2048
-
 struct mcstate_t
 {
     mcconfig_t config;
@@ -1402,34 +1223,34 @@ struct mcbasicarray_t
 {
     mcstate_t* pstate;
     unsigned char* data;
-    unsigned char* data_allocated;
+    unsigned char* allocdata;
     unsigned int count;
     unsigned int capacity;
-    size_t element_size;
-    bool lock_capacity;
+    size_t typesize;
+    bool caplocked;
 };
 
 struct mcptrarray_t
 {
     mcstate_t* pstate;
-    mcbasicarray_t arr;
+    mcbasicarray_t innerbarray;
 };
 
 struct mcvaldict_t
 {
     mcstate_t* pstate;
-    size_t key_size;
-    size_t val_size;
+    size_t keytypesize;
+    size_t valtypesize;
     unsigned int* cells;
     unsigned long* hashes;
     void* keys;
     void* values;
-    unsigned int* cell_ixs;
+    unsigned int* cellindices;
     unsigned int count;
-    unsigned int item_capacity;
-    unsigned int cell_capacity;
-    mccollectionshashfn_t _hash_key;
-    mccollectionsequalsfn_t _keys_equals;
+    unsigned int itemcapacity;
+    unsigned int cellcapacity;
+    mccollectionshashfn_t funchashfn;
+    mccollectionsequalsfn_t funckeyequalsfn;
 };
 
 struct mcgenericdict_t
@@ -1439,11 +1260,11 @@ struct mcgenericdict_t
     unsigned long* hashes;
     char** keys;
     void** values;
-    unsigned int* cell_ixs;
+    unsigned int* cellindices;
     unsigned int count;
-    unsigned int item_capacity;
-    unsigned int cell_capacity;
-    mcdictitemcopyfn_t copy_fn;
+    unsigned int itemcapacity;
+    unsigned int cellcapacity;
+    mcdictitemcopyfn_t funccopyfn;
     mcdictitemdestroyfn_t destroy_fn;
 };
 
@@ -1496,6 +1317,9 @@ struct mccompiledprogram_t
 #include "prot.inc"
 
 /* endheader */
+
+
+static mcastlocation_t srcposinvalid = { NULL, -1, -1 };
 
 TMPSTATIC unsigned long mc_util_hashdata(void* ptr, size_t len)
 {
@@ -1628,8 +1452,1533 @@ TMPSTATIC double mc_mathutil_mod(double dnleft, double dnright)
     return fmod(dnleft, dnright);
 }
 
+TMPSTATIC char* collections_strndup(mcstate_t* state, const char* string, size_t n)
+{
+    char* outputstring = (char*)mc_allocator_alloc(state, n + 1);
+    if(!outputstring)
+    {
+        return NULL;
+    }
+    outputstring[n] = '\0';
+    memcpy(outputstring, string, n);
+    return outputstring;
+}
 
-static mcastlocation_t srcposinvalid = { NULL, -1, -1 };
+TMPSTATIC char* collections_strdup(mcstate_t* state, const char* string)
+{
+    if(!string)
+    {
+        return NULL;
+    }
+    return collections_strndup(state, string, strlen(string));
+}
+
+
+
+TMPSTATIC mcgenericdict_t* mc_genericdict_make(mcstate_t* state, mcdictitemcopyfn_t copyfn, mcdictitemdestroyfn_t destroy_fn)
+{
+    bool ok;
+    mcgenericdict_t* dict = (mcgenericdict_t*)mc_allocator_alloc(state, sizeof(mcgenericdict_t));
+    if(dict == NULL)
+    {
+        return NULL;
+    }
+    ok = mc_genericdict_init(dict, state, DICT_INITIAL_SIZE, copyfn, destroy_fn);
+    if(!ok)
+    {
+        mc_allocator_free(state, dict);
+        return NULL;
+    }
+    dict->pstate = state;
+    return dict;
+}
+
+TMPSTATIC void mc_genericdict_destroy(mcgenericdict_t* dict)
+{
+    mcstate_t* state;
+    if(!dict)
+    {
+        return;
+    }
+    state = dict->pstate;
+    mc_genericdict_deinit(dict, true);
+    mc_allocator_free(state, dict);
+}
+
+TMPSTATIC void mc_genericdict_destroyitemsanddict(mcgenericdict_t* dict)
+{
+    unsigned int i;
+    if(!dict)
+    {
+        return;
+    }
+    if(dict->destroy_fn)
+    {
+        for(i = 0; i < dict->count; i++)
+        {
+            dict->destroy_fn(dict->values[i]);
+        }
+    }
+    mc_genericdict_destroy(dict);
+}
+
+TMPSTATIC mcgenericdict_t* mc_genericdict_copy(mcgenericdict_t* dict)
+{
+    bool ok;
+    int i;
+    if(!dict->funccopyfn || !dict->destroy_fn)
+    {
+        return NULL;
+    }
+
+    mcgenericdict_t* dictcopy = mc_genericdict_make(dict->pstate, dict->funccopyfn, dict->destroy_fn);
+    if(!dictcopy)
+    {
+        return NULL;
+    }
+    dictcopy->pstate = dict->pstate;
+    for(i = 0; i < mc_genericdict_count(dict); i++)
+    {
+        const char* key = mc_genericdict_getkeyat(dict, i);
+        void* item = mc_genericdict_getvalueat(dict, i);
+        void* itemcopy = dictcopy->funccopyfn(item);
+        if(item && !itemcopy)
+        {
+            mc_genericdict_destroyitemsanddict(dictcopy);
+            return NULL;
+        }
+        ok = mc_genericdict_set(dictcopy, key, itemcopy);
+        if(!ok)
+        {
+            dictcopy->destroy_fn(itemcopy);
+            mc_genericdict_destroyitemsanddict(dictcopy);
+            return NULL;
+        }
+    }
+    return dictcopy;
+}
+
+TMPSTATIC bool mc_genericdict_set(mcgenericdict_t* dict, const char* key, void* value)
+{
+    return mc_genericdict_setinternal(dict, key, NULL, value);
+}
+
+TMPSTATIC void* mc_genericdict_get(mcgenericdict_t* dict, const char* key)
+{
+    unsigned long hash = hash_string(key);
+    bool found = false;
+    unsigned long cellix = mc_genericdict_getcellindex(dict, key, hash, &found);
+    if(found == false)
+    {
+        return NULL;
+    }
+    unsigned int itemix = dict->cells[cellix];
+    return dict->values[itemix];
+}
+
+TMPSTATIC void* mc_genericdict_getvalueat(mcgenericdict_t* dict, unsigned int ix)
+{
+    if(ix >= dict->count)
+    {
+        return NULL;
+    }
+    return dict->values[ix];
+}
+
+TMPSTATIC const char* mc_genericdict_getkeyat(mcgenericdict_t* dict, unsigned int ix)
+{
+    if(ix >= dict->count)
+    {
+        return NULL;
+    }
+    return dict->keys[ix];
+}
+
+TMPSTATIC int mc_genericdict_count(mcgenericdict_t* dict)
+{
+    if(!dict)
+    {
+        return 0;
+    }
+    return dict->count;
+}
+
+TMPUNUSED bool mc_genericdict_remove(mcgenericdict_t* dict, const char* key)
+{
+    unsigned int x;
+    unsigned long hash = hash_string(key);
+    bool found = false;
+    unsigned int cell = mc_genericdict_getcellindex(dict, key, hash, &found);
+    if(!found)
+    {
+        return false;
+    }
+
+    unsigned int itemix = dict->cells[cell];
+    mc_allocator_free(dict->pstate, dict->keys[itemix]);
+    unsigned int lastitemix = dict->count - 1;
+    if(itemix < lastitemix)
+    {
+        dict->keys[itemix] = dict->keys[lastitemix];
+        dict->values[itemix] = dict->values[lastitemix];
+        dict->cellindices[itemix] = dict->cellindices[lastitemix];
+        dict->hashes[itemix] = dict->hashes[lastitemix];
+        dict->cells[dict->cellindices[itemix]] = itemix;
+    }
+    dict->count--;
+
+    unsigned int i = cell;
+    unsigned int j = i;
+    for(x = 0; x < (dict->cellcapacity - 1); x++)
+    {
+        j = (j + 1) & (dict->cellcapacity - 1);
+        if(dict->cells[j] == DICT_INVALID_IX)
+        {
+            break;
+        }
+        unsigned int k = (unsigned int)(dict->hashes[dict->cells[j]]) & (dict->cellcapacity - 1);
+        if((j > i && (k <= i || k > j)) || (j < i && (k <= i && k > j)))
+        {
+            dict->cellindices[dict->cells[j]] = i;
+            dict->cells[i] = dict->cells[j];
+            i = j;
+        }
+    }
+    dict->cells[i] = DICT_INVALID_IX;
+    return true;
+}
+
+TMPSTATIC bool mc_genericdict_init(mcgenericdict_t* dict, mcstate_t* state, unsigned int initialcapacity, mcdictitemcopyfn_t copyfn, mcdictitemdestroyfn_t destroy_fn)
+{
+    unsigned int i;
+    dict->pstate = state;
+    dict->cells = NULL;
+    dict->keys = NULL;
+    dict->values = NULL;
+    dict->cellindices = NULL;
+    dict->hashes = NULL;
+    dict->count = 0;
+    dict->cellcapacity = initialcapacity;
+    dict->itemcapacity = (unsigned int)(initialcapacity * 0.7f);
+    dict->funccopyfn = copyfn;
+    dict->destroy_fn = destroy_fn;
+    dict->cells = (unsigned int*)mc_allocator_alloc(dict->pstate, dict->cellcapacity * sizeof(*dict->cells));
+    dict->keys = (char**)mc_allocator_alloc(dict->pstate, dict->itemcapacity * sizeof(*dict->keys));
+    dict->values = (void**)mc_allocator_alloc(dict->pstate, dict->itemcapacity * sizeof(*dict->values));
+    dict->cellindices = (unsigned int*)mc_allocator_alloc(dict->pstate, dict->itemcapacity * sizeof(*dict->cellindices));
+    dict->hashes = (long unsigned int*)mc_allocator_alloc(dict->pstate, dict->itemcapacity * sizeof(*dict->hashes));
+    if(dict->cells == NULL || dict->keys == NULL || dict->values == NULL || dict->cellindices == NULL || dict->hashes == NULL)
+    {
+        goto error;
+    }
+    for(i = 0; i < dict->cellcapacity; i++)
+    {
+        dict->cells[i] = DICT_INVALID_IX;
+    }
+    return true;
+error:
+    mc_allocator_free(dict->pstate, dict->cells);
+    mc_allocator_free(dict->pstate, dict->keys);
+    mc_allocator_free(dict->pstate, dict->values);
+    mc_allocator_free(dict->pstate, dict->cellindices);
+    mc_allocator_free(dict->pstate, dict->hashes);
+    return false;
+}
+
+TMPSTATIC void mc_genericdict_deinit(mcgenericdict_t* dict, bool freekeys)
+{
+    unsigned int i;
+    if(freekeys)
+    {
+        for(i = 0; i < dict->count; i++)
+        {
+            mc_allocator_free(dict->pstate, dict->keys[i]);
+        }
+    }
+    dict->count = 0;
+    dict->itemcapacity = 0;
+    dict->cellcapacity = 0;
+    mc_allocator_free(dict->pstate, dict->cells);
+    mc_allocator_free(dict->pstate, dict->keys);
+    mc_allocator_free(dict->pstate, dict->values);
+    mc_allocator_free(dict->pstate, dict->cellindices);
+    mc_allocator_free(dict->pstate, dict->hashes);
+    dict->cells = NULL;
+    dict->keys = NULL;
+    dict->values = NULL;
+    dict->cellindices = NULL;
+    dict->hashes = NULL;
+}
+
+TMPSTATIC unsigned int mc_genericdict_getcellindex(mcgenericdict_t* dict, const char* key, unsigned long hash, bool* outfound)
+{
+    unsigned int i;
+    *outfound = false;
+    unsigned int cellix = (unsigned int)hash & (dict->cellcapacity - 1);
+    for(i = 0; i < dict->cellcapacity; i++)
+    {
+        unsigned int ix = (cellix + i) & (dict->cellcapacity - 1);
+        unsigned int cell = dict->cells[ix];
+        if(cell == DICT_INVALID_IX)
+        {
+            return ix;
+        }
+        unsigned long hashtocheck = dict->hashes[cell];
+        if(hash != hashtocheck)
+        {
+            continue;
+        }
+        const char* keytocheck = dict->keys[cell];
+        if(strcmp(key, keytocheck) == 0)
+        {
+            *outfound = true;
+            return ix;
+        }
+    }
+    return DICT_INVALID_IX;
+}
+
+TMPSTATIC unsigned long hash_string(const char* str)
+{
+    /* djb2 */
+    unsigned long hash = 5381;
+    uint8_t c;
+    while((c = *str++))
+    {
+        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+    }
+    return hash;
+}
+
+TMPSEMISTATIC bool mc_genericdict_growandrehash(mcgenericdict_t* dict)
+{
+    bool ok;
+    unsigned int i;
+    mcgenericdict_t newdict;
+    ok = mc_genericdict_init(&newdict, dict->pstate, dict->cellcapacity * 2, dict->funccopyfn, dict->destroy_fn);
+    if(!ok)
+    {
+        return false;
+    }
+    for(i = 0; i < dict->count; i++)
+    {
+        char* key = dict->keys[i];
+        void* value = dict->values[i];
+        ok = mc_genericdict_setinternal(&newdict, key, key, value);
+        if(!ok)
+        {
+            mc_genericdict_deinit(&newdict, false);
+            return false;
+        }
+    }
+    mc_genericdict_deinit(dict, false);
+    *dict = newdict;
+    return true;
+}
+
+TMPSTATIC bool mc_genericdict_setinternal(mcgenericdict_t* dict, const char* ckey, char* mkey, void* value)
+{
+    bool ok;
+    unsigned long hash = hash_string(ckey);
+    bool found = false;
+    unsigned int cellix = mc_genericdict_getcellindex(dict, ckey, hash, &found);
+    if(found)
+    {
+        unsigned int itemix = dict->cells[cellix];
+        dict->values[itemix] = value;
+        return true;
+    }
+    if(dict->count >= dict->itemcapacity)
+    {
+        ok = mc_genericdict_growandrehash(dict);
+        if(!ok)
+        {
+            return false;
+        }
+        cellix = mc_genericdict_getcellindex(dict, ckey, hash, &found);
+    }
+
+    if(mkey)
+    {
+        dict->keys[dict->count] = mkey;
+    }
+    else
+    {
+        char* keycopy = collections_strdup(dict->pstate, ckey);
+        if(!keycopy)
+        {
+            return false;
+        }
+        dict->keys[dict->count] = keycopy;
+    }
+    dict->cells[cellix] = dict->count;
+    dict->values[dict->count] = value;
+    dict->cellindices[dict->count] = cellix;
+    dict->hashes[dict->count] = hash;
+    dict->count++;
+    return true;
+}
+
+
+TMPSTATIC bool mc_valdict_init(mcvaldict_t* dict, mcstate_t* state, size_t ktsz, size_t vtsz, unsigned int initialcapacity)
+{
+    unsigned int i;
+    dict->pstate = state;
+    dict->keytypesize = ktsz;
+    dict->valtypesize = vtsz;
+    dict->cells = NULL;
+    dict->keys = NULL;
+    dict->values = NULL;
+    dict->cellindices = NULL;
+    dict->hashes = NULL;
+    dict->count = 0;
+    dict->cellcapacity = initialcapacity;
+    dict->itemcapacity = (unsigned int)(initialcapacity * 0.7f);
+
+    dict->funckeyequalsfn = NULL;
+    dict->funchashfn = NULL;
+
+    dict->cells = (unsigned int*)mc_allocator_alloc(dict->pstate, dict->cellcapacity * sizeof(*dict->cells));
+    dict->keys = (void*)mc_allocator_alloc(dict->pstate, dict->itemcapacity * ktsz);
+    dict->values = (void*)mc_allocator_alloc(dict->pstate, dict->itemcapacity * vtsz);
+    dict->cellindices = (unsigned int*)mc_allocator_alloc(dict->pstate, dict->itemcapacity * sizeof(*dict->cellindices));
+    dict->hashes = (long unsigned int*)mc_allocator_alloc(dict->pstate, dict->itemcapacity * sizeof(*dict->hashes));
+    if(dict->cells == NULL || dict->keys == NULL || dict->values == NULL || dict->cellindices == NULL || dict->hashes == NULL)
+    {
+        goto error;
+    }
+    for(i = 0; i < dict->cellcapacity; i++)
+    {
+        dict->cells[i] = VALDICT_INVALID_IX;
+    }
+    return true;
+error:
+    mc_allocator_free(dict->pstate, dict->cells);
+    mc_allocator_free(dict->pstate, dict->keys);
+    mc_allocator_free(dict->pstate, dict->values);
+    mc_allocator_free(dict->pstate, dict->cellindices);
+    mc_allocator_free(dict->pstate, dict->hashes);
+    return false;
+}
+
+TMPSTATIC void mc_valdict_deinit(mcvaldict_t* dict)
+{
+    dict->keytypesize = 0;
+    dict->valtypesize = 0;
+    dict->count = 0;
+    dict->itemcapacity = 0;
+    dict->cellcapacity = 0;
+
+    mc_allocator_free(dict->pstate, dict->cells);
+    mc_allocator_free(dict->pstate, dict->keys);
+    mc_allocator_free(dict->pstate, dict->values);
+    mc_allocator_free(dict->pstate, dict->cellindices);
+    mc_allocator_free(dict->pstate, dict->hashes);
+
+    dict->cells = NULL;
+    dict->keys = NULL;
+    dict->values = NULL;
+    dict->cellindices = NULL;
+    dict->hashes = NULL;
+}
+
+TMPSTATIC mcvaldict_t* mc_valdict_make(mcstate_t* state, size_t ktsz, size_t vtsz)
+{
+    return mc_valdict_makecapacity(state, DICT_INITIAL_SIZE, ktsz, vtsz);
+}
+
+TMPSTATIC mcvaldict_t* mc_valdict_makecapacity(mcstate_t* state, unsigned int mincapacity, size_t ktsz, size_t vtsz)
+{
+    bool ok;
+    unsigned int capacity = mc_util_upperpowoftwo(mincapacity * 2);
+    mcvaldict_t* dict = (mcvaldict_t*)mc_allocator_alloc(state, sizeof(mcvaldict_t));
+    if(!dict)
+    {
+        return NULL;
+    }
+    ok = mc_valdict_init(dict, state, ktsz, vtsz, capacity);
+    if(!ok)
+    {
+        mc_allocator_free(state, dict);
+        return NULL;
+    }
+    dict->pstate = state;
+    return dict;
+}
+
+TMPSTATIC void mc_valdict_destroy(mcvaldict_t* dict)
+{
+    mcstate_t* state;
+    if(!dict)
+    {
+        return;
+    }
+    state = dict->pstate;
+    mc_valdict_deinit(dict);
+    mc_allocator_free(state, dict);
+}
+
+TMPSTATIC void mc_valdict_sethashfunction(mcvaldict_t* dict, mccollectionshashfn_t hashfn)
+{
+    dict->funchashfn = hashfn;
+}
+
+TMPSTATIC void mc_valdict_setequalsfunction(mcvaldict_t* dict, mccollectionsequalsfn_t equalsfn)
+{
+    dict->funckeyequalsfn = equalsfn;
+}
+
+TMPSTATIC bool mc_valdict_setkv(mcvaldict_t* dict, void* key, void* value)
+{
+    bool ok;
+    unsigned long hash = mc_valdict_hashkey(dict, key);
+    bool found = false;
+    unsigned int cellix = mc_valdict_getcellindex(dict, key, hash, &found);
+    if(found)
+    {
+        unsigned int itemix = dict->cells[cellix];
+        mc_valdict_setvalueat(dict, itemix, value);
+        return true;
+    }
+    if(dict->count >= dict->itemcapacity)
+    {
+        ok = mc_valdict_growandrehash(dict);
+        if(!ok)
+        {
+            return false;
+        }
+        cellix = mc_valdict_getcellindex(dict, key, hash, &found);
+    }
+    unsigned int lastix = dict->count;
+    dict->count++;
+    dict->cells[cellix] = lastix;
+    mc_valdict_setkeyat(dict, lastix, key);
+    mc_valdict_setvalueat(dict, lastix, value);
+    dict->cellindices[lastix] = cellix;
+    dict->hashes[lastix] = hash;
+    return true;
+}
+
+TMPSTATIC void* mc_valdict_get(mcvaldict_t* dict, void* key)
+{
+    if(dict->count == 0)
+    {
+        return NULL;
+    }
+    unsigned long hash = mc_valdict_hashkey(dict, key);
+    bool found = false;
+    unsigned long cellix = mc_valdict_getcellindex(dict, key, hash, &found);
+    if(!found)
+    {
+        return NULL;
+    }
+    unsigned int itemix = dict->cells[cellix];
+    return mc_valdict_getvalueat(dict, itemix);
+}
+
+TMPSTATIC void* mc_valdict_getkeyat(mcvaldict_t* dict, unsigned int ix)
+{
+    if(ix >= dict->count)
+    {
+        return NULL;
+    }
+    return (char*)dict->keys + (dict->keytypesize * ix);
+}
+
+TMPSTATIC void* mc_valdict_getvalueat(mcvaldict_t* dict, unsigned int ix)
+{
+    if(ix >= dict->count)
+    {
+        return NULL;
+    }
+    return (char*)dict->values + (dict->valtypesize * ix);
+}
+
+TMPUNUSED unsigned int mc_valdict_getcapacity(mcvaldict_t* dict)
+{
+    return dict->itemcapacity;
+}
+
+TMPSTATIC bool mc_valdict_setvalueat(mcvaldict_t* dict, unsigned int ix, void* value)
+{
+    if(ix >= dict->count)
+    {
+        return false;
+    }
+    size_t offset = ix * dict->valtypesize;
+    memcpy((char*)dict->values + offset, value, dict->valtypesize);
+    return true;
+}
+
+TMPSTATIC int mc_valdict_count(mcvaldict_t* dict)
+{
+    if(!dict)
+    {
+        return 0;
+    }
+    return dict->count;
+}
+
+TMPUNUSED bool mc_valdict_removebykey(mcvaldict_t* dict, void* key)
+{
+    unsigned int x;
+    unsigned long hash = mc_valdict_hashkey(dict, key);
+    bool found = false;
+    unsigned int cell = mc_valdict_getcellindex(dict, key, hash, &found);
+    if(!found)
+    {
+        return false;
+    }
+
+    unsigned int itemix = dict->cells[cell];
+    unsigned int lastitemix = dict->count - 1;
+    if(itemix < lastitemix)
+    {
+        void* lastkey = mc_valdict_getkeyat(dict, lastitemix);
+        mc_valdict_setkeyat(dict, itemix, lastkey);
+        void* lastvalue = mc_valdict_getkeyat(dict, lastitemix);
+        mc_valdict_setvalueat(dict, itemix, lastvalue);
+        dict->cellindices[itemix] = dict->cellindices[lastitemix];
+        dict->hashes[itemix] = dict->hashes[lastitemix];
+        dict->cells[dict->cellindices[itemix]] = itemix;
+    }
+    dict->count--;
+
+    unsigned int i = cell;
+    unsigned int j = i;
+    for(x = 0; x < (dict->cellcapacity - 1); x++)
+    {
+        j = (j + 1) & (dict->cellcapacity - 1);
+        if(dict->cells[j] == VALDICT_INVALID_IX)
+        {
+            break;
+        }
+        unsigned int k = (unsigned int)(dict->hashes[dict->cells[j]]) & (dict->cellcapacity - 1);
+        if((j > i && (k <= i || k > j)) || (j < i && (k <= i && k > j)))
+        {
+            dict->cellindices[dict->cells[j]] = i;
+            dict->cells[i] = dict->cells[j];
+            i = j;
+        }
+    }
+    dict->cells[i] = VALDICT_INVALID_IX;
+    return true;
+}
+
+TMPSTATIC void mc_valdict_clear(mcvaldict_t* dict)
+{
+    unsigned int i;
+    dict->count = 0;
+    for(i = 0; i < dict->cellcapacity; i++)
+    {
+        dict->cells[i] = VALDICT_INVALID_IX;
+    }
+}
+
+TMPSTATIC unsigned int mc_valdict_getcellindex(mcvaldict_t* dict, void* key, unsigned long hash, bool* outfound)
+{
+    bool areequal;
+    unsigned int i;
+    unsigned int ix;
+    unsigned int cell;
+    unsigned int cellix;
+    unsigned long hashtocheck;
+    void* keytocheck;
+    *outfound = false;
+    cellix = (unsigned int)hash & (dict->cellcapacity - 1);
+    for(i = 0; i < dict->cellcapacity; i++)
+    {
+        ix = (cellix + i) & (dict->cellcapacity - 1);
+        cell = dict->cells[ix];
+        if(cell == VALDICT_INVALID_IX)
+        {
+            return ix;
+        }
+        hashtocheck = dict->hashes[cell];
+        if(hash != hashtocheck)
+        {
+            continue;
+        }
+        keytocheck = mc_valdict_getkeyat(dict, cell);
+        areequal = mc_valdict_keysareequal(dict, key, keytocheck);
+        if(areequal)
+        {
+            *outfound = true;
+            return ix;
+        }
+    }
+    return VALDICT_INVALID_IX;
+}
+
+TMPSEMISTATIC bool mc_valdict_growandrehash(mcvaldict_t* dict)
+{
+    bool ok;
+    mcvaldict_t newdict;
+    unsigned int i;
+    unsigned newcapacity = dict->cellcapacity == 0 ? DICT_INITIAL_SIZE : dict->cellcapacity * 2;
+    ok = mc_valdict_init(&newdict, dict->pstate, dict->keytypesize, dict->valtypesize, newcapacity);
+    if(!ok)
+    {
+        return false;
+    }
+    newdict.funckeyequalsfn = dict->funckeyequalsfn;
+    newdict.funchashfn = dict->funchashfn;
+    for(i = 0; i < dict->count; i++)
+    {
+        char* key = (char*)mc_valdict_getkeyat(dict, i);
+        void* value = mc_valdict_getvalueat(dict, i);
+        ok = mc_valdict_setkv(&newdict, key, value);
+        if(!ok)
+        {
+            mc_valdict_deinit(&newdict);
+            return false;
+        }
+    }
+    mc_valdict_deinit(dict);
+    *dict = newdict;
+    return true;
+}
+
+TMPSTATIC bool mc_valdict_setkeyat(mcvaldict_t* dict, unsigned int ix, void* key)
+{
+    if(ix >= dict->count)
+    {
+        return false;
+    }
+    size_t offset = ix * dict->keytypesize;
+    memcpy((char*)dict->keys + offset, key, dict->keytypesize);
+    return true;
+}
+
+TMPSTATIC bool mc_valdict_keysareequal(mcvaldict_t* dict, void* a, void* b)
+{
+    if(dict->funckeyequalsfn)
+    {
+        return dict->funckeyequalsfn(a, b);
+    }
+    return memcmp(a, b, dict->keytypesize) == 0;
+}
+
+TMPSTATIC unsigned long mc_valdict_hashkey(mcvaldict_t* dict, void* key)
+{
+    if(dict->funchashfn)
+    {
+        return dict->funchashfn(key);
+    }
+    return mc_util_hashdata(key, dict->keytypesize);
+}
+
+TMPSTATIC mcbasicarray_t* mc_basicarray_make(mcstate_t* state, size_t tsz)
+{
+    return mc_basicarray_makecapacity(state, 32, tsz);
+}
+
+TMPSTATIC mcbasicarray_t* mc_basicarray_makecapacity(mcstate_t* state, unsigned int capacity, size_t tsz)
+{
+    bool ok;
+    mcbasicarray_t* arr = (mcbasicarray_t*)mc_allocator_alloc(state, sizeof(mcbasicarray_t));
+    if(!arr)
+    {
+        return NULL;
+    }
+
+    ok = mc_basicarray_initcapacity(arr, state, capacity, tsz);
+    if(!ok)
+    {
+        mc_allocator_free(state, arr);
+        return NULL;
+    }
+    arr->pstate = state;
+    return arr;
+}
+
+TMPSTATIC void mc_basicarray_destroy(mcbasicarray_t* arr)
+{
+    mcstate_t* state;
+    if(!arr)
+    {
+        return;
+    }
+    state = arr->pstate;
+    mc_basicarray_deinit(arr);
+    mc_allocator_free(state, arr);
+}
+
+TMPSTATIC mcbasicarray_t* mc_basicarray_copy(mcbasicarray_t* arr)
+{
+    mcbasicarray_t* copy = (mcbasicarray_t*)mc_allocator_alloc(arr->pstate, sizeof(mcbasicarray_t));
+    if(!copy)
+    {
+        return NULL;
+    }
+    copy->pstate = arr->pstate;
+    copy->capacity = arr->capacity;
+    copy->count = arr->count;
+    copy->typesize = arr->typesize;
+    copy->caplocked = arr->caplocked;
+    if(arr->allocdata)
+    {
+        copy->allocdata = (unsigned char*)mc_allocator_alloc(arr->pstate, arr->capacity * arr->typesize);
+        if(!copy->allocdata)
+        {
+            mc_allocator_free(arr->pstate, copy);
+            return NULL;
+        }
+        copy->data = copy->allocdata;
+        memcpy(copy->allocdata, arr->data, arr->capacity * arr->typesize);
+    }
+    else
+    {
+        copy->allocdata = NULL;
+        copy->data = NULL;
+    }
+
+    return copy;
+}
+
+TMPSTATIC bool mc_basicarray_push(mcbasicarray_t* arr, void* value)
+{
+    if(arr->count >= arr->capacity)
+    {
+        COLLECTIONS_ASSERT(!arr->caplocked);
+        if(arr->caplocked)
+        {
+            return false;
+        }
+        unsigned int newcapacity = arr->capacity > 0 ? arr->capacity * 2 : 1;
+        unsigned char* newdata = (unsigned char*)mc_allocator_alloc(arr->pstate, newcapacity * arr->typesize);
+        if(!newdata)
+        {
+            return false;
+        }
+        memcpy(newdata, arr->data, arr->count * arr->typesize);
+        mc_allocator_free(arr->pstate, arr->allocdata);
+        arr->allocdata = newdata;
+        arr->data = arr->allocdata;
+        arr->capacity = newcapacity;
+    }
+    if(value)
+    {
+        memcpy(arr->data + (arr->count * arr->typesize), value, arr->typesize);
+    }
+    arr->count++;
+    return true;
+}
+
+TMPUNUSED bool mc_basicarray_addn(mcbasicarray_t* arr, void* values, int n)
+{
+    bool ok;
+    int i;
+    for(i = 0; i < n; i++)
+    {
+        uint8_t* value = NULL;
+        if(values)
+        {
+            value = (uint8_t*)values + (i * arr->typesize);
+        }
+        ok = mc_basicarray_push(arr, value);
+        if(!ok)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+TMPUNUSED bool mc_basicarray_addarray(mcbasicarray_t* dest, mcbasicarray_t* source)
+{
+    bool ok;
+    int i;
+    COLLECTIONS_ASSERT(dest->typesize == source->typesize);
+    if(dest->typesize != source->typesize)
+    {
+        return false;
+    }
+    int destbeforecount = mc_basicarray_count(dest);
+    for(i = 0; i < mc_basicarray_count(source); i++)
+    {
+        void* item = mc_basicarray_get(source, i);
+        ok = mc_basicarray_push(dest, item);
+        if(!ok)
+        {
+            dest->count = destbeforecount;
+            return false;
+        }
+    }
+    return true;
+}
+
+TMPSTATIC bool mc_basicarray_pop(mcbasicarray_t* arr, void* outvalue)
+{
+    if(arr->count <= 0)
+    {
+        return false;
+    }
+    if(outvalue)
+    {
+        void* res = mc_basicarray_get(arr, arr->count - 1);
+        memcpy(outvalue, res, arr->typesize);
+    }
+    mc_basicarray_removeat(arr, arr->count - 1);
+    return true;
+}
+
+TMPSTATIC void* mc_basicarray_top(mcbasicarray_t* arr)
+{
+    if(arr->count <= 0)
+    {
+        return NULL;
+    }
+    return mc_basicarray_get(arr, arr->count - 1);
+}
+
+TMPSTATIC bool mc_basicarray_set(mcbasicarray_t* arr, unsigned int ix, void* value)
+{
+    if(ix >= arr->count)
+    {
+        COLLECTIONS_ASSERT(false);
+        return false;
+    }
+    size_t offset = ix * arr->typesize;
+    memmove(arr->data + offset, value, arr->typesize);
+    return true;
+}
+
+TMPUNUSED bool mc_basicarray_setn(mcbasicarray_t* arr, unsigned int ix, void* values, int n)
+{
+    bool ok;
+    int i;
+    for(i = 0; i < n; i++)
+    {
+        int destix = ix + i;
+        unsigned char* value = (unsigned char*)values + (i * arr->typesize);
+        if(destix < mc_basicarray_count(arr))
+        {
+            ok = mc_basicarray_set(arr, destix, value);
+            if(!ok)
+            {
+                return false;
+            }
+        }
+        else
+        {
+            ok = mc_basicarray_push(arr, value);
+            if(!ok)
+            {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+TMPSTATIC void* mc_basicarray_get(mcbasicarray_t* arr, unsigned int ix)
+{
+    if(ix >= arr->count)
+    {
+        COLLECTIONS_ASSERT(false);
+        return NULL;
+    }
+    size_t offset = ix * arr->typesize;
+    return arr->data + offset;
+}
+
+TMPSTATIC void* mc_basicarray_getconst(mcbasicarray_t* arr, unsigned int ix)
+{
+    if(ix >= arr->count)
+    {
+        COLLECTIONS_ASSERT(false);
+        return NULL;
+    }
+    size_t offset = ix * arr->typesize;
+    return arr->data + offset;
+}
+
+TMPUNUSED void* mc_basicarray_getlast(mcbasicarray_t* arr)
+{
+    if(arr->count <= 0)
+    {
+        return NULL;
+    }
+    return mc_basicarray_get(arr, arr->count - 1);
+}
+
+TMPSTATIC int mc_basicarray_count(mcbasicarray_t* arr)
+{
+    if(!arr)
+    {
+        return 0;
+    }
+    return arr->count;
+}
+
+TMPUNUSED unsigned int mc_basicarray_getcapacity(mcbasicarray_t* arr)
+{
+    return arr->capacity;
+}
+
+TMPSTATIC bool mc_basicarray_removeat(mcbasicarray_t* arr, unsigned int ix)
+{
+    if(ix >= arr->count)
+    {
+        return false;
+    }
+    if(ix == 0)
+    {
+        arr->data += arr->typesize;
+        arr->capacity--;
+        arr->count--;
+        return true;
+    }
+    if(ix == (arr->count - 1))
+    {
+        arr->count--;
+        return true;
+    }
+    size_t tomovebytes = (arr->count - 1 - ix) * arr->typesize;
+    void* dest = arr->data + (ix * arr->typesize);
+    void* src = arr->data + ((ix + 1) * arr->typesize);
+    memmove(dest, src, tomovebytes);
+    arr->count--;
+    return true;
+}
+
+TMPSTATIC bool mc_basicarray_removeitem(mcbasicarray_t* arr, void* ptr)
+{
+    int ix = mc_basicarray_getindex(arr, ptr);
+    if(ix < 0)
+    {
+        return false;
+    }
+    return mc_basicarray_removeat(arr, ix);
+}
+
+TMPSTATIC void mc_basicarray_clear(mcbasicarray_t* arr)
+{
+    arr->count = 0;
+}
+
+TMPUNUSED void mc_basicarray_clearanddeinititems(mcbasicarray_t* arr, mcarrayitemdeinitfn_t deinit_fn)
+{
+    int i;
+    for(i = 0; i < mc_basicarray_count(arr); i++)
+    {
+        void* item = mc_basicarray_get(arr, i);
+        deinit_fn(item);
+    }
+    arr->count = 0;
+}
+
+TMPSTATIC void mc_basicarray_lockcapacity(mcbasicarray_t* arr)
+{
+    arr->caplocked = true;
+}
+
+TMPSTATIC int mc_basicarray_getindex(mcbasicarray_t* arr, void* ptr)
+{
+    int i;
+    for(i = 0; i < mc_basicarray_count(arr); i++)
+    {
+        if(mc_basicarray_getconst(arr, i) == ptr)
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+
+TMPSTATIC bool mc_basicarray_contains(mcbasicarray_t* arr, void* ptr)
+{
+    return mc_basicarray_getindex(arr, ptr) >= 0;
+}
+
+TMPSTATIC void* mc_basicarray_data(mcbasicarray_t* arr)
+{
+    return arr->data;
+}
+
+TMPUNUSED void* mc_basicarray_constdata(mcbasicarray_t* arr)
+{
+    return arr->data;
+}
+
+TMPSTATIC void mc_basicarray_orphandata(mcbasicarray_t* arr)
+{
+    mc_basicarray_initcapacity(arr, arr->pstate, 0, arr->typesize);
+}
+
+TMPSTATIC bool mc_basicarray_reverse(mcbasicarray_t* arr)
+{
+    int aix;
+    int count = mc_basicarray_count(arr);
+    if(count < 2)
+    {
+        return true;
+    }
+    void* temp = (void*)mc_allocator_alloc(arr->pstate, arr->typesize);
+    if(!temp)
+    {
+        return false;
+    }
+    for(aix = 0; aix < (count / 2); aix++)
+    {
+        int bix = count - aix - 1;
+        void* a = mc_basicarray_get(arr, aix);
+        void* b = mc_basicarray_get(arr, bix);
+        memcpy(temp, a, arr->typesize);
+        /* no need for check because it will be within range */
+        mc_basicarray_set(arr, aix, b);
+        mc_basicarray_set(arr, bix, temp);
+    }
+    mc_allocator_free(arr->pstate, temp);
+    return true;
+}
+
+TMPSTATIC bool mc_basicarray_initcapacity(mcbasicarray_t* arr, mcstate_t* state, unsigned int capacity, size_t tsz)
+{
+    arr->pstate = state;
+    if(capacity > 0)
+    {
+        arr->allocdata = (unsigned char*)mc_allocator_alloc(arr->pstate, capacity * tsz);
+        arr->data = arr->allocdata;
+        if(!arr->allocdata)
+        {
+            return false;
+        }
+    }
+    else
+    {
+        arr->allocdata = NULL;
+        arr->data = NULL;
+    }
+    arr->capacity = capacity;
+    arr->count = 0;
+    arr->typesize = tsz;
+    arr->caplocked = false;
+    return true;
+}
+
+TMPSTATIC void mc_basicarray_deinit(mcbasicarray_t* arr)
+{
+    mc_allocator_free(arr->pstate, arr->allocdata);
+}
+
+TMPSTATIC mcptrarray_t* mc_ptrarray_make(mcstate_t* state)
+{
+    return mc_ptrarray_makecapacity(state, 0);
+}
+
+TMPSTATIC mcptrarray_t* mc_ptrarray_makecapacity(mcstate_t* state, unsigned int capacity)
+{
+    bool ok;
+    mcptrarray_t* ptrarr = (mcptrarray_t*)mc_allocator_alloc(state, sizeof(mcptrarray_t));
+    if(!ptrarr)
+    {
+        return NULL;
+    }
+    ptrarr->pstate = state;
+    ok = mc_basicarray_initcapacity(&ptrarr->innerbarray, state, capacity, sizeof(void*));
+    if(!ok)
+    {
+        mc_allocator_free(state, ptrarr);
+        return NULL;
+    }
+    return ptrarr;
+}
+
+
+TMPSTATIC void mc_ptrarray_destroy(mcptrarray_t* arr, mcptrarrayitemdestroyfn_t destroy_fn)
+{
+    /* todo: destroy and copy in make fn */
+    if(arr == NULL)
+    {
+        return;
+    }
+    if(destroy_fn)
+    {
+        mc_ptrarray_clearanddestroy(arr, destroy_fn);
+    }
+    else
+    {
+    }
+    mc_basicarray_deinit(&arr->innerbarray);
+    mc_allocator_free(arr->pstate, arr);
+
+}
+
+TMPSTATIC mcptrarray_t* mc_ptrarray_copy(mcptrarray_t* arr, mcptrarrayitemcopyfn_t copyfn, mcptrarrayitemdestroyfn_t destroy_fn)
+{
+    bool ok;
+    int i;
+    void* item;
+    void* itemcopy;
+    mcptrarray_t* arrcopy;
+    arrcopy = mc_ptrarray_makecapacity(arr->pstate, arr->innerbarray.capacity);
+    if(!arrcopy)
+    {
+        return NULL;
+    }
+    for(i = 0; i < mc_ptrarray_count(arr); i++)
+    {
+        item = (void*)mc_ptrarray_get(arr, i);
+        itemcopy = item;
+        if(copyfn)
+        {
+            itemcopy = copyfn(item);
+        }
+        if(item && !itemcopy)
+        {
+            goto err;
+        }
+        ok = mc_ptrarray_push(arrcopy, itemcopy);
+        if(!ok)
+        {
+            goto err;
+        }
+    }
+    return arrcopy;
+err:
+    mc_ptrarray_destroy(arrcopy, destroy_fn);
+    return NULL;
+}
+
+TMPSTATIC bool mc_ptrarray_push(mcptrarray_t* arr, void* ptr)
+{
+    return mc_basicarray_push(&arr->innerbarray, &ptr);
+}
+
+TMPSTATIC void* mc_ptrarray_get(mcptrarray_t* arr, unsigned int ix)
+{
+    void* res = mc_basicarray_get(&arr->innerbarray, ix);
+    if(!res)
+    {
+        return NULL;
+    }
+    return *(void**)res;
+}
+
+TMPSTATIC void* mc_ptrarray_pop(mcptrarray_t* arr)
+{
+    int ix = mc_ptrarray_count(arr) - 1;
+    void* res = mc_ptrarray_get(arr, ix);
+    mc_ptrarray_removeat(arr, ix);
+    return res;
+}
+
+TMPSTATIC void* mc_ptrarray_top(mcptrarray_t* arr)
+{
+    int count = mc_ptrarray_count(arr);
+    if(count == 0)
+    {
+        return NULL;
+    }
+    return mc_ptrarray_get(arr, count - 1);
+}
+
+TMPSTATIC int mc_ptrarray_count(mcptrarray_t* arr)
+{
+    if(!arr)
+    {
+        return 0;
+    }
+    return mc_basicarray_count(&arr->innerbarray);
+}
+
+TMPSTATIC bool mc_ptrarray_removeat(mcptrarray_t* arr, unsigned int ix)
+{
+    return mc_basicarray_removeat(&arr->innerbarray, ix);
+}
+
+TMPSTATIC void mc_ptrarray_clear(mcptrarray_t* arr)
+{
+    mc_basicarray_clear(&arr->innerbarray);
+}
+
+TMPSTATIC void mc_ptrarray_clearanddestroy(mcptrarray_t* arr, mcptrarrayitemdestroyfn_t destroy_fn)
+{
+    int i;
+    for(i = 0; i < mc_ptrarray_count(arr); i++)
+    {
+        void* item = mc_ptrarray_get(arr, i);
+        destroy_fn(item);
+    }
+    mc_ptrarray_clear(arr);
+}
+
+TMPUNUSED void mc_ptrarray_lockcapacity(mcptrarray_t* arr)
+{
+    mc_basicarray_lockcapacity(&arr->innerbarray);
+}
+
+TMPSTATIC int mc_ptrarray_getindex(mcptrarray_t* arr, void* ptr)
+{
+    int i;
+    for(i = 0; i < mc_ptrarray_count(arr); i++)
+    {
+        if(mc_ptrarray_get(arr, i) == ptr)
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+
+TMPUNUSED bool mc_ptrarray_contains(mcptrarray_t* arr, void* item)
+{
+    return mc_ptrarray_getindex(arr, item) >= 0;
+}
+
+TMPUNUSED void* mc_ptrarray_getaddr(mcptrarray_t* arr, unsigned int ix)
+{
+    void* res = mc_basicarray_get(&arr->innerbarray, ix);
+    if(res == NULL)
+    {
+        return NULL;
+    }
+    return res;
+}
+
+TMPUNUSED void* mc_ptrarray_data(mcptrarray_t* arr)
+{
+    return mc_basicarray_data(&arr->innerbarray);
+}
+
+TMPUNUSED void mc_ptrarray_reverse(mcptrarray_t* arr)
+{
+    mc_basicarray_reverse(&arr->innerbarray);
+}
+
+TMPSTATIC mcprintstate_t* mc_printer_make(mcstate_t* state, FILE* ofh)
+{
+    return mc_printer_make_with_capacity(state, 1, ofh);
+}
+
+TMPSTATIC bool mc_printer_init(mcprintstate_t* pr, mcstate_t* state, size_t capacity, FILE* ofh, bool onstack)
+{
+    memset(pr, 0, sizeof(mcprintstate_t));
+    pr->pstate = state;
+    pr->failed = false;
+    pr->destfile = ofh;
+    pr->data = NULL;
+    pr->capacity = 0;
+    pr->len = 0;
+    pr->onstack = onstack;
+    if(ofh != NULL)
+    {
+        return true;
+    }
+    pr->data = (char*)mc_allocator_alloc(state, capacity);
+    if(pr->data == NULL)
+    {
+        mc_allocator_free(state, pr);
+        return false;
+    }
+    pr->capacity = capacity;
+    pr->len = 0;
+    pr->data[0] = '\0';
+    return true;
+}
+
+TMPSTATIC mcprintstate_t* mc_printer_make_with_capacity(mcstate_t* state, unsigned int capacity, FILE* ofh)
+{
+    mcprintstate_t* pr;
+    pr = (mcprintstate_t*)mc_allocator_alloc(state, sizeof(mcprintstate_t));
+    if(pr == NULL)
+    {
+        return NULL;
+    }
+    if(!mc_printer_init(pr, state, capacity, ofh, false))
+    {
+        return NULL;
+    }
+    return pr;
+}
+
+TMPSTATIC void mc_printer_destroy(mcprintstate_t* pr)
+{
+    if(pr == NULL)
+    {
+        return;
+    }
+    if(pr->data != NULL)
+    {
+        mc_allocator_free(pr->pstate, pr->data);
+    }
+    if(pr->onstack)
+    {
+        return;
+    }
+    mc_allocator_free(pr->pstate, pr);
+}
+
+TMPUNUSED void mc_printer_clear(mcprintstate_t* pr)
+{
+    if(pr->destfile == NULL)
+    {
+        if(pr->failed)
+        {
+            return;
+        }
+        pr->len = 0;
+        pr->data[0] = '\0';
+    }
+}
+
+TMPSTATIC bool mc_printer_putlen(mcprintstate_t* pr, const char* str, size_t len)
+{
+    bool ok;
+    size_t needcap;
+    if(pr->failed)
+    {
+        return false;
+    }
+    if(len == 0)
+    {
+        return true;
+    }
+    if(pr->destfile != NULL)
+    {
+        fwrite(str, sizeof(char), len, pr->destfile);
+        fflush(pr->destfile);
+        return true;
+    }
+    needcap = pr->len + len + 1;
+    if(needcap > pr->capacity)
+    {
+        ok = mc_printer_grow(pr, needcap * 2);
+        if(!ok)
+        {
+            return false;
+        }
+    }
+    memcpy(pr->data + pr->len, str, len);
+    pr->len = pr->len + len;
+    pr->data[pr->len] = '\0';
+    return true;
+}
+
+TMPSTATIC bool mc_printer_puts(mcprintstate_t* pr, const char* str)
+{
+    return mc_printer_putlen(pr, str, strlen(str));
+}
+
+TMPSEMISTATIC bool mc_printer_printf(mcprintstate_t* pr, const char* fmt, ...)
+{
+    bool ok;
+    int resz;
+    int needsz;
+    size_t needcap;
+    va_list va;
+    (void)resz;
+    if(pr->failed)
+    {
+        return false;
+    }
+    if(pr->destfile != NULL)
+    {
+        va_start(va, fmt);
+        vfprintf(pr->destfile, fmt, va);
+        fflush(pr->destfile);
+        va_end(va);
+        return true;
+    }
+    va_start(va, fmt);
+    needsz = vsnprintf(NULL, 0, fmt, va);
+    va_end(va);
+    if(needsz == 0)
+    {
+        return true;
+    }
+    needcap = pr->len + needsz + 1;
+    if(needcap > pr->capacity)
+    {
+        ok = mc_printer_grow(pr, needcap * 2);
+        if(!ok)
+        {
+            return false;
+        }
+    }
+    va_start(va, fmt);
+    resz = vsprintf(pr->data + pr->len, fmt, va);
+    va_end(va);
+    if(resz != needsz)
+    {
+        return false;
+    }
+    pr->len = pr->len + needsz;
+    pr->data[pr->len] = '\0';
+    return true;
+}
+
+TMPSTATIC const char* mc_printer_getstring(mcprintstate_t* pr)
+{
+    if(pr->failed)
+    {
+        return NULL;
+    }
+    if(pr->destfile != NULL)
+    {
+        return NULL;
+    }
+    return pr->data;
+}
+
+TMPUNUSED size_t mc_printer_getlength(mcprintstate_t* pr)
+{
+    if(pr->failed)
+    {
+        return 0;
+    }
+    if(pr->destfile != NULL)
+    {
+        return 0;
+    }
+    return pr->len;
+}
+
+TMPSTATIC char* mc_printer_get_string_and_destroy(mcprintstate_t* pr)
+{
+    char* res;
+    if(pr->failed)
+    {
+        mc_printer_destroy(pr);
+        return NULL;
+    }
+    if(pr->destfile != NULL)
+    {
+        return NULL;
+    }
+    res = pr->data;
+    pr->data = NULL;
+    mc_printer_destroy(pr);
+    return res;
+}
+
+TMPSTATIC bool mc_printer_failed(mcprintstate_t* pr)
+{
+    return pr->failed;
+}
+
+TMPSTATIC bool mc_printer_grow(mcprintstate_t* pr, size_t newcapacity)
+{
+    char* ndata;
+    if(pr->destfile != NULL)
+    {
+        return true;
+    }
+    ndata = (char*)mc_allocator_alloc(pr->pstate, newcapacity);
+    if(ndata == NULL)
+    {
+        pr->failed = true;
+        return false;
+    }
+    memcpy(ndata, pr->data, pr->len);
+    ndata[pr->len] = '\0';
+    mc_allocator_free(pr->pstate, pr->data);
+    pr->data = ndata;
+    pr->capacity = newcapacity;
+    return true;
+}
 
 TMPSTATIC mcastlocation_t src_pos_make(mcastcompiledfile_t* file, int line, int column)
 {
@@ -1707,12 +3056,12 @@ TMPSTATIC double mc_util_uint64todouble(uint64_t val)
     return temp.val_double;
 }
 
-TMPSTATIC bool arcane_timer_platform_supported()
+TMPSTATIC bool mc_util_istimerplatformsupported()
 {
     return true;
 }
 
-TMPSTATIC mctimer_t arcane_timer_start()
+TMPSTATIC mctimer_t mc_timer_start()
 {
     mctimer_t timer;
     memset(&timer, 0, sizeof(mctimer_t));
@@ -1726,7 +3075,7 @@ TMPSTATIC mctimer_t arcane_timer_start()
     return timer;
 }
 
-TMPSTATIC double arcane_timer_get_elapsed_ms(mctimer_t* timer)
+TMPSTATIC double mc_timer_getelapsedms(mctimer_t* timer)
 {
     #if defined(__unix__)
         struct timeval currenttime;
@@ -1750,22 +3099,22 @@ TMPSTATIC mcastscopecomp_t* compilation_scope_make(mcstate_t* state, mcastscopec
     memset(scope, 0, sizeof(mcastscopecomp_t));
     scope->pstate = state;
     scope->outer = outer;
-    scope->bytecode = array_make(state, sizeof(uint8_t));
+    scope->bytecode = mc_basicarray_make(state, sizeof(uint8_t));
     if(!scope->bytecode)
     {
         goto err;
     }
-    scope->src_positions = array_make(state, sizeof(mcastlocation_t));
+    scope->src_positions = mc_basicarray_make(state, sizeof(mcastlocation_t));
     if(!scope->src_positions)
     {
         goto err;
     }
-    scope->break_ip_stack = array_make(state, sizeof(int));
+    scope->break_ip_stack = mc_basicarray_make(state, sizeof(int));
     if(!scope->break_ip_stack)
     {
         goto err;
     }
-    scope->continue_ip_stack = array_make(state, sizeof(int));
+    scope->continue_ip_stack = mc_basicarray_make(state, sizeof(int));
     if(!scope->continue_ip_stack)
     {
         goto err;
@@ -1780,22 +3129,22 @@ TMPSTATIC void compilation_scope_destroy(mcastscopecomp_t* scope)
 {
     mcstate_t* state;
     state = scope->pstate;
-    array_destroy(scope->continue_ip_stack);
-    array_destroy(scope->break_ip_stack);
-    array_destroy(scope->bytecode);
-    array_destroy(scope->src_positions);
+    mc_basicarray_destroy(scope->continue_ip_stack);
+    mc_basicarray_destroy(scope->break_ip_stack);
+    mc_basicarray_destroy(scope->bytecode);
+    mc_basicarray_destroy(scope->src_positions);
     mc_allocator_free(state, scope);
 }
 
 TMPSTATIC compilation_result_t* compilation_scope_orphan_result(mcastscopecomp_t* scope)
 {
-    compilation_result_t* res = compilation_result_make(scope->pstate, (uint8_t*)array_data(scope->bytecode), (mcastlocation_t*)array_data(scope->src_positions), array_count(scope->bytecode));
+    compilation_result_t* res = compilation_result_make(scope->pstate, (uint8_t*)mc_basicarray_data(scope->bytecode), (mcastlocation_t*)mc_basicarray_data(scope->src_positions), mc_basicarray_count(scope->bytecode));
     if(!res)
     {
         return NULL;
     }
-    array_orphan_data(scope->bytecode);
-    array_orphan_data(scope->src_positions);
+    mc_basicarray_orphandata(scope->bytecode);
+    mc_basicarray_orphandata(scope->src_positions);
     return res;
 }
 
@@ -1839,7 +3188,7 @@ TMPSTATIC bool mc_lexer_init(mcastlexer_t* lex, mcstate_t* state, mcerrlist_t* e
     lex->ch = '\0';
     if(file)
     {
-        lex->line = ptrarray_count(file->lines);
+        lex->line = mc_ptrarray_count(file->lines);
     }
     else
     {
@@ -2321,7 +3670,7 @@ TMPSTATIC bool mc_lexer_expectcurrent(mcastlexer_t* lex, mcasttoktype_t type)
     {
         expectedtypestr = token_type_to_string(type);
         actualtypestr = token_type_to_string(lex->currtoken.type);
-        errors_add_errorf(lex->errors, MC_ERROR_PARSING, lex->currtoken.pos, "Expected current token to be \"%s\", got \"%s\" instead", expectedtypestr, actualtypestr);
+        mc_errlist_addf(lex->errors, MC_ERROR_PARSING, lex->currtoken.pos, "Expected current token to be \"%s\", got \"%s\" instead", expectedtypestr, actualtypestr);
         return false;
     }
     return true;
@@ -2521,7 +3870,7 @@ TMPSTATIC bool mc_lexer_addline(mcastlexer_t* lex, int offset)
         return true;
     }
 
-    if(lex->line < ptrarray_count(lex->file->lines))
+    if(lex->line < mc_ptrarray_count(lex->file->lines))
     {
         return true;
     }
@@ -2543,7 +3892,7 @@ TMPSTATIC bool mc_lexer_addline(mcastlexer_t* lex, int offset)
         lex->failed = true;
         return false;
     }
-    ok = ptrarray_push(lex->file->lines, line);
+    ok = mc_ptrarray_push(lex->file->lines, line);
     if(!ok)
     {
         lex->failed = true;
@@ -2584,7 +3933,7 @@ TMPSTATIC mcastcompiledfile_t* mc_compiledfile_make(mcstate_t* state, const char
     {
         goto error;
     }
-    file->lines = ptrarray_make(state);
+    file->lines = mc_ptrarray_make(state);
     if(!file->lines)
     {
         goto error;
@@ -2605,12 +3954,12 @@ TMPSTATIC void mc_compiledfile_destroy(mcastcompiledfile_t* file)
         return;
     }
     state = file->pstate;
-    for(i = 0; i < ptrarray_count(file->lines); i++)
+    for(i = 0; i < mc_ptrarray_count(file->lines); i++)
     {
-        item = (void*)ptrarray_get(file->lines, i);
+        item = (void*)mc_ptrarray_get(file->lines, i);
         mc_allocator_free(state, item);
     }
-    ptrarray_destroy(file->lines);
+    mc_ptrarray_destroy(file->lines, NULL);
     mc_allocator_free(state, file->dir_path);
     mc_allocator_free(state, file->path);
     mc_allocator_free(state, file);
@@ -2654,16 +4003,16 @@ TMPSTATIC compilation_result_t* mc_compiler_compilesource(mcastcompiler_t* comp,
     compilation_result_t* res;
     compscope = mc_compiler_getcompilationscope(comp);
 
-    MC_ASSERT(array_count(comp->src_positions_stack) == 0);
-    MC_ASSERT(array_count(compscope->bytecode) == 0);
-    MC_ASSERT(array_count(compscope->break_ip_stack) == 0);
-    MC_ASSERT(array_count(compscope->continue_ip_stack) == 0);
+    MC_ASSERT(mc_basicarray_count(comp->src_positions_stack) == 0);
+    MC_ASSERT(mc_basicarray_count(compscope->bytecode) == 0);
+    MC_ASSERT(mc_basicarray_count(compscope->break_ip_stack) == 0);
+    MC_ASSERT(mc_basicarray_count(compscope->continue_ip_stack) == 0);
 
-    array_clear(comp->src_positions_stack);
-    array_clear(compscope->bytecode);
-    array_clear(compscope->src_positions);
-    array_clear(compscope->break_ip_stack);
-    array_clear(compscope->continue_ip_stack);
+    mc_basicarray_clear(comp->src_positions_stack);
+    mc_basicarray_clear(compscope->bytecode);
+    mc_basicarray_clear(compscope->src_positions);
+    mc_basicarray_clear(compscope->break_ip_stack);
+    mc_basicarray_clear(compscope->continue_ip_stack);
     ok = mc_compiler_initshallowcopy(&compshallowcopy, comp);
     if(!ok)
     {
@@ -2694,7 +4043,7 @@ err:
 
 TMPSTATIC mcastsymtable_t* mc_compiler_getsymtable(mcastcompiler_t* comp)
 {
-    mcastscopefile_t* filescope = (mcastscopefile_t*)ptrarray_top(comp->file_scopes);
+    mcastscopefile_t* filescope = (mcastscopefile_t*)mc_ptrarray_top(comp->file_scopes);
     if(!filescope)
     {
         MC_ASSERT(false);
@@ -2705,7 +4054,7 @@ TMPSTATIC mcastsymtable_t* mc_compiler_getsymtable(mcastcompiler_t* comp)
 
 TMPSTATIC void mc_compiler_setsymtable(mcastcompiler_t* comp, mcastsymtable_t* table)
 {
-    mcastscopefile_t* filescope = (mcastscopefile_t*)ptrarray_top(comp->file_scopes);
+    mcastscopefile_t* filescope = (mcastscopefile_t*)mc_ptrarray_top(comp->file_scopes);
     if(!filescope)
     {
         MC_ASSERT(false);
@@ -2729,22 +4078,22 @@ TMPSTATIC bool mc_compiler_init(mcastcompiler_t* comp, mcstate_t* state, mcconfi
     comp->errors = errors;
     comp->files = files;
     comp->global_store = gstor;
-    comp->file_scopes = ptrarray_make(state);
+    comp->file_scopes = mc_ptrarray_make(state);
     if(!comp->file_scopes)
     {
         goto err;
     }
-    comp->constants = array_make(state, sizeof(mcvalue_t));
+    comp->constants = mc_basicarray_make(state, sizeof(mcvalue_t));
     if(!comp->constants)
     {
         goto err;
     }
-    comp->src_positions_stack = array_make(state, sizeof(mcastlocation_t));
+    comp->src_positions_stack = mc_basicarray_make(state, sizeof(mcastlocation_t));
     if(!comp->src_positions_stack)
     {
         goto err;
     }
-    comp->modules = dict_make_(state, (mcdictitemcopyfn_t)mc_module_copy, (mcdictitemdestroyfn_t)mc_module_destroy);
+    comp->modules = mc_genericdict_make(state, (mcdictitemcopyfn_t)mc_module_copy, (mcdictitemdestroyfn_t)mc_module_destroy);
     if(!comp->modules)
     {
         goto err;
@@ -2759,7 +4108,7 @@ TMPSTATIC bool mc_compiler_init(mcastcompiler_t* comp, mcstate_t* state, mcconfi
     {
         goto err;
     }
-    comp->string_constants_positions = dict_make_(comp->pstate, NULL, NULL);
+    comp->string_constants_positions = mc_genericdict_make(comp->pstate, NULL, NULL);
     if(!comp->string_constants_positions)
     {
         goto err;
@@ -2779,13 +4128,13 @@ TMPSTATIC void mc_compiler_deinit(mcastcompiler_t* comp)
     {
         return;
     }
-    for(i = 0; i < dict_count(comp->string_constants_positions); i++)
+    for(i = 0; i < mc_genericdict_count(comp->string_constants_positions); i++)
     {
-        val = (int*)dict_get_value_at(comp->string_constants_positions, i);
+        val = (int*)mc_genericdict_getvalueat(comp->string_constants_positions, i);
         mc_allocator_free(comp->pstate, val);
     }
-    dict_destroy(comp->string_constants_positions);
-    while(ptrarray_count(comp->file_scopes) > 0)
+    mc_genericdict_destroy(comp->string_constants_positions);
+    while(mc_ptrarray_count(comp->file_scopes) > 0)
     {
         mc_compiler_filescopepop(comp);
     }
@@ -2793,10 +4142,10 @@ TMPSTATIC void mc_compiler_deinit(mcastcompiler_t* comp)
     {
         mc_compiler_popcompilationscope(comp);
     }
-    dict_destroy_with_items(comp->modules);
-    array_destroy(comp->src_positions_stack);
-    array_destroy(comp->constants);
-    ptrarray_destroy(comp->file_scopes);
+    mc_genericdict_destroyitemsanddict(comp->modules);
+    mc_basicarray_destroy(comp->src_positions_stack);
+    mc_basicarray_destroy(comp->constants);
+    mc_ptrarray_destroy(comp->file_scopes, NULL);
     memset(comp, 0, sizeof(mcastcompiler_t));
 }
 
@@ -2824,9 +4173,9 @@ TMPSTATIC bool mc_compiler_initshallowcopy(mcastcompiler_t* copy, mcastcompiler_
         return false;
     }
     srcst = mc_compiler_getsymtable(src);
-    MC_ASSERT(ptrarray_count(src->file_scopes) == 1);
+    MC_ASSERT(mc_ptrarray_count(src->file_scopes) == 1);
     MC_ASSERT(srcst->outer == NULL);
-    srcstocopy = symbol_table_copy(srcst);
+    srcstocopy = mc_symtable_copy(srcst);
     if(!srcstocopy)
     {
         goto err;
@@ -2835,51 +4184,51 @@ TMPSTATIC bool mc_compiler_initshallowcopy(mcastcompiler_t* copy, mcastcompiler_
     mc_symtable_destroy(copyst);
     copyst = NULL;
     mc_compiler_setsymtable(copy, srcstocopy);
-    modulescopy = dict_copy_with_items(src->modules);
+    modulescopy = mc_genericdict_copy(src->modules);
     if(!modulescopy)
     {
         goto err;
     }
-    dict_destroy_with_items(copy->modules);
+    mc_genericdict_destroyitemsanddict(copy->modules);
     copy->modules = modulescopy;
-    constantscopy = array_copy(src->constants);
+    constantscopy = mc_basicarray_copy(src->constants);
     if(!constantscopy)
     {
         goto err;
     }
-    array_destroy(copy->constants);
+    mc_basicarray_destroy(copy->constants);
     copy->constants = constantscopy;
-    for(i = 0; i < dict_count(src->string_constants_positions); i++)
+    for(i = 0; i < mc_genericdict_count(src->string_constants_positions); i++)
     {
-        key = dict_get_key_at(src->string_constants_positions, i);
-        val = (int*)dict_get_value_at(src->string_constants_positions, i);
+        key = mc_genericdict_getkeyat(src->string_constants_positions, i);
+        val = (int*)mc_genericdict_getvalueat(src->string_constants_positions, i);
         valcopy = (int*)mc_allocator_alloc(src->pstate, sizeof(int));
         if(!valcopy)
         {
             goto err;
         }
         *valcopy = *val;
-        ok = dict_set(copy->string_constants_positions, key, valcopy);
+        ok = mc_genericdict_set(copy->string_constants_positions, key, valcopy);
         if(!ok)
         {
             mc_allocator_free(src->pstate, valcopy);
             goto err;
         }
     }
-    srcfilescope = (mcastscopefile_t*)ptrarray_top(src->file_scopes);
-    copyfilescope = (mcastscopefile_t*)ptrarray_top(copy->file_scopes);
+    srcfilescope = (mcastscopefile_t*)mc_ptrarray_top(src->file_scopes);
+    copyfilescope = (mcastscopefile_t*)mc_ptrarray_top(copy->file_scopes);
     srcloadedmodulenames = srcfilescope->loaded_module_names;
     copyloadedmodulenames = copyfilescope->loaded_module_names;
-    for(i = 0; i < ptrarray_count(srcloadedmodulenames); i++)
+    for(i = 0; i < mc_ptrarray_count(srcloadedmodulenames); i++)
     {
 
-        loadedname = (const char*)ptrarray_get(srcloadedmodulenames, i);
+        loadedname = (const char*)mc_ptrarray_get(srcloadedmodulenames, i);
         loadednamecopy = mc_util_strdup(copy->pstate, loadedname);
         if(!loadednamecopy)
         {
             goto err;
         }
-        ok = ptrarray_push(copyloadedmodulenames, loadednamecopy);
+        ok = mc_ptrarray_push(copyloadedmodulenames, loadednamecopy);
         if(!ok)
         {
             mc_allocator_free(copy->pstate, loadednamecopy);
@@ -2987,7 +4336,7 @@ TMPSTATIC int mc_compiler_gencode(mcinternopcode_t op, int operandscount, const 
     }
     val = op;
     ok = false;
-    ok = array_add(res, &val);
+    ok = mc_basicarray_push(res, &val);
     if(!ok)
     {
         return 0;
@@ -2996,7 +4345,7 @@ TMPSTATIC int mc_compiler_gencode(mcinternopcode_t op, int operandscount, const 
     do                                           \
     {                                            \
         val = (uint8_t)(operands[i] >> (n * 8)); \
-        ok = array_add(res, &val);               \
+        ok = mc_basicarray_push(res, &val);               \
         if(!ok)                                  \
         {                                        \
             return 0;                            \
@@ -3066,10 +4415,10 @@ TMPSTATIC int mc_compiler_emit(mcastcompiler_t* comp, mcinternopcode_t op, int o
     }
     for(i = 0; i < len; i++)
     {
-        srcpos = (mcastlocation_t*)array_top(comp->src_positions_stack);
+        srcpos = (mcastlocation_t*)mc_basicarray_top(comp->src_positions_stack);
         MC_ASSERT(srcpos->line >= 0);
         MC_ASSERT(srcpos->column >= 0);
-        ok = array_add(mc_compiler_getsrcpositions(comp), srcpos);
+        ok = mc_basicarray_push(mc_compiler_getsrcpositions(comp), srcpos);
         if(!ok)
         {
             return -1;
@@ -3110,7 +4459,7 @@ TMPSTATIC void mc_compiler_popcompilationscope(mcastcompiler_t* comp)
 
 TMPSTATIC bool mc_compiler_pushsymtable(mcastcompiler_t* comp, int globaloffset)
 {
-    mcastscopefile_t* filescope = (mcastscopefile_t*)ptrarray_top(comp->file_scopes);
+    mcastscopefile_t* filescope = (mcastscopefile_t*)mc_ptrarray_top(comp->file_scopes);
     if(!filescope)
     {
         MC_ASSERT(false);
@@ -3128,7 +4477,7 @@ TMPSTATIC bool mc_compiler_pushsymtable(mcastcompiler_t* comp, int globaloffset)
 
 TMPSTATIC void mc_compiler_popsymtable(mcastcompiler_t* comp)
 {
-    mcastscopefile_t* filescope = (mcastscopefile_t*)ptrarray_top(comp->file_scopes);
+    mcastscopefile_t* filescope = (mcastscopefile_t*)mc_ptrarray_top(comp->file_scopes);
     if(!filescope)
     {
         MC_ASSERT(false);
@@ -3153,7 +4502,7 @@ TMPSTATIC mcinternopcode_t mc_compiler_getlastopcode(mcastcompiler_t* comp)
 TMPSTATIC bool mc_compiler_docompilesource(mcastcompiler_t* comp, const char* code)
 {
     bool ok;
-    mcastscopefile_t* filescope = (mcastscopefile_t*)ptrarray_top(comp->file_scopes);
+    mcastscopefile_t* filescope = (mcastscopefile_t*)mc_ptrarray_top(comp->file_scopes);
     MC_ASSERT(filescope);
 
     mcptrarray_t* statements = parser_parse_all(filescope->parser, code, filescope->file);
@@ -3171,16 +4520,16 @@ TMPSTATIC bool mc_compiler_docompilesource(mcastcompiler_t* comp, const char* co
     }
     ok = mc_compiler_compilestmtlist(comp, statements);
 
-    ptrarray_destroy_with_items_(statements, (mcptrarrayitemdestroyfn_t)statement_destroy);
+    mc_ptrarray_destroy(statements, (mcptrarrayitemdestroyfn_t)statement_destroy);
     /*
     * //Left for debugging purposes
     if (ok)
     {
         mcprintstate_t *buf = mc_printer_make(NULL, NULL);
         code_to_string(
-            array_data(comp->compilation_scope->bytecode),
-            array_data(comp->compilation_scope->src_positions),
-            array_count(comp->compilation_scope->bytecode), buf);
+            mc_basicarray_data(comp->compilation_scope->bytecode),
+            mc_basicarray_data(comp->compilation_scope->src_positions),
+            mc_basicarray_count(comp->compilation_scope->bytecode), buf);
         puts(mc_printer_getstring(buf));
         mc_printer_destroy(buf);
     }
@@ -3195,9 +4544,9 @@ TMPSEMISTATIC bool mc_compiler_compilestmtlist(mcastcompiler_t* comp, mcptrarray
     int i;
     mcastexpression_t* expr;
     ok = true;
-    for(i = 0; i < ptrarray_count(statements); i++)
+    for(i = 0; i < mc_ptrarray_count(statements); i++)
     {
-        expr = (mcastexpression_t*)ptrarray_get(statements, i);
+        expr = (mcastexpression_t*)mc_ptrarray_get(statements, i);
         ok = mc_compiler_compilestatement(comp, expr);
         if(!ok)
         {
@@ -3230,15 +4579,15 @@ TMPSTATIC bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_
     result = false;
     filepath = NULL;
     code = NULL;
-    filescope = (mcastscopefile_t*)ptrarray_top(comp->file_scopes);
+    filescope = (mcastscopefile_t*)mc_ptrarray_top(comp->file_scopes);
     modulepath = importstmt->exprimportstmt.path;
     modulename = mc_util_getmodulename(modulepath);
-    for(i = 0; i < ptrarray_count(filescope->loaded_module_names); i++)
+    for(i = 0; i < mc_ptrarray_count(filescope->loaded_module_names); i++)
     {
-        loadedname = (const char*)ptrarray_get(filescope->loaded_module_names, i);
+        loadedname = (const char*)mc_ptrarray_get(filescope->loaded_module_names, i);
         if(kg_streq(loadedname, modulename))
         {
-            errors_add_errorf(comp->errors, MC_ERROR_COMPILING, importstmt->pos, "Module \"%s\" was already imported", modulename);
+            mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, importstmt->pos, "Module \"%s\" was already imported", modulename);
             result = false;
             goto end;
         }
@@ -3273,36 +4622,36 @@ TMPSTATIC bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_
         goto end;
     }
     symtab = mc_compiler_getsymtable(comp);
-    if(symtab->outer != NULL || ptrarray_count(symtab->block_scopes) > 1)
+    if(symtab->outer != NULL || mc_ptrarray_count(symtab->block_scopes) > 1)
     {
-        errors_add_error(comp->errors, MC_ERROR_COMPILING, importstmt->pos, "Modules can only be imported in global scope");
+        mc_errlist_push(comp->errors, MC_ERROR_COMPILING, importstmt->pos, "Modules can only be imported in global scope");
         result = false;
         goto end;
     }
-    for(i = 0; i < ptrarray_count(comp->file_scopes); i++)
+    for(i = 0; i < mc_ptrarray_count(comp->file_scopes); i++)
     {
-        fs = (mcastscopefile_t*)ptrarray_get(comp->file_scopes, i);
+        fs = (mcastscopefile_t*)mc_ptrarray_get(comp->file_scopes, i);
         if(MC_UTIL_STREQ(fs->file->path, filepath))
         {
-            errors_add_errorf(comp->errors, MC_ERROR_COMPILING, importstmt->pos, "Cyclic reference of file \"%s\"", filepath);
+            mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, importstmt->pos, "Cyclic reference of file \"%s\"", filepath);
             result = false;
             goto end;
         }
     }
-    module = (module_t*)dict_get(comp->modules, filepath);
+    module = (module_t*)mc_genericdict_get(comp->modules, filepath);
     if(!module)
     {
         /* todo: create new module function */
         if(!comp->config->fileio.fnreadfile)
         {
-            errors_add_errorf(comp->errors, MC_ERROR_COMPILING, importstmt->pos, "Cannot import module \"%s\", file read function not configured", filepath);
+            mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, importstmt->pos, "Cannot import module \"%s\", file read function not configured", filepath);
             result = false;
             goto end;
         }
         code = comp->config->fileio.fnreadfile(comp->config->fileio.context, filepath);
         if(!code)
         {
-            errors_add_errorf(comp->errors, MC_ERROR_COMPILING, importstmt->pos, "Reading module file \"%s\" failed", filepath);
+            mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, importstmt->pos, "Reading module file \"%s\" failed", filepath);
             result = false;
             goto end;
         }
@@ -3328,15 +4677,15 @@ TMPSTATIC bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_
             goto end;
         }
         st = mc_compiler_getsymtable(comp);
-        for(i = 0; i < symbol_table_get_module_global_symbol_count(st); i++)
+        for(i = 0; i < mc_symtable_getmodglobalsymcount(st); i++)
         {
-            symbol = symbol_table_get_module_global_symbol_at(st, i);
+            symbol = mc_symtable_getmodglobalsymat(st, i);
             mc_module_addsymbol(module, symbol);
         }
 
         mc_compiler_filescopepop(comp);
 
-        ok = dict_set(comp->modules, filepath, module);
+        ok = mc_genericdict_set(comp->modules, filepath, module);
         if(!ok)
         {
             mc_module_destroy(module);
@@ -3345,10 +4694,10 @@ TMPSTATIC bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_
         }
     }
 
-    for(i = 0; i < ptrarray_count(module->symbols); i++)
+    for(i = 0; i < mc_ptrarray_count(module->symbols); i++)
     {
-        symbol = (mcastsymbol_t*)ptrarray_get(module->symbols, i);
-        ok = symbol_table_add_module_symbol(symtab, symbol);
+        symbol = (mcastsymbol_t*)mc_ptrarray_get(module->symbols, i);
+        ok = mc_symtable_addmodsymbol(symtab, symbol);
         if(!ok)
         {
             result = false;
@@ -3361,7 +4710,7 @@ TMPSTATIC bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_
         result = false;
         goto end;
     }
-    ok = ptrarray_push(filescope->loaded_module_names, namecopy);
+    ok = mc_ptrarray_push(filescope->loaded_module_names, namecopy);
     if(!ok)
     {
         mc_allocator_free(comp->pstate, namecopy);
@@ -3384,7 +4733,7 @@ TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpr
     mcastsymtable_t* symtab;
     ok = false;
     ip = -1;
-    ok = array_push(comp->src_positions_stack, &expr->pos);
+    ok = mc_basicarray_push(comp->src_positions_stack, &expr->pos);
     if(!ok)
     {
         return false;
@@ -3439,14 +4788,14 @@ TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpr
             if_statement_t* ifstmt;
             ifstmt = &expr->exprifstmt;
             mcbasicarray_t* jumptoendips;
-            jumptoendips = array_make(comp->pstate, sizeof(int));
+            jumptoendips = mc_basicarray_make(comp->pstate, sizeof(int));
             if(!jumptoendips)
             {
                 goto statementiferror;
             }
-            for(i = 0; i < ptrarray_count(ifstmt->cases); i++)
+            for(i = 0; i < mc_ptrarray_count(ifstmt->cases); i++)
             {
-                ifcase = (if_case_t*)ptrarray_get(ifstmt->cases, i);
+                ifcase = (if_case_t*)mc_ptrarray_get(ifstmt->cases, i);
                 ok = mc_compiler_compileexpression(comp, ifcase->ifcond);
                 if(!ok)
                 {
@@ -3460,11 +4809,11 @@ TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpr
                     goto statementiferror;
                 }
                 /* don't emit jump for the last statement */
-                if(i < (ptrarray_count(ifstmt->cases) - 1) || ifstmt->alternative)
+                if(i < (mc_ptrarray_count(ifstmt->cases) - 1) || ifstmt->alternative)
                 {
                     opbuf[0] = 0xbeef;
                     jumptoendip = mc_compiler_emit(comp, OPCODE_JUMP, 1, opbuf);
-                    ok = array_add(jumptoendips, &jumptoendip);
+                    ok = mc_basicarray_push(jumptoendips, &jumptoendip);
                     if(!ok)
                     {
                         goto statementiferror;
@@ -3482,22 +4831,22 @@ TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpr
                 }
             }
             afteraltip = mc_compiler_getip(comp);
-            for(i = 0; i < array_count(jumptoendips); i++)
+            for(i = 0; i < mc_basicarray_count(jumptoendips); i++)
             {
-                pos = (int*)array_get(jumptoendips, i);
+                pos = (int*)mc_basicarray_get(jumptoendips, i);
                 mc_compiler_changeuint16operand(comp, *pos + 1, afteraltip);
             }
-            array_destroy(jumptoendips);
+            mc_basicarray_destroy(jumptoendips);
             break;
         statementiferror:
-            array_destroy(jumptoendips);
+            mc_basicarray_destroy(jumptoendips);
             return false;
         }
         case MC_EXPR_STMTRETURN:
         {
             if(compscope->outer == NULL)
             {
-                errors_add_errorf(comp->errors, MC_ERROR_COMPILING, expr->pos, "Nothing to return from");
+                mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "Nothing to return from");
                 return false;
             }
             ip = -1;
@@ -3580,7 +4929,7 @@ TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpr
             breakip = mc_compiler_getbreakip(comp);
             if(breakip < 0)
             {
-                errors_add_errorf(comp->errors, MC_ERROR_COMPILING, expr->pos, "Nothing to break from.");
+                mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "Nothing to break from.");
                 return false;
             }
             opbuf[0] = breakip;
@@ -3597,7 +4946,7 @@ TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpr
             continueip = mc_compiler_getcontinueip(comp);
             if(continueip < 0)
             {
-                errors_add_errorf(comp->errors, MC_ERROR_COMPILING, expr->pos, "Nothing to continue from.");
+                mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "Nothing to continue from.");
                 return false;
             }
             opbuf[0] = continueip;
@@ -3621,7 +4970,7 @@ TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpr
             mcastsymbol_t* sourcesymbol;
             foreach_statement_t* foreach;
             foreach = &expr->exprforeachloopstmt;
-            ok = symbol_table_push_block_scope(symtab);
+            ok = mc_symtable_pushblockscope(symtab);
             if(!ok)
             {
                 return false;
@@ -3646,10 +4995,10 @@ TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpr
             sourcesymbol = NULL;
             if(foreach->source->type == MC_EXPR_IDENT)
             {
-                sourcesymbol = symbol_table_resolve(symtab, foreach->source->exprident->value);
+                sourcesymbol = mc_symtable_resolve(symtab, foreach->source->exprident->value);
                 if(!sourcesymbol)
                 {
-                    errors_add_errorf(comp->errors, MC_ERROR_COMPILING, foreach->source->pos, "Symbol \"%s\" could not be resolved", foreach->source->exprident->value);
+                    mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, foreach->source->pos, "Symbol \"%s\" could not be resolved", foreach->source->exprident->value);
                     return false;
                 }
             }
@@ -3703,7 +5052,7 @@ TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpr
             afterupdateip = mc_compiler_getip(comp);
             mc_compiler_changeuint16operand(comp, jumptoafterupdateip + 1, afterupdateip);
             /* Test */
-            ok = array_push(comp->src_positions_stack, &foreach->source->pos);
+            ok = mc_basicarray_push(comp->src_positions_stack, &foreach->source->pos);
             if(!ok)
             {
                 return false;
@@ -3718,7 +5067,7 @@ TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpr
             {
                 return false;
             }
-            array_pop(comp->src_positions_stack, NULL);
+            mc_basicarray_pop(comp->src_positions_stack, NULL);
             ok = mc_compiler_readsymbol(comp, indexsymbol);
             if(!ok)
             {
@@ -3798,7 +5147,7 @@ TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpr
             }
             afterbodyip = mc_compiler_getip(comp);
             mc_compiler_changeuint16operand(comp, jumptoafterbodyip + 1, afterbodyip);
-            symbol_table_pop_block_scope(symtab);
+            mc_symtable_popblockscope(symtab);
             break;
         }
         case MC_EXPR_STMTLOOPFORCLASSIC:
@@ -3811,7 +5160,7 @@ TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpr
                 int jumptoafterbodyip;
                 for_loop_statement_t* loop;
                 loop = &expr->exprforloopstmt;
-                ok = symbol_table_push_block_scope(symtab);
+                ok = mc_symtable_pushblockscope(symtab);
                 if(!ok)
                 {
                     return false;
@@ -3910,7 +5259,7 @@ TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpr
                 }
                 afterbodyip = mc_compiler_getip(comp);
                 mc_compiler_changeuint16operand(comp, jumptoafterbodyip + 1, afterbodyip);
-                symbol_table_pop_block_scope(symtab);
+                mc_symtable_popblockscope(symtab);
             }
             break;
         case MC_EXPR_STMTBLOCK:
@@ -3940,14 +5289,14 @@ TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpr
                 mcastsymbol_t* errorsymbol;
                 recover_statement_t* recover;
                 recover = &expr->exprrecoverstmt;
-                if(symbol_table_is_module_global_scope(symtab))
+                if(mc_symtable_ismodglobalscope(symtab))
                 {
-                    errors_add_error(comp->errors, MC_ERROR_COMPILING, expr->pos, "Recover statement cannot be defined in global scope");
+                    mc_errlist_push(comp->errors, MC_ERROR_COMPILING, expr->pos, "Recover statement cannot be defined in global scope");
                     return false;
                 }
-                if(!symbol_table_is_top_block_scope(symtab))
+                if(!mc_symtable_istopblockscope(symtab))
                 {
-                    errors_add_error(comp->errors, MC_ERROR_COMPILING, expr->pos, "Recover statement cannot be defined within other statements");
+                    mc_errlist_push(comp->errors, MC_ERROR_COMPILING, expr->pos, "Recover statement cannot be defined within other statements");
                     return false;
                 }
                 opbuf[0] = 0xbeef;
@@ -3964,7 +5313,7 @@ TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpr
                 }
                 afterjumptorecoverip = mc_compiler_getip(comp);
                 mc_compiler_changeuint16operand(comp, recover_ip + 1, afterjumptorecoverip);
-                ok = symbol_table_push_block_scope(symtab);
+                ok = mc_symtable_pushblockscope(symtab);
                 if(!ok)
                 {
                     return false;
@@ -3986,10 +5335,10 @@ TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpr
                 }
                 if(!mc_compiler_lastopcodeis(comp, OPCODE_RETURN) && !mc_compiler_lastopcodeis(comp, OPCODE_RETURN_VALUE))
                 {
-                    errors_add_error(comp->errors, MC_ERROR_COMPILING, expr->pos, "Recover body must end with a return statement");
+                    mc_errlist_push(comp->errors, MC_ERROR_COMPILING, expr->pos, "Recover body must end with a return statement");
                     return false;
                 }
-                symbol_table_pop_block_scope(symtab);
+                mc_symtable_popblockscope(symtab);
                 afterrecoverip = mc_compiler_getip(comp);
                 mc_compiler_changeuint16operand(comp, jumptoafterrecoverip + 1, afterrecoverip);
             }
@@ -4001,7 +5350,7 @@ TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpr
             return false;
         }
     }
-    array_pop(comp->src_positions_stack, NULL);
+    mc_basicarray_pop(comp->src_positions_stack, NULL);
     return true;
 }
 
@@ -4022,7 +5371,7 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
     }
     #endif
 
-    ok = array_push(comp->src_positions_stack, &expr->pos);
+    ok = mc_basicarray_push(comp->src_positions_stack, &expr->pos);
     if(!ok)
     {
         return false;
@@ -4094,7 +5443,7 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
                     break;
                 default:
                 {
-                    errors_add_errorf(comp->errors, MC_ERROR_COMPILING, expr->pos, "Unknown infix operator");
+                    mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "Unknown infix operator");
                     goto error;
                 }
             }
@@ -4165,7 +5514,7 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
         case MC_EXPR_STRINGLITERAL:
         {
             int pos = 0;
-            int* currentpos = (int*)dict_get(comp->string_constants_positions, expr->exprlitstring.data);
+            int* currentpos = (int*)mc_genericdict_get(comp->string_constants_positions, expr->exprlitstring.data);
             if(currentpos)
             {
                 pos = *currentpos;
@@ -4191,7 +5540,7 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
                 }
 
                 *posval = pos;
-                ok = dict_set(comp->string_constants_positions, expr->exprlitstring.data, posval);
+                ok = mc_genericdict_set(comp->string_constants_positions, expr->exprlitstring.data, posval);
                 if(!ok)
                 {
                     mc_allocator_free(comp->pstate, posval);
@@ -4228,15 +5577,15 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
         case MC_EXPR_ARRAYLITERAL:
         {
             int i;
-            for(i = 0; i < ptrarray_count(expr->exprlitarray); i++)
+            for(i = 0; i < mc_ptrarray_count(expr->exprlitarray); i++)
             {
-                ok = mc_compiler_compileexpression(comp, (mcastexpression_t*)ptrarray_get(expr->exprlitarray, i));
+                ok = mc_compiler_compileexpression(comp, (mcastexpression_t*)mc_ptrarray_get(expr->exprlitarray, i));
                 if(!ok)
                 {
                     goto error;
                 }
             }
-            opbuf[0] = ptrarray_count(expr->exprlitarray);
+            opbuf[0] = mc_ptrarray_count(expr->exprlitarray);
             ip = mc_compiler_emit(comp, OPCODE_ARRAY, 1, opbuf);
             if(ip < 0)
             {
@@ -4248,7 +5597,7 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
         {
             int i;
             map_literal_t* map = &expr->exprlitmap;
-            int len = ptrarray_count(map->keys);
+            int len = mc_ptrarray_count(map->keys);
             opbuf[0] = len;
             ip = mc_compiler_emit(comp, OPCODE_MAP_START, 1, opbuf);
             if(ip < 0)
@@ -4258,8 +5607,8 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
 
             for(i = 0; i < len; i++)
             {
-                mcastexpression_t* key = (mcastexpression_t*)ptrarray_get(map->keys, i);
-                mcastexpression_t* val = (mcastexpression_t*)ptrarray_get(map->values, i);
+                mcastexpression_t* key = (mcastexpression_t*)mc_ptrarray_get(map->keys, i);
+                mcastexpression_t* val = (mcastexpression_t*)mc_ptrarray_get(map->values, i);
 
                 ok = mc_compiler_compileexpression(comp, key);
                 if(!ok)
@@ -4301,7 +5650,7 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
                     break;
                 default:
                 {
-                    errors_add_errorf(comp->errors, MC_ERROR_COMPILING, expr->pos, "Unknown prefix operator.");
+                    mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "Unknown prefix operator.");
                     goto error;
                 }
             }
@@ -4316,10 +5665,10 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
         case MC_EXPR_IDENT:
         {
             ident_t* ident = expr->exprident;
-            mcastsymbol_t* symbol = symbol_table_resolve(symtab, ident->value);
+            mcastsymbol_t* symbol = mc_symtable_resolve(symtab, ident->value);
             if(!symbol)
             {
-                errors_add_errorf(comp->errors, MC_ERROR_COMPILING, ident->pos, "Symbol \"%s\" could not be resolved", ident->value);
+                mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, ident->pos, "Symbol \"%s\" could not be resolved", ident->value);
                 goto error;
             }
             ok = mc_compiler_readsymbol(comp, symbol);
@@ -4373,24 +5722,24 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
 
             if(fn->name)
             {
-                mcastsymbol_t* fnsymbol = symbol_table_define_function_name(symtab, fn->name, false);
+                mcastsymbol_t* fnsymbol = mc_symtable_definefunctionname(symtab, fn->name, false);
                 if(!fnsymbol)
                 {
-                    errors_add_errorf(comp->errors, MC_ERROR_COMPILING, expr->pos, "Cannot define symbol \"%s\"", fn->name);
+                    mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "Cannot define symbol \"%s\"", fn->name);
                     goto error;
                 }
             }
 
-            mcastsymbol_t* thissymbol = symbol_table_define_this(symtab);
+            mcastsymbol_t* thissymbol = mc_symtable_definethis(symtab);
             if(!thissymbol)
             {
-                errors_add_error(comp->errors, MC_ERROR_COMPILING, expr->pos, "Cannot define \"this\" symbol");
+                mc_errlist_push(comp->errors, MC_ERROR_COMPILING, expr->pos, "Cannot define \"this\" symbol");
                 goto error;
             }
 
-            for(i = 0; i < ptrarray_count(expr->exprlitfunction.params); i++)
+            for(i = 0; i < mc_ptrarray_count(expr->exprlitfunction.params); i++)
             {
-                ident_t* param = (ident_t*)ptrarray_get(expr->exprlitfunction.params, i);
+                ident_t* param = (ident_t*)mc_ptrarray_get(expr->exprlitfunction.params, i);
                 mcastsymbol_t* paramsymbol = mc_compiler_defsymbol(comp, param->pos, param->value, true, false);
                 if(!paramsymbol)
                 {
@@ -4422,7 +5771,7 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
             compilation_result_t* comp_res = compilation_scope_orphan_result(compscope);
             if(!comp_res)
             {
-                ptrarray_destroy_with_items_(free_symbols, (mcptrarrayitemdestroyfn_t)symbol_destroy);
+                mc_ptrarray_destroy(free_symbols, (mcptrarrayitemdestroyfn_t)mc_symbol_destroy);
                 goto error;
             }
             mc_compiler_popsymtable(comp);
@@ -4430,22 +5779,22 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
             compscope = mc_compiler_getcompilationscope(comp);
             symtab = mc_compiler_getsymtable(comp);
 
-            mcvalue_t obj = object_make_function(comp->pstate, fn->name, comp_res, true, num_locals, ptrarray_count(fn->params), 0);
+            mcvalue_t obj = object_make_function(comp->pstate, fn->name, comp_res, true, num_locals, mc_ptrarray_count(fn->params), 0);
 
             if(object_is_null(obj))
             {
-                ptrarray_destroy_with_items_(free_symbols, (mcptrarrayitemdestroyfn_t)symbol_destroy);
+                mc_ptrarray_destroy(free_symbols, (mcptrarrayitemdestroyfn_t)mc_symbol_destroy);
                 compilation_result_destroy(comp_res);
                 goto error;
             }
 
-            for(i = 0; i < ptrarray_count(free_symbols); i++)
+            for(i = 0; i < mc_ptrarray_count(free_symbols); i++)
             {
-                mcastsymbol_t* symbol = (mcastsymbol_t*)ptrarray_get(free_symbols, i);
+                mcastsymbol_t* symbol = (mcastsymbol_t*)mc_ptrarray_get(free_symbols, i);
                 ok = mc_compiler_readsymbol(comp, symbol);
                 if(!ok)
                 {
-                    ptrarray_destroy_with_items_(free_symbols, (mcptrarrayitemdestroyfn_t)symbol_destroy);
+                    mc_ptrarray_destroy(free_symbols, (mcptrarrayitemdestroyfn_t)mc_symbol_destroy);
                     goto error;
                 }
             }
@@ -4453,19 +5802,19 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
             int pos = mc_compiler_addconstant(comp, obj);
             if(pos < 0)
             {
-                ptrarray_destroy_with_items_(free_symbols, (mcptrarrayitemdestroyfn_t)symbol_destroy);
+                mc_ptrarray_destroy(free_symbols, (mcptrarrayitemdestroyfn_t)mc_symbol_destroy);
                 goto error;
             }
             opbuf[0] = pos;
-            opbuf[1] = ptrarray_count(free_symbols);
+            opbuf[1] = mc_ptrarray_count(free_symbols);
             ip = mc_compiler_emit(comp, OPCODE_FUNCTION, 2, opbuf);
             if(ip < 0)
             {
-                ptrarray_destroy_with_items_(free_symbols, (mcptrarrayitemdestroyfn_t)symbol_destroy);
+                mc_ptrarray_destroy(free_symbols, (mcptrarrayitemdestroyfn_t)mc_symbol_destroy);
                 goto error;
             }
 
-            ptrarray_destroy_with_items_(free_symbols, (mcptrarrayitemdestroyfn_t)symbol_destroy);
+            mc_ptrarray_destroy(free_symbols, (mcptrarrayitemdestroyfn_t)mc_symbol_destroy);
 
             break;
         }
@@ -4478,16 +5827,16 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
                 goto error;
             }
 
-            for(i = 0; i < ptrarray_count(expr->exprcall.args); i++)
+            for(i = 0; i < mc_ptrarray_count(expr->exprcall.args); i++)
             {
-                mcastexpression_t* argexpr = (mcastexpression_t*)ptrarray_get(expr->exprcall.args, i);
+                mcastexpression_t* argexpr = (mcastexpression_t*)mc_ptrarray_get(expr->exprcall.args, i);
                 ok = mc_compiler_compileexpression(comp, argexpr);
                 if(!ok)
                 {
                     goto error;
                 }
             }
-            opbuf[0] = ptrarray_count(expr->exprcall.args);
+            opbuf[0] = mc_ptrarray_count(expr->exprcall.args);
             ip = mc_compiler_emit(comp, OPCODE_CALL, 1, opbuf);
             if(ip < 0)
             {
@@ -4501,7 +5850,7 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
             assign_expression_t* assign = &expr->exprassign;
             if(assign->dest->type != MC_EXPR_IDENT && assign->dest->type != MC_EXPR_INDEX)
             {
-                errors_add_errorf(comp->errors, MC_ERROR_COMPILING, assign->dest->pos, "Expression is not assignable.");
+                mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, assign->dest->pos, "Expression is not assignable.");
                 goto error;
             }
 
@@ -4526,7 +5875,7 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
                 goto error;
             }
 
-            ok = array_push(comp->src_positions_stack, &assign->dest->pos);
+            ok = mc_basicarray_push(comp->src_positions_stack, &assign->dest->pos);
             if(!ok)
             {
                 goto error;
@@ -4535,15 +5884,15 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
             if(assign->dest->type == MC_EXPR_IDENT)
             {
                 ident_t* ident = assign->dest->exprident;
-                mcastsymbol_t* symbol = symbol_table_resolve(symtab, ident->value);
+                mcastsymbol_t* symbol = mc_symtable_resolve(symtab, ident->value);
                 if(!symbol)
                 {
-                    errors_add_errorf(comp->errors, MC_ERROR_COMPILING, assign->dest->pos, "Symbol \"%s\" could not be resolved", ident->value);
+                    mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, assign->dest->pos, "Symbol \"%s\" could not be resolved", ident->value);
                     goto error;
                 }
                 if(!symbol->assignable)
                 {
-                    errors_add_errorf(comp->errors, MC_ERROR_COMPILING, assign->dest->pos, "Symbol \"%s\" is not assignable", ident->value);
+                    mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, assign->dest->pos, "Symbol \"%s\" is not assignable", ident->value);
                     goto error;
                 }
                 ok = mc_compiler_storesymbol(comp, symbol, false);
@@ -4581,7 +5930,7 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
                 }
             }
 
-            array_pop(comp->src_positions_stack, NULL);
+            mc_basicarray_pop(comp->src_positions_stack, NULL);
             break;
         }
         case MC_EXPR_LOGICAL:
@@ -4673,7 +6022,7 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
 error:
     res = false;
 end:
-    array_pop(comp->src_positions_stack, NULL);
+    mc_basicarray_pop(comp->src_positions_stack, NULL);
     expression_destroy(exproptimized);
     return res;
 }
@@ -4690,12 +6039,12 @@ TMPSEMISTATIC bool mc_compiler_compilecodeblock(mcastcompiler_t* comp, code_bloc
     {
         return false;
     }
-    ok = symbol_table_push_block_scope(symtab);
+    ok = mc_symtable_pushblockscope(symtab);
     if(!ok)
     {
         return false;
     }
-    if(ptrarray_count(block->statements) == 0)
+    if(mc_ptrarray_count(block->statements) == 0)
     {
         ip = mc_compiler_emit(comp, OPCODE_NULL, 0, NULL);
         if(ip < 0)
@@ -4708,43 +6057,43 @@ TMPSEMISTATIC bool mc_compiler_compilecodeblock(mcastcompiler_t* comp, code_bloc
             return false;
         }
     }
-    for(i = 0; i < ptrarray_count(block->statements); i++)
+    for(i = 0; i < mc_ptrarray_count(block->statements); i++)
     {
-        expr = (mcastexpression_t*)ptrarray_get(block->statements, i);
+        expr = (mcastexpression_t*)mc_ptrarray_get(block->statements, i);
         ok = mc_compiler_compilestatement(comp, expr);
         if(!ok)
         {
             return false;
         }
     }
-    symbol_table_pop_block_scope(symtab);
+    mc_symtable_popblockscope(symtab);
     return true;
 }
 
 TMPSTATIC int mc_compiler_addconstant(mcastcompiler_t* comp, mcvalue_t obj)
 {
     bool ok;
-    ok = array_add(comp->constants, &obj);
+    ok = mc_basicarray_push(comp->constants, &obj);
     if(!ok)
     {
         return -1;
     }
-    int pos = array_count(comp->constants) - 1;
+    int pos = mc_basicarray_count(comp->constants) - 1;
     return pos;
 }
 
 TMPSTATIC void mc_compiler_changeuint16operand(mcastcompiler_t* comp, int ip, uint16_t operand)
 {
     mcbasicarray_t* bytecode = mc_compiler_getbytecode(comp);
-    if((ip + 1) >= array_count(bytecode))
+    if((ip + 1) >= mc_basicarray_count(bytecode))
     {
         MC_ASSERT(false);
         return;
     }
     uint8_t hi = operand >> 8;
-    array_set(bytecode, ip, &hi);
+    mc_basicarray_set(bytecode, ip, &hi);
     uint8_t lo = operand;
-    array_set(bytecode, ip + 1, &lo);
+    mc_basicarray_set(bytecode, ip + 1, &lo);
 }
 
 TMPSTATIC bool mc_compiler_lastopcodeis(mcastcompiler_t* comp, mcinternopcode_t op)
@@ -4830,64 +6179,64 @@ TMPSTATIC bool mc_compiler_storesymbol(mcastcompiler_t* comp, mcastsymbol_t* sym
 TMPSTATIC bool mc_compiler_pushbreakip(mcastcompiler_t* comp, int ip)
 {
     mcastscopecomp_t* compscope = mc_compiler_getcompilationscope(comp);
-    return array_push(compscope->break_ip_stack, &ip);
+    return mc_basicarray_push(compscope->break_ip_stack, &ip);
 }
 
 TMPSTATIC void mc_compiler_popbreakip(mcastcompiler_t* comp)
 {
     mcastscopecomp_t* compscope = mc_compiler_getcompilationscope(comp);
-    if(array_count(compscope->break_ip_stack) == 0)
+    if(mc_basicarray_count(compscope->break_ip_stack) == 0)
     {
         MC_ASSERT(false);
         return;
     }
-    array_pop(compscope->break_ip_stack, NULL);
+    mc_basicarray_pop(compscope->break_ip_stack, NULL);
 }
 
 TMPSTATIC int mc_compiler_getbreakip(mcastcompiler_t* comp)
 {
     mcastscopecomp_t* compscope = mc_compiler_getcompilationscope(comp);
-    if(array_count(compscope->break_ip_stack) == 0)
+    if(mc_basicarray_count(compscope->break_ip_stack) == 0)
     {
         return -1;
     }
-    int* res = (int*)array_top(compscope->break_ip_stack);
+    int* res = (int*)mc_basicarray_top(compscope->break_ip_stack);
     return *res;
 }
 
 TMPSTATIC bool mc_compiler_pushcontinueip(mcastcompiler_t* comp, int ip)
 {
     mcastscopecomp_t* compscope = mc_compiler_getcompilationscope(comp);
-    return array_push(compscope->continue_ip_stack, &ip);
+    return mc_basicarray_push(compscope->continue_ip_stack, &ip);
 }
 
 TMPSTATIC void mc_compiler_popcontinueip(mcastcompiler_t* comp)
 {
     mcastscopecomp_t* compscope = mc_compiler_getcompilationscope(comp);
-    if(array_count(compscope->continue_ip_stack) == 0)
+    if(mc_basicarray_count(compscope->continue_ip_stack) == 0)
     {
         MC_ASSERT(false);
         return;
     }
-    array_pop(compscope->continue_ip_stack, NULL);
+    mc_basicarray_pop(compscope->continue_ip_stack, NULL);
 }
 
 TMPSTATIC int mc_compiler_getcontinueip(mcastcompiler_t* comp)
 {
     mcastscopecomp_t* compscope = mc_compiler_getcompilationscope(comp);
-    if(array_count(compscope->continue_ip_stack) == 0)
+    if(mc_basicarray_count(compscope->continue_ip_stack) == 0)
     {
         MC_ASSERT(false);
         return -1;
     }
-    int* res = (int*)array_top(compscope->continue_ip_stack);
+    int* res = (int*)mc_basicarray_top(compscope->continue_ip_stack);
     return *res;
 }
 
 TMPSTATIC int mc_compiler_getip(mcastcompiler_t* comp)
 {
     mcastscopecomp_t* compscope = mc_compiler_getcompilationscope(comp);
-    return array_count(compscope->bytecode);
+    return mc_basicarray_count(compscope->bytecode);
 }
 
 TMPSTATIC mcbasicarray_t* mc_compiler_getsrcpositions(mcastcompiler_t* comp)
@@ -4918,7 +6267,7 @@ TMPSTATIC mcastscopefile_t* mc_compiler_filescopemake(mcastcompiler_t* comp, mca
     }
     filescope->symbol_table = NULL;
     filescope->file = file;
-    filescope->loaded_module_names = ptrarray_make(comp->pstate);
+    filescope->loaded_module_names = mc_ptrarray_make(comp->pstate);
     if(!filescope->loaded_module_names)
     {
         goto err;
@@ -4933,12 +6282,12 @@ TMPSTATIC void mc_compiler_filescopedestroy(mcastscopefile_t* scope)
 {
     int i;
     void* name;
-    for(i = 0; i < ptrarray_count(scope->loaded_module_names); i++)
+    for(i = 0; i < mc_ptrarray_count(scope->loaded_module_names); i++)
     {
-        name = (void*)ptrarray_get(scope->loaded_module_names, i);
+        name = (void*)mc_ptrarray_get(scope->loaded_module_names, i);
         mc_allocator_free(scope->pstate, name);
     }
-    ptrarray_destroy(scope->loaded_module_names);
+    mc_ptrarray_destroy(scope->loaded_module_names, NULL);
     parser_destroy(scope->parser);
     mc_allocator_free(scope->pstate, scope);
 }
@@ -4947,7 +6296,7 @@ TMPSTATIC bool mc_compiler_filescopepush(mcastcompiler_t* comp, const char* file
 {
     bool ok;
     mcastsymtable_t* prevst = NULL;
-    if(ptrarray_count(comp->file_scopes) > 0)
+    if(mc_ptrarray_count(comp->file_scopes) > 0)
     {
         prevst = mc_compiler_getsymtable(comp);
     }
@@ -4958,7 +6307,7 @@ TMPSTATIC bool mc_compiler_filescopepush(mcastcompiler_t* comp, const char* file
         return false;
     }
 
-    ok = ptrarray_push(comp->files, file);
+    ok = mc_ptrarray_push(comp->files, file);
     if(!ok)
     {
         mc_compiledfile_destroy(file);
@@ -4971,7 +6320,7 @@ TMPSTATIC bool mc_compiler_filescopepush(mcastcompiler_t* comp, const char* file
         return false;
     }
 
-    ok = ptrarray_push(comp->file_scopes, filescope);
+    ok = mc_ptrarray_push(comp->file_scopes, filescope);
     if(!ok)
     {
         mc_compiler_filescopedestroy(filescope);
@@ -4981,14 +6330,14 @@ TMPSTATIC bool mc_compiler_filescopepush(mcastcompiler_t* comp, const char* file
     int globaloffset = 0;
     if(prevst)
     {
-        mcastscopeblock_t* prevsttopscope = symbol_table_get_block_scope(prevst);
+        mcastscopeblock_t* prevsttopscope = mc_symtable_getblockscope(prevst);
         globaloffset = prevsttopscope->offset + prevsttopscope->num_definitions;
     }
 
     ok = mc_compiler_pushsymtable(comp, globaloffset);
     if(!ok)
     {
-        ptrarray_pop(comp->file_scopes);
+        mc_ptrarray_pop(comp->file_scopes);
         mc_compiler_filescopedestroy(filescope);
         return false;
     }
@@ -4999,14 +6348,14 @@ TMPSTATIC bool mc_compiler_filescopepush(mcastcompiler_t* comp, const char* file
 TMPSTATIC void mc_compiler_filescopepop(mcastcompiler_t* comp)
 {
     mcastsymtable_t* poppedst = mc_compiler_getsymtable(comp);
-    mcastscopeblock_t* poppedsttopscope = symbol_table_get_block_scope(poppedst);
+    mcastscopeblock_t* poppedsttopscope = mc_symtable_getblockscope(poppedst);
     int poppednumdefs = poppedsttopscope->num_definitions;
 
     while(mc_compiler_getsymtable(comp))
     {
         mc_compiler_popsymtable(comp);
     }
-    mcastscopefile_t* scope = (mcastscopefile_t*)ptrarray_top(comp->file_scopes);
+    mcastscopefile_t* scope = (mcastscopefile_t*)mc_ptrarray_top(comp->file_scopes);
     if(!scope)
     {
         MC_ASSERT(false);
@@ -5014,12 +6363,12 @@ TMPSTATIC void mc_compiler_filescopepop(mcastcompiler_t* comp)
     }
     mc_compiler_filescopedestroy(scope);
 
-    ptrarray_pop(comp->file_scopes);
+    mc_ptrarray_pop(comp->file_scopes);
 
-    if(ptrarray_count(comp->file_scopes) > 0)
+    if(mc_ptrarray_count(comp->file_scopes) > 0)
     {
         mcastsymtable_t* currentst = mc_compiler_getsymtable(comp);
-        mcastscopeblock_t* currentsttopscope = symbol_table_get_block_scope(currentst);
+        mcastscopeblock_t* currentsttopscope = mc_symtable_getblockscope(currentst);
         currentsttopscope->num_definitions += poppednumdefs;
     }
 }
@@ -5044,7 +6393,7 @@ TMPSTATIC module_t* mc_module_make(mcstate_t* state, const char* name)
         mc_module_destroy(module);
         return NULL;
     }
-    module->symbols = ptrarray_make(state);
+    module->symbols = mc_ptrarray_make(state);
     if(!module->symbols)
     {
         mc_module_destroy(module);
@@ -5060,7 +6409,7 @@ TMPSTATIC void mc_module_destroy(module_t* module)
         return;
     }
     mc_allocator_free(module->pstate, module->name);
-    ptrarray_destroy_with_items_(module->symbols, (mcptrarrayitemdestroyfn_t)symbol_destroy);
+    mc_ptrarray_destroy(module->symbols, (mcptrarrayitemdestroyfn_t)mc_symbol_destroy);
     mc_allocator_free(module->pstate, module);
 }
 
@@ -5080,7 +6429,7 @@ TMPSTATIC module_t* mc_module_copy(module_t* src)
         mc_module_destroy(copy);
         return NULL;
     }
-    copy->symbols = ptrarray_copy_with_items_(src->symbols, (mcptrarrayitemcopyfn_t)symbol_copy, (mcptrarrayitemdestroyfn_t)symbol_destroy);
+    copy->symbols = mc_ptrarray_copy(src->symbols, (mcptrarrayitemcopyfn_t)mc_symbol_copy, (mcptrarrayitemdestroyfn_t)mc_symbol_destroy);
     if(!copy->symbols)
     {
         mc_module_destroy(copy);
@@ -5116,16 +6465,16 @@ TMPSTATIC bool mc_module_addsymbol(module_t* module, mcastsymbol_t* symbol)
         mc_printer_destroy(namebuf);
         return false;
     }
-    modulesymbol = symbol_make(module->pstate, mc_printer_getstring(namebuf), SYMBOL_MODULE_GLOBAL, symbol->index, false);
+    modulesymbol = mc_symbol_make(module->pstate, mc_printer_getstring(namebuf), SYMBOL_MODULE_GLOBAL, symbol->index, false);
     mc_printer_destroy(namebuf);
     if(!modulesymbol)
     {
         return false;
     }
-    ok = ptrarray_push(module->symbols, modulesymbol);
+    ok = mc_ptrarray_push(module->symbols, modulesymbol);
     if(!ok)
     {
-        symbol_destroy(modulesymbol);
+        mc_symbol_destroy(modulesymbol);
         return false;
     }
     return true;
@@ -5137,19 +6486,19 @@ TMPSTATIC mcastsymbol_t* mc_compiler_defsymbol(mcastcompiler_t* comp, mcastlocat
     mcastsymbol_t* currentsymbol;
     mcastsymtable_t* symtab;
     symtab = mc_compiler_getsymtable(comp);
-    if(!canshadow && !symbol_table_is_top_global_scope(symtab))
+    if(!canshadow && !mc_symtable_istopglobalscope(symtab))
     {
-        currentsymbol = symbol_table_resolve(symtab, name);
+        currentsymbol = mc_symtable_resolve(symtab, name);
         if(currentsymbol)
         {
-            errors_add_errorf(comp->errors, MC_ERROR_COMPILING, pos, "Symbol \"%s\" is already defined", name);
+            mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, pos, "Symbol \"%s\" is already defined", name);
             return NULL;
         }
     }
-    symbol = symbol_table_define(symtab, name, assignable);
+    symbol = mc_symtable_define(symtab, name, assignable);
     if(!symbol)
     {
-        errors_add_errorf(comp->errors, MC_ERROR_COMPILING, pos, "Cannot define symbol \"%s\"", name);
+        mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, pos, "Cannot define symbol \"%s\"", name);
         return NULL;
     }
     return symbol;
@@ -5168,55 +6517,55 @@ TMPSTATIC mcastparser_t* parser_make(mcstate_t* state, mcconfig_t* config, mcerr
     parser->config = config;
     parser->errors = errors;
     {
-        parser->rightassocfuncs[MC_TOK_IDENT] = parse_identifier;
-        parser->rightassocfuncs[MC_TOK_NUMBER] = parse_number_literal;
-        parser->rightassocfuncs[MC_TOK_TRUE] = parse_bool_literal;
-        parser->rightassocfuncs[MC_TOK_FALSE] = parse_bool_literal;
-        parser->rightassocfuncs[MC_TOK_STRING] = parse_string_literal;
-        parser->rightassocfuncs[MC_TOK_TEMPLATESTRING] = parse_template_string_literal;
-        parser->rightassocfuncs[MC_TOK_NULL] = parse_null_literal;
-        parser->rightassocfuncs[MC_TOK_BANG] = parse_prefix_expression;
-        parser->rightassocfuncs[MC_TOK_MINUS] = parse_prefix_expression;
-        parser->rightassocfuncs[MC_TOK_LPAREN] = parse_grouped_expression;
-        parser->rightassocfuncs[MC_TOK_FUNCTION] = parse_function_literal;
-        parser->rightassocfuncs[MC_TOK_LBRACKET] = parse_array_literal;
-        parser->rightassocfuncs[MC_TOK_LBRACE] = parse_map_literal;
-        parser->rightassocfuncs[MC_TOK_PLUSPLUS] = parse_incdec_prefix_expression;
-        parser->rightassocfuncs[MC_TOK_MINUSMINUS] = parse_incdec_prefix_expression;
+        parser->rightassocfuncs[MC_TOK_IDENT] = mc_parser_parseident;
+        parser->rightassocfuncs[MC_TOK_NUMBER] = mc_parser_parseliteralnumber;
+        parser->rightassocfuncs[MC_TOK_TRUE] = mc_parser_parseliteralbool;
+        parser->rightassocfuncs[MC_TOK_FALSE] = mc_parser_parseliteralbool;
+        parser->rightassocfuncs[MC_TOK_STRING] = mc_parser_parseliteralstring;
+        parser->rightassocfuncs[MC_TOK_TEMPLATESTRING] = mc_parser_parseliteraltemplatestring;
+        parser->rightassocfuncs[MC_TOK_NULL] = mc_parser_parseliteralnull;
+        parser->rightassocfuncs[MC_TOK_BANG] = mc_parser_parseprefixexpr;
+        parser->rightassocfuncs[MC_TOK_MINUS] = mc_parser_parseprefixexpr;
+        parser->rightassocfuncs[MC_TOK_LPAREN] = mc_parser_parsegroupedexpr;
+        parser->rightassocfuncs[MC_TOK_FUNCTION] = mc_parser_parseliteralfunction;
+        parser->rightassocfuncs[MC_TOK_LBRACKET] = mc_parser_parseliteralarray;
+        parser->rightassocfuncs[MC_TOK_LBRACE] = mc_parser_parseliteralmap;
+        parser->rightassocfuncs[MC_TOK_PLUSPLUS] = mc_parser_parseincdecprefixexpr;
+        parser->rightassocfuncs[MC_TOK_MINUSMINUS] = mc_parser_parseincdecprefixexpr;
     }
     {
-        parser->leftassocfuncs[MC_TOK_PLUS] = parse_infix_expression;
-        parser->leftassocfuncs[MC_TOK_MINUS] = parse_infix_expression;
-        parser->leftassocfuncs[MC_TOK_SLASH] = parse_infix_expression;
-        parser->leftassocfuncs[MC_TOK_ASTERISK] = parse_infix_expression;
-        parser->leftassocfuncs[MC_TOK_PERCENT] = parse_infix_expression;
-        parser->leftassocfuncs[MC_TOK_EQ] = parse_infix_expression;
-        parser->leftassocfuncs[MC_TOK_NOTEQ] = parse_infix_expression;
-        parser->leftassocfuncs[MC_TOK_LT] = parse_infix_expression;
-        parser->leftassocfuncs[MC_TOK_LTE] = parse_infix_expression;
-        parser->leftassocfuncs[MC_TOK_GT] = parse_infix_expression;
-        parser->leftassocfuncs[MC_TOK_GTE] = parse_infix_expression;
+        parser->leftassocfuncs[MC_TOK_PLUS] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_MINUS] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_SLASH] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_ASTERISK] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_PERCENT] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_EQ] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_NOTEQ] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_LT] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_LTE] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_GT] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_GTE] = mc_parser_parseinfixexpr;
         parser->leftassocfuncs[MC_TOK_LPAREN] = parse_call_expression;
-        parser->leftassocfuncs[MC_TOK_LBRACKET] = parse_index_expression;
-        parser->leftassocfuncs[MC_TOK_ASSIGN] = parse_assign_expression;
-        parser->leftassocfuncs[MC_TOK_PLUSASSIGN] = parse_assign_expression;
-        parser->leftassocfuncs[MC_TOK_MINUSASSIGN] = parse_assign_expression;
-        parser->leftassocfuncs[MC_TOK_SLASHASSIGN] = parse_assign_expression;
-        parser->leftassocfuncs[MC_TOK_ASTERISKASSIGN] = parse_assign_expression;
-        parser->leftassocfuncs[MC_TOK_PERCENTASSIGN] = parse_assign_expression;
-        parser->leftassocfuncs[MC_TOK_BITANDASSIGN] = parse_assign_expression;
-        parser->leftassocfuncs[MC_TOK_BITORASSIGN] = parse_assign_expression;
-        parser->leftassocfuncs[MC_TOK_BITXORASSIGN] = parse_assign_expression;
-        parser->leftassocfuncs[MC_TOK_LSHIFTASSIGN] = parse_assign_expression;
-        parser->leftassocfuncs[MC_TOK_RSHIFTASSIGN] = parse_assign_expression;
+        parser->leftassocfuncs[MC_TOK_LBRACKET] = mc_parser_parseindexexpr;
+        parser->leftassocfuncs[MC_TOK_ASSIGN] = mc_parser_parseassignexpr;
+        parser->leftassocfuncs[MC_TOK_PLUSASSIGN] = mc_parser_parseassignexpr;
+        parser->leftassocfuncs[MC_TOK_MINUSASSIGN] = mc_parser_parseassignexpr;
+        parser->leftassocfuncs[MC_TOK_SLASHASSIGN] = mc_parser_parseassignexpr;
+        parser->leftassocfuncs[MC_TOK_ASTERISKASSIGN] = mc_parser_parseassignexpr;
+        parser->leftassocfuncs[MC_TOK_PERCENTASSIGN] = mc_parser_parseassignexpr;
+        parser->leftassocfuncs[MC_TOK_BITANDASSIGN] = mc_parser_parseassignexpr;
+        parser->leftassocfuncs[MC_TOK_BITORASSIGN] = mc_parser_parseassignexpr;
+        parser->leftassocfuncs[MC_TOK_BITXORASSIGN] = mc_parser_parseassignexpr;
+        parser->leftassocfuncs[MC_TOK_LSHIFTASSIGN] = mc_parser_parseassignexpr;
+        parser->leftassocfuncs[MC_TOK_RSHIFTASSIGN] = mc_parser_parseassignexpr;
         parser->leftassocfuncs[MC_TOK_DOT] = parse_dot_expression;
         parser->leftassocfuncs[MC_TOK_AND] = parse_logical_expression;
         parser->leftassocfuncs[MC_TOK_OR] = parse_logical_expression;
-        parser->leftassocfuncs[MC_TOK_BITAND] = parse_infix_expression;
-        parser->leftassocfuncs[MC_TOK_BITOR] = parse_infix_expression;
-        parser->leftassocfuncs[MC_TOK_BITXOR] = parse_infix_expression;
-        parser->leftassocfuncs[MC_TOK_LSHIFT] = parse_infix_expression;
-        parser->leftassocfuncs[MC_TOK_RSHIFT] = parse_infix_expression;
+        parser->leftassocfuncs[MC_TOK_BITAND] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_BITOR] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_BITXOR] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_LSHIFT] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_RSHIFT] = mc_parser_parseinfixexpr;
         parser->leftassocfuncs[MC_TOK_QUESTION] = parse_ternary_expression;
         parser->leftassocfuncs[MC_TOK_PLUSPLUS] = parse_incdec_postfix_expression;
         parser->leftassocfuncs[MC_TOK_MINUSMINUS] = parse_incdec_postfix_expression;
@@ -5247,7 +6596,7 @@ TMPSTATIC mcptrarray_t* parser_parse_all(mcastparser_t* parser, const char* inpu
     }
     mc_lexer_nexttoken(&parser->lexer);
     mc_lexer_nexttoken(&parser->lexer);
-    statements = ptrarray_make(parser->pstate);
+    statements = mc_ptrarray_make(parser->pstate);
     if(!statements)
     {
         return NULL;
@@ -5264,20 +6613,20 @@ TMPSTATIC mcptrarray_t* parser_parse_all(mcastparser_t* parser, const char* inpu
         {
             goto err;
         }
-        ok = ptrarray_push(statements, expr);
+        ok = mc_ptrarray_push(statements, expr);
         if(!ok)
         {
             statement_destroy(expr);
             goto err;
         }
     }
-    if(errors_get_count(parser->errors) > 0)
+    if(mc_errlist_size(parser->errors) > 0)
     {
         goto err;
     }
     return statements;
 err:
-    ptrarray_destroy_with_items_(statements, (mcptrarrayitemdestroyfn_t)statement_destroy);
+    mc_ptrarray_destroy(statements, (mcptrarrayitemdestroyfn_t)statement_destroy);
     return NULL;
 }
 
@@ -5432,7 +6781,7 @@ TMPSEMISTATIC mcastexpression_t* parse_if_statement(mcastparser_t* p)
     mcastexpression_t* res;
     cases = NULL;
     alternative = NULL;
-    cases = ptrarray_make(p->pstate);
+    cases = mc_ptrarray_make(p->pstate);
     if(!cases)
     {
         goto err;
@@ -5448,7 +6797,7 @@ TMPSEMISTATIC mcastexpression_t* parse_if_statement(mcastparser_t* p)
     {
         goto err;
     }
-    ok = ptrarray_push(cases, cond);
+    ok = mc_ptrarray_push(cases, cond);
     if(!ok)
     {
         if_case_destroy(cond);
@@ -5485,7 +6834,7 @@ TMPSEMISTATIC mcastexpression_t* parse_if_statement(mcastparser_t* p)
             {
                 goto err;
             }
-            ok = ptrarray_push(cases, elif);
+            ok = mc_ptrarray_push(cases, elif);
             if(!ok)
             {
                 if_case_destroy(elif);
@@ -5523,7 +6872,7 @@ TMPSEMISTATIC mcastexpression_t* parse_if_statement(mcastparser_t* p)
     }
     return res;
 err:
-    ptrarray_destroy_with_items_(cases, (mcptrarrayitemdestroyfn_t)if_case_destroy);
+    mc_ptrarray_destroy(cases, (mcptrarrayitemdestroyfn_t)if_case_destroy);
     code_block_destroy(alternative);
     return NULL;
 }
@@ -5564,7 +6913,7 @@ TMPSEMISTATIC mcastexpression_t* parse_expression_statement(mcastparser_t* p)
     {
         if(expr->type != MC_EXPR_ASSIGN && expr->type != MC_EXPR_CALL)
         {
-            errors_add_errorf(p->errors, MC_ERROR_PARSING, expr->pos, "Only assignments and function calls can be expression statements");
+            mc_errlist_addf(p->errors, MC_ERROR_PARSING, expr->pos, "Only assignments and function calls can be expression statements");
             expression_destroy(expr);
             return NULL;
         }
@@ -5660,7 +7009,7 @@ TMPSEMISTATIC mcastexpression_t* parse_import_statement(mcastparser_t* p)
     processedname = process_and_copy_string(p->pstate, p->lexer.currtoken.literal, p->lexer.currtoken.len);
     if(!processedname)
     {
-        errors_add_error(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "Error when parsing module name");
+        mc_errlist_push(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "Error when parsing module name");
         return NULL;
     }
     mc_lexer_nexttoken(&p->lexer);
@@ -5800,7 +7149,7 @@ TMPSTATIC mcastexpression_t* parse_classic_for_loop(mcastparser_t* p)
         }
         if(init->type != MC_EXPR_STMTDEFINE && init->type != MC_EXPR_STMTEXPRESSION)
         {
-            errors_add_errorf(p->errors, MC_ERROR_PARSING, init->pos, "for loop's init clause should be a define statement or an expression");
+            mc_errlist_addf(p->errors, MC_ERROR_PARSING, init->pos, "for loop's init clause should be a define statement or an expression");
             goto err;
         }
         if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_SEMICOLON))
@@ -5874,7 +7223,7 @@ TMPSEMISTATIC mcastexpression_t* parse_function_statement(mcastparser_t* p)
         goto err;
     }
     mc_lexer_nexttoken(&p->lexer);
-    value = parse_function_literal(p);
+    value = mc_parser_parseliteralfunction(p);
     if(!value)
     {
         goto err;
@@ -5909,7 +7258,7 @@ TMPSTATIC code_block_t* parse_code_block(mcastparser_t* p)
     }
     mc_lexer_nexttoken(&p->lexer);
     p->depth++;
-    statements = ptrarray_make(p->pstate);
+    statements = mc_ptrarray_make(p->pstate);
     if(!statements)
     {
         goto err;
@@ -5918,7 +7267,7 @@ TMPSTATIC code_block_t* parse_code_block(mcastparser_t* p)
     {
         if(mc_lexer_currtokenis(&p->lexer, MC_TOK_EOF))
         {
-            errors_add_error(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "Unexpected EOF");
+            mc_errlist_push(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "Unexpected EOF");
             goto err;
         }
         if(mc_lexer_currtokenis(&p->lexer, MC_TOK_SEMICOLON))
@@ -5931,7 +7280,7 @@ TMPSTATIC code_block_t* parse_code_block(mcastparser_t* p)
         {
             goto err;
         }
-        ok = ptrarray_push(statements, expr);
+        ok = mc_ptrarray_push(statements, expr);
         if(!ok)
         {
             statement_destroy(expr);
@@ -5948,7 +7297,7 @@ TMPSTATIC code_block_t* parse_code_block(mcastparser_t* p)
     return res;
 err:
     p->depth--;
-    ptrarray_destroy_with_items_(statements, (mcptrarrayitemdestroyfn_t)statement_destroy);
+    mc_ptrarray_destroy(statements, (mcptrarrayitemdestroyfn_t)statement_destroy);
     return NULL;
 }
 
@@ -5963,14 +7312,14 @@ TMPSTATIC mcastexpression_t* parse_expression(mcastparser_t* p, mcastprecedence_
     pos = p->lexer.currtoken.pos;
     if(p->lexer.currtoken.type == MC_TOK_INVALID)
     {
-        errors_add_error(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "Illegal token");
+        mc_errlist_push(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "Illegal token");
         return NULL;
     }
     parserightassoc = p->rightassocfuncs[p->lexer.currtoken.type];
     if(!parserightassoc)
     {
         literal = token_duplicate_literal(p->pstate, &p->lexer.currtoken);
-        errors_add_errorf(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "No prefix parse function for \"%s\" found", literal);
+        mc_errlist_addf(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "No prefix parse function for \"%s\" found", literal);
         mc_allocator_free(p->pstate, literal);
         return NULL;
     }
@@ -6000,7 +7349,7 @@ TMPSTATIC mcastexpression_t* parse_expression(mcastparser_t* p, mcastprecedence_
     return leftexpr;
 }
 
-TMPSTATIC mcastexpression_t* parse_identifier(mcastparser_t* p)
+TMPSTATIC mcastexpression_t* mc_parser_parseident(mcastparser_t* p)
 {
     ident_t* ident;
     mcastexpression_t* res;
@@ -6019,7 +7368,7 @@ TMPSTATIC mcastexpression_t* parse_identifier(mcastparser_t* p)
     return res;
 }
 
-TMPSTATIC mcastexpression_t* parse_number_literal(mcastparser_t* p)
+TMPSTATIC mcastexpression_t* mc_parser_parseliteralnumber(mcastparser_t* p)
 {
     double number;
     long parsedlen;
@@ -6032,7 +7381,7 @@ TMPSTATIC mcastexpression_t* parse_number_literal(mcastparser_t* p)
     if(errno || parsedlen != p->lexer.currtoken.len)
     {
         literal = token_duplicate_literal(p->pstate, &p->lexer.currtoken);
-        errors_add_errorf(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "Parsing number literal \"%s\" failed", literal);
+        mc_errlist_addf(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "Parsing number literal \"%s\" failed", literal);
         mc_allocator_free(p->pstate, literal);
         return NULL;
     }
@@ -6040,7 +7389,7 @@ TMPSTATIC mcastexpression_t* parse_number_literal(mcastparser_t* p)
     return expression_make_number_literal(p->pstate, number);
 }
 
-TMPSTATIC mcastexpression_t* parse_bool_literal(mcastparser_t* p)
+TMPSTATIC mcastexpression_t* mc_parser_parseliteralbool(mcastparser_t* p)
 {
     mcastexpression_t* res;
     res = expression_make_bool_literal(p->pstate, p->lexer.currtoken.type == MC_TOK_TRUE);
@@ -6048,7 +7397,7 @@ TMPSTATIC mcastexpression_t* parse_bool_literal(mcastparser_t* p)
     return res;
 }
 
-TMPSTATIC mcastexpression_t* parse_string_literal(mcastparser_t* p)
+TMPSTATIC mcastexpression_t* mc_parser_parseliteralstring(mcastparser_t* p)
 {
     size_t len;
     char* processedliteral;
@@ -6056,7 +7405,7 @@ TMPSTATIC mcastexpression_t* parse_string_literal(mcastparser_t* p)
     processedliteral = process_and_copy_string(p->pstate, p->lexer.currtoken.literal, p->lexer.currtoken.len);
     if(!processedliteral)
     {
-        errors_add_error(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "Error when parsing string literal");
+        mc_errlist_push(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "Error when parsing string literal");
         return NULL;
     }
     mc_lexer_nexttoken(&p->lexer);
@@ -6070,7 +7419,7 @@ TMPSTATIC mcastexpression_t* parse_string_literal(mcastparser_t* p)
     return res;
 }
 
-TMPSTATIC mcastexpression_t* parse_template_string_literal(mcastparser_t* p)
+TMPSTATIC mcastexpression_t* mc_parser_parseliteraltemplatestring(mcastparser_t* p)
 {
     size_t len;
     char* processedliteral;
@@ -6091,7 +7440,7 @@ TMPSTATIC mcastexpression_t* parse_template_string_literal(mcastparser_t* p)
     processedliteral = process_and_copy_string(p->pstate, p->lexer.currtoken.literal, p->lexer.currtoken.len);
     if(!processedliteral)
     {
-        errors_add_error(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "Error when parsing string literal");
+        mc_errlist_push(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "Error when parsing string literal");
         return NULL;
     }
     mc_lexer_nexttoken(&p->lexer);
@@ -6164,13 +7513,13 @@ err:
     return NULL;
 }
 
-TMPSTATIC mcastexpression_t* parse_null_literal(mcastparser_t* p)
+TMPSTATIC mcastexpression_t* mc_parser_parseliteralnull(mcastparser_t* p)
 {
     mc_lexer_nexttoken(&p->lexer);
     return expression_make_null_literal(p->pstate);
 }
 
-TMPSTATIC mcastexpression_t* parse_array_literal(mcastparser_t* p)
+TMPSTATIC mcastexpression_t* mc_parser_parseliteralarray(mcastparser_t* p)
 {
     mcptrarray_t* array;
     mcastexpression_t* res;
@@ -6182,13 +7531,13 @@ TMPSTATIC mcastexpression_t* parse_array_literal(mcastparser_t* p)
     res = expression_make_array_literal(p->pstate, array);
     if(!res)
     {
-        ptrarray_destroy_with_items_(array, (mcptrarrayitemdestroyfn_t)expression_destroy);
+        mc_ptrarray_destroy(array, (mcptrarrayitemdestroyfn_t)expression_destroy);
         return NULL;
     }
     return res;
 }
 
-TMPSTATIC mcastexpression_t* parse_map_literal(mcastparser_t* p)
+TMPSTATIC mcastexpression_t* mc_parser_parseliteralmap(mcastparser_t* p)
 {
     bool ok;
     size_t len;
@@ -6198,8 +7547,8 @@ TMPSTATIC mcastexpression_t* parse_map_literal(mcastparser_t* p)
     mcastexpression_t* res;
     mcastexpression_t* key;
     mcastexpression_t* value;
-    keys = ptrarray_make(p->pstate);
-    values = ptrarray_make(p->pstate);
+    keys = mc_ptrarray_make(p->pstate);
+    values = mc_ptrarray_make(p->pstate);
     if(!keys || !values)
     {
         goto err;
@@ -6238,13 +7587,13 @@ TMPSTATIC mcastexpression_t* parse_map_literal(mcastparser_t* p)
                 }
                 default:
                 {
-                    errors_add_errorf(p->errors, MC_ERROR_PARSING, key->pos, "Invalid map literal key type");
+                    mc_errlist_addf(p->errors, MC_ERROR_PARSING, key->pos, "Invalid map literal key type");
                     expression_destroy(key);
                     goto err;
                 }
             }
         }
-        ok = ptrarray_push(keys, key);
+        ok = mc_ptrarray_push(keys, key);
         if(!ok)
         {
             expression_destroy(key);
@@ -6260,7 +7609,7 @@ TMPSTATIC mcastexpression_t* parse_map_literal(mcastparser_t* p)
         {
             goto err;
         }
-        ok = ptrarray_push(values, value);
+        ok = mc_ptrarray_push(values, value);
         if(!ok)
         {
             expression_destroy(value);
@@ -6284,12 +7633,12 @@ TMPSTATIC mcastexpression_t* parse_map_literal(mcastparser_t* p)
     }
     return res;
 err:
-    ptrarray_destroy_with_items_(keys, (mcptrarrayitemdestroyfn_t)expression_destroy);
-    ptrarray_destroy_with_items_(values, (mcptrarrayitemdestroyfn_t)expression_destroy);
+    mc_ptrarray_destroy(keys, (mcptrarrayitemdestroyfn_t)expression_destroy);
+    mc_ptrarray_destroy(values, (mcptrarrayitemdestroyfn_t)expression_destroy);
     return NULL;
 }
 
-TMPSTATIC mcastexpression_t* parse_prefix_expression(mcastparser_t* p)
+TMPSTATIC mcastexpression_t* mc_parser_parseprefixexpr(mcastparser_t* p)
 {
     mcastmathoptype_t op;
     mcastexpression_t* res;
@@ -6310,7 +7659,7 @@ TMPSTATIC mcastexpression_t* parse_prefix_expression(mcastparser_t* p)
     return res;
 }
 
-TMPSTATIC mcastexpression_t* parse_infix_expression(mcastparser_t* p, mcastexpression_t* left)
+TMPSTATIC mcastexpression_t* mc_parser_parseinfixexpr(mcastparser_t* p, mcastexpression_t* left)
 {
     mcastmathoptype_t op;
     mcastprecedence_t prec;
@@ -6333,7 +7682,7 @@ TMPSTATIC mcastexpression_t* parse_infix_expression(mcastparser_t* p, mcastexpre
     return res;
 }
 
-TMPSTATIC mcastexpression_t* parse_grouped_expression(mcastparser_t* p)
+TMPSTATIC mcastexpression_t* mc_parser_parsegroupedexpr(mcastparser_t* p)
 {
     mcastexpression_t* expr;
     mc_lexer_nexttoken(&p->lexer);
@@ -6347,7 +7696,7 @@ TMPSTATIC mcastexpression_t* parse_grouped_expression(mcastparser_t* p)
     return expr;
 }
 
-TMPSTATIC mcastexpression_t* parse_function_literal(mcastparser_t* p)
+TMPSTATIC mcastexpression_t* mc_parser_parseliteralfunction(mcastparser_t* p)
 {
     bool ok;
     mcptrarray_t* params;
@@ -6360,7 +7709,7 @@ TMPSTATIC mcastexpression_t* parse_function_literal(mcastparser_t* p)
     {
         mc_lexer_nexttoken(&p->lexer);
     }
-    params = ptrarray_make(p->pstate);
+    params = mc_ptrarray_make(p->pstate);
     ok = parse_function_parameters(p, params);
     if(!ok)
     {
@@ -6380,7 +7729,7 @@ TMPSTATIC mcastexpression_t* parse_function_literal(mcastparser_t* p)
     return res;
 err:
     code_block_destroy(body);
-    ptrarray_destroy_with_items_(params, (mcptrarrayitemdestroyfn_t)ident_destroy);
+    mc_ptrarray_destroy(params, (mcptrarrayitemdestroyfn_t)ident_destroy);
     p->depth -= 1;
     return NULL;
 }
@@ -6408,7 +7757,7 @@ TMPSTATIC bool parse_function_parameters(mcastparser_t* p, mcptrarray_t* outpara
     {
         return false;
     }
-    ok = ptrarray_push(outparams, ident);
+    ok = mc_ptrarray_push(outparams, ident);
     if(!ok)
     {
         ident_destroy(ident);
@@ -6427,7 +7776,7 @@ TMPSTATIC bool parse_function_parameters(mcastparser_t* p, mcptrarray_t* outpara
         {
             return false;
         }
-        ok = ptrarray_push(outparams, ident);
+        ok = mc_ptrarray_push(outparams, ident);
         if(!ok)
         {
             ident_destroy(ident);
@@ -6457,7 +7806,7 @@ TMPSTATIC mcastexpression_t* parse_call_expression(mcastparser_t* p, mcastexpres
     res = expression_make_call(p->pstate, function, args);
     if(!res)
     {
-        ptrarray_destroy_with_items_(args, (mcptrarrayitemdestroyfn_t)expression_destroy);
+        mc_ptrarray_destroy(args, (mcptrarrayitemdestroyfn_t)expression_destroy);
         return NULL;
     }
     return res;
@@ -6473,7 +7822,7 @@ TMPSTATIC mcptrarray_t* parse_expression_list(mcastparser_t* p, mcasttoktype_t s
         return NULL;
     }
     mc_lexer_nexttoken(&p->lexer);
-    res = ptrarray_make(p->pstate);
+    res = mc_ptrarray_make(p->pstate);
     if(mc_lexer_currtokenis(&p->lexer, endtoken))
     {
         mc_lexer_nexttoken(&p->lexer);
@@ -6484,7 +7833,7 @@ TMPSTATIC mcptrarray_t* parse_expression_list(mcastparser_t* p, mcasttoktype_t s
     {
         goto err;
     }
-    ok = ptrarray_push(res, argexpr);
+    ok = mc_ptrarray_push(res, argexpr);
     if(!ok)
     {
         expression_destroy(argexpr);
@@ -6502,7 +7851,7 @@ TMPSTATIC mcptrarray_t* parse_expression_list(mcastparser_t* p, mcasttoktype_t s
         {
             goto err;
         }
-        ok = ptrarray_push(res, argexpr);
+        ok = mc_ptrarray_push(res, argexpr);
         if(!ok)
         {
             expression_destroy(argexpr);
@@ -6516,11 +7865,11 @@ TMPSTATIC mcptrarray_t* parse_expression_list(mcastparser_t* p, mcasttoktype_t s
     mc_lexer_nexttoken(&p->lexer);
     return res;
 err:
-    ptrarray_destroy_with_items_(res, (mcptrarrayitemdestroyfn_t)expression_destroy);
+    mc_ptrarray_destroy(res, (mcptrarrayitemdestroyfn_t)expression_destroy);
     return NULL;
 }
 
-TMPSTATIC mcastexpression_t* parse_index_expression(mcastparser_t* p, mcastexpression_t* left)
+TMPSTATIC mcastexpression_t* mc_parser_parseindexexpr(mcastparser_t* p, mcastexpression_t* left)
 {
     mcastexpression_t* res;
     mcastexpression_t* index;
@@ -6545,7 +7894,7 @@ TMPSTATIC mcastexpression_t* parse_index_expression(mcastparser_t* p, mcastexpre
     return res;
 }
 
-TMPSTATIC mcastexpression_t* parse_assign_expression(mcastparser_t* p, mcastexpression_t* left)
+TMPSTATIC mcastexpression_t* mc_parser_parseassignexpr(mcastparser_t* p, mcastexpression_t* left)
 {
     mcastlocation_t pos;
     mcastmathoptype_t op;
@@ -6669,7 +8018,7 @@ TMPSTATIC mcastexpression_t* parse_ternary_expression(mcastparser_t* p, mcastexp
     return res;
 }
 
-TMPSTATIC mcastexpression_t* parse_incdec_prefix_expression(mcastparser_t* p)
+TMPSTATIC mcastexpression_t* mc_parser_parseincdecprefixexpr(mcastparser_t* p)
 {
     mcastlocation_t pos;
     mcastmathoptype_t op;
@@ -7029,23 +8378,23 @@ TMPSTATIC mcastexpression_t* wrap_expression_in_function_call(mcstate_t* state, 
     }
     functionidentexpr->pos = expr->pos;
     ident = NULL;
-    args = ptrarray_make(state);
+    args = mc_ptrarray_make(state);
     if(!args)
     {
         expression_destroy(functionidentexpr);
         return NULL;
     }
-    ok = ptrarray_push(args, expr);
+    ok = mc_ptrarray_push(args, expr);
     if(!ok)
     {
-        ptrarray_destroy(args);
+        mc_ptrarray_destroy(args, NULL);
         expression_destroy(functionidentexpr);
         return NULL;
     }
     ce = expression_make_call(state, functionidentexpr, args);
     if(!ce)
     {
-        ptrarray_destroy(args);
+        mc_ptrarray_destroy(args, NULL);
         expression_destroy(functionidentexpr);
         return NULL;
     }
@@ -7259,13 +8608,13 @@ TMPSTATIC mcstate_t* mc_state_make(void* ctx)
     }
     memset(state, 0, sizeof(mcstate_t));
     set_default_config(state);
-    errors_init(&state->errors);
+    mc_errlist_init(&state->errors);
     state->mem = gcmem_make(state);
     if(!state->mem)
     {
         goto err;
     }
-    state->files = ptrarray_make(state);
+    state->files = mc_ptrarray_make(state);
     if(!state->files)
     {
         goto err;
@@ -7283,7 +8632,7 @@ TMPSTATIC mcstate_t* mc_state_make(void* ctx)
     }
     return state;
 err:
-    arcane_deinit(state);
+    mc_state_deinit(state);
     free(state);
     return NULL;
 }
@@ -7294,7 +8643,7 @@ TMPSTATIC void mc_state_destroy(mcstate_t* state)
     {
         return;
     }
-    arcane_deinit(state);
+    mc_state_deinit(state);
     mc_allocator_free(state, state);
 }
 
@@ -7310,7 +8659,7 @@ TMPSTATIC void mc_state_setreplmode(mcstate_t* state, bool enabled)
 
 TMPSTATIC bool mc_state_settimeout(mcstate_t* state, double maxexecms)
 {
-    if(!arcane_timer_platform_supported())
+    if(!mc_util_istimerplatformsupported())
     {
         state->config.maxexecutiontime = 0;
         state->config.havemaxexectime = false;
@@ -7351,9 +8700,9 @@ TMPSTATIC mccompiledprogram_t* mc_state_compilesource(mcstate_t* state, const ch
 {
     mccompiledprogram_t* program;
     compilation_result_t* compres;
-    arcane_clear_errors(state);
+    mc_state_clearerrors(state);
     compres = mc_compiler_compilesource(state->compiler, code);
-    if(!compres || errors_get_count(&state->errors) > 0)
+    if(!compres || mc_errlist_size(&state->errors) > 0)
     {
         goto err;
     }
@@ -7376,17 +8725,17 @@ TMPSTATIC mcvalue_t mc_program_execute(mcstate_t* state, mccompiledprogram_t* pr
     mcvalue_t res;
     if(program == NULL)
     {
-        errors_add_error(&state->errors, MC_ERROR_USER, srcposinvalid, "program passed to execute was null.");
+        mc_errlist_push(&state->errors, MC_ERROR_USER, srcposinvalid, "program passed to execute was null.");
         return mc_value_makenull();
     }
     reset_state(state);
     if(state != program->pstate)
     {
-        errors_add_error(&state->errors, MC_ERROR_USER, srcposinvalid, "arcane program was compiled with a different arcane instance");
+        mc_errlist_push(&state->errors, MC_ERROR_USER, srcposinvalid, "program was compiled with an incompatible instance");
         return mc_value_makenull();
     }
     ok = mc_vm_runexecfunc(state, program->comp_res, mc_compiler_getconstants(state->compiler));
-    if(!ok || errors_get_count(&state->errors) > 0)
+    if(!ok || mc_errlist_size(&state->errors) > 0)
     {
         return mc_value_makenull();
     }
@@ -7409,19 +8758,19 @@ TMPSTATIC void mc_program_destroy(mccompiledprogram_t* program)
     mc_allocator_free(program->pstate, program);
 }
 
-TMPUNUSED mcvalue_t arcane_execute(mcstate_t* state, const char* code)
+TMPUNUSED mcvalue_t mc_state_execcode(mcstate_t* state, const char* code)
 {
     bool ok;
     mcvalue_t res;
     compilation_result_t* compres;
     reset_state(state);
     compres = mc_compiler_compilesource(state->compiler, code);
-    if(!compres || errors_get_count(&state->errors) > 0)
+    if(!compres || mc_errlist_size(&state->errors) > 0)
     {
         goto err;
     }
     ok = mc_vm_runexecfunc(state, compres, mc_compiler_getconstants(state->compiler));
-    if(!ok || errors_get_count(&state->errors) > 0)
+    if(!ok || mc_errlist_size(&state->errors) > 0)
     {
         goto err;
     }
@@ -7439,18 +8788,18 @@ err:
 }
 
 
-TMPUNUSED mcvalue_t arcane_call(mcstate_t* state, const char* function_name, int argc, mcvalue_t* args)
+TMPUNUSED mcvalue_t mc_state_callfunctionbyname(mcstate_t* state, const char* function_name, int argc, mcvalue_t* args)
 {
     mcvalue_t res;
     mcvalue_t callee;
     reset_state(state);
-    callee = arcane_get_object(state, function_name);
+    callee = mc_state_getglobalobjectbyname(state, function_name);
     if(callee.type == MC_OBJ_NULL)
     {
         return mc_value_makenull();
     }
     res = vm_call(state, mc_compiler_getconstants(state->compiler), callee, argc, (mcvalue_t*)args);
-    if(errors_get_count(&state->errors) > 0)
+    if(mc_errlist_size(&state->errors) > 0)
     {
         return mc_value_makenull();
     }
@@ -7464,46 +8813,46 @@ TMPSTATIC bool mc_state_haserrors(mcstate_t* state)
 
 TMPSTATIC int mc_state_errorcount(mcstate_t* state)
 {
-    return errors_get_count(&state->errors);
+    return mc_errlist_size(&state->errors);
 }
 
-TMPSTATIC void arcane_clear_errors(mcstate_t* state)
+TMPSTATIC void mc_state_clearerrors(mcstate_t* state)
 {
-    errors_clear(&state->errors);
+    mc_errlist_clear(&state->errors);
 }
 
 TMPSTATIC mcerror_t* mc_state_geterror(mcstate_t* state, int index)
 {
-    return (mcerror_t*)errors_getc(&state->errors, index);
+    return (mcerror_t*)mc_errlist_get(&state->errors, index);
 }
 
 TMPSTATIC bool mc_state_setnativefunction(mcstate_t* state, const char* name, mcnativefn_t fn, void* data)
 {
     mcvalue_t obj;
-    obj = arcane_object_make_native_function_with_name(state, name, fn, data);
-    if(arcane_object_is_null(obj))
+    obj = mc_object_makenamednatfunctionbox(state, name, fn, data);
+    if(object_is_null(obj))
     {
         return false;
     }
-    return arcane_set_global_constant(state, name, obj);
+    return mc_state_setglobalconstant(state, name, obj);
 }
 
-TMPSTATIC bool arcane_set_global_constant(mcstate_t* state, const char* name, mcvalue_t obj)
+TMPSTATIC bool mc_state_setglobalconstant(mcstate_t* state, const char* name, mcvalue_t obj)
 {
     return global_store_set(state->global_store, name, obj);
 }
 
-TMPSTATIC mcvalue_t arcane_get_object(mcstate_t* state, const char* name)
+TMPSTATIC mcvalue_t mc_state_getglobalobjectbyname(mcstate_t* state, const char* name)
 {
     bool ok;
     mcvalue_t res;
     mcastsymbol_t* symbol;
     mcastsymtable_t* st;
     st = mc_compiler_getsymtable(state->compiler);
-    symbol = symbol_table_resolve(st, name);
+    symbol = mc_symtable_resolve(st, name);
     if(!symbol)
     {
-        errors_add_errorf(&state->errors, MC_ERROR_USER, srcposinvalid, "Symbol \"%s\" is not defined", name);
+        mc_errlist_addf(&state->errors, MC_ERROR_USER, srcposinvalid, "Symbol \"%s\" is not defined", name);
         return mc_value_makenull();
     }
     res = mc_value_makenull();
@@ -7517,24 +8866,19 @@ TMPSTATIC mcvalue_t arcane_get_object(mcstate_t* state, const char* name)
         res = global_store_get_object_at(state->global_store, symbol->index, &ok);
         if(!ok)
         {
-            errors_add_errorf(&state->errors, MC_ERROR_USER, srcposinvalid, "Failed to get global object at %d", symbol->index);
+            mc_errlist_addf(&state->errors, MC_ERROR_USER, srcposinvalid, "Failed to get global object at %d", symbol->index);
             return mc_value_makenull();
         }
     }
     else
     {
-        errors_add_errorf(&state->errors, MC_ERROR_USER, srcposinvalid, "Value associated with symbol \"%s\" could not be loaded", name);
+        mc_errlist_addf(&state->errors, MC_ERROR_USER, srcposinvalid, "Value associated with symbol \"%s\" could not be loaded", name);
         return mc_value_makenull();
     }
     return res;
 }
 
-TMPUNUSED mcvalue_t arcane_object_make_error(mcstate_t* state, const char* msg)
-{
-    return object_make_error(state, msg);
-}
-
-TMPUNUSED mcvalue_t arcane_object_make_errorf(mcstate_t* state, const char* fmt, ...)
+TMPUNUSED mcvalue_t mc_state_makeerrorf(mcstate_t* state, const char* fmt, ...)
 {
     int towrite;
     int written;
@@ -7556,17 +8900,7 @@ TMPUNUSED mcvalue_t arcane_object_make_errorf(mcstate_t* state, const char* fmt,
     return object_make_error_no_copy(state, res);
 }
 
-TMPSTATIC bool arcane_object_is_null(mcvalue_t obj)
-{
-    return obj.type == MC_OBJ_NULL;
-}
-
-TMPSTATIC void arcane_set_runtime_error(mcstate_t* state, const char* message)
-{
-    errors_add_error(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, message);
-}
-
-TMPSEMISTATIC void arcane_set_runtime_errorf(mcstate_t* state, const char* fmt, ...)
+TMPSEMISTATIC void mc_state_setruntimeerrorf(mcstate_t* state, const char* fmt, ...)
 {
     int written;
     int towrite;
@@ -7581,7 +8915,7 @@ TMPSEMISTATIC void arcane_set_runtime_errorf(mcstate_t* state, const char* fmt, 
     written = vsnprintf(res, MC_CONF_ERROR_MSGMAXLENGTH, fmt, args);
     MC_ASSERT(towrite == written);
     va_end(args);
-    errors_add_error(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, res);
+    mc_errlist_push(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, res);
 }
 
 TMPSTATIC mcobjtype_t object_get_type(mcvalue_t v)
@@ -7608,7 +8942,7 @@ TMPSTATIC bool object_is_callable(mcvalue_t obj)
     return type == MC_OBJ_NATIVE_FUNCTION || type == MC_OBJ_FUNCTION;
 }
 
-TMPSTATIC const char* arcane_object_get_type_name(mcobjtype_t type)
+TMPSTATIC const char* mc_util_objtypename(mcobjtype_t type)
 {
     switch(type)
     {
@@ -7642,11 +8976,6 @@ TMPSTATIC const char* arcane_object_get_type_name(mcobjtype_t type)
             break;
     }
     return "NONE";
-}
-
-TMPUNUSED const char* arcane_object_get_string(mcvalue_t obj)
-{
-    return mc_value_stringgetdata(obj);
 }
 
 TMPSTATIC mcvalue_t mc_object_makedatafrom(mcobjtype_t type, mcobjdata_t* data)
@@ -7706,14 +9035,14 @@ TMPSTATIC mcvalue_t mc_value_makenull()
     return o;
 }
 
-TMPSTATIC mcvalue_t mc_value_makestrcapacity(mcstate_t* vm, int capacity)
+TMPSTATIC mcvalue_t mc_value_makestrcapacity(mcstate_t* state, int capacity)
 {
     bool ok;
     mcobjdata_t* data;
-    data = gcmem_get_object_data_from_pool(vm, MC_OBJ_STRING);
+    data = gcmem_get_object_data_from_pool(state, MC_OBJ_STRING);
     if(!data)
     {
-        data = gcmem_alloc_object_data(vm);
+        data = gcmem_alloc_object_data(state);
         if(!data)
         {
             return mc_value_makenull();
@@ -7735,7 +9064,7 @@ TMPSTATIC mcvalue_t mc_value_makestrcapacity(mcstate_t* vm, int capacity)
     return mc_object_makedatafrom(MC_OBJ_STRING, data);
 }
 
-TMPUNUSED mcvalue_t mc_value_makestrformat(mcstate_t* vm, const char* fmt, ...)
+TMPUNUSED mcvalue_t mc_value_makestrformat(mcstate_t* state, const char* fmt, ...)
 {
     int towrite;
     int written;
@@ -7747,7 +9076,7 @@ TMPUNUSED mcvalue_t mc_value_makestrformat(mcstate_t* vm, const char* fmt, ...)
     towrite = vsnprintf(NULL, 0, fmt, args);
     va_end(args);
     va_start(args, fmt);
-    res = mc_value_makestrcapacity(vm, towrite);
+    res = mc_value_makestrcapacity(state, towrite);
     if(object_is_null(res))
     {
         return mc_value_makenull();
@@ -7760,11 +9089,11 @@ TMPUNUSED mcvalue_t mc_value_makestrformat(mcstate_t* vm, const char* fmt, ...)
     return res;
 }
 
-TMPSTATIC mcvalue_t mc_value_makestringlen(mcstate_t* vm, const char* string, size_t len)
+TMPSTATIC mcvalue_t mc_value_makestringlen(mcstate_t* state, const char* string, size_t len)
 {
     bool ok;
     mcvalue_t res;
-    res = mc_value_makestrcapacity(vm, len);
+    res = mc_value_makestrcapacity(state, len);
     if(object_is_null(res))
     {
         return res;
@@ -7777,24 +9106,24 @@ TMPSTATIC mcvalue_t mc_value_makestringlen(mcstate_t* vm, const char* string, si
     return res;
 }
 
-TMPSTATIC mcvalue_t mc_value_makestring(mcstate_t* vm, const char* string)
+TMPSTATIC mcvalue_t mc_value_makestring(mcstate_t* state, const char* string)
 {
-    return mc_value_makestringlen(vm, string, strlen(string));
+    return mc_value_makestringlen(state, string, strlen(string));
 }
 
-TMPSTATIC mcvalue_t object_make_native_function(mcstate_t* vm, const char* name, mcnativeactualfn_t fn, void* data, int data_len)
+TMPSTATIC mcvalue_t object_make_native_function(mcstate_t* state, const char* name, mcnativeactualfn_t fn, void* data, int data_len)
 {
     mcobjdata_t* obj;
     if(data_len > NATIVE_FN_MAX_DATA_LEN)
     {
         return mc_value_makenull();
     }
-    obj = gcmem_alloc_object_data(vm);
+    obj = gcmem_alloc_object_data(state);
     if(!obj)
     {
         return mc_value_makenull();
     }
-    obj->native_function.name = mc_util_strdup(vm, name);
+    obj->native_function.name = mc_util_strdup(state, name);
     if(!obj->native_function.name)
     {
         return mc_value_makenull();
@@ -7808,26 +9137,26 @@ TMPSTATIC mcvalue_t object_make_native_function(mcstate_t* vm, const char* name,
     return mc_object_makedatafrom(MC_OBJ_NATIVE_FUNCTION, obj);
 }
 
-TMPSTATIC mcvalue_t object_make_array(mcstate_t* vm)
+TMPSTATIC mcvalue_t object_make_array(mcstate_t* state)
 {
-    return object_make_array_with_capacity(vm, 8);
+    return object_make_array_with_capacity(state, 8);
 }
 
-TMPSTATIC mcvalue_t object_make_array_with_capacity(mcstate_t* vm, unsigned capacity)
+TMPSTATIC mcvalue_t object_make_array_with_capacity(mcstate_t* state, unsigned capacity)
 {
     mcobjdata_t* data;
-    data = gcmem_get_object_data_from_pool(vm, MC_OBJ_ARRAY);
+    data = gcmem_get_object_data_from_pool(state, MC_OBJ_ARRAY);
     if(data)
     {
-        array_clear(data->array);
+        mc_basicarray_clear(data->array);
         return mc_object_makedatafrom(MC_OBJ_ARRAY, data);
     }
-    data = gcmem_alloc_object_data(vm);
+    data = gcmem_alloc_object_data(state);
     if(!data)
     {
         return mc_value_makenull();
     }
-    data->array = array_make_with_capacity(vm, capacity, sizeof(mcvalue_t));
+    data->array = mc_basicarray_makecapacity(state, capacity, sizeof(mcvalue_t));
     if(!data->array)
     {
         return mc_value_makenull();
@@ -7835,57 +9164,57 @@ TMPSTATIC mcvalue_t object_make_array_with_capacity(mcstate_t* vm, unsigned capa
     return mc_object_makedatafrom(MC_OBJ_ARRAY, data);
 }
 
-TMPSTATIC mcvalue_t object_make_map(mcstate_t* vm)
+TMPSTATIC mcvalue_t object_make_map(mcstate_t* state)
 {
-    return object_make_map_with_capacity(vm, 32);
+    return object_make_map_with_capacity(state, 32);
 }
 
-TMPSTATIC mcvalue_t object_make_map_with_capacity(mcstate_t* vm, unsigned capacity)
+TMPSTATIC mcvalue_t object_make_map_with_capacity(mcstate_t* state, unsigned capacity)
 {
     mcobjdata_t* data;
-    data = gcmem_get_object_data_from_pool(vm, MC_OBJ_MAP);
+    data = gcmem_get_object_data_from_pool(state, MC_OBJ_MAP);
     if(data)
     {
-        valdict_clear(data->map);
+        mc_valdict_clear(data->map);
         return mc_object_makedatafrom(MC_OBJ_MAP, data);
     }
-    data = gcmem_alloc_object_data(vm);
+    data = gcmem_alloc_object_data(state);
     if(!data)
     {
         return mc_value_makenull();
     }
-    data->map = valdict_make_with_capacity(vm, capacity, sizeof(mcvalue_t), sizeof(mcvalue_t));
+    data->map = mc_valdict_makecapacity(state, capacity, sizeof(mcvalue_t), sizeof(mcvalue_t));
     if(!data->map)
     {
         return mc_value_makenull();
     }
-    valdict_set_hash_function(data->map, (mccollectionshashfn_t)object_hash);
-    valdict_set_equals_function(data->map, (mccollectionsequalsfn_t)object_equals_wrapped);
+    mc_valdict_sethashfunction(data->map, (mccollectionshashfn_t)object_hash);
+    mc_valdict_setequalsfunction(data->map, (mccollectionsequalsfn_t)object_equals_wrapped);
     return mc_object_makedatafrom(MC_OBJ_MAP, data);
 }
 
-TMPSTATIC mcvalue_t object_make_error(mcstate_t* vm, const char* error)
+TMPSTATIC mcvalue_t object_make_error(mcstate_t* state, const char* error)
 {
     char* errorstr;
     mcvalue_t res;
-    errorstr = mc_util_strdup(vm, error);
+    errorstr = mc_util_strdup(state, error);
     if(!errorstr)
     {
         return mc_value_makenull();
     }
-    res = object_make_error_no_copy(vm, errorstr);
+    res = object_make_error_no_copy(state, errorstr);
     if(object_is_null(res))
     {
-        mc_allocator_free(vm, errorstr);
+        mc_allocator_free(state, errorstr);
         return mc_value_makenull();
     }
     return res;
 }
 
-TMPSTATIC mcvalue_t object_make_error_no_copy(mcstate_t* vm, char* error)
+TMPSTATIC mcvalue_t object_make_error_no_copy(mcstate_t* state, char* error)
 {
     mcobjdata_t* data;
-    data = gcmem_alloc_object_data(vm);
+    data = gcmem_alloc_object_data(state);
     if(!data)
     {
         return mc_value_makenull();
@@ -8017,12 +9346,12 @@ TMPSTATIC void object_data_deinit(mcobjdata_t* data)
             break;
         case MC_OBJ_ARRAY:
             {
-                array_destroy(data->array);
+                mc_basicarray_destroy(data->array);
             }
             break;
         case MC_OBJ_MAP:
             {
-                valdict_destroy(data->map);
+                mc_valdict_destroy(data->map);
             }
             break;
         case MC_OBJ_NATIVE_FUNCTION:
@@ -8063,12 +9392,12 @@ TMPUNUSED mcgcmemory_t* object_get_mem(mcvalue_t obj)
     return data->mem;
 }
 
-TMPSTATIC const char* arcane_error_get_message(mcerror_t* error)
+TMPSTATIC const char* mc_error_getmessage(mcerror_t* error)
 {
     return error->message;
 }
 
-TMPSTATIC const char* arcane_error_get_filepath(mcerror_t* error)
+TMPSTATIC const char* mc_error_getfilepath(mcerror_t* error)
 {
     if(!error->pos.file)
     {
@@ -8077,22 +9406,22 @@ TMPSTATIC const char* arcane_error_get_filepath(mcerror_t* error)
     return error->pos.file->path;
 }
 
-TMPSTATIC const char* arcane_error_get_line(mcerror_t* error)
+TMPSTATIC const char* mc_error_getsourcelinecode(mcerror_t* error)
 {
     if(!error->pos.file)
     {
         return NULL;
     }
     mcptrarray_t* lines = error->pos.file->lines;
-    if(error->pos.line >= ptrarray_count(lines))
+    if(error->pos.line >= mc_ptrarray_count(lines))
     {
         return NULL;
     }
-    const char* line = (const char*)ptrarray_get(lines, error->pos.line);
+    const char* line = (const char*)mc_ptrarray_get(lines, error->pos.line);
     return line;
 }
 
-TMPSTATIC int arcane_error_get_line_number(mcerror_t* error)
+TMPSTATIC int mc_error_getsourcelinenumber(mcerror_t* error)
 {
     if(error->pos.line < 0)
     {
@@ -8101,7 +9430,7 @@ TMPSTATIC int arcane_error_get_line_number(mcerror_t* error)
     return error->pos.line + 1;
 }
 
-TMPSTATIC int arcane_error_get_column_number(mcerror_t* error)
+TMPSTATIC int mc_error_getsourcecolumn(mcerror_t* error)
 {
     if(error->pos.column < 0)
     {
@@ -8110,7 +9439,7 @@ TMPSTATIC int arcane_error_get_column_number(mcerror_t* error)
     return error->pos.column + 1;
 }
 
-TMPSTATIC mcerrtype_t arcane_error_get_type(mcerror_t* error)
+TMPSTATIC mcerrtype_t mc_error_gettype(mcerror_t* error)
 {
     switch(error->type)
     {
@@ -8133,12 +9462,12 @@ TMPSTATIC mcerrtype_t arcane_error_get_type(mcerror_t* error)
     }
 }
 
-TMPSTATIC const char* arcane_error_get_type_string(mcerror_t* error)
+TMPSTATIC const char* mc_error_gettypestring(mcerror_t* error)
 {
-    return arcane_error_type_to_string(arcane_error_get_type(error));
+    return mc_util_errortypename(mc_error_gettype(error));
 }
 
-TMPSTATIC const char* arcane_error_type_to_string(mcerrtype_t type)
+TMPSTATIC const char* mc_util_errortypename(mcerrtype_t type)
 {
     switch(type)
     {
@@ -8162,11 +9491,11 @@ TMPSTATIC const char* arcane_error_type_to_string(mcerrtype_t type)
 TMPSTATIC char* mc_error_serializetostring(mcstate_t* state, mcerror_t* err)
 {
     int j;
-    const char* typestr = arcane_error_get_type_string(err);
-    const char* filename = arcane_error_get_filepath(err);
-    const char* line = arcane_error_get_line(err);
-    int linenum = arcane_error_get_line_number(err);
-    int colnum = arcane_error_get_column_number(err);
+    const char* typestr = mc_error_gettypestring(err);
+    const char* filename = mc_error_getfilepath(err);
+    const char* line = mc_error_getsourcelinecode(err);
+    int linenum = mc_error_getsourcelinenumber(err);
+    int colnum = mc_error_getsourcecolumn(err);
     mcprintstate_t* buf = mc_printer_make(state, NULL);
     if(!buf)
     {
@@ -8185,12 +9514,12 @@ TMPSTATIC char* mc_error_serializetostring(mcstate_t* state, mcerror_t* err)
             mc_printer_puts(buf, "^\n");
         }
     }
-    mc_printer_printf(buf, "%s ERROR in \"%s\" on %d:%d: %s\n", typestr, filename, linenum, colnum, arcane_error_get_message(err));
-    mctraceback_t* traceback = arcane_error_get_traceback(err);
+    mc_printer_printf(buf, "%s ERROR in \"%s\" on %d:%d: %s\n", typestr, filename, linenum, colnum, mc_error_getmessage(err));
+    mctraceback_t* traceback = mc_error_gettraceback(err);
     if(traceback)
     {
         mc_printer_printf(buf, "Traceback:\n");
-        traceback_to_string((mctraceback_t*)arcane_error_get_traceback(err), buf);
+        traceback_to_string((mctraceback_t*)mc_error_gettraceback(err), buf);
     }
     if(mc_printer_failed(buf))
     {
@@ -8200,19 +9529,19 @@ TMPSTATIC char* mc_error_serializetostring(mcstate_t* state, mcerror_t* err)
     return mc_printer_get_string_and_destroy(buf);
 }
 
-TMPSTATIC mctraceback_t* arcane_error_get_traceback(mcerror_t* error)
+TMPSTATIC mctraceback_t* mc_error_gettraceback(mcerror_t* error)
 {
     return (mctraceback_t*)error->traceback;
 }
 
-TMPUNUSED int arcane_traceback_get_depth(mctraceback_t* traceback)
+TMPUNUSED int mc_traceback_getdepth(mctraceback_t* traceback)
 {
-    return array_count(traceback->items);
+    return mc_basicarray_count(traceback->items);
 }
 
-TMPUNUSED const char* arcane_traceback_get_filepath(mctraceback_t* traceback, int depth)
+TMPUNUSED const char* mc_traceback_getfilepath(mctraceback_t* traceback, int depth)
 {
-    mctraceitem_t* item = (mctraceitem_t*)array_get(traceback->items, depth);
+    mctraceitem_t* item = (mctraceitem_t*)mc_basicarray_get(traceback->items, depth);
     if(!item)
     {
         return NULL;
@@ -8220,9 +9549,9 @@ TMPUNUSED const char* arcane_traceback_get_filepath(mctraceback_t* traceback, in
     return traceback_item_get_filepath(item);
 }
 
-TMPUNUSED const char* arcane_traceback_get_line(mctraceback_t* traceback, int depth)
+TMPUNUSED const char* mc_traceback_getsourcelinecode(mctraceback_t* traceback, int depth)
 {
-    mctraceitem_t* item = (mctraceitem_t*)array_get(traceback->items, depth);
+    mctraceitem_t* item = (mctraceitem_t*)mc_basicarray_get(traceback->items, depth);
     if(!item)
     {
         return NULL;
@@ -8230,9 +9559,9 @@ TMPUNUSED const char* arcane_traceback_get_line(mctraceback_t* traceback, int de
     return traceback_item_get_line(item);
 }
 
-TMPUNUSED int arcane_traceback_get_line_number(mctraceback_t* traceback, int depth)
+TMPUNUSED int mc_traceback_getsourcelinenumber(mctraceback_t* traceback, int depth)
 {
-    mctraceitem_t* item = (mctraceitem_t*)array_get(traceback->items, depth);
+    mctraceitem_t* item = (mctraceitem_t*)mc_basicarray_get(traceback->items, depth);
     if(!item)
     {
         return -1;
@@ -8240,9 +9569,9 @@ TMPUNUSED int arcane_traceback_get_line_number(mctraceback_t* traceback, int dep
     return item->pos.line;
 }
 
-TMPUNUSED int arcane_traceback_get_column_number(mctraceback_t* traceback, int depth)
+TMPUNUSED int mc_traceback_getsourcecolumn(mctraceback_t* traceback, int depth)
 {
-    mctraceitem_t* item = (mctraceitem_t*)array_get(traceback->items, depth);
+    mctraceitem_t* item = (mctraceitem_t*)mc_basicarray_get(traceback->items, depth);
     if(!item)
     {
         return -1;
@@ -8250,9 +9579,9 @@ TMPUNUSED int arcane_traceback_get_column_number(mctraceback_t* traceback, int d
     return item->pos.column;
 }
 
-TMPUNUSED const char* arcane_traceback_get_function_name(mctraceback_t* traceback, int depth)
+TMPUNUSED const char* mc_traceback_getfunctionname(mctraceback_t* traceback, int depth)
 {
-    mctraceitem_t* item = (mctraceitem_t*)array_get(traceback->items, depth);
+    mctraceitem_t* item = (mctraceitem_t*)mc_basicarray_get(traceback->items, depth);
     if(!item)
     {
         return "";
@@ -8260,17 +9589,17 @@ TMPUNUSED const char* arcane_traceback_get_function_name(mctraceback_t* tracebac
     return item->function_name;
 }
 
-TMPSTATIC void arcane_deinit(mcstate_t* state)
+TMPSTATIC void mc_state_deinit(mcstate_t* state)
 {
     mc_compiler_destroy(state->compiler);
     global_store_destroy(state->global_store);
     gcmem_destroy(state->mem);
-    ptrarray_destroy_with_items_(state->files, (mcptrarrayitemdestroyfn_t)mc_compiledfile_destroy);
-    errors_deinit(&state->errors);
+    mc_ptrarray_destroy(state->files, (mcptrarrayitemdestroyfn_t)mc_compiledfile_destroy);
+    mc_errlist_deinit(&state->errors);
     vm_destroy(state);
 }
 
-TMPSTATIC mcvalue_t arcane_native_fn_wrapper(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t mc_natfuncbox_callerfn(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)state;
     mcnatfnbox_t* wrapper = (mcnatfnbox_t*)data;
@@ -8283,15 +9612,14 @@ TMPSTATIC mcvalue_t arcane_native_fn_wrapper(mcstate_t* state, void* data, int a
     return res;
 }
 
-
-TMPSTATIC mcvalue_t arcane_object_make_native_function_with_name(mcstate_t* state, const char* name, mcnativefn_t fn, void* data)
+TMPSTATIC mcvalue_t mc_object_makenamednatfunctionbox(mcstate_t* state, const char* name, mcnativefn_t fn, void* data)
 {
     mcnatfnbox_t wrapper;
     memset(&wrapper, 0, sizeof(mcnatfnbox_t));
     wrapper.fn = fn;
     wrapper.pstate = state;
     wrapper.data = data;
-    mcvalue_t wrappernativefunction = object_make_native_function(state, name, arcane_native_fn_wrapper, &wrapper, sizeof(wrapper));
+    mcvalue_t wrappernativefunction = object_make_native_function(state, name, mc_natfuncbox_callerfn, &wrapper, sizeof(wrapper));
     if(object_is_null(wrappernativefunction))
     {
         return mc_value_makenull();
@@ -8301,7 +9629,7 @@ TMPSTATIC mcvalue_t arcane_object_make_native_function_with_name(mcstate_t* stat
 
 TMPSTATIC void reset_state(mcstate_t* state)
 {
-    arcane_clear_errors(state);
+    mc_state_clearerrors(state);
     vm_reset(state);
 }
 
@@ -8554,7 +9882,7 @@ TMPSTATIC mcastexpression_t* expression_make_ternary(mcstate_t* state, mcastexpr
     return res;
 }
 
-TMPSTATIC void expression_destroy(mcastexpression_t* expr)
+TMPSEMISTATIC void expression_destroy(mcastexpression_t* expr)
 {
     if(!expr)
     {
@@ -8589,13 +9917,13 @@ TMPSTATIC void expression_destroy(mcastexpression_t* expr)
         }
         case MC_EXPR_ARRAYLITERAL:
         {
-            ptrarray_destroy_with_items_(expr->exprlitarray, (mcptrarrayitemdestroyfn_t)expression_destroy);
+            mc_ptrarray_destroy(expr->exprlitarray, (mcptrarrayitemdestroyfn_t)expression_destroy);
             break;
         }
         case MC_EXPR_MAPLITERAL:
         {
-            ptrarray_destroy_with_items_(expr->exprlitmap.keys, (mcptrarrayitemdestroyfn_t)expression_destroy);
-            ptrarray_destroy_with_items_(expr->exprlitmap.values, (mcptrarrayitemdestroyfn_t)expression_destroy);
+            mc_ptrarray_destroy(expr->exprlitmap.keys, (mcptrarrayitemdestroyfn_t)expression_destroy);
+            mc_ptrarray_destroy(expr->exprlitmap.values, (mcptrarrayitemdestroyfn_t)expression_destroy);
             break;
         }
         case MC_EXPR_PREFIX:
@@ -8613,13 +9941,13 @@ TMPSTATIC void expression_destroy(mcastexpression_t* expr)
         {
             fn_literal_t* fn = &expr->exprlitfunction;
             mc_allocator_free(expr->pstate, fn->name);
-            ptrarray_destroy_with_items_(fn->params, (mcptrarrayitemdestroyfn_t)ident_destroy);
+            mc_ptrarray_destroy(fn->params, (mcptrarrayitemdestroyfn_t)ident_destroy);
             code_block_destroy(fn->body);
             break;
         }
         case MC_EXPR_CALL:
         {
-            ptrarray_destroy_with_items_(expr->exprcall.args, (mcptrarrayitemdestroyfn_t)expression_destroy);
+            mc_ptrarray_destroy(expr->exprcall.args, (mcptrarrayitemdestroyfn_t)expression_destroy);
             expression_destroy(expr->exprcall.function);
             break;
         }
@@ -8654,7 +9982,7 @@ TMPSTATIC void expression_destroy(mcastexpression_t* expr)
     mc_allocator_free(expr->pstate, expr);
 }
 
-TMPSTATIC mcastexpression_t* expression_copy(mcastexpression_t* expr)
+TMPSEMISTATIC mcastexpression_t* expression_copy(mcastexpression_t* expr)
 {
     if(!expr)
     {
@@ -8715,7 +10043,7 @@ TMPSTATIC mcastexpression_t* expression_copy(mcastexpression_t* expr)
         }
         case MC_EXPR_ARRAYLITERAL:
         {
-            mcptrarray_t* valuescopy = ptrarray_copy_with_items_(expr->exprlitarray, (mcptrarrayitemcopyfn_t)expression_copy, (mcptrarrayitemdestroyfn_t)expression_destroy);
+            mcptrarray_t* valuescopy = mc_ptrarray_copy(expr->exprlitarray, (mcptrarrayitemcopyfn_t)expression_copy, (mcptrarrayitemdestroyfn_t)expression_destroy);
             if(!valuescopy)
             {
                 return NULL;
@@ -8723,26 +10051,26 @@ TMPSTATIC mcastexpression_t* expression_copy(mcastexpression_t* expr)
             res = expression_make_array_literal(expr->pstate, valuescopy);
             if(!res)
             {
-                ptrarray_destroy_with_items_(valuescopy, (mcptrarrayitemdestroyfn_t)expression_destroy);
+                mc_ptrarray_destroy(valuescopy, (mcptrarrayitemdestroyfn_t)expression_destroy);
                 return NULL;
             }
             break;
         }
         case MC_EXPR_MAPLITERAL:
         {
-            mcptrarray_t* keyscopy = ptrarray_copy_with_items_(expr->exprlitmap.keys, (mcptrarrayitemcopyfn_t)expression_copy, (mcptrarrayitemdestroyfn_t)expression_destroy);
-            mcptrarray_t* valuescopy = ptrarray_copy_with_items_(expr->exprlitmap.values, (mcptrarrayitemcopyfn_t)expression_copy, (mcptrarrayitemdestroyfn_t)expression_destroy);
+            mcptrarray_t* keyscopy = mc_ptrarray_copy(expr->exprlitmap.keys, (mcptrarrayitemcopyfn_t)expression_copy, (mcptrarrayitemdestroyfn_t)expression_destroy);
+            mcptrarray_t* valuescopy = mc_ptrarray_copy(expr->exprlitmap.values, (mcptrarrayitemcopyfn_t)expression_copy, (mcptrarrayitemdestroyfn_t)expression_destroy);
             if(!keyscopy || !valuescopy)
             {
-                ptrarray_destroy_with_items_(keyscopy, (mcptrarrayitemdestroyfn_t)expression_destroy);
-                ptrarray_destroy_with_items_(valuescopy, (mcptrarrayitemdestroyfn_t)expression_destroy);
+                mc_ptrarray_destroy(keyscopy, (mcptrarrayitemdestroyfn_t)expression_destroy);
+                mc_ptrarray_destroy(valuescopy, (mcptrarrayitemdestroyfn_t)expression_destroy);
                 return NULL;
             }
             res = expression_make_map_literal(expr->pstate, keyscopy, valuescopy);
             if(!res)
             {
-                ptrarray_destroy_with_items_(keyscopy, (mcptrarrayitemdestroyfn_t)expression_destroy);
-                ptrarray_destroy_with_items_(valuescopy, (mcptrarrayitemdestroyfn_t)expression_destroy);
+                mc_ptrarray_destroy(keyscopy, (mcptrarrayitemdestroyfn_t)expression_destroy);
+                mc_ptrarray_destroy(valuescopy, (mcptrarrayitemdestroyfn_t)expression_destroy);
                 return NULL;
             }
             break;
@@ -8783,12 +10111,12 @@ TMPSTATIC mcastexpression_t* expression_copy(mcastexpression_t* expr)
         }
         case MC_EXPR_FUNCTIONLITERAL:
         {
-            mcptrarray_t* paramscopy = ptrarray_copy_with_items_(expr->exprlitfunction.params, (mcptrarrayitemcopyfn_t)ident_copy, (mcptrarrayitemdestroyfn_t)ident_destroy);
+            mcptrarray_t* paramscopy = mc_ptrarray_copy(expr->exprlitfunction.params, (mcptrarrayitemcopyfn_t)ident_copy, (mcptrarrayitemdestroyfn_t)ident_destroy);
             code_block_t* bodycopy = code_block_copy(expr->exprlitfunction.body);
             char* namecopy = mc_util_strdup(expr->pstate, expr->exprlitfunction.name);
             if(!paramscopy || !bodycopy)
             {
-                ptrarray_destroy_with_items_(paramscopy, (mcptrarrayitemdestroyfn_t)ident_destroy);
+                mc_ptrarray_destroy(paramscopy, (mcptrarrayitemdestroyfn_t)ident_destroy);
                 code_block_destroy(bodycopy);
                 mc_allocator_free(expr->pstate, namecopy);
                 return NULL;
@@ -8796,7 +10124,7 @@ TMPSTATIC mcastexpression_t* expression_copy(mcastexpression_t* expr)
             res = expression_make_fn_literal(expr->pstate, paramscopy, bodycopy);
             if(!res)
             {
-                ptrarray_destroy_with_items_(paramscopy, (mcptrarrayitemdestroyfn_t)ident_destroy);
+                mc_ptrarray_destroy(paramscopy, (mcptrarrayitemdestroyfn_t)ident_destroy);
                 code_block_destroy(bodycopy);
                 mc_allocator_free(expr->pstate, namecopy);
                 return NULL;
@@ -8807,18 +10135,18 @@ TMPSTATIC mcastexpression_t* expression_copy(mcastexpression_t* expr)
         case MC_EXPR_CALL:
         {
             mcastexpression_t* functioncopy = expression_copy(expr->exprcall.function);
-            mcptrarray_t* argscopy = ptrarray_copy_with_items_(expr->exprcall.args, (mcptrarrayitemcopyfn_t)expression_copy, (mcptrarrayitemdestroyfn_t)expression_destroy);
+            mcptrarray_t* argscopy = mc_ptrarray_copy(expr->exprcall.args, (mcptrarrayitemcopyfn_t)expression_copy, (mcptrarrayitemdestroyfn_t)expression_destroy);
             if(!functioncopy || !argscopy)
             {
                 expression_destroy(functioncopy);
-                ptrarray_destroy_with_items_(expr->exprcall.args, (mcptrarrayitemdestroyfn_t)expression_destroy);
+                mc_ptrarray_destroy(expr->exprcall.args, (mcptrarrayitemdestroyfn_t)expression_destroy);
                 return NULL;
             }
             res = expression_make_call(expr->pstate, functioncopy, argscopy);
             if(!res)
             {
                 expression_destroy(functioncopy);
-                ptrarray_destroy_with_items_(expr->exprcall.args, (mcptrarrayitemdestroyfn_t)expression_destroy);
+                mc_ptrarray_destroy(expr->exprcall.args, (mcptrarrayitemdestroyfn_t)expression_destroy);
                 return NULL;
             }
             break;
@@ -9053,7 +10381,7 @@ TMPSTATIC mcastexpression_t* statement_make_recover(mcstate_t* state, ident_t* e
     return res;
 }
 
-TMPSTATIC void statement_destroy(mcastexpression_t* expr)
+TMPSEMISTATIC void statement_destroy(mcastexpression_t* expr)
 {
     if(!expr)
     {
@@ -9074,7 +10402,7 @@ TMPSTATIC void statement_destroy(mcastexpression_t* expr)
         }
         case MC_EXPR_STMTIF:
         {
-            ptrarray_destroy_with_items_(expr->exprifstmt.cases, (mcptrarrayitemdestroyfn_t)if_case_destroy);
+            mc_ptrarray_destroy(expr->exprifstmt.cases, (mcptrarrayitemdestroyfn_t)if_case_destroy);
             code_block_destroy(expr->exprifstmt.alternative);
             break;
         }
@@ -9139,7 +10467,7 @@ TMPSTATIC void statement_destroy(mcastexpression_t* expr)
     mc_allocator_free(expr->pstate, expr);
 }
 
-TMPSTATIC mcastexpression_t* statement_copy(mcastexpression_t* expr)
+TMPSEMISTATIC mcastexpression_t* statement_copy(mcastexpression_t* expr)
 {
     if(!expr)
     {
@@ -9170,18 +10498,18 @@ TMPSTATIC mcastexpression_t* statement_copy(mcastexpression_t* expr)
         }
         case MC_EXPR_STMTIF:
         {
-            mcptrarray_t* casescopy = ptrarray_copy_with_items_(expr->exprifstmt.cases, (mcptrarrayitemcopyfn_t)if_case_copy, (mcptrarrayitemdestroyfn_t)if_case_destroy);
+            mcptrarray_t* casescopy = mc_ptrarray_copy(expr->exprifstmt.cases, (mcptrarrayitemcopyfn_t)if_case_copy, (mcptrarrayitemdestroyfn_t)if_case_destroy);
             code_block_t* alternativecopy = code_block_copy(expr->exprifstmt.alternative);
             if(!casescopy || !alternativecopy)
             {
-                ptrarray_destroy_with_items_(casescopy, (mcptrarrayitemdestroyfn_t)if_case_destroy);
+                mc_ptrarray_destroy(casescopy, (mcptrarrayitemdestroyfn_t)if_case_destroy);
                 code_block_destroy(alternativecopy);
                 return NULL;
             }
             res = statement_make_if(expr->pstate, casescopy, alternativecopy);
             if(res)
             {
-                ptrarray_destroy_with_items_(casescopy, (mcptrarrayitemdestroyfn_t)if_case_destroy);
+                mc_ptrarray_destroy(casescopy, (mcptrarrayitemdestroyfn_t)if_case_destroy);
                 code_block_destroy(alternativecopy);
                 return NULL;
             }
@@ -9368,7 +10696,7 @@ TMPSTATIC void code_block_destroy(code_block_t* block)
     {
         return;
     }
-    ptrarray_destroy_with_items_(block->statements, (mcptrarrayitemdestroyfn_t)statement_destroy);
+    mc_ptrarray_destroy(block->statements, (mcptrarrayitemdestroyfn_t)statement_destroy);
     mc_allocator_free(block->pstate, block);
 }
 
@@ -9378,7 +10706,7 @@ TMPSTATIC code_block_t* code_block_copy(code_block_t* block)
     {
         return NULL;
     }
-    mcptrarray_t* statementscopy = ptrarray_copy_with_items_(block->statements, (mcptrarrayitemcopyfn_t)statement_copy, (mcptrarrayitemdestroyfn_t)statement_destroy);
+    mcptrarray_t* statementscopy = mc_ptrarray_copy(block->statements, (mcptrarrayitemcopyfn_t)statement_copy, (mcptrarrayitemdestroyfn_t)statement_destroy);
     if(!statementscopy)
     {
         return NULL;
@@ -9386,7 +10714,7 @@ TMPSTATIC code_block_t* code_block_copy(code_block_t* block)
     code_block_t* res = code_block_make(block->pstate, statementscopy);
     if(!res)
     {
-        ptrarray_destroy_with_items_(statementscopy, (mcptrarrayitemdestroyfn_t)statement_destroy);
+        mc_ptrarray_destroy(statementscopy, (mcptrarrayitemdestroyfn_t)statement_destroy);
         return NULL;
     }
     return res;
@@ -9397,10 +10725,10 @@ TMPSTATIC void mc_astprint_stmtlist(mcprintstate_t* pr, mcptrarray_t* statements
     int i;
     int count;
     mcastexpression_t* expr;
-    count = ptrarray_count(statements);
+    count = mc_ptrarray_count(statements);
     for(i = 0; i < count; i++)
     {
-        expr = (mcastexpression_t*)ptrarray_get(statements, i);
+        expr = (mcastexpression_t*)mc_ptrarray_get(statements, i);
         mc_astprint_statement(expr, pr);
         if(i < (count - 1))
         {
@@ -9409,7 +10737,7 @@ TMPSTATIC void mc_astprint_stmtlist(mcprintstate_t* pr, mcptrarray_t* statements
     }
 }
 
-TMPSTATIC void mc_astprint_statement(mcastexpression_t* expr, mcprintstate_t* buf)
+TMPSEMISTATIC void mc_astprint_statement(mcastexpression_t* expr, mcprintstate_t* buf)
 {
     switch(expr->type)
     {
@@ -9437,14 +10765,14 @@ TMPSTATIC void mc_astprint_statement(mcastexpression_t* expr, mcprintstate_t* bu
         case MC_EXPR_STMTIF:
             {
                 int i;
-                if_case_t* ifcase = (if_case_t*)ptrarray_get(expr->exprifstmt.cases, 0);
+                if_case_t* ifcase = (if_case_t*)mc_ptrarray_get(expr->exprifstmt.cases, 0);
                 mc_printer_puts(buf, "if (");
                 mc_astprint_expression(ifcase->ifcond, buf);
                 mc_printer_puts(buf, ") ");
                 mc_astprint_codeblock(ifcase->consequence, buf);
-                for(i = 1; i < ptrarray_count(expr->exprifstmt.cases); i++)
+                for(i = 1; i < mc_ptrarray_count(expr->exprifstmt.cases); i++)
                 {
-                    if_case_t* elifcase = (if_case_t*)ptrarray_get(expr->exprifstmt.cases, i);
+                    if_case_t* elifcase = (if_case_t*)mc_ptrarray_get(expr->exprifstmt.cases, i);
                     mc_printer_puts(buf, " elif (");
                     mc_astprint_expression(elifcase->ifcond, buf);
                     mc_printer_puts(buf, ") ");
@@ -9557,7 +10885,7 @@ TMPSTATIC void mc_astprint_statement(mcastexpression_t* expr, mcprintstate_t* bu
     }
 }
 
-TMPSTATIC void mc_astprint_expression(mcastexpression_t* expr, mcprintstate_t* buf)
+TMPSEMISTATIC void mc_astprint_expression(mcastexpression_t* expr, mcprintstate_t* buf)
 {
     switch(expr->type)
     {
@@ -9590,11 +10918,11 @@ TMPSTATIC void mc_astprint_expression(mcastexpression_t* expr, mcprintstate_t* b
             {
                 int i;
                 mc_printer_puts(buf, "[");
-                for(i = 0; i < ptrarray_count(expr->exprlitarray); i++)
+                for(i = 0; i < mc_ptrarray_count(expr->exprlitarray); i++)
                 {
-                    mcastexpression_t* arrexpr = (mcastexpression_t*)ptrarray_get(expr->exprlitarray, i);
+                    mcastexpression_t* arrexpr = (mcastexpression_t*)mc_ptrarray_get(expr->exprlitarray, i);
                     mc_astprint_expression(arrexpr, buf);
-                    if(i < (ptrarray_count(expr->exprlitarray) - 1))
+                    if(i < (mc_ptrarray_count(expr->exprlitarray) - 1))
                     {
                         mc_printer_puts(buf, ", ");
                     }
@@ -9608,16 +10936,16 @@ TMPSTATIC void mc_astprint_expression(mcastexpression_t* expr, mcprintstate_t* b
             map_literal_t* map;
             map = &expr->exprlitmap;
             mc_printer_puts(buf, "{");
-            for(i = 0; i < ptrarray_count(map->keys); i++)
+            for(i = 0; i < mc_ptrarray_count(map->keys); i++)
             {
-                mcastexpression_t* keyexpr = (mcastexpression_t*)ptrarray_get(map->keys, i);
-                mcastexpression_t* valexpr = (mcastexpression_t*)ptrarray_get(map->values, i);
+                mcastexpression_t* keyexpr = (mcastexpression_t*)mc_ptrarray_get(map->keys, i);
+                mcastexpression_t* valexpr = (mcastexpression_t*)mc_ptrarray_get(map->values, i);
 
                 mc_astprint_expression(keyexpr, buf);
                 mc_printer_puts(buf, " : ");
                 mc_astprint_expression(valexpr, buf);
 
-                if(i < (ptrarray_count(map->keys) - 1))
+                if(i < (mc_ptrarray_count(map->keys) - 1))
                 {
                     mc_printer_puts(buf, ", ");
                 }
@@ -9650,11 +10978,11 @@ TMPSTATIC void mc_astprint_expression(mcastexpression_t* expr, mcprintstate_t* b
             fn_literal_t* fn = &expr->exprlitfunction;
             mc_printer_puts(buf, "function");
             mc_printer_puts(buf, "(");
-            for(i = 0; i < ptrarray_count(fn->params); i++)
+            for(i = 0; i < mc_ptrarray_count(fn->params); i++)
             {
-                ident_t* param = (ident_t*)ptrarray_get(fn->params, i);
+                ident_t* param = (ident_t*)mc_ptrarray_get(fn->params, i);
                 mc_printer_puts(buf, param->value);
-                if(i < (ptrarray_count(fn->params) - 1))
+                if(i < (mc_ptrarray_count(fn->params) - 1))
                 {
                     mc_printer_puts(buf, ", ");
                 }
@@ -9673,11 +11001,11 @@ TMPSTATIC void mc_astprint_expression(mcastexpression_t* expr, mcprintstate_t* b
             mc_astprint_expression(ce->function, buf);
 
             mc_printer_puts(buf, "(");
-            for(i = 0; i < ptrarray_count(ce->args); i++)
+            for(i = 0; i < mc_ptrarray_count(ce->args); i++)
             {
-                mcastexpression_t* arg = (mcastexpression_t*)ptrarray_get(ce->args, i);
+                mcastexpression_t* arg = (mcastexpression_t*)mc_ptrarray_get(ce->args, i);
                 mc_astprint_expression(arg, buf);
-                if(i < (ptrarray_count(ce->args) - 1))
+                if(i < (mc_ptrarray_count(ce->args) - 1))
                 {
                     mc_printer_puts(buf, ", ");
                 }
@@ -9735,9 +11063,9 @@ TMPSTATIC void mc_astprint_codeblock(code_block_t* expr, mcprintstate_t* buf)
     int i;
     mcastexpression_t* istmt;
     mc_printer_puts(buf, "{ ");
-    for(i = 0; i < ptrarray_count(expr->statements); i++)
+    for(i = 0; i < mc_ptrarray_count(expr->statements); i++)
     {
-        istmt = (mcastexpression_t*)ptrarray_get(expr->statements, i);
+        istmt = (mcastexpression_t*)mc_ptrarray_get(expr->statements, i);
         mc_astprint_statement(istmt, buf);
         mc_printer_puts(buf, "\n");
     }
@@ -9975,7 +11303,7 @@ TMPUNUSED bool mc_args_check(mcstate_t* vm, bool generateerror, int argc, mcvalu
     {
         if(generateerror)
         {
-            errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, srcposinvalid, "Invalid number or arguments, got %d instead of %d", argc, expectedargc);
+            mc_errlist_addf(&vm->errors, MC_ERROR_RUNTIME, srcposinvalid, "Invalid number or arguments, got %d instead of %d", argc, expectedargc);
         }
         return false;
     }
@@ -9995,7 +11323,7 @@ TMPUNUSED bool mc_args_check(mcstate_t* vm, bool generateerror, int argc, mcvalu
                 {
                     return false;
                 }
-                errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, srcposinvalid, "Invalid argument %d type, got %s, expected %s", i, typestr, expectedtypestr);
+                mc_errlist_addf(&vm->errors, MC_ERROR_RUNTIME, srcposinvalid, "Invalid argument %d type, got %s, expected %s", i, typestr, expectedtypestr);
                 mc_allocator_free(vm, expectedtypestr);
             }
             return false;
@@ -10044,7 +11372,7 @@ TMPUNUSED mcvalue_t cfn_arrayjoin(mcstate_t* state, void* data, int argc, mcvalu
         return mc_value_makenull();
     }
     mcvalue_t array = args[0];
-    int alen = mv_value_arraygetlength(array);
+    int alen = mc_value_arraygetlength(array);
     mc_printer_init(&pr, state, alen, NULL, true);
     for(i=1; i<alen; i++)
     {
@@ -10369,7 +11697,7 @@ TMPSTATIC mcvalue_t cfn_len(mcstate_t* state, void* data, int argc, mcvalue_t* a
     }
     if(type == MC_OBJ_ARRAY)
     {
-        int len = mv_value_arraygetlength(arg);
+        int len = mc_value_arraygetlength(arg);
         return mc_value_makenumber(len);
     }
     if(type == MC_OBJ_MAP)
@@ -10404,7 +11732,7 @@ TMPSTATIC mcvalue_t cfn_last(mcstate_t* state, void* data, int argc, mcvalue_t* 
         return mc_value_makenull();
     }
     mcvalue_t arg = args[0];
-    return mc_value_arraygetvalueat(arg, mv_value_arraygetlength(arg) - 1);
+    return mc_value_arraygetvalueat(arg, mc_value_arraygetlength(arg) - 1);
 }
 
 TMPSTATIC mcvalue_t cfn_rest(mcstate_t* state, void* data, int argc, mcvalue_t* args)
@@ -10419,7 +11747,7 @@ TMPSTATIC mcvalue_t cfn_rest(mcstate_t* state, void* data, int argc, mcvalue_t* 
         return mc_value_makenull();
     }
     mcvalue_t arg = args[0];
-    int len = mv_value_arraygetlength(arg);
+    int len = mc_value_arraygetlength(arg);
     if(len == 0)
     {
         return mc_value_makenull();
@@ -10457,7 +11785,7 @@ TMPSTATIC mcvalue_t cfn_reverse(mcstate_t* state, void* data, int argc, mcvalue_
     mcobjtype_t type = arg.type;
     if(type == MC_OBJ_ARRAY)
     {
-        int len = mv_value_arraygetlength(arg);
+        int len = mc_value_arraygetlength(arg);
         mcvalue_t res = object_make_array_with_capacity(state, len);
         if(object_is_null(res))
         {
@@ -10571,7 +11899,7 @@ TMPSTATIC mcvalue_t cfn_arraypush(mcstate_t* state, void* data, int argc, mcvalu
             return mc_value_makenull();
         }
     }
-    int len = mv_value_arraygetlength(args[0]);
+    int len = mc_value_arraygetlength(args[0]);
     return mc_value_makenumber(len);
 
 }
@@ -10666,13 +11994,13 @@ TMPSTATIC mcvalue_t cfn_maketestdict(mcstate_t *state, void *data, int argc, mcv
     (void)data;
     if (argc != 1)
     {
-        arcane_set_runtime_errorf(state, "Invalid type passed to maketestdict, got %d, expected 1", argc);
+        mc_state_setruntimeerrorf(state, "Invalid type passed to maketestdict, got %d, expected 1", argc);
         return mc_value_makenull();
     }    
     if (args[0].type != MC_OBJ_NUMBER)
     {
-        const char *tname = arcane_object_get_type_name(args[0].type);
-        arcane_set_runtime_errorf(state, "Invalid type passed to maketestdict, got %s", tname);
+        const char *tname = mc_util_objtypename(args[0].type);
+        mc_state_setruntimeerrorf(state, "Invalid type passed to maketestdict, got %s", tname);
         return mc_value_makenull();
     }
     int numitems = object_get_number(args[0]);
@@ -10705,7 +12033,7 @@ TMPSTATIC mcvalue_t cfn_squarearray(mcstate_t *state, void *data, int argc, mcva
     {
         if(object_get_type(args[i]) != MC_OBJ_NUMBER)
         {
-            arcane_set_runtime_error(state, "Invalid type passed to squarearray");
+            mc_state_setruntimeerrorf(state, "Invalid type passed to squarearray");
             return mc_value_makenull();
         }
         num = object_get_number(args[i]);
@@ -10867,7 +12195,7 @@ TMPSTATIC mcvalue_t cfn_tonum(mcstate_t* state, void* data, int argc, mcvalue_t*
     }
     return mc_value_makenumber(result);
 err:
-    errors_add_errorf(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "Cannot convert \"%s\" to number", string);
+    mc_errlist_addf(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "Cannot convert \"%s\" to number", string);
     return mc_value_makenull();
 }
 
@@ -10900,7 +12228,7 @@ TMPSTATIC mcvalue_t cfn_range(mcstate_t* state, void* data, int argc, mcvalue_t*
         {
             const char* typestr = object_get_type_name(type);
             const char* expectedstr = object_get_type_name(MC_OBJ_NUMBER);
-            errors_add_errorf(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "Invalid argument %d passed to range, got %s instead of %s", i, typestr, expectedstr);
+            mc_errlist_addf(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "Invalid argument %d passed to range, got %s instead of %s", i, typestr, expectedstr);
             return mc_value_makenull();
         }
     }
@@ -10926,13 +12254,13 @@ TMPSTATIC mcvalue_t cfn_range(mcstate_t* state, void* data, int argc, mcvalue_t*
     }
     else
     {
-        errors_add_errorf(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "Invalid number of arguments passed to range, got %d", argc);
+        mc_errlist_addf(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "Invalid number of arguments passed to range, got %d", argc);
         return mc_value_makenull();
     }
 
     if(step == 0)
     {
-        errors_add_error(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "range step cannot be 0");
+        mc_errlist_push(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "range step cannot be 0");
         return mc_value_makenull();
     }
 
@@ -11055,10 +12383,10 @@ TMPSTATIC mcvalue_t cfn_concat(mcstate_t* state, void* data, int argc, mcvalue_t
         if(itemtype != MC_OBJ_ARRAY)
         {
             const char* itemtypestr = object_get_type_name(itemtype);
-            errors_add_errorf(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "Invalid argument 2 passed to concat, got %s", itemtypestr);
+            mc_errlist_addf(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "Invalid argument 2 passed to concat, got %s", itemtypestr);
             return mc_value_makenull();
         }
-        for(i = 0; i < mv_value_arraygetlength(args[1]); i++)
+        for(i = 0; i < mc_value_arraygetlength(args[1]); i++)
         {
             mcvalue_t item = mc_value_arraygetvalueat(args[1], i);
             ok = mc_value_arraypush(args[0], item);
@@ -11067,7 +12395,7 @@ TMPSTATIC mcvalue_t cfn_concat(mcstate_t* state, void* data, int argc, mcvalue_t
                 return mc_value_makenull();
             }
         }
-        return mc_value_makenumber(mv_value_arraygetlength(args[0]));
+        return mc_value_makenumber(mc_value_arraygetlength(args[0]));
     }
     if(type == MC_OBJ_STRING)
     {
@@ -11115,7 +12443,7 @@ TMPSTATIC mcvalue_t cfn_remove(mcstate_t* state, void* data, int argc, mcvalue_t
     }
 
     int ix = -1;
-    for(i = 0; i < mv_value_arraygetlength(args[0]); i++)
+    for(i = 0; i < mc_value_arraygetlength(args[0]); i++)
     {
         mcvalue_t obj = mc_value_arraygetvalueat(args[0], i);
         if(object_equals(obj, args[1]))
@@ -11176,11 +12504,11 @@ TMPSTATIC mcvalue_t cfn_crash(mcstate_t* state, void* data, int argc, mcvalue_t*
     (void)data;
     if(argc == 1 && args[0].type == MC_OBJ_STRING)
     {
-        errors_add_error(&state->errors, MC_ERROR_RUNTIME, frame_src_position(state->current_frame), mc_value_stringgetdata(args[0]));
+        mc_errlist_push(&state->errors, MC_ERROR_RUNTIME, mc_callframe_getsourcelocation(state->current_frame), mc_value_stringgetdata(args[0]));
     }
     else
     {
-        errors_add_error(&state->errors, MC_ERROR_RUNTIME, frame_src_position(state->current_frame), "");
+        mc_errlist_push(&state->errors, MC_ERROR_RUNTIME, mc_callframe_getsourcelocation(state->current_frame), "");
     }
     return mc_value_makenull();
 }
@@ -11197,7 +12525,7 @@ TMPSTATIC mcvalue_t cfn_assert(mcstate_t* state, void* data, int argc, mcvalue_t
 
     if(!object_get_bool(args[0]))
     {
-        errors_add_error(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "assertion failed");
+        mc_errlist_push(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "assertion failed");
         return mc_value_makenull();
     }
 
@@ -11238,14 +12566,14 @@ TMPSTATIC mcvalue_t cfn_random(mcstate_t* state, void* data, int argc, mcvalue_t
         double max = object_get_number(args[1]);
         if(min >= max)
         {
-            errors_add_error(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "max is bigger than min");
+            mc_errlist_push(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "max is bigger than min");
             return mc_value_makenull();
         }
         double range = max - min;
         res = min + (res * range);
         return mc_value_makenumber(res);
     }
-    errors_add_error(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "Invalid number or arguments");
+    mc_errlist_push(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "Invalid number or arguments");
     return mc_value_makenull();
 }
 
@@ -11264,7 +12592,7 @@ TMPSTATIC mcvalue_t cfn_slice(mcstate_t* state, void* data, int argc, mcvalue_t*
     int index = (int)object_get_number(args[1]);
     if(argtype == MC_OBJ_ARRAY)
     {
-        int len = mv_value_arraygetlength(args[0]);
+        int len = mc_value_arraygetlength(args[0]);
         if(index < 0)
         {
             index = len + index;
@@ -11323,7 +12651,7 @@ TMPSTATIC mcvalue_t cfn_slice(mcstate_t* state, void* data, int argc, mcvalue_t*
         return res;
     }
     const char* typestr = object_get_type_name(argtype);
-    errors_add_errorf(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "Invalid argument 0 passed to slice, got %s instead", typestr);
+    mc_errlist_addf(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "Invalid argument 0 passed to slice, got %s instead", typestr);
     return mc_value_makenull();
 }
 
@@ -11774,1585 +13102,12 @@ TMPSTATIC bool code_read_operands(mcopdefinition_t* def, const uint8_t* instr, u
 }
 
 
-#ifdef COLLECTIONS_DEBUG
-    #define COLLECTIONS_ASSERT(x) assert(x)
-#else
-    #define COLLECTIONS_ASSERT(x)
-#endif
-
-TMPSTATIC char* collections_strndup(mcstate_t* state, const char* string, size_t n)
-{
-    char* outputstring = (char*)mc_allocator_alloc(state, n + 1);
-    if(!outputstring)
-    {
-        return NULL;
-    }
-    outputstring[n] = '\0';
-    memcpy(outputstring, string, n);
-    return outputstring;
-}
-
-TMPSTATIC char* collections_strdup(mcstate_t* state, const char* string)
-{
-    if(!string)
-    {
-        return NULL;
-    }
-    return collections_strndup(state, string, strlen(string));
-}
-
-#define DICT_INVALID_IX UINT_MAX
-#define DICT_INITIAL_SIZE 32
-
-TMPSTATIC mcgenericdict_t* dict_make_(mcstate_t* state, mcdictitemcopyfn_t copy_fn, mcdictitemdestroyfn_t destroy_fn)
-{
-    bool ok;
-    mcgenericdict_t* dict = (mcgenericdict_t*)mc_allocator_alloc(state, sizeof(mcgenericdict_t));
-    if(dict == NULL)
-    {
-        return NULL;
-    }
-    ok = dict_init(dict, state, DICT_INITIAL_SIZE, copy_fn, destroy_fn);
-    if(!ok)
-    {
-        mc_allocator_free(state, dict);
-        return NULL;
-    }
-    dict->pstate = state;
-    return dict;
-}
-
-TMPSTATIC void dict_destroy(mcgenericdict_t* dict)
-{
-    mcstate_t* state;
-    if(!dict)
-    {
-        return;
-    }
-    state = dict->pstate;
-    dict_deinit(dict, true);
-    mc_allocator_free(state, dict);
-}
-
-TMPSTATIC void dict_destroy_with_items(mcgenericdict_t* dict)
-{
-    unsigned int i;
-    if(!dict)
-    {
-        return;
-    }
-    if(dict->destroy_fn)
-    {
-        for(i = 0; i < dict->count; i++)
-        {
-            dict->destroy_fn(dict->values[i]);
-        }
-    }
-    dict_destroy(dict);
-}
-
-TMPSTATIC mcgenericdict_t* dict_copy_with_items(mcgenericdict_t* dict)
-{
-    bool ok;
-    int i;
-    if(!dict->copy_fn || !dict->destroy_fn)
-    {
-        return NULL;
-    }
-
-    mcgenericdict_t* dictcopy = dict_make_(dict->pstate, dict->copy_fn, dict->destroy_fn);
-    if(!dictcopy)
-    {
-        return NULL;
-    }
-    dictcopy->pstate = dict->pstate;
-    for(i = 0; i < dict_count(dict); i++)
-    {
-        const char* key = dict_get_key_at(dict, i);
-        void* item = dict_get_value_at(dict, i);
-        void* itemcopy = dictcopy->copy_fn(item);
-        if(item && !itemcopy)
-        {
-            dict_destroy_with_items(dictcopy);
-            return NULL;
-        }
-        ok = dict_set(dictcopy, key, itemcopy);
-        if(!ok)
-        {
-            dictcopy->destroy_fn(itemcopy);
-            dict_destroy_with_items(dictcopy);
-            return NULL;
-        }
-    }
-    return dictcopy;
-}
-
-TMPSTATIC bool dict_set(mcgenericdict_t* dict, const char* key, void* value)
-{
-    return dict_set_internal(dict, key, NULL, value);
-}
-
-TMPSTATIC void* dict_get(mcgenericdict_t* dict, const char* key)
-{
-    unsigned long hash = hash_string(key);
-    bool found = false;
-    unsigned long cellix = dict_get_cell_ix(dict, key, hash, &found);
-    if(found == false)
-    {
-        return NULL;
-    }
-    unsigned int itemix = dict->cells[cellix];
-    return dict->values[itemix];
-}
-
-TMPSTATIC void* dict_get_value_at(mcgenericdict_t* dict, unsigned int ix)
-{
-    if(ix >= dict->count)
-    {
-        return NULL;
-    }
-    return dict->values[ix];
-}
-
-TMPSTATIC const char* dict_get_key_at(mcgenericdict_t* dict, unsigned int ix)
-{
-    if(ix >= dict->count)
-    {
-        return NULL;
-    }
-    return dict->keys[ix];
-}
-
-TMPSTATIC int dict_count(mcgenericdict_t* dict)
-{
-    if(!dict)
-    {
-        return 0;
-    }
-    return dict->count;
-}
-
-TMPUNUSED bool dict_remove(mcgenericdict_t* dict, const char* key)
-{
-    unsigned int x;
-    unsigned long hash = hash_string(key);
-    bool found = false;
-    unsigned int cell = dict_get_cell_ix(dict, key, hash, &found);
-    if(!found)
-    {
-        return false;
-    }
-
-    unsigned int itemix = dict->cells[cell];
-    mc_allocator_free(dict->pstate, dict->keys[itemix]);
-    unsigned int lastitemix = dict->count - 1;
-    if(itemix < lastitemix)
-    {
-        dict->keys[itemix] = dict->keys[lastitemix];
-        dict->values[itemix] = dict->values[lastitemix];
-        dict->cell_ixs[itemix] = dict->cell_ixs[lastitemix];
-        dict->hashes[itemix] = dict->hashes[lastitemix];
-        dict->cells[dict->cell_ixs[itemix]] = itemix;
-    }
-    dict->count--;
-
-    unsigned int i = cell;
-    unsigned int j = i;
-    for(x = 0; x < (dict->cell_capacity - 1); x++)
-    {
-        j = (j + 1) & (dict->cell_capacity - 1);
-        if(dict->cells[j] == DICT_INVALID_IX)
-        {
-            break;
-        }
-        unsigned int k = (unsigned int)(dict->hashes[dict->cells[j]]) & (dict->cell_capacity - 1);
-        if((j > i && (k <= i || k > j)) || (j < i && (k <= i && k > j)))
-        {
-            dict->cell_ixs[dict->cells[j]] = i;
-            dict->cells[i] = dict->cells[j];
-            i = j;
-        }
-    }
-    dict->cells[i] = DICT_INVALID_IX;
-    return true;
-}
-
-TMPSTATIC bool dict_init(mcgenericdict_t* dict, mcstate_t* state, unsigned int initialcapacity, mcdictitemcopyfn_t copy_fn, mcdictitemdestroyfn_t destroy_fn)
-{
-    unsigned int i;
-    dict->pstate = state;
-    dict->cells = NULL;
-    dict->keys = NULL;
-    dict->values = NULL;
-    dict->cell_ixs = NULL;
-    dict->hashes = NULL;
-
-    dict->count = 0;
-    dict->cell_capacity = initialcapacity;
-    dict->item_capacity = (unsigned int)(initialcapacity * 0.7f);
-    dict->copy_fn = copy_fn;
-    dict->destroy_fn = destroy_fn;
-
-    dict->cells = (unsigned int*)mc_allocator_alloc(dict->pstate, dict->cell_capacity * sizeof(*dict->cells));
-    dict->keys = (char**)mc_allocator_alloc(dict->pstate, dict->item_capacity * sizeof(*dict->keys));
-    dict->values = (void**)mc_allocator_alloc(dict->pstate, dict->item_capacity * sizeof(*dict->values));
-    dict->cell_ixs = (unsigned int*)mc_allocator_alloc(dict->pstate, dict->item_capacity * sizeof(*dict->cell_ixs));
-    dict->hashes = (long unsigned int*)mc_allocator_alloc(dict->pstate, dict->item_capacity * sizeof(*dict->hashes));
-    if(dict->cells == NULL || dict->keys == NULL || dict->values == NULL || dict->cell_ixs == NULL || dict->hashes == NULL)
-    {
-        goto error;
-    }
-    for(i = 0; i < dict->cell_capacity; i++)
-    {
-        dict->cells[i] = DICT_INVALID_IX;
-    }
-    return true;
-error:
-    mc_allocator_free(dict->pstate, dict->cells);
-    mc_allocator_free(dict->pstate, dict->keys);
-    mc_allocator_free(dict->pstate, dict->values);
-    mc_allocator_free(dict->pstate, dict->cell_ixs);
-    mc_allocator_free(dict->pstate, dict->hashes);
-    return false;
-}
-
-TMPSTATIC void dict_deinit(mcgenericdict_t* dict, bool freekeys)
-{
-    unsigned int i;
-    if(freekeys)
-    {
-        for(i = 0; i < dict->count; i++)
-        {
-            mc_allocator_free(dict->pstate, dict->keys[i]);
-        }
-    }
-    dict->count = 0;
-    dict->item_capacity = 0;
-    dict->cell_capacity = 0;
-
-    mc_allocator_free(dict->pstate, dict->cells);
-    mc_allocator_free(dict->pstate, dict->keys);
-    mc_allocator_free(dict->pstate, dict->values);
-    mc_allocator_free(dict->pstate, dict->cell_ixs);
-    mc_allocator_free(dict->pstate, dict->hashes);
-
-    dict->cells = NULL;
-    dict->keys = NULL;
-    dict->values = NULL;
-    dict->cell_ixs = NULL;
-    dict->hashes = NULL;
-}
-
-TMPSTATIC unsigned int dict_get_cell_ix(mcgenericdict_t* dict, const char* key, unsigned long hash, bool* outfound)
-{
-    unsigned int i;
-    *outfound = false;
-    unsigned int cellix = (unsigned int)hash & (dict->cell_capacity - 1);
-    for(i = 0; i < dict->cell_capacity; i++)
-    {
-        unsigned int ix = (cellix + i) & (dict->cell_capacity - 1);
-        unsigned int cell = dict->cells[ix];
-        if(cell == DICT_INVALID_IX)
-        {
-            return ix;
-        }
-        unsigned long hashtocheck = dict->hashes[cell];
-        if(hash != hashtocheck)
-        {
-            continue;
-        }
-        const char* keytocheck = dict->keys[cell];
-        if(strcmp(key, keytocheck) == 0)
-        {
-            *outfound = true;
-            return ix;
-        }
-    }
-    return DICT_INVALID_IX;
-}
-
-TMPSTATIC unsigned long hash_string(const char* str)
-{
-    /* djb2 */
-    unsigned long hash = 5381;
-    uint8_t c;
-    while((c = *str++))
-    {
-        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
-    }
-    return hash;
-}
-
-TMPSEMISTATIC bool dict_grow_and_rehash(mcgenericdict_t* dict)
-{
-    bool ok;
-    unsigned int i;
-    mcgenericdict_t newdict;
-    ok = dict_init(&newdict, dict->pstate, dict->cell_capacity * 2, dict->copy_fn, dict->destroy_fn);
-    if(!ok)
-    {
-        return false;
-    }
-    for(i = 0; i < dict->count; i++)
-    {
-        char* key = dict->keys[i];
-        void* value = dict->values[i];
-        ok = dict_set_internal(&newdict, key, key, value);
-        if(!ok)
-        {
-            dict_deinit(&newdict, false);
-            return false;
-        }
-    }
-    dict_deinit(dict, false);
-    *dict = newdict;
-    return true;
-}
-
-TMPSTATIC bool dict_set_internal(mcgenericdict_t* dict, const char* ckey, char* mkey, void* value)
-{
-    bool ok;
-    unsigned long hash = hash_string(ckey);
-    bool found = false;
-    unsigned int cellix = dict_get_cell_ix(dict, ckey, hash, &found);
-    if(found)
-    {
-        unsigned int itemix = dict->cells[cellix];
-        dict->values[itemix] = value;
-        return true;
-    }
-    if(dict->count >= dict->item_capacity)
-    {
-        ok = dict_grow_and_rehash(dict);
-        if(!ok)
-        {
-            return false;
-        }
-        cellix = dict_get_cell_ix(dict, ckey, hash, &found);
-    }
-
-    if(mkey)
-    {
-        dict->keys[dict->count] = mkey;
-    }
-    else
-    {
-        char* keycopy = collections_strdup(dict->pstate, ckey);
-        if(!keycopy)
-        {
-            return false;
-        }
-        dict->keys[dict->count] = keycopy;
-    }
-    dict->cells[cellix] = dict->count;
-    dict->values[dict->count] = value;
-    dict->cell_ixs[dict->count] = cellix;
-    dict->hashes[dict->count] = hash;
-    dict->count++;
-    return true;
-}
-
-#define VALDICT_INVALID_IX UINT_MAX
-
-TMPSTATIC bool valdict_init(mcvaldict_t* dict, mcstate_t* state, size_t key_size, size_t val_size, unsigned int initialcapacity)
-{
-    unsigned int i;
-    dict->pstate = state;
-    dict->key_size = key_size;
-    dict->val_size = val_size;
-    dict->cells = NULL;
-    dict->keys = NULL;
-    dict->values = NULL;
-    dict->cell_ixs = NULL;
-    dict->hashes = NULL;
-    dict->count = 0;
-    dict->cell_capacity = initialcapacity;
-    dict->item_capacity = (unsigned int)(initialcapacity * 0.7f);
-
-    dict->_keys_equals = NULL;
-    dict->_hash_key = NULL;
-
-    dict->cells = (unsigned int*)mc_allocator_alloc(dict->pstate, dict->cell_capacity * sizeof(*dict->cells));
-    dict->keys = (void*)mc_allocator_alloc(dict->pstate, dict->item_capacity * key_size);
-    dict->values = (void*)mc_allocator_alloc(dict->pstate, dict->item_capacity * val_size);
-    dict->cell_ixs = (unsigned int*)mc_allocator_alloc(dict->pstate, dict->item_capacity * sizeof(*dict->cell_ixs));
-    dict->hashes = (long unsigned int*)mc_allocator_alloc(dict->pstate, dict->item_capacity * sizeof(*dict->hashes));
-    if(dict->cells == NULL || dict->keys == NULL || dict->values == NULL || dict->cell_ixs == NULL || dict->hashes == NULL)
-    {
-        goto error;
-    }
-    for(i = 0; i < dict->cell_capacity; i++)
-    {
-        dict->cells[i] = VALDICT_INVALID_IX;
-    }
-    return true;
-error:
-    mc_allocator_free(dict->pstate, dict->cells);
-    mc_allocator_free(dict->pstate, dict->keys);
-    mc_allocator_free(dict->pstate, dict->values);
-    mc_allocator_free(dict->pstate, dict->cell_ixs);
-    mc_allocator_free(dict->pstate, dict->hashes);
-    return false;
-}
-
-TMPSTATIC void valdict_deinit(mcvaldict_t* dict)
-{
-    dict->key_size = 0;
-    dict->val_size = 0;
-    dict->count = 0;
-    dict->item_capacity = 0;
-    dict->cell_capacity = 0;
-
-    mc_allocator_free(dict->pstate, dict->cells);
-    mc_allocator_free(dict->pstate, dict->keys);
-    mc_allocator_free(dict->pstate, dict->values);
-    mc_allocator_free(dict->pstate, dict->cell_ixs);
-    mc_allocator_free(dict->pstate, dict->hashes);
-
-    dict->cells = NULL;
-    dict->keys = NULL;
-    dict->values = NULL;
-    dict->cell_ixs = NULL;
-    dict->hashes = NULL;
-}
-
-TMPSTATIC mcvaldict_t* valdict_make_(mcstate_t* state, size_t key_size, size_t val_size)
-{
-    return valdict_make_with_capacity(state, DICT_INITIAL_SIZE, key_size, val_size);
-}
-
-TMPSTATIC mcvaldict_t* valdict_make_with_capacity(mcstate_t* state, unsigned int mincapacity, size_t key_size, size_t val_size)
-{
-    bool ok;
-    unsigned int capacity = mc_util_upperpowoftwo(mincapacity * 2);
-    mcvaldict_t* dict = (mcvaldict_t*)mc_allocator_alloc(state, sizeof(mcvaldict_t));
-    if(!dict)
-    {
-        return NULL;
-    }
-    ok = valdict_init(dict, state, key_size, val_size, capacity);
-    if(!ok)
-    {
-        mc_allocator_free(state, dict);
-        return NULL;
-    }
-    dict->pstate = state;
-    return dict;
-}
-
-TMPSTATIC void valdict_destroy(mcvaldict_t* dict)
-{
-    mcstate_t* state;
-    if(!dict)
-    {
-        return;
-    }
-    state = dict->pstate;
-    valdict_deinit(dict);
-    mc_allocator_free(state, dict);
-}
-
-TMPSTATIC void valdict_set_hash_function(mcvaldict_t* dict, mccollectionshashfn_t hashfn)
-{
-    dict->_hash_key = hashfn;
-}
-
-TMPSTATIC void valdict_set_equals_function(mcvaldict_t* dict, mccollectionsequalsfn_t equalsfn)
-{
-    dict->_keys_equals = equalsfn;
-}
-
-TMPSTATIC bool valdict_set(mcvaldict_t* dict, void* key, void* value)
-{
-    bool ok;
-    unsigned long hash = valdict_hash_key(dict, key);
-    bool found = false;
-    unsigned int cellix = valdict_get_cell_ix(dict, key, hash, &found);
-    if(found)
-    {
-        unsigned int itemix = dict->cells[cellix];
-        valdict_set_value_at(dict, itemix, value);
-        return true;
-    }
-    if(dict->count >= dict->item_capacity)
-    {
-        ok = valdict_grow_and_rehash(dict);
-        if(!ok)
-        {
-            return false;
-        }
-        cellix = valdict_get_cell_ix(dict, key, hash, &found);
-    }
-    unsigned int lastix = dict->count;
-    dict->count++;
-    dict->cells[cellix] = lastix;
-    valdict_set_key_at(dict, lastix, key);
-    valdict_set_value_at(dict, lastix, value);
-    dict->cell_ixs[lastix] = cellix;
-    dict->hashes[lastix] = hash;
-    return true;
-}
-
-TMPSTATIC void* valdict_get(mcvaldict_t* dict, void* key)
-{
-    if(dict->count == 0)
-    {
-        return NULL;
-    }
-    unsigned long hash = valdict_hash_key(dict, key);
-    bool found = false;
-    unsigned long cellix = valdict_get_cell_ix(dict, key, hash, &found);
-    if(!found)
-    {
-        return NULL;
-    }
-    unsigned int itemix = dict->cells[cellix];
-    return valdict_get_value_at(dict, itemix);
-}
-
-TMPSTATIC void* valdict_get_key_at(mcvaldict_t* dict, unsigned int ix)
-{
-    if(ix >= dict->count)
-    {
-        return NULL;
-    }
-    return (char*)dict->keys + (dict->key_size * ix);
-}
-
-TMPSTATIC void* valdict_get_value_at(mcvaldict_t* dict, unsigned int ix)
-{
-    if(ix >= dict->count)
-    {
-        return NULL;
-    }
-    return (char*)dict->values + (dict->val_size * ix);
-}
-
-TMPUNUSED unsigned int valdict_get_capacity(mcvaldict_t* dict)
-{
-    return dict->item_capacity;
-}
-
-TMPSTATIC bool valdict_set_value_at(mcvaldict_t* dict, unsigned int ix, void* value)
-{
-    if(ix >= dict->count)
-    {
-        return false;
-    }
-    size_t offset = ix * dict->val_size;
-    memcpy((char*)dict->values + offset, value, dict->val_size);
-    return true;
-}
-
-TMPSTATIC int valdict_count(mcvaldict_t* dict)
-{
-    if(!dict)
-    {
-        return 0;
-    }
-    return dict->count;
-}
-
-TMPUNUSED bool valdict_remove(mcvaldict_t* dict, void* key)
-{
-    unsigned int x;
-    unsigned long hash = valdict_hash_key(dict, key);
-    bool found = false;
-    unsigned int cell = valdict_get_cell_ix(dict, key, hash, &found);
-    if(!found)
-    {
-        return false;
-    }
-
-    unsigned int itemix = dict->cells[cell];
-    unsigned int lastitemix = dict->count - 1;
-    if(itemix < lastitemix)
-    {
-        void* lastkey = valdict_get_key_at(dict, lastitemix);
-        valdict_set_key_at(dict, itemix, lastkey);
-        void* lastvalue = valdict_get_key_at(dict, lastitemix);
-        valdict_set_value_at(dict, itemix, lastvalue);
-        dict->cell_ixs[itemix] = dict->cell_ixs[lastitemix];
-        dict->hashes[itemix] = dict->hashes[lastitemix];
-        dict->cells[dict->cell_ixs[itemix]] = itemix;
-    }
-    dict->count--;
-
-    unsigned int i = cell;
-    unsigned int j = i;
-    for(x = 0; x < (dict->cell_capacity - 1); x++)
-    {
-        j = (j + 1) & (dict->cell_capacity - 1);
-        if(dict->cells[j] == VALDICT_INVALID_IX)
-        {
-            break;
-        }
-        unsigned int k = (unsigned int)(dict->hashes[dict->cells[j]]) & (dict->cell_capacity - 1);
-        if((j > i && (k <= i || k > j)) || (j < i && (k <= i && k > j)))
-        {
-            dict->cell_ixs[dict->cells[j]] = i;
-            dict->cells[i] = dict->cells[j];
-            i = j;
-        }
-    }
-    dict->cells[i] = VALDICT_INVALID_IX;
-    return true;
-}
-
-TMPSTATIC void valdict_clear(mcvaldict_t* dict)
-{
-    unsigned int i;
-    dict->count = 0;
-    for(i = 0; i < dict->cell_capacity; i++)
-    {
-        dict->cells[i] = VALDICT_INVALID_IX;
-    }
-}
-
-TMPSTATIC unsigned int valdict_get_cell_ix(mcvaldict_t* dict, void* key, unsigned long hash, bool* outfound)
-{
-    bool areequal;
-    unsigned int i;
-    unsigned int ix;
-    unsigned int cell;
-    unsigned int cellix;
-    unsigned long hashtocheck;
-    void* keytocheck;
-    *outfound = false;
-    cellix = (unsigned int)hash & (dict->cell_capacity - 1);
-    for(i = 0; i < dict->cell_capacity; i++)
-    {
-        ix = (cellix + i) & (dict->cell_capacity - 1);
-        cell = dict->cells[ix];
-        if(cell == VALDICT_INVALID_IX)
-        {
-            return ix;
-        }
-        hashtocheck = dict->hashes[cell];
-        if(hash != hashtocheck)
-        {
-            continue;
-        }
-        keytocheck = valdict_get_key_at(dict, cell);
-        areequal = valdict_keys_are_equal(dict, key, keytocheck);
-        if(areequal)
-        {
-            *outfound = true;
-            return ix;
-        }
-    }
-    return VALDICT_INVALID_IX;
-}
-
-TMPSTATIC bool valdict_grow_and_rehash(mcvaldict_t* dict)
-{
-    bool ok;
-    mcvaldict_t newdict;
-    unsigned int i;
-    unsigned newcapacity = dict->cell_capacity == 0 ? DICT_INITIAL_SIZE : dict->cell_capacity * 2;
-    ok = valdict_init(&newdict, dict->pstate, dict->key_size, dict->val_size, newcapacity);
-    if(!ok)
-    {
-        return false;
-    }
-    newdict._keys_equals = dict->_keys_equals;
-    newdict._hash_key = dict->_hash_key;
-    for(i = 0; i < dict->count; i++)
-    {
-        char* key = (char*)valdict_get_key_at(dict, i);
-        void* value = valdict_get_value_at(dict, i);
-        ok = valdict_set(&newdict, key, value);
-        if(!ok)
-        {
-            valdict_deinit(&newdict);
-            return false;
-        }
-    }
-    valdict_deinit(dict);
-    *dict = newdict;
-    return true;
-}
-
-TMPSTATIC bool valdict_set_key_at(mcvaldict_t* dict, unsigned int ix, void* key)
-{
-    if(ix >= dict->count)
-    {
-        return false;
-    }
-    size_t offset = ix * dict->key_size;
-    memcpy((char*)dict->keys + offset, key, dict->key_size);
-    return true;
-}
-
-TMPSTATIC bool valdict_keys_are_equal(mcvaldict_t* dict, void* a, void* b)
-{
-    if(dict->_keys_equals)
-    {
-        return dict->_keys_equals(a, b);
-    }
-    return memcmp(a, b, dict->key_size) == 0;
-}
-
-TMPSTATIC unsigned long valdict_hash_key(mcvaldict_t* dict, void* key)
-{
-    if(dict->_hash_key)
-    {
-        return dict->_hash_key(key);
-    }
-    return mc_util_hashdata(key, dict->key_size);
-}
-
-TMPSTATIC mcbasicarray_t* array_make(mcstate_t* state, size_t element_size)
-{
-    return array_make_with_capacity(state, 32, element_size);
-}
-
-TMPSTATIC mcbasicarray_t* array_make_with_capacity(mcstate_t* state, unsigned int capacity, size_t element_size)
-{
-    bool ok;
-    mcbasicarray_t* arr = (mcbasicarray_t*)mc_allocator_alloc(state, sizeof(mcbasicarray_t));
-    if(!arr)
-    {
-        return NULL;
-    }
-
-    ok = array_init_with_capacity(arr, state, capacity, element_size);
-    if(!ok)
-    {
-        mc_allocator_free(state, arr);
-        return NULL;
-    }
-    arr->pstate = state;
-    return arr;
-}
-
-TMPSTATIC void array_destroy(mcbasicarray_t* arr)
-{
-    mcstate_t* state;
-    if(!arr)
-    {
-        return;
-    }
-    state = arr->pstate;
-    array_deinit(arr);
-    mc_allocator_free(state, arr);
-}
-
-TMPUNUSED void array_destroy_with_items_(mcbasicarray_t* arr, mcarrayitemdeinitfn_t deinit_fn)
-{
-    int i;
-    for(i = 0; i < array_count(arr); i++)
-    {
-        void* item = array_get(arr, i);
-        deinit_fn(item);
-    }
-    array_destroy(arr);
-}
-
-TMPSTATIC mcbasicarray_t* array_copy(mcbasicarray_t* arr)
-{
-    mcbasicarray_t* copy = (mcbasicarray_t*)mc_allocator_alloc(arr->pstate, sizeof(mcbasicarray_t));
-    if(!copy)
-    {
-        return NULL;
-    }
-    copy->pstate = arr->pstate;
-    copy->capacity = arr->capacity;
-    copy->count = arr->count;
-    copy->element_size = arr->element_size;
-    copy->lock_capacity = arr->lock_capacity;
-    if(arr->data_allocated)
-    {
-        copy->data_allocated = (unsigned char*)mc_allocator_alloc(arr->pstate, arr->capacity * arr->element_size);
-        if(!copy->data_allocated)
-        {
-            mc_allocator_free(arr->pstate, copy);
-            return NULL;
-        }
-        copy->data = copy->data_allocated;
-        memcpy(copy->data_allocated, arr->data, arr->capacity * arr->element_size);
-    }
-    else
-    {
-        copy->data_allocated = NULL;
-        copy->data = NULL;
-    }
-
-    return copy;
-}
-
-TMPSTATIC bool array_add(mcbasicarray_t* arr, void* value)
-{
-    if(arr->count >= arr->capacity)
-    {
-        COLLECTIONS_ASSERT(!arr->lock_capacity);
-        if(arr->lock_capacity)
-        {
-            return false;
-        }
-        unsigned int newcapacity = arr->capacity > 0 ? arr->capacity * 2 : 1;
-        unsigned char* newdata = (unsigned char*)mc_allocator_alloc(arr->pstate, newcapacity * arr->element_size);
-        if(!newdata)
-        {
-            return false;
-        }
-        memcpy(newdata, arr->data, arr->count * arr->element_size);
-        mc_allocator_free(arr->pstate, arr->data_allocated);
-        arr->data_allocated = newdata;
-        arr->data = arr->data_allocated;
-        arr->capacity = newcapacity;
-    }
-    if(value)
-    {
-        memcpy(arr->data + (arr->count * arr->element_size), value, arr->element_size);
-    }
-    arr->count++;
-    return true;
-}
-
-TMPUNUSED bool array_addn(mcbasicarray_t* arr, void* values, int n)
-{
-    bool ok;
-    int i;
-    for(i = 0; i < n; i++)
-    {
-        uint8_t* value = NULL;
-        if(values)
-        {
-            value = (uint8_t*)values + (i * arr->element_size);
-        }
-        ok = array_add(arr, value);
-        if(!ok)
-        {
-            return false;
-        }
-    }
-    return true;
-}
-
-TMPUNUSED bool array_add_array(mcbasicarray_t* dest, mcbasicarray_t* source)
-{
-    bool ok;
-    int i;
-    COLLECTIONS_ASSERT(dest->element_size == source->element_size);
-    if(dest->element_size != source->element_size)
-    {
-        return false;
-    }
-    int destbeforecount = array_count(dest);
-    for(i = 0; i < array_count(source); i++)
-    {
-        void* item = array_get(source, i);
-        ok = array_add(dest, item);
-        if(!ok)
-        {
-            dest->count = destbeforecount;
-            return false;
-        }
-    }
-    return true;
-}
-
-TMPSTATIC bool array_push(mcbasicarray_t* arr, void* value)
-{
-    return array_add(arr, value);
-}
-
-TMPSTATIC bool array_pop(mcbasicarray_t* arr, void* outvalue)
-{
-    if(arr->count <= 0)
-    {
-        return false;
-    }
-    if(outvalue)
-    {
-        void* res = array_get(arr, arr->count - 1);
-        memcpy(outvalue, res, arr->element_size);
-    }
-    array_remove_at(arr, arr->count - 1);
-    return true;
-}
-
-TMPSTATIC void* array_top(mcbasicarray_t* arr)
-{
-    if(arr->count <= 0)
-    {
-        return NULL;
-    }
-    return array_get(arr, arr->count - 1);
-}
-
-TMPSTATIC bool array_set(mcbasicarray_t* arr, unsigned int ix, void* value)
-{
-    if(ix >= arr->count)
-    {
-        COLLECTIONS_ASSERT(false);
-        return false;
-    }
-    size_t offset = ix * arr->element_size;
-    memmove(arr->data + offset, value, arr->element_size);
-    return true;
-}
-
-TMPUNUSED bool array_setn(mcbasicarray_t* arr, unsigned int ix, void* values, int n)
-{
-    bool ok;
-    int i;
-    for(i = 0; i < n; i++)
-    {
-        int destix = ix + i;
-        unsigned char* value = (unsigned char*)values + (i * arr->element_size);
-        if(destix < array_count(arr))
-        {
-            ok = array_set(arr, destix, value);
-            if(!ok)
-            {
-                return false;
-            }
-        }
-        else
-        {
-            ok = array_add(arr, value);
-            if(!ok)
-            {
-                return false;
-            }
-        }
-    }
-    return true;
-}
-
-TMPSTATIC void* array_get(mcbasicarray_t* arr, unsigned int ix)
-{
-    if(ix >= arr->count)
-    {
-        COLLECTIONS_ASSERT(false);
-        return NULL;
-    }
-    size_t offset = ix * arr->element_size;
-    return arr->data + offset;
-}
-
-TMPSTATIC void* array_get_const(mcbasicarray_t* arr, unsigned int ix)
-{
-    if(ix >= arr->count)
-    {
-        COLLECTIONS_ASSERT(false);
-        return NULL;
-    }
-    size_t offset = ix * arr->element_size;
-    return arr->data + offset;
-}
-
-TMPUNUSED void* array_get_last(mcbasicarray_t* arr)
-{
-    if(arr->count <= 0)
-    {
-        return NULL;
-    }
-    return array_get(arr, arr->count - 1);
-}
-
-TMPSTATIC int array_count(mcbasicarray_t* arr)
-{
-    if(!arr)
-    {
-        return 0;
-    }
-    return arr->count;
-}
-
-TMPUNUSED unsigned int array_get_capacity(mcbasicarray_t* arr)
-{
-    return arr->capacity;
-}
-
-TMPSTATIC bool array_remove_at(mcbasicarray_t* arr, unsigned int ix)
-{
-    if(ix >= arr->count)
-    {
-        return false;
-    }
-    if(ix == 0)
-    {
-        arr->data += arr->element_size;
-        arr->capacity--;
-        arr->count--;
-        return true;
-    }
-    if(ix == (arr->count - 1))
-    {
-        arr->count--;
-        return true;
-    }
-    size_t tomovebytes = (arr->count - 1 - ix) * arr->element_size;
-    void* dest = arr->data + (ix * arr->element_size);
-    void* src = arr->data + ((ix + 1) * arr->element_size);
-    memmove(dest, src, tomovebytes);
-    arr->count--;
-    return true;
-}
-
-TMPSTATIC bool array_remove_item(mcbasicarray_t* arr, void* ptr)
-{
-    int ix = array_get_index(arr, ptr);
-    if(ix < 0)
-    {
-        return false;
-    }
-    return array_remove_at(arr, ix);
-}
-
-TMPSTATIC void array_clear(mcbasicarray_t* arr)
-{
-    arr->count = 0;
-}
-
-TMPUNUSED void array_clear_and_deinit_items_(mcbasicarray_t* arr, mcarrayitemdeinitfn_t deinit_fn)
-{
-    int i;
-    for(i = 0; i < array_count(arr); i++)
-    {
-        void* item = array_get(arr, i);
-        deinit_fn(item);
-    }
-    arr->count = 0;
-}
-
-TMPSTATIC void array_lock_capacity(mcbasicarray_t* arr)
-{
-    arr->lock_capacity = true;
-}
-
-TMPSTATIC int array_get_index(mcbasicarray_t* arr, void* ptr)
-{
-    int i;
-    for(i = 0; i < array_count(arr); i++)
-    {
-        if(array_get_const(arr, i) == ptr)
-        {
-            return i;
-        }
-    }
-    return -1;
-}
-
-TMPSTATIC bool array_contains(mcbasicarray_t* arr, void* ptr)
-{
-    return array_get_index(arr, ptr) >= 0;
-}
-
-TMPSTATIC void* array_data(mcbasicarray_t* arr)
-{
-    return arr->data;
-}
-
-TMPUNUSED void* array_const_data(mcbasicarray_t* arr)
-{
-    return arr->data;
-}
-
-TMPSTATIC void array_orphan_data(mcbasicarray_t* arr)
-{
-    array_init_with_capacity(arr, arr->pstate, 0, arr->element_size);
-}
-
-TMPSTATIC bool array_reverse(mcbasicarray_t* arr)
-{
-    int aix;
-    int count = array_count(arr);
-    if(count < 2)
-    {
-        return true;
-    }
-    void* temp = (void*)mc_allocator_alloc(arr->pstate, arr->element_size);
-    if(!temp)
-    {
-        return false;
-    }
-    for(aix = 0; aix < (count / 2); aix++)
-    {
-        int bix = count - aix - 1;
-        void* a = array_get(arr, aix);
-        void* b = array_get(arr, bix);
-        memcpy(temp, a, arr->element_size);
-        /* no need for check because it will be within range */
-        array_set(arr, aix, b);
-        array_set(arr, bix, temp);
-    }
-    mc_allocator_free(arr->pstate, temp);
-    return true;
-}
-
-TMPSTATIC bool array_init_with_capacity(mcbasicarray_t* arr, mcstate_t* state, unsigned int capacity, size_t element_size)
-{
-    arr->pstate = state;
-    if(capacity > 0)
-    {
-        arr->data_allocated = (unsigned char*)mc_allocator_alloc(arr->pstate, capacity * element_size);
-        arr->data = arr->data_allocated;
-        if(!arr->data_allocated)
-        {
-            return false;
-        }
-    }
-    else
-    {
-        arr->data_allocated = NULL;
-        arr->data = NULL;
-    }
-    arr->capacity = capacity;
-    arr->count = 0;
-    arr->element_size = element_size;
-    arr->lock_capacity = false;
-    return true;
-}
-
-TMPSTATIC void array_deinit(mcbasicarray_t* arr)
-{
-    mc_allocator_free(arr->pstate, arr->data_allocated);
-}
-
-TMPSTATIC mcptrarray_t* ptrarray_make(mcstate_t* state)
-{
-    return ptrarray_make_with_capacity(state, 0);
-}
-
-TMPSTATIC mcptrarray_t* ptrarray_make_with_capacity(mcstate_t* state, unsigned int capacity)
-{
-    bool ok;
-    mcptrarray_t* ptrarr = (mcptrarray_t*)mc_allocator_alloc(state, sizeof(mcptrarray_t));
-    if(!ptrarr)
-    {
-        return NULL;
-    }
-    ptrarr->pstate = state;
-    ok = array_init_with_capacity(&ptrarr->arr, state, capacity, sizeof(void*));
-    if(!ok)
-    {
-        mc_allocator_free(state, ptrarr);
-        return NULL;
-    }
-    return ptrarr;
-}
-
-TMPSTATIC void ptrarray_destroy(mcptrarray_t* arr)
-{
-    if(!arr)
-    {
-        return;
-    }
-    array_deinit(&arr->arr);
-    mc_allocator_free(arr->pstate, arr);
-}
-
-TMPSTATIC void ptrarray_destroy_with_items_(mcptrarray_t* arr, mcptrarrayitemdestroyfn_t destroy_fn)
-{
-    /* todo: destroy and copy in make fn */
-    if(arr == NULL)
-    {
-        return;
-    }
-    if(destroy_fn)
-    {
-        ptrarray_clear_and_destroy_items_(arr, destroy_fn);
-    }
-    ptrarray_destroy(arr);
-}
-
-TMPUNUSED mcptrarray_t* ptrarray_copy(mcptrarray_t* arr)
-{
-    bool ok;
-    int i;
-    mcptrarray_t* arrcopy = ptrarray_make_with_capacity(arr->pstate, arr->arr.capacity);
-    if(!arrcopy)
-    {
-        return NULL;
-    }
-    for(i = 0; i < ptrarray_count(arr); i++)
-    {
-        void* item = (void*)ptrarray_get(arr, i);
-        ok = ptrarray_push(arrcopy, item);
-        if(!ok)
-        {
-            ptrarray_destroy(arrcopy);
-            return NULL;
-        }
-    }
-    return arrcopy;
-}
-
-TMPSTATIC mcptrarray_t* ptrarray_copy_with_items_(mcptrarray_t* arr, mcptrarrayitemcopyfn_t copy_fn, mcptrarrayitemdestroyfn_t destroy_fn)
-{
-    bool ok;
-    int i;
-    mcptrarray_t* arrcopy = ptrarray_make_with_capacity(arr->pstate, arr->arr.capacity);
-    if(!arrcopy)
-    {
-        return NULL;
-    }
-    for(i = 0; i < ptrarray_count(arr); i++)
-    {
-        void* item = (void*)ptrarray_get(arr, i);
-        void* itemcopy = copy_fn(item);
-        if(item && !itemcopy)
-        {
-            goto err;
-        }
-        ok = ptrarray_push(arrcopy, itemcopy);
-        if(!ok)
-        {
-            goto err;
-        }
-    }
-    return arrcopy;
-err:
-    ptrarray_destroy_with_items_(arrcopy, destroy_fn);
-    return NULL;
-}
-
-TMPSTATIC bool ptrarray_push(mcptrarray_t* arr, void* ptr)
-{
-    return array_add(&arr->arr, &ptr);
-}
-
-TMPSTATIC void* ptrarray_get(mcptrarray_t* arr, unsigned int ix)
-{
-    void* res = array_get(&arr->arr, ix);
-    if(!res)
-    {
-        return NULL;
-    }
-    return *(void**)res;
-}
-
-TMPSTATIC void* ptrarray_pop(mcptrarray_t* arr)
-{
-    int ix = ptrarray_count(arr) - 1;
-    void* res = ptrarray_get(arr, ix);
-    ptrarray_remove_at(arr, ix);
-    return res;
-}
-
-TMPSTATIC void* ptrarray_top(mcptrarray_t* arr)
-{
-    int count = ptrarray_count(arr);
-    if(count == 0)
-    {
-        return NULL;
-    }
-    return ptrarray_get(arr, count - 1);
-}
-
-TMPSTATIC int ptrarray_count(mcptrarray_t* arr)
-{
-    if(!arr)
-    {
-        return 0;
-    }
-    return array_count(&arr->arr);
-}
-
-TMPSTATIC bool ptrarray_remove_at(mcptrarray_t* arr, unsigned int ix)
-{
-    return array_remove_at(&arr->arr, ix);
-}
-
-TMPSTATIC void ptrarray_clear(mcptrarray_t* arr)
-{
-    array_clear(&arr->arr);
-}
-
-TMPSTATIC void ptrarray_clear_and_destroy_items_(mcptrarray_t* arr, mcptrarrayitemdestroyfn_t destroy_fn)
-{
-    int i;
-    for(i = 0; i < ptrarray_count(arr); i++)
-    {
-        void* item = ptrarray_get(arr, i);
-        destroy_fn(item);
-    }
-    ptrarray_clear(arr);
-}
-
-TMPUNUSED void ptrarray_lock_capacity(mcptrarray_t* arr)
-{
-    array_lock_capacity(&arr->arr);
-}
-
-TMPSTATIC int ptrarray_get_index(mcptrarray_t* arr, void* ptr)
-{
-    int i;
-    for(i = 0; i < ptrarray_count(arr); i++)
-    {
-        if(ptrarray_get(arr, i) == ptr)
-        {
-            return i;
-        }
-    }
-    return -1;
-}
-
-TMPUNUSED bool ptrarray_contains(mcptrarray_t* arr, void* item)
-{
-    return ptrarray_get_index(arr, item) >= 0;
-}
-
-TMPUNUSED void* ptrarray_get_addr(mcptrarray_t* arr, unsigned int ix)
-{
-    void* res = array_get(&arr->arr, ix);
-    if(res == NULL)
-    {
-        return NULL;
-    }
-    return res;
-}
-
-TMPUNUSED void* ptrarray_data(mcptrarray_t* arr)
-{
-    return array_data(&arr->arr);
-}
-
-TMPUNUSED void ptrarray_reverse(mcptrarray_t* arr)
-{
-    array_reverse(&arr->arr);
-}
-
-TMPSTATIC mcprintstate_t* mc_printer_make(mcstate_t* state, FILE* ofh)
-{
-    return mc_printer_make_with_capacity(state, 1, ofh);
-}
-
-TMPSTATIC bool mc_printer_init(mcprintstate_t* pr, mcstate_t* state, size_t capacity, FILE* ofh, bool onstack)
-{
-    memset(pr, 0, sizeof(mcprintstate_t));
-    pr->pstate = state;
-    pr->failed = false;
-    pr->destfile = ofh;
-    pr->data = NULL;
-    pr->capacity = 0;
-    pr->len = 0;
-    pr->onstack = onstack;
-    if(ofh == NULL)
-    {
-        pr->data = (char*)mc_allocator_alloc(state, capacity);
-        if(pr->data == NULL)
-        {
-            mc_allocator_free(state, pr);
-            return false;
-        }
-        pr->capacity = capacity;
-        pr->len = 0;
-        pr->data[0] = '\0';
-    }
-    return true;
-}
-
-TMPSTATIC mcprintstate_t* mc_printer_make_with_capacity(mcstate_t* state, unsigned int capacity, FILE* ofh)
-{
-    mcprintstate_t* pr;
-    pr = (mcprintstate_t*)mc_allocator_alloc(state, sizeof(mcprintstate_t));
-    if(pr == NULL)
-    {
-        return NULL;
-    }
-    if(!mc_printer_init(pr, state, capacity, ofh, false))
-    {
-        return NULL;
-    }
-    return pr;
-}
-
-TMPSTATIC void mc_printer_destroy(mcprintstate_t* pr)
-{
-    if(pr == NULL)
-    {
-        return;
-    }
-    if(pr->data != NULL)
-    {
-        mc_allocator_free(pr->pstate, pr->data);
-    }
-    if(pr->onstack)
-    {
-        return;
-    }
-    mc_allocator_free(pr->pstate, pr);
-}
-
-TMPUNUSED void mc_printer_clear(mcprintstate_t* pr)
-{
-    if(pr->destfile == NULL)
-    {
-        if(pr->failed)
-        {
-            return;
-        }
-        pr->len = 0;
-        pr->data[0] = '\0';
-    }
-}
-
-TMPSTATIC bool mc_printer_putlen(mcprintstate_t* pr, const char* str, size_t len)
-{
-    bool ok;
-    size_t needcap;
-    if(pr->failed)
-    {
-        return false;
-    }
-    if(len == 0)
-    {
-        return true;
-    }
-    if(pr->destfile != NULL)
-    {
-        fwrite(str, sizeof(char), len, pr->destfile);
-        fflush(pr->destfile);
-        return true;
-    }
-    needcap = pr->len + len + 1;
-    if(needcap > pr->capacity)
-    {
-        ok = mc_printer_grow(pr, needcap * 2);
-        if(!ok)
-        {
-            return false;
-        }
-    }
-    memcpy(pr->data + pr->len, str, len);
-    pr->len = pr->len + len;
-    pr->data[pr->len] = '\0';
-    return true;
-}
-
-TMPSTATIC bool mc_printer_puts(mcprintstate_t* pr, const char* str)
-{
-    return mc_printer_putlen(pr, str, strlen(str));
-}
-
-TMPSTATIC bool mc_printer_printf(mcprintstate_t* pr, const char* fmt, ...)
-{
-    bool ok;
-    int resz;
-    int needsz;
-    size_t needcap;
-    va_list va;
-    (void)resz;
-    if(pr->failed)
-    {
-        return false;
-    }
-    if(pr->destfile != NULL)
-    {
-        va_start(va, fmt);
-        vfprintf(pr->destfile, fmt, va);
-        fflush(pr->destfile);
-        va_end(va);
-        return true;
-    }
-    va_start(va, fmt);
-    needsz = vsnprintf(NULL, 0, fmt, va);
-    va_end(va);
-    if(needsz == 0)
-    {
-        return true;
-    }
-    needcap = pr->len + needsz + 1;
-    if(needcap > pr->capacity)
-    {
-        ok = mc_printer_grow(pr, needcap * 2);
-        if(!ok)
-        {
-            return false;
-        }
-    }
-    va_start(va, fmt);
-    resz = vsprintf(pr->data + pr->len, fmt, va);
-    va_end(va);
-    if(resz != needsz)
-    {
-        return false;
-    }
-    pr->len = pr->len + needsz;
-    pr->data[pr->len] = '\0';
-    return true;
-}
-
-TMPSTATIC const char* mc_printer_getstring(mcprintstate_t* pr)
-{
-    if(pr->failed)
-    {
-        return NULL;
-    }
-    if(pr->destfile != NULL)
-    {
-        return NULL;
-    }
-    return pr->data;
-}
-
-TMPUNUSED size_t mc_printer_getlength(mcprintstate_t* pr)
-{
-    if(pr->failed)
-    {
-        return 0;
-    }
-    if(pr->destfile != NULL)
-    {
-        return 0;
-    }
-    return pr->len;
-}
-
-TMPSTATIC char* mc_printer_get_string_and_destroy(mcprintstate_t* pr)
-{
-    char* res;
-    if(pr->failed)
-    {
-        mc_printer_destroy(pr);
-        return NULL;
-    }
-    if(pr->destfile != NULL)
-    {
-        return NULL;
-    }
-    res = pr->data;
-    pr->data = NULL;
-    mc_printer_destroy(pr);
-    return res;
-}
-
-TMPSTATIC bool mc_printer_failed(mcprintstate_t* pr)
-{
-    return pr->failed;
-}
-
-TMPSTATIC bool mc_printer_grow(mcprintstate_t* pr, size_t newcapacity)
-{
-    char* ndata;
-    if(pr->destfile != NULL)
-    {
-        return true;
-    }
-    ndata = (char*)mc_allocator_alloc(pr->pstate, newcapacity);
-    if(ndata == NULL)
-    {
-        pr->failed = true;
-        return false;
-    }
-    memcpy(ndata, pr->data, pr->len);
-    ndata[pr->len] = '\0';
-    mc_allocator_free(pr->pstate, pr->data);
-    pr->data = ndata;
-    pr->capacity = newcapacity;
-    return true;
-}
 
 TMPSTATIC mcptrarray_t* kg_split_string(mcstate_t* state, const char* str, const char* delimiter)
 {
     bool ok;
     int i;
-    mcptrarray_t* res = ptrarray_make(state);
+    mcptrarray_t* res = mc_ptrarray_make(state);
     char* rest = NULL;
     if(!str)
     {
@@ -13368,7 +13123,7 @@ TMPSTATIC mcptrarray_t* kg_split_string(mcstate_t* state, const char* str, const
         {
             goto err;
         }
-        ok = ptrarray_push(res, line);
+        ok = mc_ptrarray_push(res, line);
         if(!ok)
         {
             mc_allocator_free(state, line);
@@ -13382,7 +13137,7 @@ TMPSTATIC mcptrarray_t* kg_split_string(mcstate_t* state, const char* str, const
     {
         goto err;
     }
-    ok = ptrarray_push(res, rest);
+    ok = mc_ptrarray_push(res, rest);
     if(!ok)
     {
         goto err;
@@ -13392,13 +13147,13 @@ err:
     mc_allocator_free(state, rest);
     if(res)
     {
-        for(i = 0; i < ptrarray_count(res); i++)
+        for(i = 0; i < mc_ptrarray_count(res); i++)
         {
-            char* line = (char*)ptrarray_get(res, i);
+            char* line = (char*)mc_ptrarray_get(res, i);
             mc_allocator_free(state, line);
         }
     }
-    ptrarray_destroy(res);
+    mc_ptrarray_destroy(res, NULL);
     return NULL;
 }
 
@@ -13410,11 +13165,11 @@ TMPSTATIC char* kg_join(mcstate_t* state, mcptrarray_t* items, const char* with)
     {
         return NULL;
     }
-    for(i = 0; i < ptrarray_count(items); i++)
+    for(i = 0; i < mc_ptrarray_count(items); i++)
     {
-        char* item = (char*)ptrarray_get(items, i);
+        char* item = (char*)mc_ptrarray_get(items, i);
         mc_printer_puts(res, item);
-        if(i < (ptrarray_count(items) - 1))
+        if(i < (mc_ptrarray_count(items) - 1))
         {
             mc_printer_puts(res, with);
         }
@@ -13436,14 +13191,14 @@ TMPSTATIC char* kg_canonicalise_path(mcstate_t* state, const char* path)
         return NULL;
     }
 
-    for(i = 0; i < ptrarray_count(split) - 1; i++)
+    for(i = 0; i < mc_ptrarray_count(split) - 1; i++)
     {
-        char* item = (char*)ptrarray_get(split, i);
-        char* nextitem = (char*)ptrarray_get(split, i + 1);
+        char* item = (char*)mc_ptrarray_get(split, i);
+        char* nextitem = (char*)mc_ptrarray_get(split, i + 1);
         if(kg_streq(item, "."))
         {
             mc_allocator_free(state, item);
-            ptrarray_remove_at(split, i);
+            mc_ptrarray_removeat(split, i);
             i = -1;
             continue;
         }
@@ -13451,19 +13206,19 @@ TMPSTATIC char* kg_canonicalise_path(mcstate_t* state, const char* path)
         {
             mc_allocator_free(state, item);
             mc_allocator_free(state, nextitem);
-            ptrarray_remove_at(split, i);
-            ptrarray_remove_at(split, i);
+            mc_ptrarray_removeat(split, i);
+            mc_ptrarray_removeat(split, i);
             i = -1;
         }
     }
 
     char* joined = kg_join(state, split, "/");
-    for(i = 0; i < ptrarray_count(split); i++)
+    for(i = 0; i < mc_ptrarray_count(split); i++)
     {
-        void* item = ptrarray_get(split, i);
+        void* item = mc_ptrarray_get(split, i);
         mc_allocator_free(state, item);
     }
-    ptrarray_destroy(split);
+    mc_ptrarray_destroy(split, NULL);
     return joined;
 }
 
@@ -13478,18 +13233,18 @@ TMPSTATIC bool kg_streq(const char* a, const char* b)
 }
 
 
-TMPSTATIC void errors_init(mcerrlist_t* errors)
+TMPSTATIC void mc_errlist_init(mcerrlist_t* errors)
 {
     memset(errors, 0, sizeof(mcerrlist_t));
     errors->count = 0;
 }
 
-TMPSTATIC void errors_deinit(mcerrlist_t* errors)
+TMPSTATIC void mc_errlist_deinit(mcerrlist_t* errors)
 {
-    errors_clear(errors);
+    mc_errlist_clear(errors);
 }
 
-TMPSTATIC void errors_add_error(mcerrlist_t* errors, mcerrtype_t type, mcastlocation_t pos, const char* message)
+TMPSTATIC void mc_errlist_push(mcerrlist_t* errors, mcerrtype_t type, mcastlocation_t pos, const char* message)
 {
     if(errors->count >= MC_CONF_ERROR_MAXERRORCOUNT)
     {
@@ -13512,7 +13267,7 @@ TMPSTATIC void errors_add_error(mcerrlist_t* errors, mcerrtype_t type, mcastloca
     errors->count++;
 }
 
-TMPSTATIC void errors_add_errorf(mcerrlist_t* errors, mcerrtype_t type, mcastlocation_t pos, const char* format, ...)
+TMPSEMISTATIC void mc_errlist_addf(mcerrlist_t* errors, mcerrtype_t type, mcastlocation_t pos, const char* format, ...)
 {
     va_list args;
     va_start(args, format);
@@ -13525,15 +13280,15 @@ TMPSTATIC void errors_add_errorf(mcerrlist_t* errors, mcerrtype_t type, mcastloc
     (void)written;
     MC_ASSERT(towrite == written);
     va_end(args);
-    errors_add_error(errors, type, pos, res);
+    mc_errlist_push(errors, type, pos, res);
 }
 
-TMPSTATIC void errors_clear(mcerrlist_t* errors)
+TMPSTATIC void mc_errlist_clear(mcerrlist_t* errors)
 {
     int i;
-    for(i = 0; i < errors_get_count(errors); i++)
+    for(i = 0; i < mc_errlist_size(errors); i++)
     {
-        mcerror_t* error = errors_get(errors, i);
+        mcerror_t* error = mc_errlist_get(errors, i);
         if(error->traceback)
         {
             traceback_destroy(error->traceback);
@@ -13542,12 +13297,12 @@ TMPSTATIC void errors_clear(mcerrlist_t* errors)
     errors->count = 0;
 }
 
-TMPSTATIC int errors_get_count(mcerrlist_t* errors)
+TMPSTATIC int mc_errlist_size(mcerrlist_t* errors)
 {
     return errors->count;
 }
 
-TMPSTATIC mcerror_t* errors_get(mcerrlist_t* errors, int ix)
+TMPSTATIC mcerror_t* mc_errlist_get(mcerrlist_t* errors, int ix)
 {
     if(ix >= errors->count)
     {
@@ -13556,14 +13311,6 @@ TMPSTATIC mcerror_t* errors_get(mcerrlist_t* errors, int ix)
     return &errors->errors[ix];
 }
 
-TMPSTATIC mcerror_t* errors_getc(mcerrlist_t* errors, int ix)
-{
-    if(ix >= errors->count)
-    {
-        return NULL;
-    }
-    return &errors->errors[ix];
-}
 
 TMPUNUSED const char* error_type_to_string(mcerrtype_t type)
 {
@@ -13595,12 +13342,12 @@ TMPSTATIC mcerror_t* errors_get_last_error(mcerrlist_t* errors)
     return &errors->errors[errors->count - 1];
 }
 
-TMPSTATIC bool errors_has_errors(mcerrlist_t* errors)
+TMPSTATIC bool mc_errlist_haserrors(mcerrlist_t* errors)
 {
-    return errors_get_count(errors) > 0;
+    return mc_errlist_size(errors) > 0;
 }
 
-TMPSTATIC bool frame_init(mcvmframe_t* frame, mcvalue_t functionobj, int base_pointer)
+TMPSTATIC bool mc_callframe_init(mcvmframe_t* frame, mcvalue_t functionobj, int base_pointer)
 {
     if(object_get_type(functionobj) != MC_OBJ_FUNCTION)
     {
@@ -13619,7 +13366,7 @@ TMPSTATIC bool frame_init(mcvmframe_t* frame, mcvalue_t functionobj, int base_po
     return true;
 }
 
-TMPSTATIC uint64_t frame_read_uint64(mcvmframe_t* frame)
+TMPSTATIC uint64_t mc_callframe_readuint64(mcvmframe_t* frame)
 {
     uint64_t res;
     uint8_t* data;
@@ -13637,7 +13384,7 @@ TMPSTATIC uint64_t frame_read_uint64(mcvmframe_t* frame)
     return res;
 }
 
-TMPSTATIC uint16_t frame_read_uint16(mcvmframe_t* frame)
+TMPSTATIC uint16_t mc_callframe_readuint16(mcvmframe_t* frame)
 {
     uint8_t* data;
     data = frame->bytecode + frame->ip;
@@ -13645,7 +13392,7 @@ TMPSTATIC uint16_t frame_read_uint16(mcvmframe_t* frame)
     return (data[0] << 8) | data[1];
 }
 
-TMPSTATIC uint8_t frame_read_uint8(mcvmframe_t* frame)
+TMPSTATIC uint8_t mc_callframe_readuint8(mcvmframe_t* frame)
 {
     uint8_t* data;
     data = frame->bytecode + frame->ip;
@@ -13653,13 +13400,13 @@ TMPSTATIC uint8_t frame_read_uint8(mcvmframe_t* frame)
     return data[0];
 }
 
-TMPSTATIC mcopcode_t frame_read_opcode(mcvmframe_t* frame)
+TMPSTATIC mcopcode_t mc_callframe_readopcode(mcvmframe_t* frame)
 {
     frame->src_ip = frame->ip;
-    return (mcopcode_t)frame_read_uint8(frame);
+    return (mcopcode_t)mc_callframe_readuint8(frame);
 }
 
-TMPSTATIC mcastlocation_t frame_src_position(mcvmframe_t* frame)
+TMPSTATIC mcastlocation_t mc_callframe_getsourcelocation(mcvmframe_t* frame)
 {
     if(frame->src_positions)
     {
@@ -13678,17 +13425,17 @@ TMPSTATIC mcgcmemory_t* gcmem_make(mcstate_t* state)
     }
     memset(mem, 0, sizeof(mcgcmemory_t));
     mem->pstate = state;
-    mem->gcobjlist = ptrarray_make(state);
+    mem->gcobjlist = mc_ptrarray_make(state);
     if(!mem->gcobjlist)
     {
         goto error;
     }
-    mem->gcobjlistback = ptrarray_make(state);
+    mem->gcobjlistback = mc_ptrarray_make(state);
     if(!mem->gcobjlistback)
     {
         goto error;
     }
-    mem->gcobjlistremains = array_make(state, sizeof(mcvalue_t));
+    mem->gcobjlistremains = mc_basicarray_make(state, sizeof(mcvalue_t));
     if(!mem->gcobjlistremains)
     {
         goto error;
@@ -13718,16 +13465,16 @@ TMPSTATIC void gcmem_destroy(mcgcmemory_t* mem)
         return;
     }
 
-    array_destroy(mem->gcobjlistremains);
-    ptrarray_destroy(mem->gcobjlistback);
+    mc_basicarray_destroy(mem->gcobjlistremains);
+    mc_ptrarray_destroy(mem->gcobjlistback, NULL);
 
-    for(i = 0; i < ptrarray_count(mem->gcobjlist); i++)
+    for(i = 0; i < mc_ptrarray_count(mem->gcobjlist); i++)
     {
-        mcobjdata_t* obj = (mcobjdata_t*)ptrarray_get(mem->gcobjlist, i);
+        mcobjdata_t* obj = (mcobjdata_t*)mc_ptrarray_get(mem->gcobjlist, i);
         object_data_deinit(obj);
         mc_allocator_free(mem->pstate, obj);
     }
-    ptrarray_destroy(mem->gcobjlist);
+    mc_ptrarray_destroy(mem->gcobjlist, NULL);
 
     for(i = 0; i < GCMEM_POOLS_NUM; i++)
     {
@@ -13769,18 +13516,18 @@ TMPSTATIC mcobjdata_t* gcmem_alloc_object_data(mcstate_t* state)
     }
     memset(data, 0, sizeof(mcobjdata_t));
     data->pstate = state;
-    MC_ASSERT(ptrarray_count(state->mem->gcobjlistback) >= ptrarray_count(state->mem->gcobjlist));
+    MC_ASSERT(mc_ptrarray_count(state->mem->gcobjlistback) >= mc_ptrarray_count(state->mem->gcobjlist));
     /*
     * we want to make sure that appending to gcobjlistback never fails in sweep
     * so this only reserves space there.
     */
-    ok = ptrarray_push(state->mem->gcobjlistback, data);
+    ok = mc_ptrarray_push(state->mem->gcobjlistback, data);
     if(!ok)
     {
         mc_allocator_free(state, data);
         return NULL;
     }
-    ok = ptrarray_push(state->mem->gcobjlist, data);
+    ok = mc_ptrarray_push(state->mem->gcobjlist, data);
     if(!ok)
     {
         mc_allocator_free(state, data);
@@ -13800,17 +13547,17 @@ TMPSTATIC mcobjdata_t* gcmem_get_object_data_from_pool(mcstate_t* state, mcobjty
     }
     mcobjdata_t* data = pool->data[pool->count - 1];
 
-    MC_ASSERT(ptrarray_count(state->mem->gcobjlistback) >= ptrarray_count(state->mem->gcobjlist));
+    MC_ASSERT(mc_ptrarray_count(state->mem->gcobjlistback) >= mc_ptrarray_count(state->mem->gcobjlist));
     /*
     * we want to make sure that appending to gcobjlistback never fails in sweep
     * so this only reserves space there.
     */
-    ok = ptrarray_push(state->mem->gcobjlistback, data);
+    ok = mc_ptrarray_push(state->mem->gcobjlistback, data);
     if(!ok)
     {
         return NULL;
     }
-    ok = ptrarray_push(state->mem->gcobjlist, data);
+    ok = mc_ptrarray_push(state->mem->gcobjlist, data);
     if(!ok)
     {
         return NULL;
@@ -13824,14 +13571,14 @@ TMPSTATIC mcobjdata_t* gcmem_get_object_data_from_pool(mcstate_t* state, mcobjty
 TMPSTATIC void gc_unmark_all(mcgcmemory_t* mem)
 {
     int i;
-    for(i = 0; i < ptrarray_count(mem->gcobjlist); i++)
+    for(i = 0; i < mc_ptrarray_count(mem->gcobjlist); i++)
     {
-        mcobjdata_t* data = (mcobjdata_t*)ptrarray_get(mem->gcobjlist, i);
+        mcobjdata_t* data = (mcobjdata_t*)mc_ptrarray_get(mem->gcobjlist, i);
         data->gcmark = false;
     }
 }
 
-TMPSTATIC void gc_mark_objects(mcvalue_t* objects, int count)
+TMPSEMISTATIC void gc_mark_objects(mcvalue_t* objects, int count)
 {
     int i;
     for(i = 0; i < count; i++)
@@ -13841,7 +13588,7 @@ TMPSTATIC void gc_mark_objects(mcvalue_t* objects, int count)
     }
 }
 
-TMPSTATIC void gc_mark_object(mcvalue_t obj)
+TMPSEMISTATIC void gc_mark_object(mcvalue_t obj)
 {
     if(!object_is_allocated(obj))
     {
@@ -13885,7 +13632,7 @@ TMPSTATIC void gc_mark_object(mcvalue_t obj)
         case MC_OBJ_ARRAY:
         {
             int i;
-            int len = mv_value_arraygetlength(obj);
+            int len = mc_value_arraygetlength(obj);
             for(i = 0; i < len; i++)
             {
                 mcvalue_t val = mc_value_arraygetvalueat(obj, i);
@@ -13930,20 +13677,20 @@ TMPSTATIC void gc_sweep(mcgcmemory_t* mem)
 {
     bool ok;
     int i;
-    gc_mark_objects((mcvalue_t*)array_data(mem->gcobjlistremains), array_count(mem->gcobjlistremains));
+    gc_mark_objects((mcvalue_t*)mc_basicarray_data(mem->gcobjlistremains), mc_basicarray_count(mem->gcobjlistremains));
 
-    MC_ASSERT(ptrarray_count(mem->gcobjlistback) >= ptrarray_count(mem->gcobjlist));
+    MC_ASSERT(mc_ptrarray_count(mem->gcobjlistback) >= mc_ptrarray_count(mem->gcobjlist));
 
-    ptrarray_clear(mem->gcobjlistback);
-    for(i = 0; i < ptrarray_count(mem->gcobjlist); i++)
+    mc_ptrarray_clear(mem->gcobjlistback);
+    for(i = 0; i < mc_ptrarray_count(mem->gcobjlist); i++)
     {
-        mcobjdata_t* data = (mcobjdata_t*)ptrarray_get(mem->gcobjlist, i);
+        mcobjdata_t* data = (mcobjdata_t*)mc_ptrarray_get(mem->gcobjlist, i);
         if(data->gcmark)
         {
             /*
             * this should never fail because gcobjlistback's size should be equal to objects
             */
-            ok = ptrarray_push(mem->gcobjlistback, data);
+            ok = mc_ptrarray_push(mem->gcobjlistback, data);
             (void)ok;
             MC_ASSERT(ok);
         }
@@ -13984,11 +13731,11 @@ TMPUNUSED bool gc_disable_on_object(mcvalue_t obj)
         return false;
     }
     mcobjdata_t* data = object_get_allocated_data(obj);
-    if(array_contains(data->mem->gcobjlistremains, &obj))
+    if(mc_basicarray_contains(data->mem->gcobjlistremains, &obj))
     {
         return false;
     }
-    ok = array_add(data->mem->gcobjlistremains, &obj);
+    ok = mc_basicarray_push(data->mem->gcobjlistremains, &obj);
     return ok;
 }
 
@@ -13999,7 +13746,7 @@ TMPUNUSED void gc_enable_on_object(mcvalue_t obj)
         return;
     }
     mcobjdata_t* data = object_get_allocated_data(obj);
-    array_remove_item(data->mem->gcobjlistremains, &obj);
+    mc_basicarray_removeitem(data->mem->gcobjlistremains, &obj);
 }
 
 TMPSTATIC int gc_should_sweep(mcgcmemory_t* mem)
@@ -14032,7 +13779,7 @@ TMPSTATIC bool can_data_be_put_in_pool(mcgcmemory_t* mem, mcobjdata_t* data)
     {
         case MC_OBJ_ARRAY:
         {
-            if(mv_value_arraygetlength(obj) > 1024)
+            if(mc_value_arraygetlength(obj) > 1024)
             {
                 return false;
             }
@@ -14077,12 +13824,12 @@ TMPSTATIC mcglobalstore_t* global_store_make(mcstate_t* state)
     }
     memset(store, 0, sizeof(mcglobalstore_t));
     store->pstate = state;
-    store->symbols = dict_make_(state, (mcdictitemcopyfn_t)symbol_copy, (mcdictitemdestroyfn_t)symbol_destroy);
+    store->symbols = mc_genericdict_make(state, (mcdictitemcopyfn_t)mc_symbol_copy, (mcdictitemdestroyfn_t)mc_symbol_destroy);
     if(!store->symbols)
     {
         goto err;
     }
-    store->objects = array_make(state, sizeof(mcvalue_t));
+    store->objects = mc_basicarray_make(state, sizeof(mcvalue_t));
     if(!store->objects)
     {
         goto err;
@@ -14118,14 +13865,14 @@ TMPSTATIC void global_store_destroy(mcglobalstore_t* store)
     {
         return;
     }
-    dict_destroy_with_items(store->symbols);
-    array_destroy(store->objects);
+    mc_genericdict_destroyitemsanddict(store->symbols);
+    mc_basicarray_destroy(store->objects);
     mc_allocator_free(store->pstate, store);
 }
 
 TMPSTATIC mcastsymbol_t* global_store_get_symbol(mcglobalstore_t* store, const char* name)
 {
-    return (mcastsymbol_t*)dict_get(store->symbols, name);
+    return (mcastsymbol_t*)mc_genericdict_get(store->symbols, name);
 }
 
 
@@ -14135,35 +13882,35 @@ TMPSTATIC bool global_store_set(mcglobalstore_t* store, const char* name, mcvalu
     mcastsymbol_t* existingsymbol = global_store_get_symbol(store, name);
     if(existingsymbol)
     {
-        ok = array_set(store->objects, existingsymbol->index, &object);
+        ok = mc_basicarray_set(store->objects, existingsymbol->index, &object);
         return ok;
     }
-    int ix = array_count(store->objects);
-    ok = array_add(store->objects, &object);
+    int ix = mc_basicarray_count(store->objects);
+    ok = mc_basicarray_push(store->objects, &object);
     if(!ok)
     {
         return false;
     }
-    mcastsymbol_t* symbol = symbol_make(store->pstate, name, SYMBOL_GLOBALBUILTIN, ix, false);
+    mcastsymbol_t* symbol = mc_symbol_make(store->pstate, name, SYMBOL_GLOBALBUILTIN, ix, false);
     if(!symbol)
     {
         goto err;
     }
-    ok = dict_set(store->symbols, name, symbol);
+    ok = mc_genericdict_set(store->symbols, name, symbol);
     if(!ok)
     {
-        symbol_destroy(symbol);
+        mc_symbol_destroy(symbol);
         goto err;
     }
     return true;
 err:
-    array_pop(store->objects, NULL);
+    mc_basicarray_pop(store->objects, NULL);
     return false;
 }
 
 TMPSTATIC mcvalue_t global_store_get_object_at(mcglobalstore_t* store, int ix, bool* outok)
 {
-    mcvalue_t* res = (mcvalue_t*)array_get(store->objects, ix);
+    mcvalue_t* res = (mcvalue_t*)mc_basicarray_get(store->objects, ix);
     if(!res)
     {
         *outok = false;
@@ -14175,12 +13922,12 @@ TMPSTATIC mcvalue_t global_store_get_object_at(mcglobalstore_t* store, int ix, b
 
 TMPSTATIC mcvalue_t* global_store_get_object_data(mcglobalstore_t* store)
 {
-    return (mcvalue_t*)array_data(store->objects);
+    return (mcvalue_t*)mc_basicarray_data(store->objects);
 }
 
 TMPSTATIC int global_store_get_object_count(mcglobalstore_t* store)
 {
-    return array_count(store->objects);
+    return mc_basicarray_count(store->objects);
 }
 
 TMPSTATIC bool object_is_hashable(mcvalue_t obj)
@@ -14199,7 +13946,7 @@ TMPSTATIC bool object_is_hashable(mcvalue_t obj)
     }
 }
 
-TMPSTATIC void mc_printer_printobject(mcvalue_t obj, mcprintstate_t* pr, bool quotestr)
+TMPSEMISTATIC void mc_printer_printobject(mcvalue_t obj, mcprintstate_t* pr, bool quotestr)
 {
     mcobjtype_t type = object_get_type(obj);
     switch(type)
@@ -14259,7 +14006,7 @@ TMPSTATIC void mc_printer_printobject(mcvalue_t obj, mcprintstate_t* pr, bool qu
         {
             size_t i;
             size_t alen;
-            alen = mv_value_arraygetlength(obj);
+            alen = mc_value_arraygetlength(obj);
             mc_printer_puts(pr, "[");
             for(i = 0; i < alen; i++)
             {
@@ -14411,13 +14158,13 @@ TMPUNUSED char* object_serialize(mcstate_t* state, mcvalue_t object)
 
 TMPSTATIC mcvalue_t mc_value_copydeep(mcstate_t* state, mcvalue_t obj)
 {
-    mcvaldict_t* copies = valdict_make_(state, sizeof(mcvalue_t), sizeof(mcvalue_t));
+    mcvaldict_t* copies = mc_valdict_make(state, sizeof(mcvalue_t), sizeof(mcvalue_t));
     if(!copies)
     {
         return mc_value_makenull();
     }
     mcvalue_t res = mc_value_copydeepintern(state, obj, copies);
-    valdict_destroy(copies);
+    mc_valdict_destroy(copies);
     return res;
 }
 
@@ -14455,7 +14202,7 @@ TMPSTATIC mcvalue_t mc_value_copyflat(mcstate_t* state, mcvalue_t obj)
         case MC_OBJ_ARRAY:
         {
             int i;
-            int len = mv_value_arraygetlength(obj);
+            int len = mc_value_arraygetlength(obj);
             copy = object_make_array_with_capacity(state, len);
             if(object_is_null(copy))
             {
@@ -14847,7 +14594,7 @@ TMPSTATIC bool mc_value_setexternaldata(mcvalue_t object, void* extdata)
     return true;
 }
 
-TMPSTATIC bool mc_value_setexternalcopyfunction(mcvalue_t object, mcextdatacopyfn_t copy_fn)
+TMPSTATIC bool mc_value_setexternalcopyfunction(mcvalue_t object, mcextdatacopyfn_t copyfn)
 {
     mcobjexternal_t* data;
     MC_ASSERT(object_get_type(object) == MC_OBJ_EXTERNAL);
@@ -14856,7 +14603,7 @@ TMPSTATIC bool mc_value_setexternalcopyfunction(mcvalue_t object, mcextdatacopyf
     {
         return false;
     }
-    data->data_copy_fn = copy_fn;
+    data->data_copy_fn = copyfn;
     return true;
 }
 
@@ -14866,11 +14613,11 @@ TMPSTATIC mcvalue_t mc_value_arraygetvalueat(mcvalue_t object, int ix)
     mcbasicarray_t* array;
     MC_ASSERT(object_get_type(object) == MC_OBJ_ARRAY);
     array = object_get_allocated_array(object);
-    if(ix < 0 || ix >= array_count(array))
+    if(ix < 0 || ix >= mc_basicarray_count(array))
     {
         return mc_value_makenull();
     }
-    res = (mcvalue_t*)array_get(array, ix);
+    res = (mcvalue_t*)mc_basicarray_get(array, ix);
     if(!res)
     {
         return mc_value_makenull();
@@ -14885,7 +14632,7 @@ TMPSTATIC bool mc_value_arraysetvalueat(mcvalue_t object, int ix, mcvalue_t val)
     mcbasicarray_t* array;
     MC_ASSERT(object_get_type(object) == MC_OBJ_ARRAY);
     array = object_get_allocated_array(object);
-    len = array_count(array);
+    len = mc_basicarray_count(array);
     if(((ix < 0) || (ix >= len)) || (len == 0))
     {
         toadd = len+1;
@@ -14896,7 +14643,7 @@ TMPSTATIC bool mc_value_arraysetvalueat(mcvalue_t object, int ix, mcvalue_t val)
             toadd++;
         }
     }
-    return array_set(array, ix, &val);
+    return mc_basicarray_set(array, ix, &val);
 }
 
 TMPSTATIC bool mc_value_arraypush(mcvalue_t object, mcvalue_t val)
@@ -14904,22 +14651,22 @@ TMPSTATIC bool mc_value_arraypush(mcvalue_t object, mcvalue_t val)
     mcbasicarray_t* array;
     MC_ASSERT(object_get_type(object) == MC_OBJ_ARRAY);
     array = object_get_allocated_array(object);
-    return array_add(array, &val);
+    return mc_basicarray_push(array, &val);
 }
 
-TMPSTATIC int mv_value_arraygetlength(mcvalue_t object)
+TMPSTATIC int mc_value_arraygetlength(mcvalue_t object)
 {
     mcbasicarray_t* array;
     MC_ASSERT(object_get_type(object) == MC_OBJ_ARRAY);
     array = object_get_allocated_array(object);
-    return array_count(array);
+    return mc_basicarray_count(array);
 }
 
 TMPSTATIC bool mc_value_arrayremovevalueat(mcvalue_t object, int ix)
 {
     mcbasicarray_t* array;
     array = object_get_allocated_array(object);
-    return array_remove_at(array, ix);
+    return mc_basicarray_removeat(array, ix);
 }
 
 TMPSTATIC int mc_value_mapgetlength(mcvalue_t object)
@@ -14927,7 +14674,7 @@ TMPSTATIC int mc_value_mapgetlength(mcvalue_t object)
     mcobjdata_t* data;
     MC_ASSERT(object_get_type(object) == MC_OBJ_MAP);
     data = object_get_allocated_data(object);
-    return valdict_count(data->map);
+    return mc_valdict_count(data->map);
 }
 
 TMPSTATIC mcvalue_t mc_value_mapgetkeyat(mcvalue_t object, int ix)
@@ -14936,7 +14683,7 @@ TMPSTATIC mcvalue_t mc_value_mapgetkeyat(mcvalue_t object, int ix)
     mcobjdata_t* data;
     MC_ASSERT(object_get_type(object) == MC_OBJ_MAP);
     data = object_get_allocated_data(object);
-    res = (mcvalue_t*)valdict_get_key_at(data->map, ix);
+    res = (mcvalue_t*)mc_valdict_getkeyat(data->map, ix);
     if(!res)
     {
         return mc_value_makenull();
@@ -14950,7 +14697,7 @@ TMPSTATIC mcvalue_t mc_value_mapgetvalueat(mcvalue_t object, int ix)
     mcobjdata_t* data;
     MC_ASSERT(object_get_type(object) == MC_OBJ_MAP);
     data = object_get_allocated_data(object);
-    res = (mcvalue_t*)valdict_get_value_at(data->map, ix);
+    res = (mcvalue_t*)mc_valdict_getvalueat(data->map, ix);
     if(!res)
     {
         return mc_value_makenull();
@@ -14967,7 +14714,7 @@ TMPUNUSED bool mc_value_mapsetvalueat(mcvalue_t object, int ix, mcvalue_t val)
         return false;
     }
     data = object_get_allocated_data(object);
-    return valdict_set_value_at(data->map, ix, &val);
+    return mc_valdict_setvalueat(data->map, ix, &val);
 }
 
 TMPSTATIC mcvalue_t mc_value_mapgetkvpairat(mcstate_t* state, mcvalue_t object, int ix)
@@ -14980,7 +14727,7 @@ TMPSTATIC mcvalue_t mc_value_mapgetkvpairat(mcstate_t* state, mcvalue_t object, 
     mcobjdata_t* data;
     MC_ASSERT(object_get_type(object) == MC_OBJ_MAP);
     data = object_get_allocated_data(object);
-    if(ix >= valdict_count(data->map))
+    if(ix >= mc_valdict_count(data->map))
     {
         return mc_value_makenull();
     }
@@ -15011,7 +14758,7 @@ TMPSTATIC bool mc_value_mapsetvalue(mcvalue_t object, mcvalue_t key, mcvalue_t v
     mcobjdata_t* data;
     MC_ASSERT(object_get_type(object) == MC_OBJ_MAP);
     data = object_get_allocated_data(object);
-    return valdict_set(data->map, &key, &val);
+    return mc_valdict_setkv(data->map, &key, &val);
 }
 
 TMPSTATIC mcvalue_t mc_value_mapgetvalue(mcvalue_t object, mcvalue_t key)
@@ -15020,7 +14767,7 @@ TMPSTATIC mcvalue_t mc_value_mapgetvalue(mcvalue_t object, mcvalue_t key)
     mcobjdata_t* data;
     MC_ASSERT(object_get_type(object) == MC_OBJ_MAP);
     data = object_get_allocated_data(object);
-    res = (mcvalue_t*)valdict_get(data->map, &key);
+    res = (mcvalue_t*)mc_valdict_get(data->map, &key);
     if(!res)
     {
         return mc_value_makenull();
@@ -15034,7 +14781,7 @@ TMPUNUSED bool mc_value_maphaskey(mcvalue_t object, mcvalue_t key)
     mcobjdata_t* data;
     MC_ASSERT(object_get_type(object) == MC_OBJ_MAP);
     data = object_get_allocated_data(object);
-    res = (mcvalue_t*)valdict_get(data->map, &key);
+    res = (mcvalue_t*)mc_valdict_get(data->map, &key);
     return res != NULL;
 }
 
@@ -15083,7 +14830,7 @@ TMPSEMISTATIC mcvalue_t mc_value_copydeepfuncscript(mcstate_t* state, mcvalue_t 
         compilation_result_destroy(comprescopy);
         return mc_value_makenull();
     }
-    ok = valdict_set(copies, &obj, &copy);
+    ok = mc_valdict_setkv(copies, &obj, &copy);
     if(!ok)
     {
         return mc_value_makenull();
@@ -15119,13 +14866,13 @@ TMPSEMISTATIC mcvalue_t mc_value_copydeeparray(mcstate_t* state, mcvalue_t obj, 
     mcvalue_t copy;
     mcvalue_t item;
     mcvalue_t itemcopy;
-    len = mv_value_arraygetlength(obj);
+    len = mc_value_arraygetlength(obj);
     copy = object_make_array_with_capacity(state, len);
     if(object_is_null(copy))
     {
         return mc_value_makenull();
     }
-    ok = valdict_set(copies, &obj, &copy);
+    ok = mc_valdict_setkv(copies, &obj, &copy);
     if(!ok)
     {
         return mc_value_makenull();
@@ -15161,7 +14908,7 @@ TMPSEMISTATIC mcvalue_t mc_value_copydeepmap(mcstate_t* state, mcvalue_t obj, mc
     {
         return mc_value_makenull();
     }
-    ok = valdict_set(copies, &obj, &copy);
+    ok = mc_valdict_setkv(copies, &obj, &copy);
     if(!ok)
     {
         return mc_value_makenull();
@@ -15195,7 +14942,7 @@ TMPSEMISTATIC mcvalue_t mc_value_copydeepintern(mcstate_t* state, mcvalue_t obj,
     mcobjtype_t type;
     mcvalue_t copy;
     mcvalue_t* copyptr;
-    copyptr = (mcvalue_t*)valdict_get(copies, &obj);
+    copyptr = (mcvalue_t*)mc_valdict_get(copies, &obj);
     if(copyptr)
     {
         return *copyptr;
@@ -15398,7 +15145,7 @@ TMPSTATIC bool mc_value_stringreservecapacity(mcobjdata_t* data, int capacity)
     return true;
 }
 
-TMPSTATIC mcastsymbol_t* symbol_make(mcstate_t* state, const char* name, mcastsymtype_t type, int index, bool assignable)
+TMPSTATIC mcastsymbol_t* mc_symbol_make(mcstate_t* state, const char* name, mcastsymtype_t type, int index, bool assignable)
 {
     mcastsymbol_t* symbol;
     symbol = (mcastsymbol_t*)mc_allocator_alloc(state, sizeof(mcastsymbol_t));
@@ -15420,7 +15167,7 @@ TMPSTATIC mcastsymbol_t* symbol_make(mcstate_t* state, const char* name, mcastsy
     return symbol;
 }
 
-TMPSTATIC void symbol_destroy(mcastsymbol_t* symbol)
+TMPSTATIC void mc_symbol_destroy(mcastsymbol_t* symbol)
 {
     if(!symbol)
     {
@@ -15430,9 +15177,9 @@ TMPSTATIC void symbol_destroy(mcastsymbol_t* symbol)
     mc_allocator_free(symbol->pstate, symbol);
 }
 
-TMPSTATIC mcastsymbol_t* symbol_copy(mcastsymbol_t* symbol)
+TMPSTATIC mcastsymbol_t* mc_symbol_copy(mcastsymbol_t* symbol)
 {
-    return symbol_make(symbol->pstate, symbol->name, symbol->type, symbol->index, symbol->assignable);
+    return mc_symbol_make(symbol->pstate, symbol->name, symbol->type, symbol->index, symbol->assignable);
 }
 
 TMPSTATIC mcastsymtable_t* mc_symtable_make(mcstate_t* state, mcastsymtable_t* outer, mcglobalstore_t* global_store, int module_global_offset)
@@ -15450,22 +15197,22 @@ TMPSTATIC mcastsymtable_t* mc_symtable_make(mcstate_t* state, mcastsymtable_t* o
     table->outer = outer;
     table->global_store = global_store;
     table->module_global_offset = module_global_offset;
-    table->block_scopes = ptrarray_make(state);
+    table->block_scopes = mc_ptrarray_make(state);
     if(!table->block_scopes)
     {
         goto err;
     }
-    table->free_symbols = ptrarray_make(state);
+    table->free_symbols = mc_ptrarray_make(state);
     if(!table->free_symbols)
     {
         goto err;
     }
-    table->module_global_symbols = ptrarray_make(state);
+    table->module_global_symbols = mc_ptrarray_make(state);
     if(!table->module_global_symbols)
     {
         goto err;
     }
-    ok = symbol_table_push_block_scope(table);
+    ok = mc_symtable_pushblockscope(table);
     if(!ok)
     {
         goto err;
@@ -15483,19 +15230,19 @@ TMPSTATIC void mc_symtable_destroy(mcastsymtable_t* table)
     {
         return;
     }
-    while(ptrarray_count(table->block_scopes) > 0)
+    while(mc_ptrarray_count(table->block_scopes) > 0)
     {
-        symbol_table_pop_block_scope(table);
+        mc_symtable_popblockscope(table);
     }
-    ptrarray_destroy(table->block_scopes);
-    ptrarray_destroy_with_items_(table->module_global_symbols, (mcptrarrayitemdestroyfn_t)symbol_destroy);
-    ptrarray_destroy_with_items_(table->free_symbols, (mcptrarrayitemdestroyfn_t)symbol_destroy);
+    mc_ptrarray_destroy(table->block_scopes, NULL);
+    mc_ptrarray_destroy(table->module_global_symbols, (mcptrarrayitemdestroyfn_t)mc_symbol_destroy);
+    mc_ptrarray_destroy(table->free_symbols, (mcptrarrayitemdestroyfn_t)mc_symbol_destroy);
     state = table->pstate;
     memset(table, 0, sizeof(mcastsymtable_t));
     mc_allocator_free(state, table);
 }
 
-TMPSTATIC mcastsymtable_t* symbol_table_copy(mcastsymtable_t* table)
+TMPSTATIC mcastsymtable_t* mc_symtable_copy(mcastsymtable_t* table)
 {
     mcastsymtable_t* copy;
     copy = (mcastsymtable_t*)mc_allocator_alloc(table->pstate, sizeof(mcastsymtable_t));
@@ -15507,17 +15254,17 @@ TMPSTATIC mcastsymtable_t* symbol_table_copy(mcastsymtable_t* table)
     copy->pstate = table->pstate;
     copy->outer = table->outer;
     copy->global_store = table->global_store;
-    copy->block_scopes = ptrarray_copy_with_items_(table->block_scopes, (mcptrarrayitemcopyfn_t)block_scope_copy, (mcptrarrayitemdestroyfn_t)block_scope_destroy);
+    copy->block_scopes = mc_ptrarray_copy(table->block_scopes, (mcptrarrayitemcopyfn_t)block_scope_copy, (mcptrarrayitemdestroyfn_t)block_scope_destroy);
     if(!copy->block_scopes)
     {
         goto err;
     }
-    copy->free_symbols = ptrarray_copy_with_items_(table->free_symbols, (mcptrarrayitemcopyfn_t)symbol_copy, (mcptrarrayitemdestroyfn_t)symbol_destroy);
+    copy->free_symbols = mc_ptrarray_copy(table->free_symbols, (mcptrarrayitemcopyfn_t)mc_symbol_copy, (mcptrarrayitemdestroyfn_t)mc_symbol_destroy);
     if(!copy->free_symbols)
     {
         goto err;
     }
-    copy->module_global_symbols = ptrarray_copy_with_items_(table->module_global_symbols, (mcptrarrayitemcopyfn_t)symbol_copy, (mcptrarrayitemdestroyfn_t)symbol_destroy);
+    copy->module_global_symbols = mc_ptrarray_copy(table->module_global_symbols, (mcptrarrayitemcopyfn_t)mc_symbol_copy, (mcptrarrayitemdestroyfn_t)mc_symbol_destroy);
     if(!copy->module_global_symbols)
     {
         goto err;
@@ -15530,7 +15277,7 @@ err:
     return NULL;
 }
 
-TMPSTATIC bool symbol_table_add_module_symbol(mcastsymtable_t* st, mcastsymbol_t* symbol)
+TMPSTATIC bool mc_symtable_addmodsymbol(mcastsymtable_t* st, mcastsymbol_t* symbol)
 {
     bool ok;
     mcastsymbol_t* copy;
@@ -15539,26 +15286,26 @@ TMPSTATIC bool symbol_table_add_module_symbol(mcastsymtable_t* st, mcastsymbol_t
         MC_ASSERT(false);
         return false;
     }
-    if(symbol_table_symbol_is_defined(st, symbol->name))
+    if(mc_symtable_isdefined(st, symbol->name))
     {
         /* todo: make sure it should be true in this case */
         return true;
     }
-    copy = symbol_copy(symbol);
+    copy = mc_symbol_copy(symbol);
     if(!copy)
     {
         return false;
     }
-    ok = set_symbol(st, copy);
+    ok = mc_symtable_setsymbol(st, copy);
     if(!ok)
     {
-        symbol_destroy(copy);
+        mc_symbol_destroy(copy);
         return false;
     }
     return true;
 }
 
-TMPSTATIC mcastsymbol_t* symbol_table_define(mcastsymtable_t* table, const char* name, bool assignable)
+TMPSTATIC mcastsymbol_t* mc_symtable_define(mcastsymtable_t* table, const char* name, bool assignable)
 {
     bool ok;
     bool globalsymboladded;
@@ -15585,45 +15332,45 @@ TMPSTATIC mcastsymbol_t* symbol_table_define(mcastsymtable_t* table, const char*
         return NULL;
     }
     symboltype = table->outer == NULL ? SYMBOL_MODULE_GLOBAL : SYMBOL_LOCAL;
-    ix = next_symbol_index(table);
-    symbol = symbol_make(table->pstate, name, symboltype, ix, assignable);
+    ix = mc_symtable_nextsymindex(table);
+    symbol = mc_symbol_make(table->pstate, name, symboltype, ix, assignable);
     if(!symbol)
     {
         return NULL;
     }
     globalsymboladded = false;
     ok = false;
-    if(symboltype == SYMBOL_MODULE_GLOBAL && ptrarray_count(table->block_scopes) == 1)
+    if(symboltype == SYMBOL_MODULE_GLOBAL && mc_ptrarray_count(table->block_scopes) == 1)
     {
-        globalsymbolcopy = symbol_copy(symbol);
+        globalsymbolcopy = mc_symbol_copy(symbol);
         if(!globalsymbolcopy)
         {
-            symbol_destroy(symbol);
+            mc_symbol_destroy(symbol);
             return NULL;
         }
-        ok = ptrarray_push(table->module_global_symbols, globalsymbolcopy);
+        ok = mc_ptrarray_push(table->module_global_symbols, globalsymbolcopy);
         if(!ok)
         {
-            symbol_destroy(globalsymbolcopy);
-            symbol_destroy(symbol);
+            mc_symbol_destroy(globalsymbolcopy);
+            mc_symbol_destroy(symbol);
             return NULL;
         }
         globalsymboladded = true;
     }
-    ok = set_symbol(table, symbol);
+    ok = mc_symtable_setsymbol(table, symbol);
     if(!ok)
     {
         if(globalsymboladded)
         {
-            globalsymbolcopy = (mcastsymbol_t*)ptrarray_pop(table->module_global_symbols);
-            symbol_destroy(globalsymbolcopy);
+            globalsymbolcopy = (mcastsymbol_t*)mc_ptrarray_pop(table->module_global_symbols);
+            mc_symbol_destroy(globalsymbolcopy);
         }
-        symbol_destroy(symbol);
+        mc_symbol_destroy(symbol);
         return NULL;
     }
-    topscope = (mcastscopeblock_t*)ptrarray_top(table->block_scopes);
+    topscope = (mcastscopeblock_t*)mc_ptrarray_top(table->block_scopes);
     topscope->num_definitions++;
-    definitionscount = count_num_definitions(table);
+    definitionscount = mc_symtable_getnumdefs(table);
     if(definitionscount > table->max_num_definitions)
     {
         table->max_num_definitions = definitionscount;
@@ -15631,37 +15378,37 @@ TMPSTATIC mcastsymbol_t* symbol_table_define(mcastsymtable_t* table, const char*
     return symbol;
 }
 
-TMPSTATIC mcastsymbol_t* symbol_table_define_free(mcastsymtable_t* st, mcastsymbol_t* original)
+TMPSTATIC mcastsymbol_t* mc_symtable_defineanddestroyold(mcastsymtable_t* st, mcastsymbol_t* original)
 {
     bool ok;
     mcastsymbol_t* copy;
     mcastsymbol_t* symbol;
-    copy = symbol_make(st->pstate, original->name, original->type, original->index, original->assignable);
+    copy = mc_symbol_make(st->pstate, original->name, original->type, original->index, original->assignable);
     if(!copy)
     {
         return NULL;
     }
-    ok = ptrarray_push(st->free_symbols, copy);
+    ok = mc_ptrarray_push(st->free_symbols, copy);
     if(!ok)
     {
-        symbol_destroy(copy);
+        mc_symbol_destroy(copy);
         return NULL;
     }
-    symbol = symbol_make(st->pstate, original->name, SYMBOL_FREE, ptrarray_count(st->free_symbols) - 1, original->assignable);
+    symbol = mc_symbol_make(st->pstate, original->name, SYMBOL_FREE, mc_ptrarray_count(st->free_symbols) - 1, original->assignable);
     if(!symbol)
     {
         return NULL;
     }
-    ok = set_symbol(st, symbol);
+    ok = mc_symtable_setsymbol(st, symbol);
     if(!ok)
     {
-        symbol_destroy(symbol);
+        mc_symbol_destroy(symbol);
         return NULL;
     }
     return symbol;
 }
 
-TMPSTATIC mcastsymbol_t* symbol_table_define_function_name(mcastsymtable_t* st, const char* name, bool assignable)
+TMPSTATIC mcastsymbol_t* mc_symtable_definefunctionname(mcastsymtable_t* st, const char* name, bool assignable)
 {
     bool ok;
     mcastsymbol_t* symbol;
@@ -15670,39 +15417,39 @@ TMPSTATIC mcastsymbol_t* symbol_table_define_function_name(mcastsymtable_t* st, 
     {
         return NULL;
     }
-    symbol = symbol_make(st->pstate, name, SYMBOL_FUNCTION, 0, assignable);
+    symbol = mc_symbol_make(st->pstate, name, SYMBOL_FUNCTION, 0, assignable);
     if(!symbol)
     {
         return NULL;
     }
-    ok = set_symbol(st, symbol);
+    ok = mc_symtable_setsymbol(st, symbol);
     if(!ok)
     {
-        symbol_destroy(symbol);
+        mc_symbol_destroy(symbol);
         return NULL;
     }
     return symbol;
 }
 
-TMPSTATIC mcastsymbol_t* symbol_table_define_this(mcastsymtable_t* st)
+TMPSTATIC mcastsymbol_t* mc_symtable_definethis(mcastsymtable_t* st)
 {
     bool ok;
     mcastsymbol_t* symbol;
-    symbol = symbol_make(st->pstate, "this", SYMBOL_THIS, 0, false);
+    symbol = mc_symbol_make(st->pstate, "this", SYMBOL_THIS, 0, false);
     if(!symbol)
     {
         return NULL;
     }
-    ok = set_symbol(st, symbol);
+    ok = mc_symtable_setsymbol(st, symbol);
     if(!ok)
     {
-        symbol_destroy(symbol);
+        mc_symbol_destroy(symbol);
         return NULL;
     }
     return symbol;
 }
 
-TMPSTATIC mcastsymbol_t* symbol_table_resolve(mcastsymtable_t* table, const char* name)
+TMPSEMISTATIC mcastsymbol_t* mc_symtable_resolve(mcastsymtable_t* table, const char* name)
 {
     int i;
     mcastsymbol_t* symbol;
@@ -15715,10 +15462,10 @@ TMPSTATIC mcastsymbol_t* symbol_table_resolve(mcastsymtable_t* table, const char
         return symbol;
     }
 
-    for(i = ptrarray_count(table->block_scopes) - 1; i >= 0; i--)
+    for(i = mc_ptrarray_count(table->block_scopes) - 1; i >= 0; i--)
     {
-        scope = (mcastscopeblock_t*)ptrarray_get(table->block_scopes, i);
-        symbol = (mcastsymbol_t*)dict_get(scope->store, name);
+        scope = (mcastscopeblock_t*)mc_ptrarray_get(table->block_scopes, i);
+        symbol = (mcastsymbol_t*)mc_genericdict_get(scope->store, name);
         if(symbol)
         {
             break;
@@ -15726,11 +15473,11 @@ TMPSTATIC mcastsymbol_t* symbol_table_resolve(mcastsymtable_t* table, const char
     }
     if(symbol && symbol->type == SYMBOL_THIS)
     {
-        symbol = symbol_table_define_free(table, symbol);
+        symbol = mc_symtable_defineanddestroyold(table, symbol);
     }
     if(!symbol && table->outer)
     {
-        symbol = symbol_table_resolve(table->outer, name);
+        symbol = mc_symtable_resolve(table->outer, name);
         if(!symbol)
         {
             return NULL;
@@ -15739,12 +15486,12 @@ TMPSTATIC mcastsymbol_t* symbol_table_resolve(mcastsymtable_t* table, const char
         {
             return symbol;
         }
-        symbol = symbol_table_define_free(table, symbol);
+        symbol = mc_symtable_defineanddestroyold(table, symbol);
     }
     return symbol;
 }
 
-TMPSTATIC bool symbol_table_symbol_is_defined(mcastsymtable_t* table, const char* name)
+TMPSTATIC bool mc_symtable_isdefined(mcastsymtable_t* table, const char* name)
 {
     /* todo: rename to something more obvious */
     mcastsymbol_t* symbol;
@@ -15754,8 +15501,8 @@ TMPSTATIC bool symbol_table_symbol_is_defined(mcastsymtable_t* table, const char
     {
         return true;
     }
-    topscope = (mcastscopeblock_t*)ptrarray_top(table->block_scopes);
-    symbol = (mcastsymbol_t*)dict_get(topscope->store, name);
+    topscope = (mcastscopeblock_t*)mc_ptrarray_top(table->block_scopes);
+    symbol = (mcastsymbol_t*)mc_genericdict_get(topscope->store, name);
     if(symbol)
     {
         return true;
@@ -15763,13 +15510,13 @@ TMPSTATIC bool symbol_table_symbol_is_defined(mcastsymtable_t* table, const char
     return false;
 }
 
-TMPSTATIC bool symbol_table_push_block_scope(mcastsymtable_t* table)
+TMPSTATIC bool mc_symtable_pushblockscope(mcastsymtable_t* table)
 {
     bool ok;
     int blockscopeoffset;
     mcastscopeblock_t* newscope;
     blockscopeoffset = 0;
-    mcastscopeblock_t* prevblockscope = (mcastscopeblock_t*)ptrarray_top(table->block_scopes);
+    mcastscopeblock_t* prevblockscope = (mcastscopeblock_t*)mc_ptrarray_top(table->block_scopes);
     if(prevblockscope)
     {
         blockscopeoffset = table->module_global_offset + prevblockscope->offset + prevblockscope->num_definitions;
@@ -15783,7 +15530,7 @@ TMPSTATIC bool symbol_table_push_block_scope(mcastsymtable_t* table)
     {
         return false;
     }
-    ok = ptrarray_push(table->block_scopes, newscope);
+    ok = mc_ptrarray_push(table->block_scopes, newscope);
     if(!ok)
     {
         block_scope_destroy(newscope);
@@ -15792,44 +15539,44 @@ TMPSTATIC bool symbol_table_push_block_scope(mcastsymtable_t* table)
     return true;
 }
 
-TMPSTATIC void symbol_table_pop_block_scope(mcastsymtable_t* table)
+TMPSTATIC void mc_symtable_popblockscope(mcastsymtable_t* table)
 {
     mcastscopeblock_t* topscope;
-    topscope = (mcastscopeblock_t*)ptrarray_top(table->block_scopes);
-    ptrarray_pop(table->block_scopes);
+    topscope = (mcastscopeblock_t*)mc_ptrarray_top(table->block_scopes);
+    mc_ptrarray_pop(table->block_scopes);
     block_scope_destroy(topscope);
 }
 
-TMPSTATIC mcastscopeblock_t* symbol_table_get_block_scope(mcastsymtable_t* table)
+TMPSTATIC mcastscopeblock_t* mc_symtable_getblockscope(mcastsymtable_t* table)
 {
     mcastscopeblock_t* topscope;
-    topscope = (mcastscopeblock_t*)ptrarray_top(table->block_scopes);
+    topscope = (mcastscopeblock_t*)mc_ptrarray_top(table->block_scopes);
     return topscope;
 }
 
-TMPSTATIC bool symbol_table_is_module_global_scope(mcastsymtable_t* table)
+TMPSTATIC bool mc_symtable_ismodglobalscope(mcastsymtable_t* table)
 {
     return table->outer == NULL;
 }
 
-TMPSTATIC bool symbol_table_is_top_block_scope(mcastsymtable_t* table)
+TMPSTATIC bool mc_symtable_istopblockscope(mcastsymtable_t* table)
 {
-    return ptrarray_count(table->block_scopes) == 1;
+    return mc_ptrarray_count(table->block_scopes) == 1;
 }
 
-TMPSTATIC bool symbol_table_is_top_global_scope(mcastsymtable_t* table)
+TMPSTATIC bool mc_symtable_istopglobalscope(mcastsymtable_t* table)
 {
-    return symbol_table_is_module_global_scope(table) && symbol_table_is_top_block_scope(table);
+    return mc_symtable_ismodglobalscope(table) && mc_symtable_istopblockscope(table);
 }
 
-TMPSTATIC int symbol_table_get_module_global_symbol_count(mcastsymtable_t* table)
+TMPSTATIC int mc_symtable_getmodglobalsymcount(mcastsymtable_t* table)
 {
-    return ptrarray_count(table->module_global_symbols);
+    return mc_ptrarray_count(table->module_global_symbols);
 }
 
-TMPSTATIC mcastsymbol_t* symbol_table_get_module_global_symbol_at(mcastsymtable_t* table, int ix)
+TMPSTATIC mcastsymbol_t* mc_symtable_getmodglobalsymat(mcastsymtable_t* table, int ix)
 {
-    return (mcastsymbol_t*)ptrarray_get(table->module_global_symbols, ix);
+    return (mcastsymbol_t*)mc_ptrarray_get(table->module_global_symbols, ix);
 }
 
 TMPSTATIC mcastscopeblock_t* block_scope_make(mcstate_t* state, int offset)
@@ -15842,7 +15589,7 @@ TMPSTATIC mcastscopeblock_t* block_scope_make(mcstate_t* state, int offset)
     }
     memset(newscope, 0, sizeof(mcastscopeblock_t));
     newscope->pstate = state;
-    newscope->store = dict_make_(state, (mcdictitemcopyfn_t)symbol_copy, (mcdictitemdestroyfn_t)symbol_destroy);
+    newscope->store = mc_genericdict_make(state, (mcdictitemcopyfn_t)mc_symbol_copy, (mcdictitemdestroyfn_t)mc_symbol_destroy);
     if(!newscope->store)
     {
         block_scope_destroy(newscope);
@@ -15855,7 +15602,7 @@ TMPSTATIC mcastscopeblock_t* block_scope_make(mcstate_t* state, int offset)
 
 TMPSTATIC void block_scope_destroy(mcastscopeblock_t* scope)
 {
-    dict_destroy_with_items(scope->store);
+    mc_genericdict_destroyitemsanddict(scope->store);
     mc_allocator_free(scope->pstate, scope);
 }
 
@@ -15871,7 +15618,7 @@ TMPSTATIC mcastscopeblock_t* block_scope_copy(mcastscopeblock_t* scope)
     copy->pstate = scope->pstate;
     copy->num_definitions = scope->num_definitions;
     copy->offset = scope->offset;
-    copy->store = dict_copy_with_items(scope->store);
+    copy->store = mc_genericdict_copy(scope->store);
     if(!copy->store)
     {
         block_scope_destroy(copy);
@@ -15880,36 +15627,36 @@ TMPSTATIC mcastscopeblock_t* block_scope_copy(mcastscopeblock_t* scope)
     return copy;
 }
 
-TMPSTATIC bool set_symbol(mcastsymtable_t* table, mcastsymbol_t* symbol)
+TMPSTATIC bool mc_symtable_setsymbol(mcastsymtable_t* table, mcastsymbol_t* symbol)
 {
     mcastscopeblock_t* topscope;
-    topscope = (mcastscopeblock_t*)ptrarray_top(table->block_scopes);
+    topscope = (mcastscopeblock_t*)mc_ptrarray_top(table->block_scopes);
     mcastsymbol_t* existing;
-    existing = (mcastsymbol_t*)dict_get(topscope->store, symbol->name);
+    existing = (mcastsymbol_t*)mc_genericdict_get(topscope->store, symbol->name);
     if(existing)
     {
-        symbol_destroy(existing);
+        mc_symbol_destroy(existing);
     }
-    return dict_set(topscope->store, symbol->name, symbol);
+    return mc_genericdict_set(topscope->store, symbol->name, symbol);
 }
 
-TMPSTATIC int next_symbol_index(mcastsymtable_t* table)
+TMPSTATIC int mc_symtable_nextsymindex(mcastsymtable_t* table)
 {
     int ix;
     mcastscopeblock_t* topscope;
-    topscope = (mcastscopeblock_t*)ptrarray_top(table->block_scopes);
+    topscope = (mcastscopeblock_t*)mc_ptrarray_top(table->block_scopes);
     ix = topscope->offset + topscope->num_definitions;
     return ix;
 }
 
-TMPSTATIC int count_num_definitions(mcastsymtable_t* table)
+TMPSTATIC int mc_symtable_getnumdefs(mcastsymtable_t* table)
 {
     int i;
     int count = 0;
     mcastscopeblock_t* scope;
-    for(i = ptrarray_count(table->block_scopes) - 1; i >= 0; i--)
+    for(i = mc_ptrarray_count(table->block_scopes) - 1; i >= 0; i--)
     {
-        scope = (mcastscopeblock_t*)ptrarray_get(table->block_scopes, i);
+        scope = (mcastscopeblock_t*)mc_ptrarray_get(table->block_scopes, i);
         count += scope->num_definitions;
     }
     return count;
@@ -15951,7 +15698,7 @@ TMPSTATIC mctraceback_t* traceback_make(mcstate_t* state)
     }
     memset(traceback, 0, sizeof(mctraceback_t));
     traceback->pstate = state;
-    traceback->items = array_make(state, sizeof(mctraceitem_t));
+    traceback->items = mc_basicarray_make(state, sizeof(mctraceitem_t));
     if(!traceback->items)
     {
         traceback_destroy(traceback);
@@ -15968,12 +15715,12 @@ TMPSTATIC void traceback_destroy(mctraceback_t* traceback)
     {
         return;
     }
-    for(i = 0; i < array_count(traceback->items); i++)
+    for(i = 0; i < mc_basicarray_count(traceback->items); i++)
     {
-        item = (mctraceitem_t*)array_get(traceback->items, i);
+        item = (mctraceitem_t*)mc_basicarray_get(traceback->items, i);
         mc_allocator_free(traceback->pstate, item->function_name);
     }
-    array_destroy(traceback->items);
+    mc_basicarray_destroy(traceback->items);
     mc_allocator_free(traceback->pstate, traceback);
 }
 
@@ -15987,7 +15734,7 @@ TMPSTATIC bool traceback_append(mctraceback_t* traceback, const char* function_n
         return false;
     }
     item.pos = pos;
-    ok = array_add(traceback->items, &item);
+    ok = mc_basicarray_push(traceback->items, &item);
     if(!ok)
     {
         mc_allocator_free(traceback->pstate, item.function_name);
@@ -16004,7 +15751,7 @@ TMPSTATIC bool traceback_append_from_vm(mctraceback_t* traceback, mcstate_t* sta
     for(i = state->frames_count - 1; i >= 0; i--)
     {
         frame = &state->frames[i];
-        ok = traceback_append(traceback, mc_value_functiongetname(frame->function), frame_src_position(frame));
+        ok = traceback_append(traceback, mc_value_functiongetname(frame->function), mc_callframe_getsourcelocation(frame));
         if(!ok)
         {
             return false;
@@ -16019,10 +15766,10 @@ TMPSTATIC bool traceback_to_string(mctraceback_t* traceback, mcprintstate_t* buf
     int depth;
     const char* filename;
     mctraceitem_t* item;
-    depth = array_count(traceback->items);
+    depth = mc_basicarray_count(traceback->items);
     for(i = 0; i < depth; i++)
     {
-        item = (mctraceitem_t*)array_get(traceback->items, i);
+        item = (mctraceitem_t*)mc_basicarray_get(traceback->items, i);
         filename = traceback_item_get_filepath(item);
         if(item->pos.line >= 0 && item->pos.column >= 0)
         {
@@ -16045,11 +15792,11 @@ TMPSTATIC const char* traceback_item_get_line(mctraceitem_t* item)
         return NULL;
     }
     lines = item->pos.file->lines;
-    if(item->pos.line >= ptrarray_count(lines))
+    if(item->pos.line >= mc_ptrarray_count(lines))
     {
         return NULL;
     }
-    line = (const char*)ptrarray_get(lines, item->pos.line);
+    line = (const char*)mc_ptrarray_get(lines, item->pos.line);
     return line;
 }
 
@@ -16179,7 +15926,7 @@ TMPSTATIC mcvalue_t vm_call(mcstate_t* state, mcbasicarray_t* constants, mcvalue
     {
         return mc_vm_callnativefunction(state, callee, srcposinvalid, argc, args);
     }
-    errors_add_error(&state->errors, MC_ERROR_USER, srcposinvalid, "Object is not callable");
+    mc_errlist_push(&state->errors, MC_ERROR_USER, srcposinvalid, "Object is not callable");
     return mc_value_makenull();
 }
 
@@ -16293,7 +16040,7 @@ TMPSTATIC bool mc_vmdo_math(mcstate_t* state, mcopcode_t opcode)
             const char* opcodename = opcode_get_name(opcode);
             const char* lefttypename = object_get_type_name(lefttype);
             const char* righttypename = object_get_type_name(righttype);
-            errors_add_errorf(&state->errors, MC_ERROR_RUNTIME, frame_src_position(state->current_frame), "Invalid operand types for %s, got %s and %s",
+            mc_errlist_addf(&state->errors, MC_ERROR_RUNTIME, mc_callframe_getsourcelocation(state->current_frame), "Invalid operand types for %s, got %s and %s",
                               opcodename, lefttypename, righttypename);
             return false;
         }
@@ -16320,13 +16067,13 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* vm, mcvalue_t function, mcbas
     mcobjfuncscript_t* functionfunction;
     if(vm->running)
     {
-        errors_add_error(&vm->errors, MC_ERROR_USER, srcposinvalid, "VM is already executing code");
+        mc_errlist_push(&vm->errors, MC_ERROR_USER, srcposinvalid, "VM is already executing code");
         return false;
     }
     /* naming is hard */
     functionfunction = mc_value_functiongetscriptfunction(function);
     ok = false;
-    ok = frame_init(&createdframe, function, vm->sp - functionfunction->num_args);
+    ok = mc_callframe_init(&createdframe, function, vm->sp - functionfunction->num_args);
     if(!ok)
     {
         fprintf(stderr, "failed to init frames!\n");
@@ -16335,7 +16082,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* vm, mcvalue_t function, mcbas
     ok = push_frame(vm, createdframe);
     if(!ok)
     {
-        errors_add_error(&vm->errors, MC_ERROR_USER, srcposinvalid, "Pushing frame failed");
+        mc_errlist_push(&vm->errors, MC_ERROR_USER, srcposinvalid, "Pushing frame failed");
         return false;
     }
     fprintf(stderr, "**executing function**\n");
@@ -16355,12 +16102,12 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* vm, mcvalue_t function, mcbas
     memset(&timer, 0, sizeof(mctimer_t));
     if(checktime)
     {
-        timer = arcane_timer_start();
+        timer = mc_timer_start();
     }
 
     while(vm->current_frame->ip < vm->current_frame->bytecode_size)
     {
-        opcode = frame_read_opcode(vm->current_frame);
+        opcode = mc_callframe_readopcode(vm->current_frame);
         #if 0
             fprintf(stderr, "opcode=%d (%s)\n", opcode, opcode_lookup(opcode)->name);
         #endif
@@ -16370,11 +16117,11 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* vm, mcvalue_t function, mcbas
                 {
                     uint16_t constantix;
                     mcvalue_t* constant;
-                    constantix = frame_read_uint16(vm->current_frame);
-                    constant = (mcvalue_t*)array_get(constants, constantix);
+                    constantix = mc_callframe_readuint16(vm->current_frame);
+                    constant = (mcvalue_t*)mc_basicarray_get(constants, constantix);
                     if(!constant)
                     {
-                        errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Constant at %d not found", constantix);
+                        mc_errlist_addf(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getsourcelocation(vm->current_frame), "Constant at %d not found", constantix);
                         goto err;
                     }
                     stack_push(vm, *constant);
@@ -16442,7 +16189,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* vm, mcvalue_t function, mcbas
                     {
                         righttypestring = object_get_type_name(object_get_type(right));
                         lefttypestring = object_get_type_name(object_get_type(left));
-                        errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Cannot compare %s and %s", lefttypestring, righttypestring);
+                        mc_errlist_addf(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getsourcelocation(vm->current_frame), "Cannot compare %s and %s", lefttypestring, righttypestring);
                         goto err;
                     }
                 }
@@ -16518,7 +16265,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* vm, mcvalue_t function, mcbas
                     if(!overloadfound)
                     {
                         operandtypestring = object_get_type_name(operandtype);
-                        errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Invalid operand type for MINUS, got %s", operandtypestring);
+                        mc_errlist_addf(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getsourcelocation(vm->current_frame), "Invalid operand type for MINUS, got %s", operandtypestring);
                         goto err;
                     }
                 }
@@ -16556,13 +16303,13 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* vm, mcvalue_t function, mcbas
             }
             case OPCODE_JUMP:
             {
-                uint16_t pos = frame_read_uint16(vm->current_frame);
+                uint16_t pos = mc_callframe_readuint16(vm->current_frame);
                 vm->current_frame->ip = pos;
                 break;
             }
             case OPCODE_JUMP_IF_FALSE:
             {
-                uint16_t pos = frame_read_uint16(vm->current_frame);
+                uint16_t pos = mc_callframe_readuint16(vm->current_frame);
                 mcvalue_t test = stack_pop(vm);
                 if(!object_get_bool(test))
                 {
@@ -16572,7 +16319,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* vm, mcvalue_t function, mcbas
             }
             case OPCODE_JUMP_IF_TRUE:
             {
-                uint16_t pos = frame_read_uint16(vm->current_frame);
+                uint16_t pos = mc_callframe_readuint16(vm->current_frame);
                 mcvalue_t test = stack_pop(vm);
                 if(object_get_bool(test))
                 {
@@ -16587,14 +16334,14 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* vm, mcvalue_t function, mcbas
             }
             case OPCODE_DEFINE_MODULE_GLOBAL:
             {
-                uint16_t ix = frame_read_uint16(vm->current_frame);
+                uint16_t ix = mc_callframe_readuint16(vm->current_frame);
                 mcvalue_t value = stack_pop(vm);
                 vm_set_global(vm, ix, value);
                 break;
             }
             case OPCODE_SET_MODULE_GLOBAL:
             {
-                uint16_t ix = frame_read_uint16(vm->current_frame);
+                uint16_t ix = mc_callframe_readuint16(vm->current_frame);
                 mcvalue_t nvalue = stack_pop(vm);
                 mcvalue_t oldvalue = vm_get_global(vm, ix);
                 if(!check_assign(vm, oldvalue, nvalue))
@@ -16606,7 +16353,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* vm, mcvalue_t function, mcbas
             }
             case OPCODE_GET_MODULE_GLOBAL:
             {
-                uint16_t ix = frame_read_uint16(vm->current_frame);
+                uint16_t ix = mc_callframe_readuint16(vm->current_frame);
                 mcvalue_t global = vm->globals[ix];
                 stack_push(vm, global);
                 break;
@@ -16614,7 +16361,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* vm, mcvalue_t function, mcbas
             case OPCODE_ARRAY:
             {
                 int i;
-                uint16_t count = frame_read_uint16(vm->current_frame);
+                uint16_t count = mc_callframe_readuint16(vm->current_frame);
                 mcvalue_t arrayobj = object_make_array_with_capacity(vm, count);
                 if(object_is_null(arrayobj))
                 {
@@ -16636,7 +16383,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* vm, mcvalue_t function, mcbas
             }
             case OPCODE_MAP_START:
             {
-                uint16_t count = frame_read_uint16(vm->current_frame);
+                uint16_t count = mc_callframe_readuint16(vm->current_frame);
                 mcvalue_t mapobj = object_make_map_with_capacity(vm, count);
                 if(object_is_null(mapobj))
                 {
@@ -16648,7 +16395,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* vm, mcvalue_t function, mcbas
             case OPCODE_MAP_END:
             {
                 int i;
-                uint16_t kvpcount = frame_read_uint16(vm->current_frame);
+                uint16_t kvpcount = mc_callframe_readuint16(vm->current_frame);
                 uint16_t itemscount = kvpcount * 2;
                 mcvalue_t mapobj = this_stack_pop(vm);
                 mcvalue_t* kvpairs = vm->stack + vm->sp - itemscount;
@@ -16659,7 +16406,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* vm, mcvalue_t function, mcbas
                     {
                         mcobjtype_t keytype = object_get_type(key);
                         const char* keytypename = object_get_type_name(keytype);
-                        errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Key of type %s is not hashable", keytypename);
+                        mc_errlist_addf(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getsourcelocation(vm->current_frame), "Key of type %s is not hashable", keytypename);
                         goto err;
                     }
                     mcvalue_t val = kvpairs[i + 1];
@@ -16690,7 +16437,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* vm, mcvalue_t function, mcbas
 
                 if(lefttype != MC_OBJ_ARRAY && lefttype != MC_OBJ_MAP && lefttype != MC_OBJ_STRING)
                 {
-                    errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Type %s is not indexable", lefttypename);
+                    mc_errlist_addf(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getsourcelocation(vm->current_frame), "Type %s is not indexable", lefttypename);
                     goto err;
                 }
 
@@ -16700,15 +16447,15 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* vm, mcvalue_t function, mcbas
                 {
                     if(indextype != MC_OBJ_NUMBER)
                     {
-                        errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Cannot index %s with %s", lefttypename, indextypename);
+                        mc_errlist_addf(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getsourcelocation(vm->current_frame), "Cannot index %s with %s", lefttypename, indextypename);
                         goto err;
                     }
                     int ix = (int)object_get_number(index);
                     if(ix < 0)
                     {
-                        ix = mv_value_arraygetlength(left) + ix;
+                        ix = mc_value_arraygetlength(left) + ix;
                     }
-                    if(ix >= 0 && ix < mv_value_arraygetlength(left))
+                    if(ix >= 0 && ix < mc_value_arraygetlength(left))
                     {
                         res = mc_value_arraygetvalueat(left, ix);
                     }
@@ -16743,14 +16490,14 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* vm, mcvalue_t function, mcbas
 
                 if(lefttype != MC_OBJ_ARRAY && lefttype != MC_OBJ_MAP && lefttype != MC_OBJ_STRING)
                 {
-                    errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Type %s is not indexable", lefttypename);
+                    mc_errlist_addf(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getsourcelocation(vm->current_frame), "Type %s is not indexable", lefttypename);
                     goto err;
                 }
 
                 mcvalue_t res = mc_value_makenull();
                 if(indextype != MC_OBJ_NUMBER)
                 {
-                    errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Cannot index %s with %s", lefttypename, indextypename);
+                    mc_errlist_addf(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getsourcelocation(vm->current_frame), "Cannot index %s with %s", lefttypename, indextypename);
                     goto err;
                 }
                 ix = (int)object_get_number(index);
@@ -16779,7 +16526,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* vm, mcvalue_t function, mcbas
             }
             case OPCODE_CALL:
             {
-                uint8_t num_args = frame_read_uint8(vm->current_frame);
+                uint8_t num_args = mc_callframe_readuint8(vm->current_frame);
                 mcvalue_t callee = stack_get(vm, num_args);
                 ok = mc_vm_callobject(vm, callee, num_args);
                 if(!ok)
@@ -16812,13 +16559,13 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* vm, mcvalue_t function, mcbas
             }
             case OPCODE_DEFINE_LOCAL:
             {
-                uint8_t pos = frame_read_uint8(vm->current_frame);
+                uint8_t pos = mc_callframe_readuint8(vm->current_frame);
                 vm->stack[vm->current_frame->base_pointer + pos] = stack_pop(vm);
                 break;
             }
             case OPCODE_SET_LOCAL:
             {
-                uint8_t pos = frame_read_uint8(vm->current_frame);
+                uint8_t pos = mc_callframe_readuint8(vm->current_frame);
                 mcvalue_t nvalue = stack_pop(vm);
                 mcvalue_t oldvalue = vm->stack[vm->current_frame->base_pointer + pos];
                 if(!check_assign(vm, oldvalue, nvalue))
@@ -16830,19 +16577,19 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* vm, mcvalue_t function, mcbas
             }
             case OPCODE_GET_LOCAL:
             {
-                uint8_t pos = frame_read_uint8(vm->current_frame);
+                uint8_t pos = mc_callframe_readuint8(vm->current_frame);
                 mcvalue_t val = vm->stack[vm->current_frame->base_pointer + pos];
                 stack_push(vm, val);
                 break;
             }
             case OPCODE_GETGLOBALBUILTIN:
             {
-                uint16_t ix = frame_read_uint16(vm->current_frame);
+                uint16_t ix = mc_callframe_readuint16(vm->current_frame);
                 ok = false;
                 mcvalue_t val = global_store_get_object_at(vm->global_store, ix, &ok);
                 if(!ok)
                 {
-                    errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Global value %d not found", ix);
+                    mc_errlist_addf(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getsourcelocation(vm->current_frame), "Global value %d not found", ix);
                     goto err;
                 }
                 stack_push(vm, val);
@@ -16851,19 +16598,19 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* vm, mcvalue_t function, mcbas
             case OPCODE_FUNCTION:
             {
                 int i;
-                uint16_t constantix = frame_read_uint16(vm->current_frame);
-                uint8_t numfree = frame_read_uint8(vm->current_frame);
-                mcvalue_t* constant = (mcvalue_t*)array_get(constants, constantix);
+                uint16_t constantix = mc_callframe_readuint16(vm->current_frame);
+                uint8_t numfree = mc_callframe_readuint8(vm->current_frame);
+                mcvalue_t* constant = (mcvalue_t*)mc_basicarray_get(constants, constantix);
                 if(!constant)
                 {
-                    errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Constant %d not found", constantix);
+                    mc_errlist_addf(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getsourcelocation(vm->current_frame), "Constant %d not found", constantix);
                     goto err;
                 }
                 mcobjtype_t constanttype = object_get_type(*constant);
                 if(constanttype != MC_OBJ_FUNCTION)
                 {
                     const char* tname = object_get_type_name(constanttype);
-                    errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "%s is not a function", tname);
+                    mc_errlist_addf(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getsourcelocation(vm->current_frame), "%s is not a function", tname);
                     goto err;
                 }
 
@@ -16885,14 +16632,14 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* vm, mcvalue_t function, mcbas
             }
             case OPCODE_GET_FREE:
             {
-                uint8_t freeix = frame_read_uint8(vm->current_frame);
+                uint8_t freeix = mc_callframe_readuint8(vm->current_frame);
                 mcvalue_t val = mc_value_functiongetfreevalat(vm->current_frame->function, freeix);
                 stack_push(vm, val);
                 break;
             }
             case OPCODE_SET_FREE:
             {
-                uint8_t freeix = frame_read_uint8(vm->current_frame);
+                uint8_t freeix = mc_callframe_readuint8(vm->current_frame);
                 mcvalue_t val = stack_pop(vm);
                 mc_value_functionsetfreevalat(vm->current_frame->function, freeix, val);
                 break;
@@ -16915,7 +16662,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* vm, mcvalue_t function, mcbas
 
                 if(lefttype != MC_OBJ_ARRAY && lefttype != MC_OBJ_MAP)
                 {
-                    errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Type %s is not indexable", lefttypename);
+                    mc_errlist_addf(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getsourcelocation(vm->current_frame), "Type %s is not indexable", lefttypename);
                     goto err;
                 }
 
@@ -16924,17 +16671,17 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* vm, mcvalue_t function, mcbas
                     int alen;
                     if(indextype != MC_OBJ_NUMBER)
                     {
-                        errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Cannot index %s with %s", lefttypename, indextypename);
+                        mc_errlist_addf(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getsourcelocation(vm->current_frame), "Cannot index %s with %s", lefttypename, indextypename);
                         goto err;
                     }
                     int ix = (int)object_get_number(index);
                     
                     ok = mc_value_arraysetvalueat(left, ix, nvalue);
-                    alen = mv_value_arraygetlength(left);
+                    alen = mc_value_arraygetlength(left);
 
                     if(!ok)
                     {
-                        errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "failed to set array index %d (of %d)", ix, alen);
+                        mc_errlist_addf(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getsourcelocation(vm->current_frame), "failed to set array index %d (of %d)", ix, alen);
                         goto err;
                     }
                 }
@@ -16966,7 +16713,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* vm, mcvalue_t function, mcbas
                 mcobjtype_t type = object_get_type(val);
                 if(type == MC_OBJ_ARRAY)
                 {
-                    len = mv_value_arraygetlength(val);
+                    len = mc_value_arraygetlength(val);
                 }
                 else if(type == MC_OBJ_MAP)
                 {
@@ -16979,7 +16726,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* vm, mcvalue_t function, mcbas
                 else
                 {
                     const char* tname = object_get_type_name(type);
-                    errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Cannot get length of %s", tname);
+                    mc_errlist_addf(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getsourcelocation(vm->current_frame), "Cannot get length of %s", tname);
                     goto err;
                 }
                 stack_push(vm, mc_value_makenumber(len));
@@ -16987,7 +16734,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* vm, mcvalue_t function, mcbas
             }
             case OPCODE_NUMBER:
             {
-                uint64_t val = frame_read_uint64(vm->current_frame);
+                uint64_t val = mc_callframe_readuint64(vm->current_frame);
                 double val_double = mc_util_uint64todouble(val);
                 mcvalue_t obj = mc_value_makenumber(val_double);
                 stack_push(vm, obj);
@@ -16995,14 +16742,14 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* vm, mcvalue_t function, mcbas
             }
             case OPCODE_SET_RECOVER:
             {
-                uint16_t recover_ip = frame_read_uint16(vm->current_frame);
+                uint16_t recover_ip = mc_callframe_readuint16(vm->current_frame);
                 vm->current_frame->recover_ip = recover_ip;
                 break;
             }
             default:
             {
                 MC_ASSERT(false);
-                errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Unknown opcode: 0x%x", opcode);
+                mc_errlist_addf(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getsourcelocation(vm->current_frame), "Unknown opcode: 0x%x", opcode);
                 goto err;
             }
         }
@@ -17011,20 +16758,20 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* vm, mcvalue_t function, mcbas
             timecheckcounter++;
             if(timecheckcounter > timecheckinterval)
             {
-                elapsedms = (int)arcane_timer_get_elapsed_ms(&timer);
+                elapsedms = (int)mc_timer_getelapsedms(&timer);
                 if(elapsedms > maxexectimems)
                 {
-                    errors_add_errorf(&vm->errors, MC_ERROR_TIMEOUT, frame_src_position(vm->current_frame), "Execution took more than %1.17g ms", maxexectimems);
+                    mc_errlist_addf(&vm->errors, MC_ERROR_TIMEOUT, mc_callframe_getsourcelocation(vm->current_frame), "Execution took more than %1.17g ms", maxexectimems);
                     goto err;
                 }
                 timecheckcounter = 0;
             }
         }
     err:
-        if(errors_get_count(&vm->errors) > 0)
+        if(mc_errlist_size(&vm->errors) > 0)
         {
             err = errors_get_last_error(&vm->errors);
-            if(err->type == MC_ERROR_RUNTIME && errors_get_count(&vm->errors) == 1)
+            if(err->type == MC_ERROR_RUNTIME && mc_errlist_size(&vm->errors) == 1)
             {
                 recoverframeix = -1;
                 for(fri = vm->frames_count - 1; fri >= 0; fri--)
@@ -17061,7 +16808,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* vm, mcvalue_t function, mcbas
                 stack_push(vm, errobj);
                 vm->current_frame->ip = vm->current_frame->recover_ip;
                 vm->current_frame->is_recovering = true;
-                errors_clear(&vm->errors);
+                mc_errlist_clear(&vm->errors);
             }
             else
             {
@@ -17075,7 +16822,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* vm, mcvalue_t function, mcbas
     }
 
 end:
-    if(errors_get_count(&vm->errors) > 0)
+    if(mc_errlist_size(&vm->errors) > 0)
     {
         err = errors_get_last_error(&vm->errors);
         if(!err->traceback)
@@ -17089,7 +16836,7 @@ end:
     }
     run_gc(vm, constants);
     vm->running = false;
-    return errors_get_count(&vm->errors) == 0;
+    return mc_errlist_size(&vm->errors) == 0;
 }
 
 TMPSTATIC mcvalue_t vm_get_last_popped(mcstate_t* vm)
@@ -17099,7 +16846,7 @@ TMPSTATIC mcvalue_t vm_get_last_popped(mcstate_t* vm)
 
 TMPSTATIC bool vm_has_errors(mcstate_t* vm)
 {
-    return errors_get_count(&vm->errors) > 0;
+    return mc_errlist_size(&vm->errors) > 0;
 }
 
 TMPSTATIC bool vm_set_global(mcstate_t* vm, int ix, mcvalue_t val)
@@ -17107,7 +16854,7 @@ TMPSTATIC bool vm_set_global(mcstate_t* vm, int ix, mcvalue_t val)
     if(ix >= VM_MAX_GLOBALS)
     {
         MC_ASSERT(false);
-        errors_add_error(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Global write out of range");
+        mc_errlist_push(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getsourcelocation(vm->current_frame), "Global write out of range");
         return false;
     }
     vm->globals[ix] = val;
@@ -17123,7 +16870,7 @@ TMPSTATIC mcvalue_t vm_get_global(mcstate_t* vm, int ix)
     if(ix >= VM_MAX_GLOBALS)
     {
         MC_ASSERT(false);
-        errors_add_error(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Global read out of range");
+        mc_errlist_push(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getsourcelocation(vm->current_frame), "Global read out of range");
         return mc_value_makenull();
     }
     return vm->globals[ix];
@@ -17155,7 +16902,7 @@ TMPSTATIC void stack_push(mcstate_t* vm, mcvalue_t obj)
     if(vm->sp >= VM_STACK_SIZE)
     {
         MC_ASSERT(false);
-        errors_add_error(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Stack overflow");
+        mc_errlist_push(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getsourcelocation(vm->current_frame), "Stack overflow");
         return;
     }
     if(vm->current_frame)
@@ -17181,7 +16928,7 @@ TMPSTATIC mcvalue_t stack_pop(mcstate_t* vm)
 #if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
     if(vm->sp == 0)
     {
-        errors_add_error(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Stack underflow");
+        mc_errlist_push(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getsourcelocation(vm->current_frame), "Stack underflow");
         MC_ASSERT(false);
         return mc_value_makenull();
     }
@@ -17206,7 +16953,7 @@ TMPSTATIC mcvalue_t stack_get(mcstate_t* vm, int nthitem)
 #if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
     if(ix < 0 || ix >= VM_STACK_SIZE)
     {
-        errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Invalid stack index: %d", nthitem);
+        mc_errlist_addf(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getsourcelocation(vm->current_frame), "Invalid stack index: %d", nthitem);
         MC_ASSERT(false);
         return mc_value_makenull();
     }
@@ -17220,7 +16967,7 @@ TMPSTATIC void this_stack_push(mcstate_t* vm, mcvalue_t obj)
     if(vm->this_sp >= VM_THIS_STACK_SIZE)
     {
         MC_ASSERT(false);
-        errors_add_error(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "this stack overflow");
+        mc_errlist_push(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getsourcelocation(vm->current_frame), "this stack overflow");
         return;
     }
 #endif
@@ -17233,7 +16980,7 @@ TMPSTATIC mcvalue_t this_stack_pop(mcstate_t* vm)
 #if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
     if(vm->this_sp == 0)
     {
-        errors_add_error(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "this stack underflow");
+        mc_errlist_push(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getsourcelocation(vm->current_frame), "this stack underflow");
         MC_ASSERT(false);
         return mc_value_makenull();
     }
@@ -17249,7 +16996,7 @@ TMPSTATIC mcvalue_t this_stack_get(mcstate_t* vm, int nthitem)
 #if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
     if(ix < 0 || ix >= VM_THIS_STACK_SIZE)
     {
-        errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Invalid this stack index: %d", nthitem);
+        mc_errlist_addf(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getsourcelocation(vm->current_frame), "Invalid this stack index: %d", nthitem);
         MC_ASSERT(false);
         return mc_value_makenull();
     }
@@ -17298,7 +17045,7 @@ TMPSTATIC void run_gc(mcstate_t* vm, mcbasicarray_t* constants)
     mcvmframe_t* frame;
     gc_unmark_all(vm->mem);
     gc_mark_objects(global_store_get_object_data(vm->global_store), global_store_get_object_count(vm->global_store));
-    gc_mark_objects((mcvalue_t*)array_data(constants), array_count(constants));
+    gc_mark_objects((mcvalue_t*)mc_basicarray_data(constants), mc_basicarray_count(constants));
     gc_mark_objects(vm->globals, vm->globals_count);
     for(i = 0; i < vm->frames_count; i++)
     {
@@ -17327,27 +17074,27 @@ TMPSTATIC bool mc_vm_callobject(mcstate_t* vm, mcvalue_t callee, int nargs)
         calleefunction = mc_value_functiongetscriptfunction(callee);
         if(nargs != calleefunction->num_args)
         {
-            errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Invalid number of arguments to \"%s\", expected %d, got %d",
+            mc_errlist_addf(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getsourcelocation(vm->current_frame), "Invalid number of arguments to \"%s\", expected %d, got %d",
                               mc_value_functiongetname(callee), calleefunction->num_args, nargs);
             return false;
         }
-        ok = frame_init(&calleeframe, callee, vm->sp - nargs);
+        ok = mc_callframe_init(&calleeframe, callee, vm->sp - nargs);
         if(!ok)
         {
-            errors_add_error(&vm->errors, MC_ERROR_RUNTIME, srcposinvalid, "Frame init failed in mc_vm_callobject");
+            mc_errlist_push(&vm->errors, MC_ERROR_RUNTIME, srcposinvalid, "Frame init failed in mc_vm_callobject");
             return false;
         }
         ok = push_frame(vm, calleeframe);
         if(!ok)
         {
-            errors_add_error(&vm->errors, MC_ERROR_RUNTIME, srcposinvalid, "Pushing frame failed in mc_vm_callobject");
+            mc_errlist_push(&vm->errors, MC_ERROR_RUNTIME, srcposinvalid, "Pushing frame failed in mc_vm_callobject");
             return false;
         }
     }
     else if(calleetype == MC_OBJ_NATIVE_FUNCTION)
     {
         stackpos = vm->stack + vm->sp - nargs;
-        res = mc_vm_callnativefunction(vm, callee, frame_src_position(vm->current_frame), nargs, stackpos);
+        res = mc_vm_callnativefunction(vm, callee, mc_callframe_getsourcelocation(vm->current_frame), nargs, stackpos);
         if(vm_has_errors(vm))
         {
             return false;
@@ -17358,7 +17105,7 @@ TMPSTATIC bool mc_vm_callobject(mcstate_t* vm, mcvalue_t callee, int nargs)
     else
     {
         calleetypename = object_get_type_name(calleetype);
-        errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "%s object is not callable", calleetypename);
+        mc_errlist_addf(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getsourcelocation(vm->current_frame), "%s object is not callable", calleetypename);
         return false;
     }
     return true;
@@ -17373,7 +17120,7 @@ TMPSTATIC mcvalue_t mc_vm_callnativefunction(mcstate_t* vm, mcvalue_t callee, mc
     mcobjfuncnative_t* nativefun;
     nativefun = mc_value_functiongetnativefunction(callee);
     res = nativefun->fn(vm, nativefun->data, argc, args);
-    if(errors_has_errors(&vm->errors) && !MC_UTIL_STREQ(nativefun->name, "crash"))
+    if(mc_errlist_haserrors(&vm->errors) && !MC_UTIL_STREQ(nativefun->name, "crash"))
     {
         err = errors_get_last_error(&vm->errors);
         err->pos = srcpos;
@@ -17414,7 +17161,7 @@ TMPSTATIC bool check_assign(mcstate_t* vm, mcvalue_t oldvalue, mcvalue_t nvalue)
     }
     if(oldvaluetype != nvaluetype)
     {
-        errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Trying to assign variable of type %s to %s",
+        mc_errlist_addf(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getsourcelocation(vm->current_frame), "Trying to assign variable of type %s to %s",
                           object_get_type_name(nvaluetype), object_get_type_name(oldvaluetype));
         return false;
     }
@@ -17523,29 +17270,234 @@ TMPSTATIC char* read_file(const char* filename)
 }
 
 
+void optprs_fprintmaybearg(FILE* out, const char* begin, const char* flagname, size_t flaglen, bool needval, bool maybeval, const char* delim)
+{
+    fprintf(out, "%s%.*s", begin, (int)flaglen, flagname);
+    if(needval)
+    {
+        if(maybeval)
+        {
+            fprintf(out, "[");
+        }
+        if(delim != NULL)
+        {
+            fprintf(out, "%s", delim);
+        }
+        fprintf(out, "<val>");
+        if(maybeval)
+        {
+            fprintf(out, "]");
+        }
+    }
+}
+
+void optprs_fprintusage(FILE* out, optlongflags_t* flags)
+{
+    size_t i;
+    char ch;
+    bool needval;
+    bool maybeval;
+    bool hadshort;
+    optlongflags_t* flag;
+    for(i=0; flags[i].longname != NULL; i++)
+    {
+        flag = &flags[i];
+        hadshort = false;
+        needval = (flag->argtype > OPTPARSE_NONE);
+        maybeval = (flag->argtype == OPTPARSE_OPTIONAL);
+        if(flag->shortname > 0)
+        {
+            hadshort = true;
+            ch = flag->shortname;
+            fprintf(out, "    ");
+            optprs_fprintmaybearg(out, "-", &ch, 1, needval, maybeval, NULL);
+        }
+        if(flag->longname != NULL)
+        {
+            if(hadshort)
+            {
+                fprintf(out, ", ");
+            }
+            else
+            {
+                fprintf(out, "    ");
+            }
+            optprs_fprintmaybearg(out, "--", flag->longname, strlen(flag->longname), needval, maybeval, "=");
+        }
+        if(flag->helptext != NULL)
+        {
+            fprintf(out, "  -  %s", flag->helptext);
+        }
+        fprintf(out, "\n");
+    }
+}
+
+void mc_cli_printusage(char* argv[], optlongflags_t* flags, bool fail)
+{
+    FILE* out;
+    out = fail ? stderr : stdout;
+    fprintf(out, "Usage: %s [<options>] [<filename> | -e <code>]\n", argv[0]);
+    optprs_fprintusage(out, flags);
+}
+
 static int g_extfnvar;
 
-int main(int argc, char** argv)
+bool mc_cli_compileandrunsource(mcstate_t* state, mcvalue_t* vdest, const char* source)
 {
-    (void)argc;
-    char* code;
-    g_extfnvar = 0;
-    code = read_file(argv[1]);
-    mcstate_t* state = mc_state_make(NULL);
-    arcane_set_global_constant(state, "test", mc_value_makenumber(42));
-    mc_state_setnativefunction(state, "external_fn_test", cfn_externalfn, &g_extfnvar);
-    mc_state_setnativefunction(state, "test_check_args", cfn_test_check_args, NULL);
-    mc_state_setnativefunction(state, "vec2_add", cfn_vec2add, NULL);
-    mc_state_setnativefunction(state, "vec2_sub", cfn_vec2sub, NULL);
-    mccompiledprogram_t* program = mc_state_compilesource(state, code);
-    mc_program_execute(state, program);
+    bool ok;
+    mcvalue_t tmp;
+    ok = false;
+    mccompiledprogram_t* program = mc_state_compilesource(state, source);
+    tmp = mc_program_execute(state, program);
     if(mc_state_haserrors(state))
     {
         mc_state_printerrors(state);
     }
+    else
+    {
+        ok = true;
+    }
+    if(vdest != NULL)
+    {
+        *vdest =  tmp;
+    }
     mc_program_destroy(program);
-    mc_state_destroy(state);
+    return ok;
+}
+
+bool mc_cli_compileandrunfile(mcstate_t* state, const char* filename)
+{
+    bool ok;
+    char* code;
+    code = read_file(filename);
+    if(code == NULL)
+    {
+        return false;
+    }
+    ok = mc_cli_compileandrunsource(state, NULL, code);
     free(code);
-    code = NULL;
+    return ok;
+}
+
+void mc_cli_installargv(mcstate_t* state, int argc, char** argv, int beginat)
+{
+    int i;
+    mcvalue_t strval;
+    mcvalue_t argvobj;
+    argvobj = object_make_array(state);
+    for(i=beginat; i<argc; i++)
+    {
+        strval = mc_value_makestring(state, argv[i]);
+        mc_value_arraypush(argvobj, strval);
+    }
+    mc_state_setglobalconstant(state, "ARGV", argvobj);
+}
+
+int oldmain(int argc, char** argv)
+{
+    (void)argc;
+    g_extfnvar = 0;
+    mcstate_t* state = mc_state_make(NULL);
+    mc_state_setglobalconstant(state, "test", mc_value_makenumber(42));
+    mc_state_setnativefunction(state, "external_fn_test", cfn_externalfn, &g_extfnvar);
+    mc_state_setnativefunction(state, "test_check_args", cfn_test_check_args, NULL);
+    mc_state_setnativefunction(state, "vec2_add", cfn_vec2add, NULL);
+    mc_state_setnativefunction(state, "vec2_sub", cfn_vec2sub, NULL);
+    mc_cli_compileandrunfile(state, argv[1]);
+    mc_state_destroy(state);
+    return 0;
+}
+
+int main(int argc, char* argv[])
+{
+    bool ok;
+    int co;
+    int opt;
+    int nargc;
+    int longindex;
+    char* nargv[128];
+    char* arg;
+    const char* evalcode;
+    mcvalue_t tmp;
+    mcstate_t* state;
+    optcontext_t options;
+    ok = true;
+    evalcode = NULL;
+    ok = true;
+    nargc = 0;
+    state = mc_state_make(NULL);
+    optlongflags_t longopts[] =
+    {
+        {"help", 'h', OPTPARSE_NONE, "this help"},
+        {"eval", 'e', OPTPARSE_REQUIRED, "evaluate a single line of code"},
+        {0, 0, (optargtype_t)0, NULL}
+    };
+    nargc = 0;
+    optprs_init(&options, argc, argv);
+    options.permute = 0;
+    while((opt = optprs_nextlongflag(&options, longopts, &longindex)) != -1)
+    {
+        co = longopts[longindex].shortname;
+        if(opt == '?')
+        {
+            printf("%s: %s\n", argv[0], options.errmsg);
+        }
+        else if(co == 'h')
+        {
+            mc_cli_printusage(argv, longopts, false);
+        }
+        else if(co == 'e')
+        {
+            evalcode = options.optarg;
+        }
+    }
+    /*
+    * IMPORTANT:
+    * when '-e' is specified, the structure of ARGV would /not/ include the callee (argv[0]),
+    * which in scripts, would be the script file. i.e., in 'foo.mc' ARGV[0] would be 'foo.mc', et cetera.
+    * this merely fills that spot whenever '-e' is being used.
+    * don't remove the angle brackets either; so it doesn't get errornously picked up
+    * as an option in some other place.
+    */
+    if(evalcode != NULL)
+    {
+        nargv[0] = "<-e>";
+        nargc++;
+    }
+    while(true)
+    {
+        arg = optprs_nextpositional(&options);
+        if(arg == NULL)
+        {
+            break;
+        }
+        nargv[nargc] = arg;
+        nargc++;
+    }
+    fprintf(stderr, "nargc=%d\n", nargc);
+    mc_cli_installargv(state, nargc, nargv, 0);
+    if(evalcode != NULL)
+    {
+        //ok = mc_cli_runsource(state, evalcode);
+        mc_cli_compileandrunsource(state, &tmp, evalcode);
+    }
+    else
+    {
+        if(nargc > 0)
+        {
+            //state.currscriptpath = argv[1];
+            ok = mc_cli_compileandrunfile(state, nargv[0]);
+        }
+        else
+        {
+            //if(nargc == 0)
+            {
+                //mc_cli_runrepl(state);
+            }
+            ok = false;
+        }
+    }
+    mc_state_destroy(state);
+    return (ok ? 0 : 1);
 }
 
