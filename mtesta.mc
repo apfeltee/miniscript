@@ -1,6 +1,5 @@
-import "module_b"
-
-import "module_dir/module_c"
+import "mtestb"
+import "module_dir/submc"
 
 {
     var block_scope_var = 2;
@@ -8,11 +7,11 @@ import "module_dir/module_c"
 
 assert(true) // testing if builtins are resolvable
 
-fn inc() {
-    return module_c::inc()
+function inc() {
+    return submc::inc()
 }
 
-fn add(a, b) {
+function add(a, b) {
     return a + b
 }
 

@@ -6,14 +6,426 @@
 #include <string.h>
 #include <math.h>
 #include <float.h>
-#include <unistd.h>
-#include <sys/time.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <errno.h>
 #include <limits.h>
 #include <ctype.h>
+
+#if defined(__unix__)
+    #include <unistd.h>
+    #include <sys/time.h>
+#endif
+
+/*
+
+src_pos_make
+arcane_timer_platform_supported
+arcane_timer_start
+arcane_timer_get_elapsed_ms
+compilation_scope_make
+compilation_scope_destroy
+compilation_scope_orphan_result
+compilation_result_make
+compilation_result_destroy
+opcode_lookup
+opcode_get_name
+parser_make
+parser_destroy
+parser_parse_all
+parse_statement
+parse_define_statement
+parse_if_statement
+parse_return_statement
+parse_expression_statement
+parse_while_loop_statement
+parse_break_statement
+parse_continue_statement
+parse_block_statement
+parse_import_statement
+parse_recover_statement
+parse_for_loop_statement
+parse_foreach
+parse_classic_for_loop
+parse_function_statement
+parse_code_block
+parse_expression
+parse_identifier
+parse_number_literal
+parse_bool_literal
+parse_string_literal
+parse_template_string_literal
+parse_null_literal
+parse_array_literal
+parse_map_literal
+parse_prefix_expression
+parse_infix_expression
+parse_grouped_expression
+parse_function_literal
+parse_function_parameters
+parse_call_expression
+parse_expression_list
+parse_index_expression
+parse_assign_expression
+parse_logical_expression
+parse_ternary_expression
+parse_incdec_prefix_expression
+parse_incdec_postfix_expression
+parse_dot_expression
+get_precedence
+token_to_operator
+escape_char
+process_and_copy_string
+wrap_expression_in_function_call
+arcane_execute
+arcane_call
+arcane_clear_errors
+arcane_set_global_constant
+arcane_get_object
+arcane_object_make_error
+arcane_object_make_errorf
+arcane_object_is_null
+arcane_set_runtime_error
+arcane_set_runtime_errorf
+object_get_type
+object_is_numeric
+object_is_null
+object_is_callable
+arcane_object_get_type_name
+arcane_object_get_string
+object_make_native_function
+object_make_array
+object_make_array_with_capacity
+object_make_map
+object_make_map_with_capacity
+object_make_error
+object_make_error_no_copy
+object_make_errorf
+object_make_function
+object_make_external
+object_deinit
+object_data_deinit
+object_is_allocated
+object_get_mem
+arcane_error_get_message
+arcane_error_get_filepath
+arcane_error_get_line
+arcane_error_get_line_number
+arcane_error_get_column_number
+arcane_error_get_type
+arcane_error_get_type_string
+arcane_error_type_to_string
+arcane_error_get_traceback
+arcane_traceback_get_depth
+arcane_traceback_get_filepath
+arcane_traceback_get_line
+arcane_traceback_get_line_number
+arcane_traceback_get_column_number
+arcane_traceback_get_function_name
+arcane_deinit
+arcane_native_fn_wrapper
+arcane_object_make_native_function_with_name
+reset_state
+set_default_config
+read_file_default
+write_file_default
+stdout_write_default
+expression_make_ident
+expression_make_number_literal
+expression_make_bool_literal
+expression_make_string_literal
+expression_make_null_literal
+expression_make_array_literal
+expression_make_map_literal
+expression_make_prefix
+expression_make_infix
+expression_make_fn_literal
+expression_make_call
+expression_make_index
+expression_make_assign
+expression_make_logical
+expression_make_ternary
+expression_destroy
+expression_copy
+statement_make_define
+statement_make_if
+statement_make_return
+statement_make_expression
+statement_make_while_loop
+statement_make_break
+statement_make_foreach
+statement_make_for_loop
+statement_make_continue
+statement_make_block
+statement_make_import
+statement_make_recover
+statement_destroy
+statement_copy
+code_block_make
+code_block_destroy
+code_block_copy
+operator_to_string
+expression_type_to_string
+ident_make
+ident_copy
+ident_destroy
+if_case_make
+if_case_destroy
+if_case_copy
+expression_make
+statement_make
+builtins_count
+builtins_get_fn
+builtins_get_name
+code_to_string
+code_read_operands
+collections_strndup
+collections_strdup
+dict_make_
+dict_destroy
+dict_destroy_with_items
+dict_copy_with_items
+dict_set
+dict_get
+dict_get_value_at
+dict_get_key_at
+dict_count
+dict_remove
+dict_init
+dict_deinit
+dict_get_cell_ix
+hash_string
+dict_grow_and_rehash
+dict_set_internal
+valdict_init
+valdict_deinit
+valdict_make_
+valdict_make_with_capacity
+valdict_destroy
+valdict_set_hash_function
+valdict_set_equals_function
+valdict_set
+valdict_get
+valdict_get_key_at
+valdict_get_value_at
+valdict_get_capacity
+valdict_set_value_at
+valdict_count
+valdict_remove
+valdict_clear
+valdict_get_cell_ix
+valdict_grow_and_rehash
+valdict_set_key_at
+valdict_keys_are_equal
+valdict_hash_key
+array_make
+array_make_with_capacity
+array_destroy
+array_destroy_with_items_
+array_copy
+array_add
+array_addn
+array_add_array
+array_push
+array_pop
+array_top
+array_set
+array_setn
+array_get
+array_get_const
+array_get_last
+array_count
+array_get_capacity
+array_remove_at
+array_remove_item
+array_clear
+array_clear_and_deinit_items_
+array_lock_capacity
+array_get_index
+array_contains
+array_data
+array_const_data
+array_orphan_data
+array_reverse
+array_init_with_capacity
+array_deinit
+ptrarray_make
+ptrarray_make_with_capacity
+ptrarray_destroy
+ptrarray_destroy_with_items_
+ptrarray_copy
+ptrarray_copy_with_items_
+ptrarray_push
+ptrarray_get
+ptrarray_pop
+ptrarray_top
+ptrarray_count
+ptrarray_remove_at
+ptrarray_clear
+ptrarray_clear_and_destroy_items_
+ptrarray_lock_capacity
+ptrarray_get_index
+ptrarray_contains
+ptrarray_get_addr
+ptrarray_data
+ptrarray_reverse
+kg_split_string
+kg_join
+kg_canonicalise_path
+kg_is_path_absolute
+kg_streq
+errors_init
+errors_deinit
+errors_add_error
+errors_add_errorf
+errors_clear
+errors_get_count
+errors_get
+errors_getc
+error_type_to_string
+errors_get_last_error
+errors_has_errors
+frame_init
+frame_read_uint64
+frame_read_uint16
+frame_read_uint8
+frame_read_opcode
+frame_src_position
+gcmem_make
+gcmem_destroy
+gcmem_alloc_object_data
+gcmem_get_object_data_from_pool
+gc_unmark_all
+gc_mark_objects
+gc_mark_object
+gc_sweep
+gc_disable_on_object
+gc_enable_on_object
+gc_should_sweep
+get_pool_for_type
+can_data_be_put_in_pool
+global_store_make
+global_store_destroy
+global_store_get_symbol
+global_store_set
+global_store_get_object_at
+global_store_get_object_data
+global_store_get_object_count
+object_is_hashable
+object_get_type_name
+object_get_type_union_name
+object_serialize
+mc_value_copydeep
+mc_value_copyflat
+mc_value_compare
+object_equals
+object_get_external_data
+object_set_external_destroy_function
+object_get_allocated_data
+object_get_bool
+object_get_number
+mc_value_stringgetdata
+mc_value_stringgetlength
+object_set_string_length
+mc_value_stringgetcapacity
+mc_value_stringgetmutabledata
+mc_value_stringgethash
+mc_value_functiongetscriptfunction
+mc_value_functiongetnativefunction
+mc_value_functiongetname
+mc_value_functiongetfreevalat
+mc_value_functionsetfreevalat
+mc_value_functiongetfreevals
+mc_value_errorgetmessage
+mc_value_errorsettraceback
+mc_value_errorgettraceback
+mc_value_setexternaldata
+mc_value_setexternalcopyfunction
+mc_value_arraygetvalueat
+mc_value_arraysetvalueat
+mc_value_arraypush
+mv_value_arraygetlength
+mc_value_arrayremovevalueat
+mc_value_mapgetlength
+mc_value_mapgetkeyat
+mc_value_mapgetvalueat
+mc_value_mapsetvalueat
+mc_value_mapgetkvpairat
+mc_value_mapsetvalue
+mc_value_mapgetvalue
+mc_value_maphaskey
+mc_value_copydeepintern
+object_equals_wrapped
+object_hash
+object_hash_string
+object_hash_double
+object_get_allocated_array
+object_is_number
+freevals_are_allocated
+mc_value_stringgetdataintern
+mc_value_stringreservecapacity
+symbol_make
+symbol_destroy
+symbol_copy
+mc_symtable_make
+mc_symtable_destroy
+symbol_table_copy
+symbol_table_add_module_symbol
+symbol_table_define
+symbol_table_define_free
+symbol_table_define_function_name
+symbol_table_define_this
+symbol_table_resolve
+symbol_table_symbol_is_defined
+symbol_table_push_block_scope
+symbol_table_pop_block_scope
+symbol_table_get_block_scope
+symbol_table_is_module_global_scope
+symbol_table_is_top_block_scope
+symbol_table_is_top_global_scope
+symbol_table_get_module_global_symbol_count
+symbol_table_get_module_global_symbol_at
+block_scope_make
+block_scope_destroy
+block_scope_copy
+set_symbol
+next_symbol_index
+count_num_definitions
+token_init
+token_duplicate_literal
+token_type_to_string
+traceback_make
+traceback_destroy
+traceback_append
+traceback_append_from_vm
+traceback_to_string
+traceback_item_get_line
+traceback_item_get_filepath
+vm_make
+vm_destroy
+vm_reset
+vm_call
+vm_get_last_popped
+vm_has_errors
+vm_set_global
+vm_get_global
+set_sp
+stack_push
+stack_pop
+stack_get
+this_stack_push
+this_stack_pop
+this_stack_get
+push_frame
+pop_frame
+run_gc
+check_assign
+try_overload_operator
+read_file
+
+*/
 
 /*
 SPDX-License-Identifier: MIT
@@ -41,18 +453,42 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
+#define MC_CONF_DEBUG 0
 
 #if 0
     #define TMPSTATIC static inline  __attribute__((always_inline))
     #define TMPSEMISTATIC static inline
 #else
-    #define TMPSTATIC
-    #define TMPSEMISTATIC
+    #if 1
+        #define TMPSTATIC static
+        #define TMPSEMISTATIC static
+    #else
+        #if defined(__STRICT_ANSI__)
+            #define TMPSTATIC static
+            #define TMPSEMISTATIC static
+        #else
+            #define TMPSTATIC static inline
+            #define TMPSEMISTATIC static
+        #endif
+    #endif
 #endif
 
+#define TMPUNUSED
 
 #ifdef _MSC_VER
     #define __attribute__(x)
+#endif
+
+
+#define MC_UTIL_STREQ(a, b) (strcmp((a), (b)) == 0)
+#define MC_UTIL_STRNEQ(a, b, n) (strncmp((a), (b), (n)) == 0)
+#define MC_UTIL_STATICARRAYSIZE(array) ((int)(sizeof(array) / sizeof(array[0])))
+#define MC_UTIL_CMPFLOAT(a, b) (fabs((a) - (b)) < DBL_EPSILON)
+
+#if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
+    #define MC_ASSERT(x) assert((x))
+#else
+    #define MC_ASSERT(x) ((void)0)
 #endif
 
 
@@ -68,117 +504,117 @@ THE SOFTWARE.
 
 enum mcerrtype_t
 {
-    ARCANE_ERROR_NONE = 0,
-    ARCANE_ERROR_PARSING,
-    ARCANE_ERROR_COMPILATION,
-    ARCANE_ERROR_RUNTIME,
-    ARCANE_ERROR_TIMEOUT,
-    ARCANE_ERROR_ALLOCATION,
-    ARCANE_ERROR_USER,
+    MC_ERROR_NONE = 0,
+    MC_ERROR_PARSING,
+    MC_ERROR_COMPILING,
+    MC_ERROR_RUNTIME,
+    MC_ERROR_TIMEOUT,
+    MC_ERROR_MEMORY,
+    MC_ERROR_USER,
 };
 
 enum mcobjtype_t
 {
-    ARCANE_OBJECT_NONE = 0,
-    ARCANE_OBJECT_ERROR = 1 << 0,
-    ARCANE_OBJECT_NUMBER = 1 << 1,
-    ARCANE_OBJECT_BOOL = 1 << 2,
-    ARCANE_OBJECT_STRING = 1 << 3,
-    ARCANE_OBJECT_NULL = 1 << 4,
-    ARCANE_OBJECT_NATIVE_FUNCTION = 1 << 5,
-    ARCANE_OBJECT_ARRAY = 1 << 6,
-    ARCANE_OBJECT_MAP = 1 << 7,
-    ARCANE_OBJECT_FUNCTION = 1 << 8,
-    ARCANE_OBJECT_EXTERNAL = 1 << 9,
-    ARCANE_OBJECT_FREED = 1 << 10,
+    MC_OBJ_NONE = 0,
+    MC_OBJ_ERROR = 1 << 0,
+    MC_OBJ_NUMBER = 1 << 1,
+    MC_OBJ_BOOL = 1 << 2,
+    MC_OBJ_STRING = 1 << 3,
+    MC_OBJ_NULL = 1 << 4,
+    MC_OBJ_NATIVE_FUNCTION = 1 << 5,
+    MC_OBJ_ARRAY = 1 << 6,
+    MC_OBJ_MAP = 1 << 7,
+    MC_OBJ_FUNCTION = 1 << 8,
+    MC_OBJ_EXTERNAL = 1 << 9,
+    MC_OBJ_FREED = 1 << 10,
     /* for checking types with & */
-    ARCANE_OBJECT_ANY = 0xffff,
+    MC_OBJ_ANY = 0xffff,
 };
 
 enum mcasttoktype_t
 {
-    TOKEN_INVALID = 0,
-    TOKEN_EOF,
+    MC_TOK_INVALID = 0,
+    MC_TOK_EOF,
 
     /* Operators */
-    TOKEN_ASSIGN,
+    MC_TOK_ASSIGN,
 
-    TOKEN_PLUS_ASSIGN,
-    TOKEN_MINUS_ASSIGN,
-    TOKEN_ASTERISK_ASSIGN,
-    TOKEN_SLASH_ASSIGN,
-    TOKEN_PERCENT_ASSIGN,
-    TOKEN_BIT_AND_ASSIGN,
-    TOKEN_BIT_OR_ASSIGN,
-    TOKEN_BIT_XOR_ASSIGN,
-    TOKEN_LSHIFT_ASSIGN,
-    TOKEN_RSHIFT_ASSIGN,
+    MC_TOK_PLUSASSIGN,
+    MC_TOK_MINUSASSIGN,
+    MC_TOK_ASTERISKASSIGN,
+    MC_TOK_SLASHASSIGN,
+    MC_TOK_PERCENTASSIGN,
+    MC_TOK_BITANDASSIGN,
+    MC_TOK_BITORASSIGN,
+    MC_TOK_BITXORASSIGN,
+    MC_TOK_LSHIFTASSIGN,
+    MC_TOK_RSHIFTASSIGN,
 
-    TOKEN_QUESTION,
+    MC_TOK_QUESTION,
 
-    TOKEN_PLUS,
-    TOKEN_PLUS_PLUS,
-    TOKEN_MINUS,
-    TOKEN_MINUS_MINUS,
-    TOKEN_BANG,
-    TOKEN_ASTERISK,
-    TOKEN_SLASH,
+    MC_TOK_PLUS,
+    MC_TOK_PLUSPLUS,
+    MC_TOK_MINUS,
+    MC_TOK_MINUSMINUS,
+    MC_TOK_BANG,
+    MC_TOK_ASTERISK,
+    MC_TOK_SLASH,
 
-    TOKEN_LT,
-    TOKEN_LTE,
-    TOKEN_GT,
-    TOKEN_GTE,
+    MC_TOK_LT,
+    MC_TOK_LTE,
+    MC_TOK_GT,
+    MC_TOK_GTE,
 
-    TOKEN_EQ,
-    TOKEN_NOT_EQ,
+    MC_TOK_EQ,
+    MC_TOK_NOTEQ,
 
-    TOKEN_AND,
-    TOKEN_OR,
+    MC_TOK_AND,
+    MC_TOK_OR,
 
-    TOKEN_BIT_AND,
-    TOKEN_BIT_OR,
-    TOKEN_BIT_XOR,
-    TOKEN_LSHIFT,
-    TOKEN_RSHIFT,
+    MC_TOK_BITAND,
+    MC_TOK_BITOR,
+    MC_TOK_BITXOR,
+    MC_TOK_LSHIFT,
+    MC_TOK_RSHIFT,
 
     /* Delimiters */
-    TOKEN_COMMA,
-    TOKEN_SEMICOLON,
-    TOKEN_COLON,
-    TOKEN_LPAREN,
-    TOKEN_RPAREN,
-    TOKEN_LBRACE,
-    TOKEN_RBRACE,
-    TOKEN_LBRACKET,
-    TOKEN_RBRACKET,
-    TOKEN_DOT,
-    TOKEN_PERCENT,
+    MC_TOK_COMMA,
+    MC_TOK_SEMICOLON,
+    MC_TOK_COLON,
+    MC_TOK_LPAREN,
+    MC_TOK_RPAREN,
+    MC_TOK_LBRACE,
+    MC_TOK_RBRACE,
+    MC_TOK_LBRACKET,
+    MC_TOK_RBRACKET,
+    MC_TOK_DOT,
+    MC_TOK_PERCENT,
 
     /* Keywords */
-    TOKEN_FUNCTION,
-    TOKEN_CONST,
-    TOKEN_VAR,
-    TOKEN_TRUE,
-    TOKEN_FALSE,
-    TOKEN_IF,
-    TOKEN_ELSE,
-    TOKEN_RETURN,
-    TOKEN_WHILE,
-    TOKEN_BREAK,
-    TOKEN_FOR,
-    TOKEN_IN,
-    TOKEN_CONTINUE,
-    TOKEN_NULL,
-    TOKEN_IMPORT,
-    TOKEN_RECOVER,
+    MC_TOK_FUNCTION,
+    MC_TOK_CONST,
+    MC_TOK_VAR,
+    MC_TOK_TRUE,
+    MC_TOK_FALSE,
+    MC_TOK_IF,
+    MC_TOK_ELSE,
+    MC_TOK_RETURN,
+    MC_TOK_WHILE,
+    MC_TOK_BREAK,
+    MC_TOK_FOR,
+    MC_TOK_IN,
+    MC_TOK_CONTINUE,
+    MC_TOK_NULL,
+    MC_TOK_IMPORT,
+    MC_TOK_RECOVER,
 
     /* Identifiers and literals */
-    TOKEN_IDENT,
-    TOKEN_NUMBER,
-    TOKEN_STRING,
-    TOKEN_TEMPLATE_STRING,
+    MC_TOK_IDENT,
+    MC_TOK_NUMBER,
+    MC_TOK_STRING,
+    MC_TOK_TEMPLATESTRING,
 
-    TOKEN_TYPE_MAX
+    MC_TOK_TYPEMAX
 };
 
 enum mcastmathoptype_t
@@ -280,7 +716,7 @@ enum mcopcode_t
     OPCODE_GET_LOCAL,
     OPCODE_DEFINE_LOCAL,
     OPCODE_SET_LOCAL,
-    OPCODE_GET_ARCANE_GLOBAL,
+    OPCODE_GETGLOBALBUILTIN,
     OPCODE_FUNCTION,
     OPCODE_GET_FREE,
     OPCODE_SET_FREE,
@@ -303,7 +739,7 @@ enum mcastsymtype_t
     SYMBOL_NONE = 0,
     SYMBOL_MODULE_GLOBAL,
     SYMBOL_LOCAL,
-    SYMBOL_ARCANE_GLOBAL,
+    SYMBOL_GLOBALBUILTIN,
     SYMBOL_FREE,
     SYMBOL_FUNCTION,
     SYMBOL_THIS,
@@ -345,7 +781,7 @@ enum mcastprecedence_t
     PRECEDENCE_HIGHEST
 };
 
-typedef uint8_t opcode_t;
+typedef uint8_t mcinternopcode_t;
 
 
 typedef enum mcerrtype_t mcerrtype_t;
@@ -370,7 +806,6 @@ typedef struct mcastcompiledfile_t mcastcompiledfile_t;
 
 typedef struct mcastexpression_t mcastexpression_t;
 typedef struct compilation_result_t compilation_result_t;
-typedef struct mctraceback_t mctraceback_t;
 typedef struct mcstate_t mcstate_t;
 typedef struct mcgcmemory_t mcgcmemory_t;
 typedef struct mcglobalstore_t mcglobalstore_t;
@@ -423,34 +858,28 @@ typedef struct mcastscopecomp_t mcastscopecomp_t;
 
 typedef struct mcgcobjdatapool_t mcgcobjdatapool_t;
 
-typedef struct mcerror_t mcerror_t;
 typedef struct mcastlexer_t mcastlexer_t;
 typedef struct mcvmframe_t mcvmframe_t;
 typedef struct mctraceitem_t mctraceitem_t;
 typedef struct module_t module_t;
 typedef struct mcnatfnbox_t mcnatfnbox_t;
 
-typedef mcvalue_t (*arcanenativefn)(mcstate_t* state, void* data, int argc, mcvalue_t* args);
-typedef void* (*arcanemallocfn)(void* ctx, size_t size);
-typedef void (*arcanefreefn)(void* ctx, void* ptr);
-typedef void (*arcanedatadestroyfn)(void* data);
-typedef void* (*arcanedatacopyfn)(void* data);
-typedef size_t (*arcanestdoutwritefn)(void* context, const void* data, size_t datasize);
-typedef char* (*arcanereadfilefn)(void* context, const char* path);
-typedef size_t (*arcanewritefilefn)(void* context, const char* path, const char* string, size_t stringsize);
-typedef unsigned long (*collectionshashfn)(void* val);
-typedef bool (*collectionsequalsfn)(void* a, void* b);
-typedef void (*dictitemdestroyfn)(void* item);
-typedef void* (*dictitemcopyfn)(void* item);
-typedef void (*arrayitemdeinitfn)(void* item);
-typedef void (*ptrarrayitemdestroyfn)(void* item);
-typedef void* (*ptrarrayitemcopyfn)(void* item);
-typedef mcvalue_t (*nativefn)(mcstate_t* state, void* data, int argc, mcvalue_t* args);
-typedef void (*externaldatadestroyfn)(void* data);
-typedef void* (*externaldatacopyfn)(void* data);
-typedef mcastexpression_t* (*rightassocparsefn)(mcastparser_t* p);
-typedef mcastexpression_t* (*leftassocparsefn)(mcastparser_t* p, mcastexpression_t* expr);
-
+typedef mcvalue_t (*mcnativefn_t)(mcstate_t* state, void* data, int argc, mcvalue_t* args);
+typedef size_t (*mcstdoutwritefn_t)(void* context, const void* data, size_t datasize);
+typedef char* (*mcreadfilefn_t)(void* context, const char* path);
+typedef size_t (*mcwritefilefn_t)(void* context, const char* path, const char* string, size_t stringsize);
+typedef unsigned long (*mccollectionshashfn_t)(void* val);
+typedef bool (*mccollectionsequalsfn_t)(void* a, void* b);
+typedef void (*mcdictitemdestroyfn_t)(void* item);
+typedef void* (*mcdictitemcopyfn_t)(void* item);
+typedef void (*mcarrayitemdeinitfn_t)(void* item);
+typedef void (*mcptrarrayitemdestroyfn_t)(void* item);
+typedef void* (*mcptrarrayitemcopyfn_t)(void* item);
+typedef mcvalue_t (*mcnativeactualfn_t)(mcstate_t* state, void* data, int argc, mcvalue_t* args);
+typedef void (*mcextdatadestroyfn_t)(void* data);
+typedef void* (*mcextdatacopyfn_t)(void* data);
+typedef mcastexpression_t* (*mcastrightassocparsefn_t)(mcastparser_t* p);
+typedef mcastexpression_t* (*mcleftassocparsefn_t)(mcastparser_t* p, mcastexpression_t* expr);
 
 
 /**
@@ -470,19 +899,6 @@ struct mcvalue_t
 };
 
 
-#define ARCANE_STREQ(a, b) (strcmp((a), (b)) == 0)
-#define ARCANE_STRNEQ(a, b, n) (strncmp((a), (b), (n)) == 0)
-#define ARCANE_ARRAY_LEN(array) ((int)(sizeof(array) / sizeof(array[0])))
-#define ARCANE_DBLEQ(a, b) (fabs((a) - (b)) < DBL_EPSILON)
-
-#ifdef ARCANE_DEBUG
-    #define ARCANE_ASSERT(x) assert((x))
-    #define ARCANE_FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
-#else
-    #define ARCANE_ASSERT(x) ((void)0)
-#endif
-
-
 struct mcastlocation_t
 {
     mcastcompiledfile_t* file;
@@ -494,37 +910,26 @@ struct mcconfig_t
 {
     struct
     {
-        struct
-        {
-            arcanestdoutwritefn fnprintto;
-            void* context;
-        } write;
+        mcstdoutwritefn_t fnprintto;
+        void* context;
     } stdio;
     struct
     {
-        struct
-        {
-            arcanereadfilefn read_file;
-            void* context;
-        } read_file;
-        struct
-        {
-            arcanewritefilefn write_file;
-            void* context;
-        } write_file;
+        mcreadfilefn_t fnreadfile;
+        mcwritefilefn_t fnwritefile;
+        void* context;
     } fileio;
     /* allows redefinition of symbols */
-    bool repl_mode;
-    double max_execution_time_ms;
-    bool max_execution_time_set;
+    bool replmode;
+    double maxexecutiontime;
+    bool havemaxexectime;
 };
 
 struct mctimer_t
 {
-    int64_t start_offset;
-    double start_time_ms;
+    int64_t startoffset;
+    double starttimems;
 };
-
 
 struct mcasttoken_t
 {
@@ -562,7 +967,7 @@ struct infix_t
 struct if_case_t
 {
     mcstate_t* pstate;
-    mcastexpression_t* test;
+    mcastexpression_t* ifcond;
     code_block_t* consequence;
 };
 
@@ -601,11 +1006,10 @@ struct logical_expression_t
 
 struct ternary_expression_t
 {
-    mcastexpression_t* test;
-    mcastexpression_t* if_true;
-    mcastexpression_t* if_false;
+    mcastexpression_t* tercond;
+    mcastexpression_t* teriftrue;
+    mcastexpression_t* teriffalse;
 };
-
 
 struct ident_t
 {
@@ -629,7 +1033,7 @@ struct if_statement_t
 
 struct while_loop_statement_t
 {
-    mcastexpression_t* test;
+    mcastexpression_t* loopcond;
     code_block_t* body;
 };
 
@@ -643,7 +1047,7 @@ struct foreach_statement_t
 struct for_loop_statement_t
 {
     mcastexpression_t* init;
-    mcastexpression_t* test;
+    mcastexpression_t* loopcond;
     mcastexpression_t* update;
     code_block_t* body;
 };
@@ -655,11 +1059,9 @@ struct import_statement_t
 
 struct recover_statement_t
 {
-    ident_t* error_ident;
+    ident_t* errident;
     code_block_t* body;
 };
-
-
 
 struct mcastexpression_t
 {
@@ -668,33 +1070,34 @@ struct mcastexpression_t
 
     union
     {
-        ident_t* ident;
-        double number_literal;
-        bool bool_literal;
-        char* string_literal;
-        mcptrarray_t* array;
-        map_literal_t map;
-        prefix_expression_t prefix;
-        infix_expression_t infix;
-        fn_literal_t fn_literal;
-        call_expression_t call_expr;
-        index_expression_t index_expr;
-        assign_expression_t assign;
-        logical_expression_t logical;
-        ternary_expression_t ternary;
+        ident_t* exprident;
+        double exprlitnumber;
+        bool exprlitbool;
+        struct {
+            size_t length;
+            char* data;
+        } exprlitstring;
+        mcptrarray_t* exprlitarray;
+        map_literal_t exprlitmap;
+        prefix_expression_t exprprefix;
+        infix_expression_t exprinfix;
+        fn_literal_t exprlitfunction;
+        call_expression_t exprcall;
+        index_expression_t exprindex;
+        assign_expression_t exprassign;
+        logical_expression_t exprlogical;
+        ternary_expression_t exprternary;
 
-
-
-        define_statement_t define;
-        if_statement_t if_statement;
-        mcastexpression_t* return_value;
-        mcastexpression_t* expression;
-        while_loop_statement_t while_loop;
-        foreach_statement_t foreach;
-        for_loop_statement_t for_loop;
-        code_block_t* block;
-        import_statement_t import;
-        recover_statement_t recover;
+        define_statement_t exprdefine;
+        if_statement_t exprifstmt;
+        mcastexpression_t* exprreturnvalue;
+        mcastexpression_t* exprexpression;
+        while_loop_statement_t exprwhileloopstmt;
+        foreach_statement_t exprforeachloopstmt;
+        for_loop_statement_t exprforloopstmt;
+        code_block_t* exprblockstmt;
+        import_statement_t exprimportstmt;
+        recover_statement_t exprrecoverstmt;
     };
 
     mcastlocation_t pos;
@@ -729,7 +1132,7 @@ struct mcobjfuncscript_t
 struct mcobjfuncnative_t
 {
     char* name;
-    nativefn fn;
+    mcnativeactualfn_t fn;
     uint8_t data[NATIVE_FN_MAX_DATA_LEN];
     int data_len;
 };
@@ -737,8 +1140,8 @@ struct mcobjfuncnative_t
 struct mcobjexternal_t
 {
     void* data;
-    externaldatadestroyfn data_destroy_fn;
-    externaldatacopyfn data_copy_fn;
+    mcextdatadestroyfn_t data_destroy_fn;
+    mcextdatacopyfn_t data_copy_fn;
 };
 
 struct mcobjerror_t
@@ -768,7 +1171,7 @@ struct mcobjdata_t
     mcobjtype_t type;
     union
     {
-        mcobjstring_t string;
+        mcobjstring_t valstring;
         mcobjerror_t error;
         mcbasicarray_t* array;
         mcvaldict_t* map;
@@ -855,7 +1258,7 @@ struct mcastscopecomp_t
     mcbasicarray_t* src_positions;
     mcbasicarray_t* break_ip_stack;
     mcbasicarray_t* continue_ip_stack;
-    opcode_t last_opcode;
+    mcinternopcode_t last_opcode;
 };
 
 
@@ -888,29 +1291,29 @@ struct mcastlexer_t
 {
     mcstate_t* pstate;
     mcerrlist_t* errors;
-    const char* input;
-    int input_len;
+    const char* inputsource;
+    int inputlength;
     int position;
-    int next_position;
+    int nextposition;
     char ch;
     int line;
     int column;
     mcastcompiledfile_t* file;
     bool failed;
-    bool continue_template_string;
+    bool continuetplstring;
 
     struct
     {
         int position;
-        int next_position;
+        int nextposition;
         char ch;
         int line;
         int column;
-    } prev_token_state;
+    } prevstate;
 
-    mcasttoken_t prev_token;
-    mcasttoken_t cur_token;
-    mcasttoken_t peek_token;
+    mcasttoken_t prevtoken;
+    mcasttoken_t currtoken;
+    mcasttoken_t peektoken;
 };
 
 struct mcastparser_t
@@ -919,10 +1322,8 @@ struct mcastparser_t
     mcconfig_t* config;
     mcastlexer_t lexer;
     mcerrlist_t* errors;
-
-    rightassocparsefn right_assoc_parse_fns[TOKEN_TYPE_MAX];
-    leftassocparsefn left_assoc_parse_fns[TOKEN_TYPE_MAX];
-
+    mcastrightassocparsefn_t rightassocfuncs[MC_TOK_TYPEMAX];
+    mcleftassocparsefn_t leftassocfuncs[MC_TOK_TYPEMAX];
     int depth;
 };
 
@@ -1027,8 +1428,8 @@ struct mcvaldict_t
     unsigned int count;
     unsigned int item_capacity;
     unsigned int cell_capacity;
-    collectionshashfn _hash_key;
-    collectionsequalsfn _keys_equals;
+    mccollectionshashfn_t _hash_key;
+    mccollectionsequalsfn_t _keys_equals;
 };
 
 struct mcgenericdict_t
@@ -1042,8 +1443,8 @@ struct mcgenericdict_t
     unsigned int count;
     unsigned int item_capacity;
     unsigned int cell_capacity;
-    dictitemcopyfn copy_fn;
-    dictitemdestroyfn destroy_fn;
+    mcdictitemcopyfn_t copy_fn;
+    mcdictitemdestroyfn_t destroy_fn;
 };
 
 
@@ -1081,7 +1482,7 @@ struct mcastcompiler_t
 
 struct mcnatfnbox_t
 {
-    arcanenativefn fn;
+    mcnativefn_t fn;
     mcstate_t* pstate;
     void* data;
 };
@@ -1096,40 +1497,176 @@ struct mccompiledprogram_t
 
 /* endheader */
 
+TMPSTATIC unsigned long mc_util_hashdata(void* ptr, size_t len)
+{
+    /* djb2 */
+    size_t i;
+    unsigned long hash;
+    uint8_t val;
+    uint8_t* up;
+    up = (uint8_t*)ptr;
+    hash = 5381;
+    for(i = 0; i < len; i++)
+    {
+        val = up[i];
+        hash = ((hash << 5) + hash) + val;
+    }
+    return hash;
+}
+
+TMPSTATIC unsigned int mc_util_upperpowoftwo(unsigned int v)
+{
+    v--;
+    v |= v >> 1;
+    v |= v >> 2;
+    v |= v >> 4;
+    v |= v >> 8;
+    v |= v >> 16;
+    v++;
+    return v;
+}
+    
+TMPSTATIC void* mc_allocator_alloc(mcstate_t* state, size_t size)
+{
+    (void)state;
+    return malloc(size);
+}
+
+TMPSTATIC void mc_allocator_free(mcstate_t* state, void* ptr)
+{
+    (void)state;
+    free(ptr);
+}
+
+
+typedef uint32_t mcshiftint_t;
+TMPSTATIC double mc_mathutil_binshiftleft(double dnleft, double dnright)
+{
+    int64_t sileft;
+    int64_t siright;
+    mcshiftint_t ivleft;
+    mcshiftint_t ivright;
+    if((dnleft < 0) || (dnright < 0))
+    {
+        sileft = (int64_t)dnleft;
+        siright = (int64_t)dnright;
+        return (double)(sileft << siright);
+    }
+    ivleft = (int32_t)dnleft;
+    ivright = (mcshiftint_t)dnright;
+    ivright &= 0x1f;
+    return (double)(ivleft << ivright);
+}
+
+TMPSTATIC double mc_mathutil_binshiftright(double dnleft, double dnright)
+{
+    int64_t sileft;
+    int64_t siright;
+    mcshiftint_t ivleft;
+    mcshiftint_t ivright;
+    if((dnleft < 0) || (dnright < 0))
+    {
+        sileft = (int64_t)dnleft;
+        siright = (int64_t)dnright;
+        return (double)(sileft >> siright);
+    }
+    ivleft = (mcshiftint_t)dnleft;
+    ivright = (mcshiftint_t)dnright;
+    ivright &= 0x1f;
+    return (double)(ivleft >> ivright);
+}
+
+TMPSTATIC double mc_mathutil_binor(double dnleft, double dnright)
+{
+    int64_t ivleft;
+    int64_t ivright;
+    ivleft = (int64_t)dnleft;
+    ivright = (int64_t)dnright;
+    return (double)(ivleft | ivright);
+}
+
+TMPSTATIC double mc_mathutil_binand(double dnleft, double dnright)
+{
+    int64_t ivleft;
+    int64_t ivright;
+    ivleft = (int64_t)dnleft;
+    ivright = (int64_t)dnright;
+    return (double)(ivleft & ivright);
+}
+
+TMPSTATIC double mc_mathutil_binxor(double dnleft, double dnright)
+{
+    int64_t ivleft;
+    int64_t ivright;
+    ivleft = (int64_t)dnleft;
+    ivright = (int64_t)dnright;
+    return (double)(ivleft ^ ivright);
+}
+
+TMPSTATIC double mc_mathutil_add(double dnleft, double dnright)
+{
+    return dnleft + dnright;
+}
+
+TMPSTATIC double mc_mathutil_sub(double dnleft, double dnright)
+{
+    return dnleft - dnright;
+}
+
+TMPSTATIC double mc_mathutil_mult(double dnleft, double dnright)
+{
+    return dnleft * dnright;
+}
+
+TMPSTATIC double mc_mathutil_div(double dnleft, double dnright)
+{
+    return dnleft / dnright;
+}
+
+TMPSTATIC double mc_mathutil_mod(double dnleft, double dnright)
+{
+    return fmod(dnleft, dnright);
+}
+
+
 static mcastlocation_t srcposinvalid = { NULL, -1, -1 };
 
 TMPSTATIC mcastlocation_t src_pos_make(mcastcompiledfile_t* file, int line, int column)
 {
-    return (mcastlocation_t){
-        .file = file,
-        .line = line,
-        .column = column,
-    };
+    mcastlocation_t loc;
+    loc.file = file;
+    loc.line = line;
+    loc.column = column;
+    return loc;
 }
 
-TMPSEMISTATIC char* arcane_stringf(mcstate_t* state, const char* format, ...)
+TMPSEMISTATIC char* mc_util_stringallocfmt(mcstate_t* state, const char* format, ...)
 {
+    int towrite;
+    int written;
+    char* res;
     va_list args;
     va_start(args, format);
-    int towrite = vsnprintf(NULL, 0, format, args);
+    towrite = vsnprintf(NULL, 0, format, args);
     va_end(args);
     va_start(args, format);
-    char* res = (char*)allocator_malloc(state, towrite + 1);
+    res = (char*)mc_allocator_alloc(state, towrite + 1);
     if(!res)
     {
         return NULL;
     }
-    int written = vsprintf(res, format, args);
+    written = vsprintf(res, format, args);
     va_end(args);
     (void)written;
-    ARCANE_ASSERT(written == towrite);
+    MC_ASSERT(written == towrite);
     return res;
 }
 
 
-TMPSTATIC char* arcane_strndup(mcstate_t* state, const char* string, size_t n)
+TMPSTATIC char* mc_util_strndup(mcstate_t* state, const char* string, size_t n)
 {
-    char* outputstring = (char*)allocator_malloc(state, n + 1);
+    char* outputstring;
+    outputstring = (char*)mc_allocator_alloc(state, n + 1);
     if(!outputstring)
     {
         return NULL;
@@ -1139,34 +1676,34 @@ TMPSTATIC char* arcane_strndup(mcstate_t* state, const char* string, size_t n)
     return outputstring;
 }
 
-TMPSTATIC char* arcane_strdup(mcstate_t* state, const char* string)
+TMPSTATIC char* mc_util_strdup(mcstate_t* state, const char* string)
 {
     if(!string)
     {
         return NULL;
     }
-    return arcane_strndup(state, string, strlen(string));
+    return mc_util_strndup(state, string, strlen(string));
 }
 
-TMPSTATIC uint64_t arcane_double_to_uint64(double val)
+TMPSTATIC uint64_t mc_util_doubletouint64(double val)
 {
     union
     {
         uint64_t val_uint64;
         double val_double;
-    } temp = { .val_double = val };
-
+    } temp;
+    temp.val_double = val;
     return temp.val_uint64;
 }
 
-TMPSTATIC double arcane_uint64_to_double(uint64_t val)
+TMPSTATIC double mc_util_uint64todouble(uint64_t val)
 {
     union
     {
         uint64_t val_uint64;
         double val_double;
-    } temp = { .val_uint64 = val };
-
+    } temp;
+    temp.val_uint64 = val;
     return temp.val_double;
 }
 
@@ -1179,27 +1716,33 @@ TMPSTATIC mctimer_t arcane_timer_start()
 {
     mctimer_t timer;
     memset(&timer, 0, sizeof(mctimer_t));
-    /* At some point it should be replaced with more accurate per-platform timers */
-    struct timeval starttime;
-    gettimeofday(&starttime, NULL);
-    timer.start_offset = starttime.tv_sec;
-    timer.start_time_ms = starttime.tv_usec / 1000.0;
-
+    #if defined(__unix__)
+        /* At some point it should be replaced with more accurate per-platform timers */
+        struct timeval starttime;
+        gettimeofday(&starttime, NULL);
+        timer.startoffset = starttime.tv_sec;
+        timer.starttimems = starttime.tv_usec / 1000.0;
+    #endif
     return timer;
 }
 
 TMPSTATIC double arcane_timer_get_elapsed_ms(mctimer_t* timer)
 {
-    struct timeval currenttime;
-    gettimeofday(&currenttime, NULL);
-    int times = (int)((int64_t)currenttime.tv_sec - timer->start_offset);
-    double currenttimems = (times * 1000) + (currenttime.tv_usec / 1000.0);
-    return currenttimems - timer->start_time_ms;
+    #if defined(__unix__)
+        struct timeval currenttime;
+        gettimeofday(&currenttime, NULL);
+        int times = (int)((int64_t)currenttime.tv_sec - timer->startoffset);
+        double currenttimems = (times * 1000) + (currenttime.tv_usec / 1000.0);
+        return currenttimems - timer->starttimems;
+    #else
+        return 0;
+    #endif
 }
 
 TMPSTATIC mcastscopecomp_t* compilation_scope_make(mcstate_t* state, mcastscopecomp_t* outer)
 {
-    mcastscopecomp_t* scope = (mcastscopecomp_t*)allocator_malloc(state, sizeof(mcastscopecomp_t));
+    mcastscopecomp_t* scope;
+    scope = (mcastscopecomp_t*)mc_allocator_alloc(state, sizeof(mcastscopecomp_t));
     if(!scope)
     {
         return NULL;
@@ -1241,12 +1784,12 @@ TMPSTATIC void compilation_scope_destroy(mcastscopecomp_t* scope)
     array_destroy(scope->break_ip_stack);
     array_destroy(scope->bytecode);
     array_destroy(scope->src_positions);
-    allocator_free(state, scope);
+    mc_allocator_free(state, scope);
 }
 
 TMPSTATIC compilation_result_t* compilation_scope_orphan_result(mcastscopecomp_t* scope)
 {
-    compilation_result_t* res = compilation_result_make(scope->pstate, array_data(scope->bytecode), array_data(scope->src_positions), array_count(scope->bytecode));
+    compilation_result_t* res = compilation_result_make(scope->pstate, (uint8_t*)array_data(scope->bytecode), (mcastlocation_t*)array_data(scope->src_positions), array_count(scope->bytecode));
     if(!res)
     {
         return NULL;
@@ -1258,7 +1801,7 @@ TMPSTATIC compilation_result_t* compilation_scope_orphan_result(mcastscopecomp_t
 
 TMPSTATIC compilation_result_t* compilation_result_make(mcstate_t* state, uint8_t* bytecode, mcastlocation_t* src_positions, int count)
 {
-    compilation_result_t* res = (compilation_result_t*)allocator_malloc(state, sizeof(compilation_result_t));
+    compilation_result_t* res = (compilation_result_t*)mc_allocator_alloc(state, sizeof(compilation_result_t));
     if(!res)
     {
         return NULL;
@@ -1279,9 +1822,9 @@ TMPSTATIC void compilation_result_destroy(compilation_result_t* res)
         return;
     }
     state = res->pstate;
-    allocator_free(state, res->bytecode);
-    allocator_free(state, res->src_positions);
-    allocator_free(state, res);
+    mc_allocator_free(state, res->bytecode);
+    mc_allocator_free(state, res->src_positions);
+    mc_allocator_free(state, res);
 }
 
 TMPSTATIC bool mc_lexer_init(mcastlexer_t* lex, mcstate_t* state, mcerrlist_t* errs, const char* input, mcastcompiledfile_t* file)
@@ -1289,10 +1832,10 @@ TMPSTATIC bool mc_lexer_init(mcastlexer_t* lex, mcstate_t* state, mcerrlist_t* e
     bool ok;
     lex->pstate = state;
     lex->errors = errs;
-    lex->input = input;
-    lex->input_len = (int)strlen(input);
+    lex->inputsource = input;
+    lex->inputlength = (int)strlen(input);
     lex->position = 0;
-    lex->next_position = 0;
+    lex->nextposition = 0;
     lex->ch = '\0';
     if(file)
     {
@@ -1315,13 +1858,11 @@ TMPSTATIC bool mc_lexer_init(mcastlexer_t* lex, mcstate_t* state, mcerrlist_t* e
         return false;
     }
     lex->failed = false;
-    lex->continue_template_string = false;
-
-    memset(&lex->prev_token_state, 0, sizeof(lex->prev_token_state));
-    token_init(&lex->prev_token, TOKEN_INVALID, NULL, 0);
-    token_init(&lex->cur_token, TOKEN_INVALID, NULL, 0);
-    token_init(&lex->peek_token, TOKEN_INVALID, NULL, 0);
-
+    lex->continuetplstring = false;
+    memset(&lex->prevstate, 0, sizeof(lex->prevstate));
+    token_init(&lex->prevtoken, MC_TOK_INVALID, NULL, 0);
+    token_init(&lex->currtoken, MC_TOK_INVALID, NULL, 0);
+    token_init(&lex->peektoken, MC_TOK_INVALID, NULL, 0);
     return true;
 }
 
@@ -1332,414 +1873,445 @@ TMPSTATIC bool mc_lexer_failed(mcastlexer_t* lex)
 
 TMPSTATIC void mc_lexer_conttplstring(mcastlexer_t* lex)
 {
-    lex->continue_template_string = true;
+    lex->continuetplstring = true;
 }
 
 TMPSTATIC bool mc_lexer_currtokenis(mcastlexer_t* lex, mcasttoktype_t type)
 {
-    return lex->cur_token.type == type;
+    return lex->currtoken.type == type;
 }
 
 TMPSTATIC bool mc_lexer_peektokenis(mcastlexer_t* lex, mcasttoktype_t type)
 {
-    return lex->peek_token.type == type;
+    return lex->peektoken.type == type;
 }
 
 TMPSTATIC bool mc_lexer_nexttoken(mcastlexer_t* lex)
 {
-    lex->prev_token = lex->cur_token;
-    lex->cur_token = lex->peek_token;
-    lex->peek_token = mc_lexer_nexttokinternal(lex);
+    lex->prevtoken = lex->currtoken;
+    lex->currtoken = lex->peektoken;
+    lex->peektoken = mc_lexer_nexttokinternal(lex);
     return !lex->failed;
 }
 
 TMPSTATIC bool mc_lexer_previoustoken(mcastlexer_t* lex)
 {
-    if(lex->prev_token.type == TOKEN_INVALID)
+    if(lex->prevtoken.type == MC_TOK_INVALID)
     {
         return false;
     }
-
-    lex->peek_token = lex->cur_token;
-    lex->cur_token = lex->prev_token;
-    token_init(&lex->prev_token, TOKEN_INVALID, NULL, 0);
-
-    lex->ch = lex->prev_token_state.ch;
-    lex->column = lex->prev_token_state.column;
-    lex->line = lex->prev_token_state.line;
-    lex->position = lex->prev_token_state.position;
-    lex->next_position = lex->prev_token_state.next_position;
-
+    lex->peektoken = lex->currtoken;
+    lex->currtoken = lex->prevtoken;
+    token_init(&lex->prevtoken, MC_TOK_INVALID, NULL, 0);
+    lex->ch = lex->prevstate.ch;
+    lex->column = lex->prevstate.column;
+    lex->line = lex->prevstate.line;
+    lex->position = lex->prevstate.position;
+    lex->nextposition = lex->prevstate.nextposition;
     return true;
 }
 
 TMPSTATIC mcasttoken_t mc_lexer_nexttokinternal(mcastlexer_t* lex)
 {
-    lex->prev_token_state.ch = lex->ch;
-    lex->prev_token_state.column = lex->column;
-    lex->prev_token_state.line = lex->line;
-    lex->prev_token_state.position = lex->position;
-    lex->prev_token_state.next_position = lex->next_position;
-
+    char c;
+    mcasttoken_t outtok;
+    lex->prevstate.ch = lex->ch;
+    lex->prevstate.column = lex->column;
+    lex->prevstate.line = lex->line;
+    lex->prevstate.position = lex->position;
+    lex->prevstate.nextposition = lex->nextposition;
     while(true)
     {
-        if(!lex->continue_template_string)
+        if(!lex->continuetplstring)
         {
             mc_lexer_skipspace(lex);
         }
-
-        mcasttoken_t outtok;
-        outtok.type = TOKEN_INVALID;
-        outtok.literal = lex->input + lex->position;
+        outtok.type = MC_TOK_INVALID;
+        outtok.literal = lex->inputsource + lex->position;
         outtok.len = 1;
         outtok.pos = src_pos_make(lex->file, lex->line, lex->column);
-
-        char c = lex->continue_template_string ? '`' : lex->ch;
-
+        c = lex->continuetplstring ? '`' : lex->ch;
         switch(c)
         {
             case '\0':
-                token_init(&outtok, TOKEN_EOF, "EOF", 3);
+                {
+                    token_init(&outtok, MC_TOK_EOF, "EOF", 3);
+                }
                 break;
             case '=':
-            {
-                if(mc_lexer_peekchar(lex) == '=')
                 {
-                    token_init(&outtok, TOKEN_EQ, "==", 2);
-                    mc_lexer_readchar(lex);
-                }
-                else
-                {
-                    token_init(&outtok, TOKEN_ASSIGN, "=", 1);
+                    if(mc_lexer_peekchar(lex) == '=')
+                    {
+                        token_init(&outtok, MC_TOK_EQ, "==", 2);
+                        mc_lexer_readchar(lex);
+                    }
+                    else
+                    {
+                        token_init(&outtok, MC_TOK_ASSIGN, "=", 1);
+                    }
                 }
                 break;
-            }
             case '&':
-            {
-                if(mc_lexer_peekchar(lex) == '&')
                 {
-                    token_init(&outtok, TOKEN_AND, "&&", 2);
-                    mc_lexer_readchar(lex);
-                }
-                else if(mc_lexer_peekchar(lex) == '=')
-                {
-                    token_init(&outtok, TOKEN_BIT_AND_ASSIGN, "&=", 2);
-                    mc_lexer_readchar(lex);
-                }
-                else
-                {
-                    token_init(&outtok, TOKEN_BIT_AND, "&", 1);
+                    if(mc_lexer_peekchar(lex) == '&')
+                    {
+                        token_init(&outtok, MC_TOK_AND, "&&", 2);
+                        mc_lexer_readchar(lex);
+                    }
+                    else if(mc_lexer_peekchar(lex) == '=')
+                    {
+                        token_init(&outtok, MC_TOK_BITANDASSIGN, "&=", 2);
+                        mc_lexer_readchar(lex);
+                    }
+                    else
+                    {
+                        token_init(&outtok, MC_TOK_BITAND, "&", 1);
+                    }
                 }
                 break;
-            }
             case '|':
-            {
-                if(mc_lexer_peekchar(lex) == '|')
                 {
-                    token_init(&outtok, TOKEN_OR, "||", 2);
-                    mc_lexer_readchar(lex);
-                }
-                else if(mc_lexer_peekchar(lex) == '=')
-                {
-                    token_init(&outtok, TOKEN_BIT_OR_ASSIGN, "|=", 2);
-                    mc_lexer_readchar(lex);
-                }
-                else
-                {
-                    token_init(&outtok, TOKEN_BIT_OR, "|", 1);
+                    if(mc_lexer_peekchar(lex) == '|')
+                    {
+                        token_init(&outtok, MC_TOK_OR, "||", 2);
+                        mc_lexer_readchar(lex);
+                    }
+                    else if(mc_lexer_peekchar(lex) == '=')
+                    {
+                        token_init(&outtok, MC_TOK_BITORASSIGN, "|=", 2);
+                        mc_lexer_readchar(lex);
+                    }
+                    else
+                    {
+                        token_init(&outtok, MC_TOK_BITOR, "|", 1);
+                    }
                 }
                 break;
-            }
             case '^':
-            {
-                if(mc_lexer_peekchar(lex) == '=')
                 {
-                    token_init(&outtok, TOKEN_BIT_XOR_ASSIGN, "^=", 2);
-                    mc_lexer_readchar(lex);
-                }
-                else
-                {
-                    token_init(&outtok, TOKEN_BIT_XOR, "^", 1);
-                    break;
+                    if(mc_lexer_peekchar(lex) == '=')
+                    {
+                        token_init(&outtok, MC_TOK_BITXORASSIGN, "^=", 2);
+                        mc_lexer_readchar(lex);
+                    }
+                    else
+                    {
+                        token_init(&outtok, MC_TOK_BITXOR, "^", 1);
+                        break;
+                    }
                 }
                 break;
-            }
             case '+':
-            {
-                if(mc_lexer_peekchar(lex) == '=')
                 {
-                    token_init(&outtok, TOKEN_PLUS_ASSIGN, "+=", 2);
-                    mc_lexer_readchar(lex);
-                }
-                else if(mc_lexer_peekchar(lex) == '+')
-                {
-                    token_init(&outtok, TOKEN_PLUS_PLUS, "++", 2);
-                    mc_lexer_readchar(lex);
-                }
-                else
-                {
-                    token_init(&outtok, TOKEN_PLUS, "+", 1);
-                    break;
+                    if(mc_lexer_peekchar(lex) == '=')
+                    {
+                        token_init(&outtok, MC_TOK_PLUSASSIGN, "+=", 2);
+                        mc_lexer_readchar(lex);
+                    }
+                    else if(mc_lexer_peekchar(lex) == '+')
+                    {
+                        token_init(&outtok, MC_TOK_PLUSPLUS, "++", 2);
+                        mc_lexer_readchar(lex);
+                    }
+                    else
+                    {
+                        token_init(&outtok, MC_TOK_PLUS, "+", 1);
+                        break;
+                    }
                 }
                 break;
-            }
             case '-':
-            {
-                if(mc_lexer_peekchar(lex) == '=')
                 {
-                    token_init(&outtok, TOKEN_MINUS_ASSIGN, "-=", 2);
-                    mc_lexer_readchar(lex);
-                }
-                else if(mc_lexer_peekchar(lex) == '-')
-                {
-                    token_init(&outtok, TOKEN_MINUS_MINUS, "--", 2);
-                    mc_lexer_readchar(lex);
-                }
-                else
-                {
-                    token_init(&outtok, TOKEN_MINUS, "-", 1);
-                    break;
+                    if(mc_lexer_peekchar(lex) == '=')
+                    {
+                        token_init(&outtok, MC_TOK_MINUSASSIGN, "-=", 2);
+                        mc_lexer_readchar(lex);
+                    }
+                    else if(mc_lexer_peekchar(lex) == '-')
+                    {
+                        token_init(&outtok, MC_TOK_MINUSMINUS, "--", 2);
+                        mc_lexer_readchar(lex);
+                    }
+                    else
+                    {
+                        token_init(&outtok, MC_TOK_MINUS, "-", 1);
+                        break;
+                    }
                 }
                 break;
-            }
             case '!':
-            {
-                if(mc_lexer_peekchar(lex) == '=')
                 {
-                    token_init(&outtok, TOKEN_NOT_EQ, "!=", 2);
-                    mc_lexer_readchar(lex);
-                }
-                else
-                {
-                    token_init(&outtok, TOKEN_BANG, "!", 1);
+                    if(mc_lexer_peekchar(lex) == '=')
+                    {
+                        token_init(&outtok, MC_TOK_NOTEQ, "!=", 2);
+                        mc_lexer_readchar(lex);
+                    }
+                    else
+                    {
+                        token_init(&outtok, MC_TOK_BANG, "!", 1);
+                    }
                 }
                 break;
-            }
             case '*':
-            {
-                if(mc_lexer_peekchar(lex) == '=')
                 {
-                    token_init(&outtok, TOKEN_ASTERISK_ASSIGN, "*=", 2);
-                    mc_lexer_readchar(lex);
-                }
-                else
-                {
-                    token_init(&outtok, TOKEN_ASTERISK, "*", 1);
-                    break;
+                    if(mc_lexer_peekchar(lex) == '=')
+                    {
+                        token_init(&outtok, MC_TOK_ASTERISKASSIGN, "*=", 2);
+                        mc_lexer_readchar(lex);
+                    }
+                    else
+                    {
+                        token_init(&outtok, MC_TOK_ASTERISK, "*", 1);
+                        break;
+                    }
                 }
                 break;
-            }
             case '/':
-            {
-                if(mc_lexer_peekchar(lex) == '/')
                 {
-                    mc_lexer_readchar(lex);
-                    while(lex->ch != '\n' && lex->ch != '\0')
+                    if(mc_lexer_peekchar(lex) == '/')
                     {
                         mc_lexer_readchar(lex);
+                        while(lex->ch != '\n' && lex->ch != '\0')
+                        {
+                            mc_lexer_readchar(lex);
+                        }
+                        continue;
                     }
-                    continue;
-                }
-                if(mc_lexer_peekchar(lex) == '=')
-                {
-                    token_init(&outtok, TOKEN_SLASH_ASSIGN, "/=", 2);
-                    mc_lexer_readchar(lex);
-                }
-                else
-                {
-                    token_init(&outtok, TOKEN_SLASH, "/", 1);
-                    break;
+                    if(mc_lexer_peekchar(lex) == '=')
+                    {
+                        token_init(&outtok, MC_TOK_SLASHASSIGN, "/=", 2);
+                        mc_lexer_readchar(lex);
+                    }
+                    else
+                    {
+                        token_init(&outtok, MC_TOK_SLASH, "/", 1);
+                        break;
+                    }
                 }
                 break;
-            }
             case '<':
-            {
-                if(mc_lexer_peekchar(lex) == '=')
                 {
-                    token_init(&outtok, TOKEN_LTE, "<=", 2);
-                    mc_lexer_readchar(lex);
-                }
-                else if(mc_lexer_peekchar(lex) == '<')
-                {
-                    mc_lexer_readchar(lex);
                     if(mc_lexer_peekchar(lex) == '=')
                     {
-                        token_init(&outtok, TOKEN_LSHIFT_ASSIGN, "<<=", 3);
+                        token_init(&outtok, MC_TOK_LTE, "<=", 2);
                         mc_lexer_readchar(lex);
+                    }
+                    else if(mc_lexer_peekchar(lex) == '<')
+                    {
+                        mc_lexer_readchar(lex);
+                        if(mc_lexer_peekchar(lex) == '=')
+                        {
+                            token_init(&outtok, MC_TOK_LSHIFTASSIGN, "<<=", 3);
+                            mc_lexer_readchar(lex);
+                        }
+                        else
+                        {
+                            token_init(&outtok, MC_TOK_LSHIFT, "<<", 2);
+                        }
                     }
                     else
                     {
-                        token_init(&outtok, TOKEN_LSHIFT, "<<", 2);
+                        token_init(&outtok, MC_TOK_LT, "<", 1);
+                        break;
                     }
                 }
-                else
-                {
-                    token_init(&outtok, TOKEN_LT, "<", 1);
-                    break;
-                }
                 break;
-            }
             case '>':
-            {
-                if(mc_lexer_peekchar(lex) == '=')
                 {
-                    token_init(&outtok, TOKEN_GTE, ">=", 2);
-                    mc_lexer_readchar(lex);
-                }
-                else if(mc_lexer_peekchar(lex) == '>')
-                {
-                    mc_lexer_readchar(lex);
                     if(mc_lexer_peekchar(lex) == '=')
                     {
-                        token_init(&outtok, TOKEN_RSHIFT_ASSIGN, ">>=", 3);
+                        token_init(&outtok, MC_TOK_GTE, ">=", 2);
                         mc_lexer_readchar(lex);
+                    }
+                    else if(mc_lexer_peekchar(lex) == '>')
+                    {
+                        mc_lexer_readchar(lex);
+                        if(mc_lexer_peekchar(lex) == '=')
+                        {
+                            token_init(&outtok, MC_TOK_RSHIFTASSIGN, ">>=", 3);
+                            mc_lexer_readchar(lex);
+                        }
+                        else
+                        {
+                            token_init(&outtok, MC_TOK_RSHIFT, ">>", 2);
+                        }
                     }
                     else
                     {
-                        token_init(&outtok, TOKEN_RSHIFT, ">>", 2);
+                        token_init(&outtok, MC_TOK_GT, ">", 1);
                     }
                 }
-                else
-                {
-                    token_init(&outtok, TOKEN_GT, ">", 1);
-                }
                 break;
-            }
             case ',':
-                token_init(&outtok, TOKEN_COMMA, ",", 1);
+                {
+                    token_init(&outtok, MC_TOK_COMMA, ",", 1);
+                }
                 break;
             case ';':
-                token_init(&outtok, TOKEN_SEMICOLON, ";", 1);
+                {
+                    token_init(&outtok, MC_TOK_SEMICOLON, ";", 1);
+                }
                 break;
             case ':':
-                token_init(&outtok, TOKEN_COLON, ":", 1);
+                {
+                    token_init(&outtok, MC_TOK_COLON, ":", 1);
+                }
                 break;
             case '(':
-                token_init(&outtok, TOKEN_LPAREN, "(", 1);
+                {
+                    token_init(&outtok, MC_TOK_LPAREN, "(", 1);
+                }
                 break;
             case ')':
-                token_init(&outtok, TOKEN_RPAREN, ")", 1);
+                {
+                    token_init(&outtok, MC_TOK_RPAREN, ")", 1);
+                }
                 break;
             case '{':
-                token_init(&outtok, TOKEN_LBRACE, "{", 1);
+                {
+                    token_init(&outtok, MC_TOK_LBRACE, "{", 1);
+                }
                 break;
             case '}':
-                token_init(&outtok, TOKEN_RBRACE, "}", 1);
+                {
+                    token_init(&outtok, MC_TOK_RBRACE, "}", 1);
+                }
                 break;
             case '[':
-                token_init(&outtok, TOKEN_LBRACKET, "[", 1);
+                {
+                    token_init(&outtok, MC_TOK_LBRACKET, "[", 1);
+                }
                 break;
             case ']':
-                token_init(&outtok, TOKEN_RBRACKET, "]", 1);
+                {
+                    token_init(&outtok, MC_TOK_RBRACKET, "]", 1);
+                }
                 break;
             case '.':
-                token_init(&outtok, TOKEN_DOT, ".", 1);
+                {
+                    token_init(&outtok, MC_TOK_DOT, ".", 1);
+                }
                 break;
             case '?':
-                token_init(&outtok, TOKEN_QUESTION, "?", 1);
+                {
+                    token_init(&outtok, MC_TOK_QUESTION, "?", 1);
+                }
                 break;
             case '%':
-            {
-                if(mc_lexer_peekchar(lex) == '=')
                 {
-                    token_init(&outtok, TOKEN_PERCENT_ASSIGN, "%=", 2);
-                    mc_lexer_readchar(lex);
-                }
-                else
-                {
-                    token_init(&outtok, TOKEN_PERCENT, "%", 1);
-                    break;
-                }
-                break;
-            }
-            case '"':
-            {
-                mc_lexer_readchar(lex);
-                int len;
-                const char* str = mc_lexer_scanstring(lex, '"', false, NULL, &len);
-                if(str)
-                {
-                    token_init(&outtok, TOKEN_STRING, str, len);
-                }
-                else
-                {
-                    token_init(&outtok, TOKEN_INVALID, NULL, 0);
-                }
-                break;
-            }
-            case '\'':
-            {
-                mc_lexer_readchar(lex);
-                int len;
-                const char* str = mc_lexer_scanstring(lex, '\'', false, NULL, &len);
-                if(str)
-                {
-                    token_init(&outtok, TOKEN_STRING, str, len);
-                }
-                else
-                {
-                    token_init(&outtok, TOKEN_INVALID, NULL, 0);
-                }
-                break;
-            }
-            case '`':
-            {
-                if(!lex->continue_template_string)
-                {
-                    mc_lexer_readchar(lex);
-                }
-                int len;
-                bool templatefound = false;
-                const char* str = mc_lexer_scanstring(lex, '`', true, &templatefound, &len);
-                if(str)
-                {
-                    if(templatefound)
+                    if(mc_lexer_peekchar(lex) == '=')
                     {
-                        token_init(&outtok, TOKEN_TEMPLATE_STRING, str, len);
+                        token_init(&outtok, MC_TOK_PERCENTASSIGN, "%=", 2);
+                        mc_lexer_readchar(lex);
                     }
                     else
                     {
-                        token_init(&outtok, TOKEN_STRING, str, len);
+                        token_init(&outtok, MC_TOK_PERCENT, "%", 1);
+                        break;
                     }
                 }
-                else
+                break;
+            case '"':
                 {
-                    token_init(&outtok, TOKEN_INVALID, NULL, 0);
+                    int len;
+                    const char* str;
+                    mc_lexer_readchar(lex);
+                    str = mc_lexer_scanstring(lex, '"', false, NULL, &len);
+                    if(str)
+                    {
+                        token_init(&outtok, MC_TOK_STRING, str, len);
+                    }
+                    else
+                    {
+                        token_init(&outtok, MC_TOK_INVALID, NULL, 0);
+                    }
                 }
                 break;
-            }
+            case '\'':
+                {
+                    int len;
+                    const char* str;
+                    mc_lexer_readchar(lex);
+                    str = mc_lexer_scanstring(lex, '\'', false, NULL, &len);
+                    if(str)
+                    {
+                        token_init(&outtok, MC_TOK_STRING, str, len);
+                    }
+                    else
+                    {
+                        token_init(&outtok, MC_TOK_INVALID, NULL, 0);
+                    }
+                }
+                break;
+            case '`':
+                {
+                    int len;
+                    bool templatefound;
+                    const char* str;
+                    if(!lex->continuetplstring)
+                    {
+                        mc_lexer_readchar(lex);
+                    }
+                    templatefound = false;
+                    str = mc_lexer_scanstring(lex, '`', true, &templatefound, &len);
+                    if(str)
+                    {
+                        if(templatefound)
+                        {
+                            token_init(&outtok, MC_TOK_TEMPLATESTRING, str, len);
+                        }
+                        else
+                        {
+                            token_init(&outtok, MC_TOK_STRING, str, len);
+                        }
+                    }
+                    else
+                    {
+                        token_init(&outtok, MC_TOK_INVALID, NULL, 0);
+                    }
+                }
+                break;
             default:
-            {
-                if(mc_lexer_charisletter(lex->ch))
                 {
-                    int identlen = 0;
-                    const char* ident = mc_lexer_scanident(lex, &identlen);
-                    mcasttoktype_t type = mc_lexer_lookupident(ident, identlen);
-                    token_init(&outtok, type, ident, identlen);
-                    return outtok;
-                }
-                if(mc_lexer_charisdigit(lex->ch))
-                {
-                    int numberlen = 0;
-                    const char* number = mc_lexer_scannumber(lex, &numberlen);
-                    token_init(&outtok, TOKEN_NUMBER, number, numberlen);
-                    return outtok;
+                    int identlen;
+                    int numberlen;
+                    const char* ident;
+                    const char* number;
+                    mcasttoktype_t type;
+                    if(mc_lexer_charisletter(lex->ch))
+                    {
+                        identlen = 0;
+                        ident = mc_lexer_scanident(lex, &identlen);
+                        type = mc_lexer_lookupident(ident, identlen);
+                        token_init(&outtok, type, ident, identlen);
+                        return outtok;
+                    }
+                    if(mc_lexer_charisdigit(lex->ch))
+                    {
+                        numberlen = 0;
+                        number = mc_lexer_scannumber(lex, &numberlen);
+                        token_init(&outtok, MC_TOK_NUMBER, number, numberlen);
+                        return outtok;
+                    }
                 }
                 break;
-            }
         }
         mc_lexer_readchar(lex);
         if(mc_lexer_failed(lex))
         {
-            token_init(&outtok, TOKEN_INVALID, NULL, 0);
+            token_init(&outtok, MC_TOK_INVALID, NULL, 0);
         }
-        lex->continue_template_string = false;
+        lex->continuetplstring = false;
         return outtok;
     }
+    /* NB. never reached; but keep the compiler from complaining. */
+    return outtok;
 }
 
 TMPSTATIC bool mc_lexer_expectcurrent(mcastlexer_t* lex, mcasttoktype_t type)
 {
+    const char* actualtypestr;
+    const char* expectedtypestr;
     if(mc_lexer_failed(lex))
     {
         return false;
@@ -1747,9 +2319,9 @@ TMPSTATIC bool mc_lexer_expectcurrent(mcastlexer_t* lex, mcasttoktype_t type)
 
     if(!mc_lexer_currtokenis(lex, type))
     {
-        const char* expectedtypestr = token_type_to_string(type);
-        const char* actualtypestr = token_type_to_string(lex->cur_token.type);
-        errors_add_errorf(lex->errors, ARCANE_ERROR_PARSING, lex->cur_token.pos, "Expected current token to be \"%s\", got \"%s\" instead", expectedtypestr, actualtypestr);
+        expectedtypestr = token_type_to_string(type);
+        actualtypestr = token_type_to_string(lex->currtoken.type);
+        errors_add_errorf(lex->errors, MC_ERROR_PARSING, lex->currtoken.pos, "Expected current token to be \"%s\", got \"%s\" instead", expectedtypestr, actualtypestr);
         return false;
     }
     return true;
@@ -1758,22 +2330,21 @@ TMPSTATIC bool mc_lexer_expectcurrent(mcastlexer_t* lex, mcasttoktype_t type)
 TMPSTATIC bool mc_lexer_readchar(mcastlexer_t* lex)
 {
     bool ok; 
-    if(lex->next_position >= lex->input_len)
+    if(lex->nextposition >= lex->inputlength)
     {
         lex->ch = '\0';
     }
     else
     {
-        lex->ch = lex->input[lex->next_position];
+        lex->ch = lex->inputsource[lex->nextposition];
     }
-    lex->position = lex->next_position;
-    lex->next_position++;
-
+    lex->position = lex->nextposition;
+    lex->nextposition++;
     if(lex->ch == '\n')
     {
         lex->line++;
         lex->column = -1;
-        ok = mc_lexer_addline(lex, lex->next_position);
+        ok = mc_lexer_addline(lex, lex->nextposition);
         if(!ok)
         {
             lex->failed = true;
@@ -1789,11 +2360,11 @@ TMPSTATIC bool mc_lexer_readchar(mcastlexer_t* lex)
 
 TMPSTATIC char mc_lexer_peekchar(mcastlexer_t* lex)
 {
-    if(lex->next_position >= lex->input_len)
+    if(lex->nextposition >= lex->inputlength)
     {
         return '\0';
     }
-    return lex->input[lex->next_position];
+    return lex->inputsource[lex->nextposition];
 }
 
 TMPSTATIC bool mc_lexer_charisletter(char ch)
@@ -1808,7 +2379,8 @@ TMPSTATIC bool mc_lexer_charisdigit(char ch)
 
 TMPSTATIC bool mc_lexer_charisoneof(char ch, const char* allowed, int allowedlen)
 {
-    for(int i = 0; i < allowedlen; i++)
+    int i;
+    for(i = 0; i < allowedlen; i++)
     {
         if(ch == allowed[i])
         {
@@ -1820,8 +2392,10 @@ TMPSTATIC bool mc_lexer_charisoneof(char ch, const char* allowed, int allowedlen
 
 TMPSTATIC const char* mc_lexer_scanident(mcastlexer_t* lex, int* outlen)
 {
-    int position = lex->position;
-    int len = 0;
+    int len;
+    int position;
+    position = lex->position;
+    len = 0;
     while(mc_lexer_charisdigit(lex->ch) || mc_lexer_charisletter(lex->ch) || lex->ch == ':')
     {
         if(lex->ch == ':')
@@ -1837,84 +2411,101 @@ TMPSTATIC const char* mc_lexer_scanident(mcastlexer_t* lex, int* outlen)
 end:
     len = lex->position - position;
     *outlen = len;
-    return lex->input + position;
+    return lex->inputsource + position;
 }
 
 TMPSTATIC const char* mc_lexer_scannumber(mcastlexer_t* lex, int* outlen)
 {
-    char allowed[] = ".xXaAbBcCdDeEfF";
-    int position = lex->position;
-    while(mc_lexer_charisdigit(lex->ch) || mc_lexer_charisoneof(lex->ch, allowed, ARCANE_ARRAY_LEN(allowed) - 1))
+    int len;
+    int position;
+    static const char allowed[] = ".xXaAbBcCdDeEfF";
+    position = lex->position;
+    while(mc_lexer_charisdigit(lex->ch) || mc_lexer_charisoneof(lex->ch, allowed, MC_UTIL_STATICARRAYSIZE(allowed) - 1))
     {
         mc_lexer_readchar(lex);
     }
-    int len = lex->position - position;
+    len = lex->position - position;
     *outlen = len;
-    return lex->input + position;
+    return lex->inputsource + position;
 }
 
 TMPSTATIC const char* mc_lexer_scanstring(mcastlexer_t* lex, char delimiter, bool istemplate, bool* outtemplatefound, int* outlen)
 {
+    bool escaped;
+    int len;
+    int position;
     *outlen = 0;
-
-    bool escarcaned = false;
-    int position = lex->position;
-
+    escaped = false;
+    position = lex->position;
     while(true)
     {
         if(lex->ch == '\0')
         {
             return NULL;
         }
-        if(lex->ch == delimiter && !escarcaned)
+        if(lex->ch == delimiter && !escaped)
         {
             break;
         }
-        if(istemplate && !escarcaned && lex->ch == '$' && mc_lexer_peekchar(lex) == '{')
+        if(istemplate && !escaped && lex->ch == '$' && mc_lexer_peekchar(lex) == '{')
         {
             *outtemplatefound = true;
             break;
         }
-        escarcaned = false;
+        escaped = false;
         if(lex->ch == '\\')
         {
-            escarcaned = true;
+            escaped = true;
         }
         mc_lexer_readchar(lex);
     }
-    int len = lex->position - position;
+    len = lex->position - position;
     *outlen = len;
-    return lex->input + position;
+    return lex->inputsource + position;
 }
 
 TMPSTATIC mcasttoktype_t mc_lexer_lookupident(const char* ident, int len)
 {
+    int i;
+    int klen;
     static struct
     {
         const char* value;
-        int len;
         mcasttoktype_t type;
     } keywords[] = {
-        { "fn", 2, TOKEN_FUNCTION },       { "const", 5, TOKEN_CONST }, { "var", 3, TOKEN_VAR },       { "true", 4, TOKEN_TRUE },
-        { "false", 5, TOKEN_FALSE },       { "if", 2, TOKEN_IF },       { "else", 4, TOKEN_ELSE },     { "return", 6, TOKEN_RETURN },
-        { "while", 5, TOKEN_WHILE },       { "break", 5, TOKEN_BREAK }, { "for", 3, TOKEN_FOR },       { "in", 2, TOKEN_IN },
-        { "continue", 8, TOKEN_CONTINUE }, { "null", 4, TOKEN_NULL },   { "import", 6, TOKEN_IMPORT }, { "recover", 7, TOKEN_RECOVER },
+        { "function", MC_TOK_FUNCTION },
+        { "const", MC_TOK_CONST },
+        { "var", MC_TOK_VAR },
+        { "true", MC_TOK_TRUE },
+        { "false", MC_TOK_FALSE },
+        { "if", MC_TOK_IF },
+        { "else", MC_TOK_ELSE },
+        { "return", MC_TOK_RETURN },
+        { "while", MC_TOK_WHILE },
+        { "break", MC_TOK_BREAK },
+        { "for", MC_TOK_FOR },
+        { "in", MC_TOK_IN },
+        { "continue", MC_TOK_CONTINUE },
+        { "null", MC_TOK_NULL },
+        { "import", MC_TOK_IMPORT },
+        { "recover", MC_TOK_RECOVER },
+        { NULL, (mcasttoktype_t)0}
     };
-
-    for(int i = 0; i < ARCANE_ARRAY_LEN(keywords); i++)
+    for(i = 0; keywords[i].value != NULL; i++)
     {
-        if(keywords[i].len == len && ARCANE_STRNEQ(ident, keywords[i].value, len))
+        klen = strlen(keywords[i].value);
+        if(klen == len && MC_UTIL_STRNEQ(ident, keywords[i].value, len))
         {
             return keywords[i].type;
         }
     }
-
-    return TOKEN_IDENT;
+    return MC_TOK_IDENT;
 }
 
 TMPSTATIC void mc_lexer_skipspace(mcastlexer_t* lex)
 {
-    char ch = lex->ch;
+    char ch;
+    ch = lex->ch;
     while(ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r')
     {
         mc_lexer_readchar(lex);
@@ -1935,17 +2526,17 @@ TMPSTATIC bool mc_lexer_addline(mcastlexer_t* lex, int offset)
         return true;
     }
 
-    const char* linestart = lex->input + offset;
+    const char* linestart = lex->inputsource + offset;
     const char* newlineptr = strchr(linestart, '\n');
     char* line = NULL;
     if(!newlineptr)
     {
-        line = arcane_strdup(lex->pstate, linestart);
+        line = mc_util_strdup(lex->pstate, linestart);
     }
     else
     {
         size_t linelen = newlineptr - linestart;
-        line = arcane_strndup(lex->pstate, linestart, linelen);
+        line = mc_util_strndup(lex->pstate, linestart, linelen);
     }
     if(!line)
     {
@@ -1956,7 +2547,7 @@ TMPSTATIC bool mc_lexer_addline(mcastlexer_t* lex, int offset)
     if(!ok)
     {
         lex->failed = true;
-        allocator_free(lex->pstate, line);
+        mc_allocator_free(lex->pstate, line);
         return false;
     }
     return true;
@@ -1964,28 +2555,31 @@ TMPSTATIC bool mc_lexer_addline(mcastlexer_t* lex, int offset)
 
 TMPSTATIC mcastcompiledfile_t* mc_compiledfile_make(mcstate_t* state, const char* path)
 {
-    mcastcompiledfile_t* file = (mcastcompiledfile_t*)allocator_malloc(state, sizeof(mcastcompiledfile_t));
+    size_t len;
+    const char* lastslashpos;
+    mcastcompiledfile_t* file;
+    file = (mcastcompiledfile_t*)mc_allocator_alloc(state, sizeof(mcastcompiledfile_t));
     if(!file)
     {
         return NULL;
     }
     memset(file, 0, sizeof(mcastcompiledfile_t));
     file->pstate = state;
-    const char* lastslashpos = strrchr(path, '/');
+    lastslashpos = strrchr(path, '/');
     if(lastslashpos)
     {
-        size_t len = lastslashpos - path + 1;
-        file->dir_path = arcane_strndup(state, path, len);
+        len = lastslashpos - path + 1;
+        file->dir_path = mc_util_strndup(state, path, len);
     }
     else
     {
-        file->dir_path = arcane_strdup(state, "");
+        file->dir_path = mc_util_strdup(state, "");
     }
     if(!file->dir_path)
     {
         goto error;
     }
-    file->path = arcane_strdup(state, path);
+    file->path = mc_util_strdup(state, path);
     if(!file->path)
     {
         goto error;
@@ -2003,27 +2597,29 @@ error:
 
 TMPSTATIC void mc_compiledfile_destroy(mcastcompiledfile_t* file)
 {
+    int i;
+    void* item;
     mcstate_t* state;
     if(!file)
     {
         return;
     }
     state = file->pstate;
-    for(int i = 0; i < ptrarray_count(file->lines); i++)
+    for(i = 0; i < ptrarray_count(file->lines); i++)
     {
-        void* item = ptrarray_get(file->lines, i);
-        allocator_free(state, item);
+        item = (void*)ptrarray_get(file->lines, i);
+        mc_allocator_free(state, item);
     }
     ptrarray_destroy(file->lines);
-    allocator_free(state, file->dir_path);
-    allocator_free(state, file->path);
-    allocator_free(state, file);
+    mc_allocator_free(state, file->dir_path);
+    mc_allocator_free(state, file->path);
+    mc_allocator_free(state, file);
 }
 
 TMPSTATIC mcastcompiler_t* mc_compiler_make(mcstate_t* state, mcconfig_t* config, mcgcmemory_t* mem, mcerrlist_t* errors, mcptrarray_t* files, mcglobalstore_t* global_store)
 {
     bool ok;
-    mcastcompiler_t* comp = (mcastcompiler_t*)allocator_malloc(state, sizeof(mcastcompiler_t));
+    mcastcompiler_t* comp = (mcastcompiler_t*)mc_allocator_alloc(state, sizeof(mcastcompiler_t));
     if(!comp)
     {
         return NULL;
@@ -2031,7 +2627,7 @@ TMPSTATIC mcastcompiler_t* mc_compiler_make(mcstate_t* state, mcconfig_t* config
     ok = mc_compiler_init(comp, state, config, mem, errors, files, global_store);
     if(!ok)
     {
-        allocator_free(state, comp);
+        mc_allocator_free(state, comp);
         return NULL;
     }
     comp->pstate = state; 
@@ -2047,42 +2643,42 @@ TMPSTATIC void mc_compiler_destroy(mcastcompiler_t* comp)
     }
     state = comp->pstate;
     mc_compiler_deinit(comp);
-    allocator_free(state, comp);
+    mc_allocator_free(state, comp);
 }
 
 TMPSTATIC compilation_result_t* mc_compiler_compilesource(mcastcompiler_t* comp, const char* code)
 {
     bool ok;
-    mcastscopecomp_t* compilation_scope = mc_compiler_getcompilationscope(comp);
+    mcastcompiler_t compshallowcopy;
+    mcastscopecomp_t* compscope;
+    compilation_result_t* res;
+    compscope = mc_compiler_getcompilationscope(comp);
 
-    ARCANE_ASSERT(array_count(comp->src_positions_stack) == 0);
-    ARCANE_ASSERT(array_count(compilation_scope->bytecode) == 0);
-    ARCANE_ASSERT(array_count(compilation_scope->break_ip_stack) == 0);
-    ARCANE_ASSERT(array_count(compilation_scope->continue_ip_stack) == 0);
+    MC_ASSERT(array_count(comp->src_positions_stack) == 0);
+    MC_ASSERT(array_count(compscope->bytecode) == 0);
+    MC_ASSERT(array_count(compscope->break_ip_stack) == 0);
+    MC_ASSERT(array_count(compscope->continue_ip_stack) == 0);
 
     array_clear(comp->src_positions_stack);
-    array_clear(compilation_scope->bytecode);
-    array_clear(compilation_scope->src_positions);
-    array_clear(compilation_scope->break_ip_stack);
-    array_clear(compilation_scope->continue_ip_stack);
-
-    mcastcompiler_t compshallowcopy;
+    array_clear(compscope->bytecode);
+    array_clear(compscope->src_positions);
+    array_clear(compscope->break_ip_stack);
+    array_clear(compscope->continue_ip_stack);
     ok = mc_compiler_initshallowcopy(&compshallowcopy, comp);
     if(!ok)
     {
         return NULL;
     }
-
     ok = mc_compiler_docompilesource(comp, code);
     if(!ok)
     {
         goto err;
     }
     /* might've changed */
-    compilation_scope = mc_compiler_getcompilationscope(comp);
-    ARCANE_ASSERT(compilation_scope->outer == NULL);
-    compilation_scope = mc_compiler_getcompilationscope(comp);
-    compilation_result_t* res = compilation_scope_orphan_result(compilation_scope);
+    compscope = mc_compiler_getcompilationscope(comp);
+    MC_ASSERT(compscope->outer == NULL);
+    compscope = mc_compiler_getcompilationscope(comp);
+    res = compilation_scope_orphan_result(compscope);
     if(!res)
     {
         goto err;
@@ -2098,10 +2694,10 @@ err:
 
 TMPSTATIC mcastsymtable_t* mc_compiler_getsymtable(mcastcompiler_t* comp)
 {
-    mcastscopefile_t* filescope = ptrarray_top(comp->file_scopes);
+    mcastscopefile_t* filescope = (mcastscopefile_t*)ptrarray_top(comp->file_scopes);
     if(!filescope)
     {
-        ARCANE_ASSERT(false);
+        MC_ASSERT(false);
         return NULL;
     }
     return filescope->symbol_table;
@@ -2109,10 +2705,10 @@ TMPSTATIC mcastsymtable_t* mc_compiler_getsymtable(mcastcompiler_t* comp)
 
 TMPSTATIC void mc_compiler_setsymtable(mcastcompiler_t* comp, mcastsymtable_t* table)
 {
-    mcastscopefile_t* filescope = ptrarray_top(comp->file_scopes);
+    mcastscopefile_t* filescope = (mcastscopefile_t*)ptrarray_top(comp->file_scopes);
     if(!filescope)
     {
-        ARCANE_ASSERT(false);
+        MC_ASSERT(false);
         return;
     }
     filescope->symbol_table = table;
@@ -2123,17 +2719,16 @@ TMPSTATIC mcbasicarray_t* mc_compiler_getconstants(mcastcompiler_t* comp)
     return comp->constants;
 }
 
-TMPSTATIC bool mc_compiler_init(mcastcompiler_t* comp, mcstate_t* state, mcconfig_t* config, mcgcmemory_t* mem, mcerrlist_t* errors, mcptrarray_t* files, mcglobalstore_t* global_store)
+TMPSTATIC bool mc_compiler_init(mcastcompiler_t* comp, mcstate_t* state, mcconfig_t* cfg, mcgcmemory_t* mem, mcerrlist_t* errors, mcptrarray_t* files, mcglobalstore_t* gstor)
 {
     bool ok;
     memset(comp, 0, sizeof(mcastcompiler_t));
     comp->pstate = state;
-    comp->config = config;
+    comp->config = cfg;
     comp->mem = mem;
     comp->errors = errors;
     comp->files = files;
-    comp->global_store = global_store;
-
+    comp->global_store = gstor;
     comp->file_scopes = ptrarray_make(state);
     if(!comp->file_scopes)
     {
@@ -2149,7 +2744,7 @@ TMPSTATIC bool mc_compiler_init(mcastcompiler_t* comp, mcstate_t* state, mcconfi
     {
         goto err;
     }
-    comp->modules = dict_make_(state, (dictitemcopyfn)mc_module_copy, (dictitemdestroyfn)mc_module_destroy);
+    comp->modules = dict_make_(state, (mcdictitemcopyfn_t)mc_module_copy, (mcdictitemdestroyfn_t)mc_module_destroy);
     if(!comp->modules)
     {
         goto err;
@@ -2178,17 +2773,18 @@ err:
 
 TMPSTATIC void mc_compiler_deinit(mcastcompiler_t* comp)
 {
+    int i;
+    int* val;
     if(!comp)
     {
         return;
     }
-    for(int i = 0; i < dict_count(comp->string_constants_positions); i++)
+    for(i = 0; i < dict_count(comp->string_constants_positions); i++)
     {
-        int* val = dict_get_value_at(comp->string_constants_positions, i);
-        allocator_free(comp->pstate, val);
+        val = (int*)dict_get_value_at(comp->string_constants_positions, i);
+        mc_allocator_free(comp->pstate, val);
     }
     dict_destroy(comp->string_constants_positions);
-
     while(ptrarray_count(comp->file_scopes) > 0)
     {
         mc_compiler_filescopepop(comp);
@@ -2199,7 +2795,6 @@ TMPSTATIC void mc_compiler_deinit(mcastcompiler_t* comp)
     }
     dict_destroy_with_items(comp->modules);
     array_destroy(comp->src_positions_stack);
-
     array_destroy(comp->constants);
     ptrarray_destroy(comp->file_scopes);
     memset(comp, 0, sizeof(mcastcompiler_t));
@@ -2208,46 +2803,57 @@ TMPSTATIC void mc_compiler_deinit(mcastcompiler_t* comp)
 TMPSTATIC bool mc_compiler_initshallowcopy(mcastcompiler_t* copy, mcastcompiler_t* src)
 {
     bool ok;
+    int i;
+    int* val;
+    int* valcopy;
+    char* loadednamecopy;
+    const char* key;
+    const char* loadedname;
+    mcgenericdict_t* modulescopy;
+    mcbasicarray_t* constantscopy;
+    mcptrarray_t* srcloadedmodulenames;
+    mcptrarray_t* copyloadedmodulenames;
+    mcastsymtable_t* srcst;
+    mcastsymtable_t* srcstocopy;
+    mcastsymtable_t* copyst;
+    mcastscopefile_t* srcfilescope;
+    mcastscopefile_t* copyfilescope;
     ok = mc_compiler_init(copy, src->pstate, src->config, src->mem, src->errors, src->files, src->global_store);
     if(!ok)
     {
         return false;
     }
-
-    mcastsymtable_t* srcst = mc_compiler_getsymtable(src);
-    ARCANE_ASSERT(ptrarray_count(src->file_scopes) == 1);
-    ARCANE_ASSERT(srcst->outer == NULL);
-    mcastsymtable_t* srcstcopy = symbol_table_copy(srcst);
-    if(!srcstcopy)
+    srcst = mc_compiler_getsymtable(src);
+    MC_ASSERT(ptrarray_count(src->file_scopes) == 1);
+    MC_ASSERT(srcst->outer == NULL);
+    srcstocopy = symbol_table_copy(srcst);
+    if(!srcstocopy)
     {
         goto err;
     }
-    mcastsymtable_t* copyst = mc_compiler_getsymtable(copy);
-    symbol_table_destroy(copyst);
+    copyst = mc_compiler_getsymtable(copy);
+    mc_symtable_destroy(copyst);
     copyst = NULL;
-    mc_compiler_setsymtable(copy, srcstcopy);
-
-    mcgenericdict_t* modulescopy = dict_copy_with_items(src->modules);
+    mc_compiler_setsymtable(copy, srcstocopy);
+    modulescopy = dict_copy_with_items(src->modules);
     if(!modulescopy)
     {
         goto err;
     }
     dict_destroy_with_items(copy->modules);
     copy->modules = modulescopy;
-
-    mcbasicarray_t* constantscopy = array_copy(src->constants);
+    constantscopy = array_copy(src->constants);
     if(!constantscopy)
     {
         goto err;
     }
     array_destroy(copy->constants);
     copy->constants = constantscopy;
-
-    for(int i = 0; i < dict_count(src->string_constants_positions); i++)
+    for(i = 0; i < dict_count(src->string_constants_positions); i++)
     {
-        const char* key = dict_get_key_at(src->string_constants_positions, i);
-        int* val = dict_get_value_at(src->string_constants_positions, i);
-        int* valcopy = (int*)allocator_malloc(src->pstate, sizeof(int));
+        key = dict_get_key_at(src->string_constants_positions, i);
+        val = (int*)dict_get_value_at(src->string_constants_positions, i);
+        valcopy = (int*)mc_allocator_alloc(src->pstate, sizeof(int));
         if(!valcopy)
         {
             goto err;
@@ -2256,21 +2862,19 @@ TMPSTATIC bool mc_compiler_initshallowcopy(mcastcompiler_t* copy, mcastcompiler_
         ok = dict_set(copy->string_constants_positions, key, valcopy);
         if(!ok)
         {
-            allocator_free(src->pstate, valcopy);
+            mc_allocator_free(src->pstate, valcopy);
             goto err;
         }
     }
-
-    mcastscopefile_t* srcfilescope = ptrarray_top(src->file_scopes);
-    mcastscopefile_t* copyfilescope = ptrarray_top(copy->file_scopes);
-
-    mcptrarray_t* srcloadedmodulenames = srcfilescope->loaded_module_names;
-    mcptrarray_t* copyloadedmodulenames = copyfilescope->loaded_module_names;
-
-    for(int i = 0; i < ptrarray_count(srcloadedmodulenames); i++)
+    srcfilescope = (mcastscopefile_t*)ptrarray_top(src->file_scopes);
+    copyfilescope = (mcastscopefile_t*)ptrarray_top(copy->file_scopes);
+    srcloadedmodulenames = srcfilescope->loaded_module_names;
+    copyloadedmodulenames = copyfilescope->loaded_module_names;
+    for(i = 0; i < ptrarray_count(srcloadedmodulenames); i++)
     {
-        const char* loadedname = ptrarray_get(srcloadedmodulenames, i);
-        char* loadednamecopy = arcane_strdup(copy->pstate, loadedname);
+
+        loadedname = (const char*)ptrarray_get(srcloadedmodulenames, i);
+        loadednamecopy = mc_util_strdup(copy->pstate, loadedname);
         if(!loadednamecopy)
         {
             goto err;
@@ -2278,11 +2882,10 @@ TMPSTATIC bool mc_compiler_initshallowcopy(mcastcompiler_t* copy, mcastcompiler_
         ok = ptrarray_push(copyloadedmodulenames, loadednamecopy);
         if(!ok)
         {
-            allocator_free(copy->pstate, loadednamecopy);
+            mc_allocator_free(copy->pstate, loadednamecopy);
             goto err;
         }
     }
-
     return true;
 err:
     mc_compiler_deinit(copy);
@@ -2329,7 +2932,7 @@ static mcopdefinition_t g_definitions[OPCODE_MAX + 1] = {
     { "GET_LOCAL", 1, { 1 } },
     { "DEFINE_LOCAL", 1, { 1 } },
     { "SET_LOCAL", 1, { 1 } },
-    { "GET_ARCANE_GLOBAL", 1, { 2 } },
+    { "GETGLOBALBUILTIN", 1, { 2 } },
     { "FUNCTION", 2, { 2, 1 } },
     { "GET_FREE", 1, { 1 } },
     { "SET_FREE", 1, { 1 } },
@@ -2346,7 +2949,7 @@ static mcopdefinition_t g_definitions[OPCODE_MAX + 1] = {
     { "INVALID_MAX", 0, { 0 } },
 };
 
-mcopdefinition_t* opcode_lookup(opcode_t op)
+TMPSTATIC mcopdefinition_t* opcode_lookup(mcinternopcode_t op)
 {
     if(op <= OPCODE_NONE || op >= OPCODE_MAX)
     {
@@ -2355,7 +2958,7 @@ mcopdefinition_t* opcode_lookup(opcode_t op)
     return &g_definitions[op];
 }
 
-const char* opcode_get_name(opcode_t op)
+TMPSTATIC const char* opcode_get_name(mcinternopcode_t op)
 {
     if(op <= OPCODE_NONE || op >= OPCODE_MAX)
     {
@@ -2364,30 +2967,31 @@ const char* opcode_get_name(opcode_t op)
     return g_definitions[op].name;
 }
 
-int mc_compiler_gencode(opcode_t op, int operandscount, uint64_t* operands, mcbasicarray_t* res)
+TMPSTATIC int mc_compiler_gencode(mcinternopcode_t op, int operandscount, const uint64_t* operands, mcbasicarray_t* res)
 {
     bool ok;
-    mcopdefinition_t* def = opcode_lookup(op);
+    int i;
+    int width;
+    int instrlen;
+    uint8_t val;
+    mcopdefinition_t* def;
+    def = opcode_lookup(op);
     if(!def)
     {
         return 0;
     }
-
-    int instrlen = 1;
-    for(int i = 0; i < def->num_operands; i++)
+    instrlen = 1;
+    for(i = 0; i < def->num_operands; i++)
     {
         instrlen += def->operand_widths[i];
     }
-
-    uint8_t val = op;
+    val = op;
     ok = false;
-
     ok = array_add(res, &val);
     if(!ok)
     {
         return 0;
     }
-
 #define APPEND_BYTE(n)                           \
     do                                           \
     {                                            \
@@ -2399,47 +3003,47 @@ int mc_compiler_gencode(opcode_t op, int operandscount, uint64_t* operands, mcba
         }                                        \
     } while(0)
 
-    for(int i = 0; i < operandscount; i++)
+    for(i = 0; i < operandscount; i++)
     {
-        int width = def->operand_widths[i];
+        width = def->operand_widths[i];
         switch(width)
         {
             case 1:
-            {
-                APPEND_BYTE(0);
+                {
+                    APPEND_BYTE(0);
+                }
                 break;
-            }
             case 2:
-            {
-                APPEND_BYTE(1);
-                APPEND_BYTE(0);
+                {
+                    APPEND_BYTE(1);
+                    APPEND_BYTE(0);
+                }
                 break;
-            }
             case 4:
-            {
-                APPEND_BYTE(3);
-                APPEND_BYTE(2);
-                APPEND_BYTE(1);
-                APPEND_BYTE(0);
+                {
+                    APPEND_BYTE(3);
+                    APPEND_BYTE(2);
+                    APPEND_BYTE(1);
+                    APPEND_BYTE(0);
+                }
                 break;
-            }
             case 8:
-            {
-                APPEND_BYTE(7);
-                APPEND_BYTE(6);
-                APPEND_BYTE(5);
-                APPEND_BYTE(4);
-                APPEND_BYTE(3);
-                APPEND_BYTE(2);
-                APPEND_BYTE(1);
-                APPEND_BYTE(0);
+                {
+                    APPEND_BYTE(7);
+                    APPEND_BYTE(6);
+                    APPEND_BYTE(5);
+                    APPEND_BYTE(4);
+                    APPEND_BYTE(3);
+                    APPEND_BYTE(2);
+                    APPEND_BYTE(1);
+                    APPEND_BYTE(0);
+                }
                 break;
-            }
             default:
-            {
-                ARCANE_ASSERT(false);
+                {
+                    MC_ASSERT(false);
+                }
                 break;
-            }
         }
     }
 #undef APPEND_BYTE
@@ -2447,28 +3051,33 @@ int mc_compiler_gencode(opcode_t op, int operandscount, uint64_t* operands, mcba
 }
 
 
-TMPSTATIC int mc_compiler_emit(mcastcompiler_t* comp, opcode_t op, int operandscount, uint64_t* operands)
+TMPSTATIC int mc_compiler_emit(mcastcompiler_t* comp, mcinternopcode_t op, int operandscount, uint64_t* operands)
 {
     bool ok;
-    int ip = mc_compiler_getip(comp);
-    int len = mc_compiler_gencode(op, operandscount, operands, mc_compiler_getbytecode(comp));
+    int i;
+    int ip;
+    int len;
+    mcastlocation_t* srcpos;
+    ip = mc_compiler_getip(comp);
+    len = mc_compiler_gencode(op, operandscount, operands, mc_compiler_getbytecode(comp));
     if(len == 0)
     {
         return -1;
     }
-    for(int i = 0; i < len; i++)
+    for(i = 0; i < len; i++)
     {
-        mcastlocation_t* srcpos = array_top(comp->src_positions_stack);
-        ARCANE_ASSERT(srcpos->line >= 0);
-        ARCANE_ASSERT(srcpos->column >= 0);
+        srcpos = (mcastlocation_t*)array_top(comp->src_positions_stack);
+        MC_ASSERT(srcpos->line >= 0);
+        MC_ASSERT(srcpos->column >= 0);
         ok = array_add(mc_compiler_getsrcpositions(comp), srcpos);
         if(!ok)
         {
             return -1;
         }
     }
-    mcastscopecomp_t* compilation_scope = mc_compiler_getcompilationscope(comp);
-    compilation_scope->last_opcode = op;
+    mcastscopecomp_t* compscope;
+    compscope = mc_compiler_getcompilationscope(comp);
+    compscope->last_opcode = op;
     return ip;
 }
 
@@ -2479,34 +3088,36 @@ TMPSTATIC mcastscopecomp_t* mc_compiler_getcompilationscope(mcastcompiler_t* com
 
 TMPSTATIC bool mc_compiler_pushcompilationscope(mcastcompiler_t* comp)
 {
-    mcastscopecomp_t* currentscope = mc_compiler_getcompilationscope(comp);
-    mcastscopecomp_t* newscope = compilation_scope_make(comp->pstate, currentscope);
-    if(!newscope)
+    mcastscopecomp_t* nscope;
+    mcastscopecomp_t* currentscope;
+    currentscope = mc_compiler_getcompilationscope(comp);
+    nscope = compilation_scope_make(comp->pstate, currentscope);
+    if(!nscope)
     {
         return false;
     }
-    mc_compiler_setcompilationscope(comp, newscope);
+    mc_compiler_setcompilationscope(comp, nscope);
     return true;
 }
 
 TMPSTATIC void mc_compiler_popcompilationscope(mcastcompiler_t* comp)
 {
     mcastscopecomp_t* currentscope = mc_compiler_getcompilationscope(comp);
-    ARCANE_ASSERT(currentscope);
+    MC_ASSERT(currentscope);
     mc_compiler_setcompilationscope(comp, currentscope->outer);
     compilation_scope_destroy(currentscope);
 }
 
 TMPSTATIC bool mc_compiler_pushsymtable(mcastcompiler_t* comp, int globaloffset)
 {
-    mcastscopefile_t* filescope = ptrarray_top(comp->file_scopes);
+    mcastscopefile_t* filescope = (mcastscopefile_t*)ptrarray_top(comp->file_scopes);
     if(!filescope)
     {
-        ARCANE_ASSERT(false);
+        MC_ASSERT(false);
         return false;
     }
     mcastsymtable_t* currenttable = filescope->symbol_table;
-    filescope->symbol_table = symbol_table_make(comp->pstate, currenttable, comp->global_store, globaloffset);
+    filescope->symbol_table = mc_symtable_make(comp->pstate, currenttable, comp->global_store, globaloffset);
     if(!filescope->symbol_table)
     {
         filescope->symbol_table = currenttable;
@@ -2517,23 +3128,23 @@ TMPSTATIC bool mc_compiler_pushsymtable(mcastcompiler_t* comp, int globaloffset)
 
 TMPSTATIC void mc_compiler_popsymtable(mcastcompiler_t* comp)
 {
-    mcastscopefile_t* filescope = ptrarray_top(comp->file_scopes);
+    mcastscopefile_t* filescope = (mcastscopefile_t*)ptrarray_top(comp->file_scopes);
     if(!filescope)
     {
-        ARCANE_ASSERT(false);
+        MC_ASSERT(false);
         return;
     }
     mcastsymtable_t* currenttable = filescope->symbol_table;
     if(!currenttable)
     {
-        ARCANE_ASSERT(false);
+        MC_ASSERT(false);
         return;
     }
     filescope->symbol_table = currenttable->outer;
-    symbol_table_destroy(currenttable);
+    mc_symtable_destroy(currenttable);
 }
 
-TMPSTATIC opcode_t mc_compiler_getlastopcode(mcastcompiler_t* comp)
+TMPSTATIC mcinternopcode_t mc_compiler_getlastopcode(mcastcompiler_t* comp)
 {
     mcastscopecomp_t* currentscope = mc_compiler_getcompilationscope(comp);
     return currentscope->last_opcode;
@@ -2542,8 +3153,8 @@ TMPSTATIC opcode_t mc_compiler_getlastopcode(mcastcompiler_t* comp)
 TMPSTATIC bool mc_compiler_docompilesource(mcastcompiler_t* comp, const char* code)
 {
     bool ok;
-    mcastscopefile_t* filescope = ptrarray_top(comp->file_scopes);
-    ARCANE_ASSERT(filescope);
+    mcastscopefile_t* filescope = (mcastscopefile_t*)ptrarray_top(comp->file_scopes);
+    MC_ASSERT(filescope);
 
     mcptrarray_t* statements = parser_parse_all(filescope->parser, code, filescope->file);
     if(!statements)
@@ -2551,10 +3162,16 @@ TMPSTATIC bool mc_compiler_docompilesource(mcastcompiler_t* comp, const char* co
         /* errors are added by parser */
         return false;
     }
-
+    {
+        mcprintstate_t pr;
+        mc_printer_init(&pr, comp->pstate, 0, stderr, true);
+        fprintf(stderr, "---AST dump begin---\n");
+        mc_astprint_stmtlist(&pr, statements);
+        fprintf(stderr, "\n---AST dump end---\n");
+    }
     ok = mc_compiler_compilestmtlist(comp, statements);
 
-    ptrarray_destroy_with_items_(statements, (ptrarrayitemdestroyfn)statement_destroy);
+    ptrarray_destroy_with_items_(statements, (mcptrarrayitemdestroyfn_t)statement_destroy);
     /*
     * //Left for debugging purposes
     if (ok)
@@ -2575,11 +3192,13 @@ TMPSTATIC bool mc_compiler_docompilesource(mcastcompiler_t* comp, const char* co
 TMPSEMISTATIC bool mc_compiler_compilestmtlist(mcastcompiler_t* comp, mcptrarray_t* statements)
 {
     bool ok;
+    int i;
+    mcastexpression_t* expr;
     ok = true;
-    for(int i = 0; i < ptrarray_count(statements); i++)
+    for(i = 0; i < ptrarray_count(statements); i++)
     {
-        mcastexpression_t* stmt = ptrarray_get(statements, i);
-        ok = mc_compiler_compilestatement(comp, stmt);
+        expr = (mcastexpression_t*)ptrarray_get(statements, i);
+        ok = mc_compiler_compilestatement(comp, expr);
         if(!ok)
         {
             break;
@@ -2591,24 +3210,40 @@ TMPSEMISTATIC bool mc_compiler_compilestmtlist(mcastcompiler_t* comp, mcptrarray
 TMPSTATIC bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_t* importstmt)
 {
     bool ok;
+    bool result;
+    int i;
+    char* code;
+    char* filepath;
+    char* namecopy;
+    const char* modulepath;
+    const char* modulename;
+    const char* loadedname;
+    const char* filepathnoncanonicalised;
+    mcprintstate_t* filepathbuf;
+    mcastsymtable_t* symtab;
+    mcastscopefile_t* fs;
+    module_t* module;
+    mcastsymtable_t* st;
+    mcastscopefile_t* filescope;
+    mcastsymbol_t* symbol;
     /* todo: split into smaller functions */
-    bool result = false;
-    char* filepath = NULL;
-    char* code = NULL;
-    mcastscopefile_t* filescope = ptrarray_top(comp->file_scopes);
-    const char* modulepath = importstmt->import.path;
-    const char* modulename = mc_util_getmodulename(modulepath);
-    for(int i = 0; i < ptrarray_count(filescope->loaded_module_names); i++)
+    result = false;
+    filepath = NULL;
+    code = NULL;
+    filescope = (mcastscopefile_t*)ptrarray_top(comp->file_scopes);
+    modulepath = importstmt->exprimportstmt.path;
+    modulename = mc_util_getmodulename(modulepath);
+    for(i = 0; i < ptrarray_count(filescope->loaded_module_names); i++)
     {
-        const char* loadedname = ptrarray_get(filescope->loaded_module_names, i);
+        loadedname = (const char*)ptrarray_get(filescope->loaded_module_names, i);
         if(kg_streq(loadedname, modulename))
         {
-            errors_add_errorf(comp->errors, ARCANE_ERROR_COMPILATION, importstmt->pos, "Module \"%s\" was already imported", modulename);
+            errors_add_errorf(comp->errors, MC_ERROR_COMPILING, importstmt->pos, "Module \"%s\" was already imported", modulename);
             result = false;
             goto end;
         }
     }
-    mcprintstate_t* filepathbuf = mc_printer_make(comp->pstate, NULL);
+    filepathbuf = mc_printer_make(comp->pstate, NULL);
     if(!filepathbuf)
     {
         result = false;
@@ -2616,11 +3251,11 @@ TMPSTATIC bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_
     }
     if(kg_is_path_absolute(modulepath))
     {
-        mc_printer_appendf(filepathbuf, "%s.arcane", modulepath);
+        mc_printer_printf(filepathbuf, "%s.mc", modulepath);
     }
     else
     {
-        mc_printer_appendf(filepathbuf, "%s%s.arcane", filescope->file->dir_path, modulepath);
+        mc_printer_printf(filepathbuf, "%s%s.mc", filescope->file->dir_path, modulepath);
     }
 
     if(mc_printer_failed(filepathbuf))
@@ -2629,8 +3264,7 @@ TMPSTATIC bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_
         result = false;
         goto end;
     }
-
-    const char* filepathnoncanonicalised = mc_printer_getstring(filepathbuf);
+    filepathnoncanonicalised = mc_printer_getstring(filepathbuf);
     filepath = kg_canonicalise_path(comp->pstate, filepathnoncanonicalised);
     mc_printer_destroy(filepathbuf);
     if(!filepath)
@@ -2638,52 +3272,46 @@ TMPSTATIC bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_
         result = false;
         goto end;
     }
-
-    mcastsymtable_t* symbol_table = mc_compiler_getsymtable(comp);
-    if(symbol_table->outer != NULL || ptrarray_count(symbol_table->block_scopes) > 1)
+    symtab = mc_compiler_getsymtable(comp);
+    if(symtab->outer != NULL || ptrarray_count(symtab->block_scopes) > 1)
     {
-        errors_add_error(comp->errors, ARCANE_ERROR_COMPILATION, importstmt->pos, "Modules can only be imported in global scope");
+        errors_add_error(comp->errors, MC_ERROR_COMPILING, importstmt->pos, "Modules can only be imported in global scope");
         result = false;
         goto end;
     }
-
-    for(int i = 0; i < ptrarray_count(comp->file_scopes); i++)
+    for(i = 0; i < ptrarray_count(comp->file_scopes); i++)
     {
-        mcastscopefile_t* fs = ptrarray_get(comp->file_scopes, i);
-        if(ARCANE_STREQ(fs->file->path, filepath))
+        fs = (mcastscopefile_t*)ptrarray_get(comp->file_scopes, i);
+        if(MC_UTIL_STREQ(fs->file->path, filepath))
         {
-            errors_add_errorf(comp->errors, ARCANE_ERROR_COMPILATION, importstmt->pos, "Cyclic reference of file \"%s\"", filepath);
+            errors_add_errorf(comp->errors, MC_ERROR_COMPILING, importstmt->pos, "Cyclic reference of file \"%s\"", filepath);
             result = false;
             goto end;
         }
     }
-
-    module_t* module = dict_get(comp->modules, filepath);
+    module = (module_t*)dict_get(comp->modules, filepath);
     if(!module)
     {
         /* todo: create new module function */
-        if(!comp->config->fileio.read_file.read_file)
+        if(!comp->config->fileio.fnreadfile)
         {
-            errors_add_errorf(comp->errors, ARCANE_ERROR_COMPILATION, importstmt->pos, "Cannot import module \"%s\", file read function not configured", filepath);
+            errors_add_errorf(comp->errors, MC_ERROR_COMPILING, importstmt->pos, "Cannot import module \"%s\", file read function not configured", filepath);
             result = false;
             goto end;
         }
-
-        code = comp->config->fileio.read_file.read_file(comp->config->fileio.read_file.context, filepath);
+        code = comp->config->fileio.fnreadfile(comp->config->fileio.context, filepath);
         if(!code)
         {
-            errors_add_errorf(comp->errors, ARCANE_ERROR_COMPILATION, importstmt->pos, "Reading module file \"%s\" failed", filepath);
+            errors_add_errorf(comp->errors, MC_ERROR_COMPILING, importstmt->pos, "Reading module file \"%s\" failed", filepath);
             result = false;
             goto end;
         }
-
         module = mc_module_make(comp->pstate, modulename);
         if(!module)
         {
             result = false;
             goto end;
         }
-
         ok = mc_compiler_filescopepush(comp, filepath);
         if(!ok)
         {
@@ -2699,11 +3327,10 @@ TMPSTATIC bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_
             result = false;
             goto end;
         }
-
-        mcastsymtable_t* st = mc_compiler_getsymtable(comp);
-        for(int i = 0; i < symbol_table_get_module_global_symbol_count(st); i++)
+        st = mc_compiler_getsymtable(comp);
+        for(i = 0; i < symbol_table_get_module_global_symbol_count(st); i++)
         {
-            mcastsymbol_t* symbol = symbol_table_get_module_global_symbol_at(st, i);
+            symbol = symbol_table_get_module_global_symbol_at(st, i);
             mc_module_addsymbol(module, symbol);
         }
 
@@ -2718,59 +3345,57 @@ TMPSTATIC bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_
         }
     }
 
-    for(int i = 0; i < ptrarray_count(module->symbols); i++)
+    for(i = 0; i < ptrarray_count(module->symbols); i++)
     {
-        mcastsymbol_t* symbol = ptrarray_get(module->symbols, i);
-        ok = symbol_table_add_module_symbol(symbol_table, symbol);
+        symbol = (mcastsymbol_t*)ptrarray_get(module->symbols, i);
+        ok = symbol_table_add_module_symbol(symtab, symbol);
         if(!ok)
         {
             result = false;
             goto end;
         }
     }
-
-    char* namecopy = arcane_strdup(comp->pstate, modulename);
+    namecopy = mc_util_strdup(comp->pstate, modulename);
     if(!namecopy)
     {
         result = false;
         goto end;
     }
-
     ok = ptrarray_push(filescope->loaded_module_names, namecopy);
     if(!ok)
     {
-        allocator_free(comp->pstate, namecopy);
+        mc_allocator_free(comp->pstate, namecopy);
         result = false;
         goto end;
     }
-
     result = true;
-
 end:
-    allocator_free(comp->pstate, filepath);
-    allocator_free(comp->pstate, code);
+    mc_allocator_free(comp->pstate, filepath);
+    mc_allocator_free(comp->pstate, code);
     return result;
 }
 
-TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpression_t* stmt)
+TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpression_t* expr)
 {
     bool ok;
+    int ip;
+    uint64_t opbuf[10];
+    mcastscopecomp_t* compscope;
+    mcastsymtable_t* symtab;
     ok = false;
-    int ip = -1;
-
-    ok = array_push(comp->src_positions_stack, &stmt->pos);
+    ip = -1;
+    ok = array_push(comp->src_positions_stack, &expr->pos);
     if(!ok)
     {
         return false;
     }
-
-    mcastscopecomp_t* compilation_scope = mc_compiler_getcompilationscope(comp);
-    mcastsymtable_t* symbol_table = mc_compiler_getsymtable(comp);
-    switch(stmt->type)
+    compscope = mc_compiler_getcompilationscope(comp);
+    symtab = mc_compiler_getsymtable(comp);
+    switch(expr->type)
     {
         case MC_EXPR_STMTEXPRESSION:
         {
-            ok = mc_compiler_compileexpression(comp, stmt->expression);
+            ok = mc_compiler_compileexpression(comp, expr->exprexpression);
             if(!ok)
             {
                 return false;
@@ -2784,69 +3409,70 @@ TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpr
         }
         case MC_EXPR_STMTDEFINE:
         {
-            ok = mc_compiler_compileexpression(comp, stmt->define.value);
+            mcastsymbol_t* symbol;
+            ok = mc_compiler_compileexpression(comp, expr->exprdefine.value);
             if(!ok)
             {
                 return false;
             }
-
-            mcastsymbol_t* symbol = mc_compiler_defsymbol(comp, stmt->define.name->pos, stmt->define.name->value, stmt->define.assignable, false);
+            symbol = mc_compiler_defsymbol(comp, expr->exprdefine.name->pos, expr->exprdefine.name->value, expr->exprdefine.assignable, false);
             if(!symbol)
             {
                 return false;
             }
-
             ok = mc_compiler_storesymbol(comp, symbol, true);
             if(!ok)
             {
                 return false;
             }
-
             break;
         }
         case MC_EXPR_STMTIF:
         {
-            if_statement_t* ifstmt = &stmt->if_statement;
-
-            mcbasicarray_t* jumptoendips = array_make(comp->pstate, sizeof(int));
+            int i;
+            int afteraltip;
+            int nextcasejumpip;
+            int jumptoendip;
+            int afterelifip;
+            int* pos;
+            if_case_t* ifcase;
+            if_statement_t* ifstmt;
+            ifstmt = &expr->exprifstmt;
+            mcbasicarray_t* jumptoendips;
+            jumptoendips = array_make(comp->pstate, sizeof(int));
             if(!jumptoendips)
             {
                 goto statementiferror;
             }
-
-            for(int i = 0; i < ptrarray_count(ifstmt->cases); i++)
+            for(i = 0; i < ptrarray_count(ifstmt->cases); i++)
             {
-                if_case_t* ifcase = ptrarray_get(ifstmt->cases, i);
-
-                ok = mc_compiler_compileexpression(comp, ifcase->test);
+                ifcase = (if_case_t*)ptrarray_get(ifstmt->cases, i);
+                ok = mc_compiler_compileexpression(comp, ifcase->ifcond);
                 if(!ok)
                 {
                     goto statementiferror;
                 }
-
-                int nextcasejumpip = mc_compiler_emit(comp, OPCODE_JUMP_IF_FALSE, 1, (uint64_t[]){ 0xbeef });
-
+                opbuf[0] = 0xbeef;
+                nextcasejumpip = mc_compiler_emit(comp, OPCODE_JUMP_IF_FALSE, 1, opbuf);
                 ok = mc_compiler_compilecodeblock(comp, ifcase->consequence);
                 if(!ok)
                 {
                     goto statementiferror;
                 }
-
                 /* don't emit jump for the last statement */
                 if(i < (ptrarray_count(ifstmt->cases) - 1) || ifstmt->alternative)
                 {
-                    int jumptoendip = mc_compiler_emit(comp, OPCODE_JUMP, 1, (uint64_t[]){ 0xbeef });
+                    opbuf[0] = 0xbeef;
+                    jumptoendip = mc_compiler_emit(comp, OPCODE_JUMP, 1, opbuf);
                     ok = array_add(jumptoendips, &jumptoendip);
                     if(!ok)
                     {
                         goto statementiferror;
                     }
                 }
-
-                int afterelifip = mc_compiler_getip(comp);
+                afterelifip = mc_compiler_getip(comp);
                 mc_compiler_changeuint16operand(comp, nextcasejumpip + 1, afterelifip);
             }
-
             if(ifstmt->alternative)
             {
                 ok = mc_compiler_compilecodeblock(comp, ifstmt->alternative);
@@ -2855,17 +3481,13 @@ TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpr
                     goto statementiferror;
                 }
             }
-
-            int afteraltip = mc_compiler_getip(comp);
-
-            for(int i = 0; i < array_count(jumptoendips); i++)
+            afteraltip = mc_compiler_getip(comp);
+            for(i = 0; i < array_count(jumptoendips); i++)
             {
-                int* pos = array_get(jumptoendips, i);
+                pos = (int*)array_get(jumptoendips, i);
                 mc_compiler_changeuint16operand(comp, *pos + 1, afteraltip);
             }
-
             array_destroy(jumptoendips);
-
             break;
         statementiferror:
             array_destroy(jumptoendips);
@@ -2873,15 +3495,15 @@ TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpr
         }
         case MC_EXPR_STMTRETURN:
         {
-            if(compilation_scope->outer == NULL)
+            if(compscope->outer == NULL)
             {
-                errors_add_errorf(comp->errors, ARCANE_ERROR_COMPILATION, stmt->pos, "Nothing to return from");
+                errors_add_errorf(comp->errors, MC_ERROR_COMPILING, expr->pos, "Nothing to return from");
                 return false;
             }
             ip = -1;
-            if(stmt->return_value)
+            if(expr->exprreturnvalue)
             {
-                ok = mc_compiler_compileexpression(comp, stmt->return_value);
+                ok = mc_compiler_compileexpression(comp, expr->exprreturnvalue);
                 if(!ok)
                 {
                     return false;
@@ -2900,70 +3522,69 @@ TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpr
         }
         case MC_EXPR_STMTLOOPWHILE:
         {
-            while_loop_statement_t* loop = &stmt->while_loop;
-
-            int beforetestip = mc_compiler_getip(comp);
-
-            ok = mc_compiler_compileexpression(comp, loop->test);
+            int beforetestip;
+            int aftertestip;
+            int afterbodyip;
+            int jumptoafterbodyip;
+            while_loop_statement_t* loop;
+            loop = &expr->exprwhileloopstmt;
+            beforetestip = mc_compiler_getip(comp);
+            ok = mc_compiler_compileexpression(comp, loop->loopcond);
             if(!ok)
             {
                 return false;
             }
-
-            int aftertestip = mc_compiler_getip(comp);
-            ip = mc_compiler_emit(comp, OPCODE_JUMP_IF_TRUE, 1, (uint64_t[]){ aftertestip + 6 });
+            aftertestip = mc_compiler_getip(comp);
+            opbuf[0] = aftertestip + 6;
+            ip = mc_compiler_emit(comp, OPCODE_JUMP_IF_TRUE, 1, opbuf);
             if(ip < 0)
             {
                 return false;
             }
-
-            int jumptoafterbodyip = mc_compiler_emit(comp, OPCODE_JUMP, 1, (uint64_t[]){ 0xdead });
+            opbuf[0] = 0xdead;
+            jumptoafterbodyip = mc_compiler_emit(comp, OPCODE_JUMP, 1, opbuf);
             if(jumptoafterbodyip < 0)
             {
                 return false;
             }
-
             ok = mc_compiler_pushcontinueip(comp, beforetestip);
             if(!ok)
             {
                 return false;
             }
-
             ok = mc_compiler_pushbreakip(comp, jumptoafterbodyip);
             if(!ok)
             {
                 return false;
             }
-
             ok = mc_compiler_compilecodeblock(comp, loop->body);
             if(!ok)
             {
                 return false;
             }
-
             mc_compiler_popbreakip(comp);
             mc_compiler_popcontinueip(comp);
-
-            ip = mc_compiler_emit(comp, OPCODE_JUMP, 1, (uint64_t[]){ beforetestip });
+            opbuf[0] = beforetestip;
+            ip = mc_compiler_emit(comp, OPCODE_JUMP, 1, opbuf);
             if(ip < 0)
             {
                 return false;
             }
-
-            int afterbodyip = mc_compiler_getip(comp);
+            afterbodyip = mc_compiler_getip(comp);
             mc_compiler_changeuint16operand(comp, jumptoafterbodyip + 1, afterbodyip);
-
             break;
         }
         case MC_EXPR_STMTBREAK:
         {
-            int breakip = mc_compiler_getbreakip(comp);
+            int breakip;
+            breakip = mc_compiler_getbreakip(comp);
             if(breakip < 0)
             {
-                errors_add_errorf(comp->errors, ARCANE_ERROR_COMPILATION, stmt->pos, "Nothing to break from.");
+                errors_add_errorf(comp->errors, MC_ERROR_COMPILING, expr->pos, "Nothing to break from.");
                 return false;
             }
-            ip = mc_compiler_emit(comp, OPCODE_JUMP, 1, (uint64_t[]){ breakip });
+            opbuf[0] = breakip;
+            ip = mc_compiler_emit(comp, OPCODE_JUMP, 1, opbuf);
             if(ip < 0)
             {
                 return false;
@@ -2972,13 +3593,15 @@ TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpr
         }
         case MC_EXPR_STMTCONTINUE:
         {
-            int continueip = mc_compiler_getcontinueip(comp);
+            int continueip;
+            continueip = mc_compiler_getcontinueip(comp);
             if(continueip < 0)
             {
-                errors_add_errorf(comp->errors, ARCANE_ERROR_COMPILATION, stmt->pos, "Nothing to continue from.");
+                errors_add_errorf(comp->errors, MC_ERROR_COMPILING, expr->pos, "Nothing to continue from.");
                 return false;
             }
-            ip = mc_compiler_emit(comp, OPCODE_JUMP, 1, (uint64_t[]){ continueip });
+            opbuf[0] = continueip;
+            ip = mc_compiler_emit(comp, OPCODE_JUMP, 1, opbuf);
             if(ip < 0)
             {
                 return false;
@@ -2987,39 +3610,46 @@ TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpr
         }
         case MC_EXPR_STMTLOOPFOREACH:
         {
-            foreach_statement_t* foreach = &stmt->foreach;
-            ok = symbol_table_push_block_scope(symbol_table);
+            int jumptoafterupdateip;
+            int updateip;
+            int afterupdateip;
+            int aftertestip;
+            int jumptoafterbodyip;
+            int afterbodyip;
+            mcastsymbol_t* itersymbol;
+            mcastsymbol_t* indexsymbol;
+            mcastsymbol_t* sourcesymbol;
+            foreach_statement_t* foreach;
+            foreach = &expr->exprforeachloopstmt;
+            ok = symbol_table_push_block_scope(symtab);
             if(!ok)
             {
                 return false;
             }
-
             /* Init */
-            mcastsymbol_t* indexsymbol = mc_compiler_defsymbol(comp, stmt->pos, "@i", false, true);
+            indexsymbol = mc_compiler_defsymbol(comp, expr->pos, "@i", false, true);
             if(!indexsymbol)
             {
                 return false;
             }
-
-            ip = mc_compiler_emit(comp, OPCODE_NUMBER, 1, (uint64_t[]){ 0 });
+            opbuf[0] = 0;
+            ip = mc_compiler_emit(comp, OPCODE_NUMBER, 1, opbuf);
             if(ip < 0)
             {
                 return false;
             }
-
             ok = mc_compiler_storesymbol(comp, indexsymbol, true);
             if(!ok)
             {
                 return false;
             }
-
-            mcastsymbol_t* sourcesymbol = NULL;
+            sourcesymbol = NULL;
             if(foreach->source->type == MC_EXPR_IDENT)
             {
-                sourcesymbol = symbol_table_resolve(symbol_table, foreach->source->ident->value);
+                sourcesymbol = symbol_table_resolve(symtab, foreach->source->exprident->value);
                 if(!sourcesymbol)
                 {
-                    errors_add_errorf(comp->errors, ARCANE_ERROR_COMPILATION, foreach->source->pos, "Symbol \"%s\" could not be resolved", foreach->source->ident->value);
+                    errors_add_errorf(comp->errors, MC_ERROR_COMPILING, foreach->source->pos, "Symbol \"%s\" could not be resolved", foreach->source->exprident->value);
                     return false;
                 }
             }
@@ -3041,358 +3671,333 @@ TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpr
                     return false;
                 }
             }
-
             /* Update */
-            int jumptoafterupdateip = mc_compiler_emit(comp, OPCODE_JUMP, 1, (uint64_t[]){ 0xbeef });
+            opbuf[0] = 0xbeef;
+            jumptoafterupdateip = mc_compiler_emit(comp, OPCODE_JUMP, 1, opbuf);
             if(jumptoafterupdateip < 0)
             {
                 return false;
             }
-
-            int updateip = mc_compiler_getip(comp);
+            updateip = mc_compiler_getip(comp);
             ok = mc_compiler_readsymbol(comp, indexsymbol);
             if(!ok)
             {
                 return false;
             }
-
-            ip = mc_compiler_emit(comp, OPCODE_NUMBER, 1, (uint64_t[]){ arcane_double_to_uint64(1) });
+            opbuf[0] = mc_util_doubletouint64(1);
+            ip = mc_compiler_emit(comp, OPCODE_NUMBER, 1, opbuf);
             if(ip < 0)
             {
                 return false;
             }
-
             ip = mc_compiler_emit(comp, OPCODE_ADD, 0, NULL);
             if(ip < 0)
             {
                 return false;
             }
-
             ok = mc_compiler_storesymbol(comp, indexsymbol, false);
             if(!ok)
             {
                 return false;
             }
-
-            int afterupdateip = mc_compiler_getip(comp);
+            afterupdateip = mc_compiler_getip(comp);
             mc_compiler_changeuint16operand(comp, jumptoafterupdateip + 1, afterupdateip);
-
             /* Test */
             ok = array_push(comp->src_positions_stack, &foreach->source->pos);
             if(!ok)
             {
                 return false;
             }
-
             ok = mc_compiler_readsymbol(comp, sourcesymbol);
             if(!ok)
             {
                 return false;
             }
-
             ip = mc_compiler_emit(comp, OPCODE_LEN, 0, NULL);
             if(ip < 0)
             {
                 return false;
             }
-
             array_pop(comp->src_positions_stack, NULL);
             ok = mc_compiler_readsymbol(comp, indexsymbol);
             if(!ok)
             {
                 return false;
             }
-
             ip = mc_compiler_emit(comp, OPCODE_COMPARE, 0, NULL);
             if(ip < 0)
             {
                 return false;
             }
-
             ip = mc_compiler_emit(comp, OPCODE_EQUAL, 0, NULL);
             if(ip < 0)
             {
                 return false;
             }
-
-            int aftertestip = mc_compiler_getip(comp);
-            ip = mc_compiler_emit(comp, OPCODE_JUMP_IF_FALSE, 1, (uint64_t[]){ aftertestip + 6 });
+            aftertestip = mc_compiler_getip(comp);
+            opbuf[0] = aftertestip + 6;
+            ip = mc_compiler_emit(comp, OPCODE_JUMP_IF_FALSE, 1, opbuf);
             if(ip < 0)
             {
                 return false;
             }
-
-            int jumptoafterbodyip = mc_compiler_emit(comp, OPCODE_JUMP, 1, (uint64_t[]){ 0xdead });
+            opbuf[0] = 0xdead;
+            jumptoafterbodyip = mc_compiler_emit(comp, OPCODE_JUMP, 1, opbuf);
             if(jumptoafterbodyip < 0)
             {
                 return false;
             }
-
             ok = mc_compiler_readsymbol(comp, sourcesymbol);
             if(!ok)
             {
                 return false;
             }
-
             ok = mc_compiler_readsymbol(comp, indexsymbol);
             if(!ok)
             {
                 return false;
             }
-
             ip = mc_compiler_emit(comp, OPCODE_GET_VALUE_AT, 0, NULL);
             if(ip < 0)
             {
                 return false;
             }
-
-            mcastsymbol_t* itersymbol = mc_compiler_defsymbol(comp, foreach->iterator->pos, foreach->iterator->value, false, false);
+            itersymbol = mc_compiler_defsymbol(comp, foreach->iterator->pos, foreach->iterator->value, false, false);
             if(!itersymbol)
             {
                 return false;
             }
-
             ok = mc_compiler_storesymbol(comp, itersymbol, true);
             if(!ok)
             {
                 return false;
             }
-
             /* Body */
             ok = mc_compiler_pushcontinueip(comp, updateip);
             if(!ok)
             {
                 return false;
             }
-
             ok = mc_compiler_pushbreakip(comp, jumptoafterbodyip);
             if(!ok)
             {
                 return false;
             }
-
             ok = mc_compiler_compilecodeblock(comp, foreach->body);
             if(!ok)
             {
                 return false;
             }
-
             mc_compiler_popbreakip(comp);
             mc_compiler_popcontinueip(comp);
-
-            ip = mc_compiler_emit(comp, OPCODE_JUMP, 1, (uint64_t[]){ updateip });
+            opbuf[0] = updateip;
+            ip = mc_compiler_emit(comp, OPCODE_JUMP, 1, opbuf);
             if(ip < 0)
             {
                 return false;
             }
-
-            int afterbodyip = mc_compiler_getip(comp);
+            afterbodyip = mc_compiler_getip(comp);
             mc_compiler_changeuint16operand(comp, jumptoafterbodyip + 1, afterbodyip);
-
-            symbol_table_pop_block_scope(symbol_table);
+            symbol_table_pop_block_scope(symtab);
             break;
         }
         case MC_EXPR_STMTLOOPFORCLASSIC:
-        {
-            for_loop_statement_t* loop = &stmt->for_loop;
-
-            ok = symbol_table_push_block_scope(symbol_table);
-            if(!ok)
             {
-                return false;
-            }
-
-            /* Init */
-            int jumptoafterupdateip = 0;
-            ok = false;
-            if(loop->init)
-            {
-                ok = mc_compiler_compilestatement(comp, loop->init);
+                int afterbodyip;
+                int jumptoafterupdateip;
+                int updateip;
+                int afterupdateip;
+                int aftertestip;
+                int jumptoafterbodyip;
+                for_loop_statement_t* loop;
+                loop = &expr->exprforloopstmt;
+                ok = symbol_table_push_block_scope(symtab);
                 if(!ok)
                 {
                     return false;
                 }
-                jumptoafterupdateip = mc_compiler_emit(comp, OPCODE_JUMP, 1, (uint64_t[]){ 0xbeef });
-                if(jumptoafterupdateip < 0)
+                /* Init */
+                jumptoafterupdateip = 0;
+                ok = false;
+                if(loop->init)
                 {
-                    return false;
+                    ok = mc_compiler_compilestatement(comp, loop->init);
+                    if(!ok)
+                    {
+                        return false;
+                    }
+                    opbuf[0] = 0xbeef;
+                    jumptoafterupdateip = mc_compiler_emit(comp, OPCODE_JUMP, 1, opbuf);
+                    if(jumptoafterupdateip < 0)
+                    {
+                        return false;
+                    }
                 }
-            }
-
-            /* Update */
-            int updateip = mc_compiler_getip(comp);
-            if(loop->update)
-            {
-                ok = mc_compiler_compileexpression(comp, loop->update);
-                if(!ok)
+                /* Update */
+                updateip = mc_compiler_getip(comp);
+                if(loop->update)
                 {
-                    return false;
+                    ok = mc_compiler_compileexpression(comp, loop->update);
+                    if(!ok)
+                    {
+                        return false;
+                    }
+                    ip = mc_compiler_emit(comp, OPCODE_POP, 0, NULL);
+                    if(ip < 0)
+                    {
+                        return false;
+                    }
                 }
-                ip = mc_compiler_emit(comp, OPCODE_POP, 0, NULL);
+                if(loop->init)
+                {
+                    afterupdateip = mc_compiler_getip(comp);
+                    mc_compiler_changeuint16operand(comp, jumptoafterupdateip + 1, afterupdateip);
+                }
+                /* Test */
+                if(loop->loopcond)
+                {
+                    ok = mc_compiler_compileexpression(comp, loop->loopcond);
+                    if(!ok)
+                    {
+                        return false;
+                    }
+                }
+                else
+                {
+                    ip = mc_compiler_emit(comp, OPCODE_TRUE, 0, NULL);
+                    if(ip < 0)
+                    {
+                        return false;
+                    }
+                }
+                aftertestip = mc_compiler_getip(comp);
+                opbuf[0] = aftertestip + 6;
+                ip = mc_compiler_emit(comp, OPCODE_JUMP_IF_TRUE, 1, opbuf);
                 if(ip < 0)
                 {
                     return false;
                 }
-            }
-
-            if(loop->init)
-            {
-                int afterupdateip = mc_compiler_getip(comp);
-                mc_compiler_changeuint16operand(comp, jumptoafterupdateip + 1, afterupdateip);
-            }
-
-            /* Test */
-            if(loop->test)
-            {
-                ok = mc_compiler_compileexpression(comp, loop->test);
+                opbuf[0] = 0xdead;
+                jumptoafterbodyip = mc_compiler_emit(comp, OPCODE_JUMP, 1, opbuf);
+                if(jumptoafterbodyip < 0)
+                {
+                    return false;
+                }
+                /* Body */
+                ok = mc_compiler_pushcontinueip(comp, updateip);
                 if(!ok)
                 {
                     return false;
                 }
-            }
-            else
-            {
-                ip = mc_compiler_emit(comp, OPCODE_TRUE, 0, NULL);
+                ok = mc_compiler_pushbreakip(comp, jumptoafterbodyip);
+                if(!ok)
+                {
+                    return false;
+                }
+
+                ok = mc_compiler_compilecodeblock(comp, loop->body);
+                if(!ok)
+                {
+                    return false;
+                }
+                mc_compiler_popbreakip(comp);
+                mc_compiler_popcontinueip(comp);
+                opbuf[0] = updateip;
+                ip = mc_compiler_emit(comp, OPCODE_JUMP, 1, opbuf);
                 if(ip < 0)
                 {
                     return false;
                 }
+                afterbodyip = mc_compiler_getip(comp);
+                mc_compiler_changeuint16operand(comp, jumptoafterbodyip + 1, afterbodyip);
+                symbol_table_pop_block_scope(symtab);
             }
-            int aftertestip = mc_compiler_getip(comp);
-
-            ip = mc_compiler_emit(comp, OPCODE_JUMP_IF_TRUE, 1, (uint64_t[]){ aftertestip + 6 });
-            if(ip < 0)
-            {
-                return false;
-            }
-            int jmptoafterbodyip = mc_compiler_emit(comp, OPCODE_JUMP, 1, (uint64_t[]){ 0xdead });
-            if(jmptoafterbodyip < 0)
-            {
-                return false;
-            }
-            /* Body */
-            ok = mc_compiler_pushcontinueip(comp, updateip);
-            if(!ok)
-            {
-                return false;
-            }
-
-            ok = mc_compiler_pushbreakip(comp, jmptoafterbodyip);
-            if(!ok)
-            {
-                return false;
-            }
-
-            ok = mc_compiler_compilecodeblock(comp, loop->body);
-            if(!ok)
-            {
-                return false;
-            }
-
-            mc_compiler_popbreakip(comp);
-            mc_compiler_popcontinueip(comp);
-
-            ip = mc_compiler_emit(comp, OPCODE_JUMP, 1, (uint64_t[]){ updateip });
-            if(ip < 0)
-            {
-                return false;
-            }
-
-            int afterbodyip = mc_compiler_getip(comp);
-            mc_compiler_changeuint16operand(comp, jmptoafterbodyip + 1, afterbodyip);
-
-            symbol_table_pop_block_scope(symbol_table);
             break;
-        }
         case MC_EXPR_STMTBLOCK:
-        {
-            ok = mc_compiler_compilecodeblock(comp, stmt->block);
-            if(!ok)
             {
-                return false;
+                ok = mc_compiler_compilecodeblock(comp, expr->exprblockstmt);
+                if(!ok)
+                {
+                    return false;
+                }
             }
             break;
-        }
         case MC_EXPR_STMTIMPORT:
-        {
-            ok = mc_compiler_compileimport(comp, stmt);
-            if(!ok)
             {
-                return false;
+                ok = mc_compiler_compileimport(comp, expr);
+                if(!ok)
+                {
+                    return false;
+                }
             }
             break;
-        }
         case MC_EXPR_STMTRECOVER:
-        {
-            recover_statement_t* recover = &stmt->recover;
-
-            if(symbol_table_is_module_global_scope(symbol_table))
             {
-                errors_add_error(comp->errors, ARCANE_ERROR_COMPILATION, stmt->pos, "Recover statement cannot be defined in global scope");
-                return false;
+                int recover_ip;
+                int afterrecoverip;
+                int afterjumptorecoverip;
+                int jumptoafterrecoverip;
+                mcastsymbol_t* errorsymbol;
+                recover_statement_t* recover;
+                recover = &expr->exprrecoverstmt;
+                if(symbol_table_is_module_global_scope(symtab))
+                {
+                    errors_add_error(comp->errors, MC_ERROR_COMPILING, expr->pos, "Recover statement cannot be defined in global scope");
+                    return false;
+                }
+                if(!symbol_table_is_top_block_scope(symtab))
+                {
+                    errors_add_error(comp->errors, MC_ERROR_COMPILING, expr->pos, "Recover statement cannot be defined within other statements");
+                    return false;
+                }
+                opbuf[0] = 0xbeef;
+                recover_ip = mc_compiler_emit(comp, OPCODE_SET_RECOVER, 1, opbuf);
+                if(recover_ip < 0)
+                {
+                    return false;
+                }
+                opbuf[0] = 0xbeef;
+                jumptoafterrecoverip = mc_compiler_emit(comp, OPCODE_JUMP, 1, opbuf);
+                if(jumptoafterrecoverip < 0)
+                {
+                    return false;
+                }
+                afterjumptorecoverip = mc_compiler_getip(comp);
+                mc_compiler_changeuint16operand(comp, recover_ip + 1, afterjumptorecoverip);
+                ok = symbol_table_push_block_scope(symtab);
+                if(!ok)
+                {
+                    return false;
+                }
+                errorsymbol = mc_compiler_defsymbol(comp, recover->errident->pos, recover->errident->value, false, false);
+                if(!errorsymbol)
+                {
+                    return false;
+                }
+                ok = mc_compiler_storesymbol(comp, errorsymbol, true);
+                if(!ok)
+                {
+                    return false;
+                }
+                ok = mc_compiler_compilecodeblock(comp, recover->body);
+                if(!ok)
+                {
+                    return false;
+                }
+                if(!mc_compiler_lastopcodeis(comp, OPCODE_RETURN) && !mc_compiler_lastopcodeis(comp, OPCODE_RETURN_VALUE))
+                {
+                    errors_add_error(comp->errors, MC_ERROR_COMPILING, expr->pos, "Recover body must end with a return statement");
+                    return false;
+                }
+                symbol_table_pop_block_scope(symtab);
+                afterrecoverip = mc_compiler_getip(comp);
+                mc_compiler_changeuint16operand(comp, jumptoafterrecoverip + 1, afterrecoverip);
             }
-
-            if(!symbol_table_is_top_block_scope(symbol_table))
-            {
-                errors_add_error(comp->errors, ARCANE_ERROR_COMPILATION, stmt->pos, "Recover statement cannot be defined within other statements");
-                return false;
-            }
-
-            int recover_ip = mc_compiler_emit(comp, OPCODE_SET_RECOVER, 1, (uint64_t[]){ 0xbeef });
-            if(recover_ip < 0)
-            {
-                return false;
-            }
-
-            int jumptoafterrecoverip = mc_compiler_emit(comp, OPCODE_JUMP, 1, (uint64_t[]){ 0xbeef });
-            if(jumptoafterrecoverip < 0)
-            {
-                return false;
-            }
-
-            int afterjumptorecoverip = mc_compiler_getip(comp);
-            mc_compiler_changeuint16operand(comp, recover_ip + 1, afterjumptorecoverip);
-
-            ok = symbol_table_push_block_scope(symbol_table);
-            if(!ok)
-            {
-                return false;
-            }
-
-            mcastsymbol_t* errorsymbol = mc_compiler_defsymbol(comp, recover->error_ident->pos, recover->error_ident->value, false, false);
-            if(!errorsymbol)
-            {
-                return false;
-            }
-
-            ok = mc_compiler_storesymbol(comp, errorsymbol, true);
-            if(!ok)
-            {
-                return false;
-            }
-
-            ok = mc_compiler_compilecodeblock(comp, recover->body);
-            if(!ok)
-            {
-                return false;
-            }
-
-            if(!mc_compiler_lastopcodeis(comp, OPCODE_RETURN) && !mc_compiler_lastopcodeis(comp, OPCODE_RETURN_VALUE))
-            {
-                errors_add_error(comp->errors, ARCANE_ERROR_COMPILATION, stmt->pos, "Recover body must end with a return statement");
-                return false;
-            }
-
-            symbol_table_pop_block_scope(symbol_table);
-
-            int afterrecoverip = mc_compiler_getip(comp);
-            mc_compiler_changeuint16operand(comp, jumptoafterrecoverip + 1, afterrecoverip);
-
             break;
-        }
+
         default:
         {
-            ARCANE_ASSERT(false);
+            MC_ASSERT(false);
             return false;
         }
     }
@@ -3403,14 +4008,19 @@ TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpr
 TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexpression_t* expr)
 {
     bool ok;
+    int ip;
+    uint64_t opbuf[10];
+    mcastexpression_t* exproptimized;
     ok = false;
-    int ip = -1;
-
-    mcastexpression_t* exproptimised = optimise_expression(expr);
-    if(exproptimised)
+    ip = -1;
+    exproptimized = NULL;
+    #if 0
+    exproptimized = mc_optimizer_optexpression(expr);
+    if(exproptimized != NULL)
     {
-        expr = exproptimised;
+        expr = exproptimized;
     }
+    #endif
 
     ok = array_push(comp->src_positions_stack, &expr->pos);
     if(!ok)
@@ -3418,8 +4028,8 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
         return false;
     }
 
-    mcastscopecomp_t* compilation_scope = mc_compiler_getcompilationscope(comp);
-    mcastsymtable_t* symbol_table = mc_compiler_getsymtable(comp);
+    mcastscopecomp_t* compscope = mc_compiler_getcompilationscope(comp);
+    mcastsymtable_t* symtab = mc_compiler_getsymtable(comp);
 
     bool res = false;
 
@@ -3429,8 +4039,8 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
         {
             bool rearrange = false;
 
-            opcode_t op = OPCODE_NONE;
-            switch(expr->infix.op)
+            mcinternopcode_t op = OPCODE_NONE;
+            switch(expr->exprinfix.op)
             {
                 case OPERATOR_PLUS:
                     op = OPCODE_ADD;
@@ -3484,13 +4094,13 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
                     break;
                 default:
                 {
-                    errors_add_errorf(comp->errors, ARCANE_ERROR_COMPILATION, expr->pos, "Unknown infix operator");
+                    errors_add_errorf(comp->errors, MC_ERROR_COMPILING, expr->pos, "Unknown infix operator");
                     goto error;
                 }
             }
 
-            mcastexpression_t* left = rearrange ? expr->infix.right : expr->infix.left;
-            mcastexpression_t* right = rearrange ? expr->infix.left : expr->infix.right;
+            mcastexpression_t* left = rearrange ? expr->exprinfix.right : expr->exprinfix.left;
+            mcastexpression_t* right = rearrange ? expr->exprinfix.left : expr->exprinfix.right;
 
             ok = mc_compiler_compileexpression(comp, left);
             if(!ok)
@@ -3504,7 +4114,7 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
                 goto error;
             }
 
-            switch(expr->infix.op)
+            switch(expr->exprinfix.op)
             {
                 case OPERATOR_EQ:
                 case OPERATOR_NOT_EQ:
@@ -3542,8 +4152,9 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
         }
         case MC_EXPR_NUMBERLITERAL:
         {
-            double number = expr->number_literal;
-            ip = mc_compiler_emit(comp, OPCODE_NUMBER, 1, (uint64_t[]){ arcane_double_to_uint64(number) });
+            double number = expr->exprlitnumber;
+            opbuf[0] = mc_util_doubletouint64(number);
+            ip = mc_compiler_emit(comp, OPCODE_NUMBER, 1, opbuf);
             if(ip < 0)
             {
                 goto error;
@@ -3554,14 +4165,14 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
         case MC_EXPR_STRINGLITERAL:
         {
             int pos = 0;
-            int* currentpos = dict_get(comp->string_constants_positions, expr->string_literal);
+            int* currentpos = (int*)dict_get(comp->string_constants_positions, expr->exprlitstring.data);
             if(currentpos)
             {
                 pos = *currentpos;
             }
             else
             {
-                mcvalue_t obj = mc_value_makestring(comp->pstate, expr->string_literal);
+                mcvalue_t obj = mc_value_makestringlen(comp->pstate, expr->exprlitstring.data, expr->exprlitstring.length);
                 if(object_is_null(obj))
                 {
                     goto error;
@@ -3573,22 +4184,22 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
                     goto error;
                 }
 
-                int* posval = (int*)allocator_malloc(comp->pstate, sizeof(int));
+                int* posval = (int*)mc_allocator_alloc(comp->pstate, sizeof(int));
                 if(!posval)
                 {
                     goto error;
                 }
 
                 *posval = pos;
-                ok = dict_set(comp->string_constants_positions, expr->string_literal, posval);
+                ok = dict_set(comp->string_constants_positions, expr->exprlitstring.data, posval);
                 if(!ok)
                 {
-                    allocator_free(comp->pstate, posval);
+                    mc_allocator_free(comp->pstate, posval);
                     goto error;
                 }
             }
-
-            ip = mc_compiler_emit(comp, OPCODE_CONSTANT, 1, (uint64_t[]){ pos });
+            opbuf[0] = pos;
+            ip = mc_compiler_emit(comp, OPCODE_CONSTANT, 1, opbuf);
             if(ip < 0)
             {
                 goto error;
@@ -3607,7 +4218,7 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
         }
         case MC_EXPR_BOOLLITERAL:
         {
-            ip = mc_compiler_emit(comp, expr->bool_literal ? OPCODE_TRUE : OPCODE_FALSE, 0, NULL);
+            ip = mc_compiler_emit(comp, expr->exprlitbool ? OPCODE_TRUE : OPCODE_FALSE, 0, NULL);
             if(ip < 0)
             {
                 goto error;
@@ -3616,15 +4227,17 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
         }
         case MC_EXPR_ARRAYLITERAL:
         {
-            for(int i = 0; i < ptrarray_count(expr->array); i++)
+            int i;
+            for(i = 0; i < ptrarray_count(expr->exprlitarray); i++)
             {
-                ok = mc_compiler_compileexpression(comp, ptrarray_get(expr->array, i));
+                ok = mc_compiler_compileexpression(comp, (mcastexpression_t*)ptrarray_get(expr->exprlitarray, i));
                 if(!ok)
                 {
                     goto error;
                 }
             }
-            ip = mc_compiler_emit(comp, OPCODE_ARRAY, 1, (uint64_t[]){ ptrarray_count(expr->array) });
+            opbuf[0] = ptrarray_count(expr->exprlitarray);
+            ip = mc_compiler_emit(comp, OPCODE_ARRAY, 1, opbuf);
             if(ip < 0)
             {
                 goto error;
@@ -3633,18 +4246,20 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
         }
         case MC_EXPR_MAPLITERAL:
         {
-            map_literal_t* map = &expr->map;
+            int i;
+            map_literal_t* map = &expr->exprlitmap;
             int len = ptrarray_count(map->keys);
-            ip = mc_compiler_emit(comp, OPCODE_MAP_START, 1, (uint64_t[]){ len });
+            opbuf[0] = len;
+            ip = mc_compiler_emit(comp, OPCODE_MAP_START, 1, opbuf);
             if(ip < 0)
             {
                 goto error;
             }
 
-            for(int i = 0; i < len; i++)
+            for(i = 0; i < len; i++)
             {
-                mcastexpression_t* key = ptrarray_get(map->keys, i);
-                mcastexpression_t* val = ptrarray_get(map->values, i);
+                mcastexpression_t* key = (mcastexpression_t*)ptrarray_get(map->keys, i);
+                mcastexpression_t* val = (mcastexpression_t*)ptrarray_get(map->values, i);
 
                 ok = mc_compiler_compileexpression(comp, key);
                 if(!ok)
@@ -3658,8 +4273,8 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
                     goto error;
                 }
             }
-
-            ip = mc_compiler_emit(comp, OPCODE_MAP_END, 1, (uint64_t[]){ len });
+            opbuf[0] = len;
+            ip = mc_compiler_emit(comp, OPCODE_MAP_END, 1, opbuf);
             if(ip < 0)
             {
                 goto error;
@@ -3669,14 +4284,14 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
         }
         case MC_EXPR_PREFIX:
         {
-            ok = mc_compiler_compileexpression(comp, expr->prefix.right);
+            ok = mc_compiler_compileexpression(comp, expr->exprprefix.right);
             if(!ok)
             {
                 goto error;
             }
 
-            opcode_t op = OPCODE_NONE;
-            switch(expr->prefix.op)
+            mcinternopcode_t op = OPCODE_NONE;
+            switch(expr->exprprefix.op)
             {
                 case OPERATOR_MINUS:
                     op = OPCODE_MINUS;
@@ -3686,7 +4301,7 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
                     break;
                 default:
                 {
-                    errors_add_errorf(comp->errors, ARCANE_ERROR_COMPILATION, expr->pos, "Unknown prefix operator.");
+                    errors_add_errorf(comp->errors, MC_ERROR_COMPILING, expr->pos, "Unknown prefix operator.");
                     goto error;
                 }
             }
@@ -3700,11 +4315,11 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
         }
         case MC_EXPR_IDENT:
         {
-            ident_t* ident = expr->ident;
-            mcastsymbol_t* symbol = symbol_table_resolve(symbol_table, ident->value);
+            ident_t* ident = expr->exprident;
+            mcastsymbol_t* symbol = symbol_table_resolve(symtab, ident->value);
             if(!symbol)
             {
-                errors_add_errorf(comp->errors, ARCANE_ERROR_COMPILATION, ident->pos, "Symbol \"%s\" could not be resolved", ident->value);
+                errors_add_errorf(comp->errors, MC_ERROR_COMPILING, ident->pos, "Symbol \"%s\" could not be resolved", ident->value);
                 goto error;
             }
             ok = mc_compiler_readsymbol(comp, symbol);
@@ -3717,7 +4332,7 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
         }
         case MC_EXPR_INDEX:
         {
-            index_expression_t* index = &expr->index_expr;
+            index_expression_t* index = &expr->exprindex;
             ok = mc_compiler_compileexpression(comp, index->left);
             if(!ok)
             {
@@ -3738,7 +4353,8 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
         }
         case MC_EXPR_FUNCTIONLITERAL:
         {
-            fn_literal_t* fn = &expr->fn_literal;
+            int i;
+            fn_literal_t* fn = &expr->exprlitfunction;
 
             ok = mc_compiler_pushcompilationscope(comp);
             if(!ok)
@@ -3752,29 +4368,29 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
                 goto error;
             }
 
-            compilation_scope = mc_compiler_getcompilationscope(comp);
-            symbol_table = mc_compiler_getsymtable(comp);
+            compscope = mc_compiler_getcompilationscope(comp);
+            symtab = mc_compiler_getsymtable(comp);
 
             if(fn->name)
             {
-                mcastsymbol_t* fnsymbol = symbol_table_define_function_name(symbol_table, fn->name, false);
+                mcastsymbol_t* fnsymbol = symbol_table_define_function_name(symtab, fn->name, false);
                 if(!fnsymbol)
                 {
-                    errors_add_errorf(comp->errors, ARCANE_ERROR_COMPILATION, expr->pos, "Cannot define symbol \"%s\"", fn->name);
+                    errors_add_errorf(comp->errors, MC_ERROR_COMPILING, expr->pos, "Cannot define symbol \"%s\"", fn->name);
                     goto error;
                 }
             }
 
-            mcastsymbol_t* thissymbol = symbol_table_define_this(symbol_table);
+            mcastsymbol_t* thissymbol = symbol_table_define_this(symtab);
             if(!thissymbol)
             {
-                errors_add_error(comp->errors, ARCANE_ERROR_COMPILATION, expr->pos, "Cannot define \"this\" symbol");
+                errors_add_error(comp->errors, MC_ERROR_COMPILING, expr->pos, "Cannot define \"this\" symbol");
                 goto error;
             }
 
-            for(int i = 0; i < ptrarray_count(expr->fn_literal.params); i++)
+            for(i = 0; i < ptrarray_count(expr->exprlitfunction.params); i++)
             {
-                ident_t* param = ptrarray_get(expr->fn_literal.params, i);
+                ident_t* param = (ident_t*)ptrarray_get(expr->exprlitfunction.params, i);
                 mcastsymbol_t* paramsymbol = mc_compiler_defsymbol(comp, param->pos, param->value, true, false);
                 if(!paramsymbol)
                 {
@@ -3797,39 +4413,39 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
                 }
             }
 
-            mcptrarray_t* free_symbols = symbol_table->free_symbols;
+            mcptrarray_t* free_symbols = symtab->free_symbols;
             /* because it gets destroyed with compiler_pop_compilation_scope() */
-            symbol_table->free_symbols = NULL;
+            symtab->free_symbols = NULL;
 
-            int num_locals = symbol_table->max_num_definitions;
+            int num_locals = symtab->max_num_definitions;
 
-            compilation_result_t* comp_res = compilation_scope_orphan_result(compilation_scope);
+            compilation_result_t* comp_res = compilation_scope_orphan_result(compscope);
             if(!comp_res)
             {
-                ptrarray_destroy_with_items_(free_symbols, (ptrarrayitemdestroyfn)symbol_destroy);
+                ptrarray_destroy_with_items_(free_symbols, (mcptrarrayitemdestroyfn_t)symbol_destroy);
                 goto error;
             }
             mc_compiler_popsymtable(comp);
             mc_compiler_popcompilationscope(comp);
-            compilation_scope = mc_compiler_getcompilationscope(comp);
-            symbol_table = mc_compiler_getsymtable(comp);
+            compscope = mc_compiler_getcompilationscope(comp);
+            symtab = mc_compiler_getsymtable(comp);
 
             mcvalue_t obj = object_make_function(comp->pstate, fn->name, comp_res, true, num_locals, ptrarray_count(fn->params), 0);
 
             if(object_is_null(obj))
             {
-                ptrarray_destroy_with_items_(free_symbols, (ptrarrayitemdestroyfn)symbol_destroy);
+                ptrarray_destroy_with_items_(free_symbols, (mcptrarrayitemdestroyfn_t)symbol_destroy);
                 compilation_result_destroy(comp_res);
                 goto error;
             }
 
-            for(int i = 0; i < ptrarray_count(free_symbols); i++)
+            for(i = 0; i < ptrarray_count(free_symbols); i++)
             {
-                mcastsymbol_t* symbol = ptrarray_get(free_symbols, i);
+                mcastsymbol_t* symbol = (mcastsymbol_t*)ptrarray_get(free_symbols, i);
                 ok = mc_compiler_readsymbol(comp, symbol);
                 if(!ok)
                 {
-                    ptrarray_destroy_with_items_(free_symbols, (ptrarrayitemdestroyfn)symbol_destroy);
+                    ptrarray_destroy_with_items_(free_symbols, (mcptrarrayitemdestroyfn_t)symbol_destroy);
                     goto error;
                 }
             }
@@ -3837,40 +4453,42 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
             int pos = mc_compiler_addconstant(comp, obj);
             if(pos < 0)
             {
-                ptrarray_destroy_with_items_(free_symbols, (ptrarrayitemdestroyfn)symbol_destroy);
+                ptrarray_destroy_with_items_(free_symbols, (mcptrarrayitemdestroyfn_t)symbol_destroy);
                 goto error;
             }
-
-            ip = mc_compiler_emit(comp, OPCODE_FUNCTION, 2, (uint64_t[]){ pos, ptrarray_count(free_symbols) });
+            opbuf[0] = pos;
+            opbuf[1] = ptrarray_count(free_symbols);
+            ip = mc_compiler_emit(comp, OPCODE_FUNCTION, 2, opbuf);
             if(ip < 0)
             {
-                ptrarray_destroy_with_items_(free_symbols, (ptrarrayitemdestroyfn)symbol_destroy);
+                ptrarray_destroy_with_items_(free_symbols, (mcptrarrayitemdestroyfn_t)symbol_destroy);
                 goto error;
             }
 
-            ptrarray_destroy_with_items_(free_symbols, (ptrarrayitemdestroyfn)symbol_destroy);
+            ptrarray_destroy_with_items_(free_symbols, (mcptrarrayitemdestroyfn_t)symbol_destroy);
 
             break;
         }
         case MC_EXPR_CALL:
         {
-            ok = mc_compiler_compileexpression(comp, expr->call_expr.function);
+            int i;
+            ok = mc_compiler_compileexpression(comp, expr->exprcall.function);
             if(!ok)
             {
                 goto error;
             }
 
-            for(int i = 0; i < ptrarray_count(expr->call_expr.args); i++)
+            for(i = 0; i < ptrarray_count(expr->exprcall.args); i++)
             {
-                mcastexpression_t* argexpr = ptrarray_get(expr->call_expr.args, i);
+                mcastexpression_t* argexpr = (mcastexpression_t*)ptrarray_get(expr->exprcall.args, i);
                 ok = mc_compiler_compileexpression(comp, argexpr);
                 if(!ok)
                 {
                     goto error;
                 }
             }
-
-            ip = mc_compiler_emit(comp, OPCODE_CALL, 1, (uint64_t[]){ ptrarray_count(expr->call_expr.args) });
+            opbuf[0] = ptrarray_count(expr->exprcall.args);
+            ip = mc_compiler_emit(comp, OPCODE_CALL, 1, opbuf);
             if(ip < 0)
             {
                 goto error;
@@ -3880,10 +4498,10 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
         }
         case MC_EXPR_ASSIGN:
         {
-            assign_expression_t* assign = &expr->assign;
+            assign_expression_t* assign = &expr->exprassign;
             if(assign->dest->type != MC_EXPR_IDENT && assign->dest->type != MC_EXPR_INDEX)
             {
-                errors_add_errorf(comp->errors, ARCANE_ERROR_COMPILATION, assign->dest->pos, "Expression is not assignable.");
+                errors_add_errorf(comp->errors, MC_ERROR_COMPILING, assign->dest->pos, "Expression is not assignable.");
                 goto error;
             }
 
@@ -3916,16 +4534,16 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
 
             if(assign->dest->type == MC_EXPR_IDENT)
             {
-                ident_t* ident = assign->dest->ident;
-                mcastsymbol_t* symbol = symbol_table_resolve(symbol_table, ident->value);
+                ident_t* ident = assign->dest->exprident;
+                mcastsymbol_t* symbol = symbol_table_resolve(symtab, ident->value);
                 if(!symbol)
                 {
-                    errors_add_errorf(comp->errors, ARCANE_ERROR_COMPILATION, assign->dest->pos, "Symbol \"%s\" could not be resolved", ident->value);
+                    errors_add_errorf(comp->errors, MC_ERROR_COMPILING, assign->dest->pos, "Symbol \"%s\" could not be resolved", ident->value);
                     goto error;
                 }
                 if(!symbol->assignable)
                 {
-                    errors_add_errorf(comp->errors, ARCANE_ERROR_COMPILATION, assign->dest->pos, "Symbol \"%s\" is not assignable", ident->value);
+                    errors_add_errorf(comp->errors, MC_ERROR_COMPILING, assign->dest->pos, "Symbol \"%s\" is not assignable", ident->value);
                     goto error;
                 }
                 ok = mc_compiler_storesymbol(comp, symbol, false);
@@ -3936,7 +4554,7 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
             }
             else if(assign->dest->type == MC_EXPR_INDEX)
             {
-                index_expression_t* index = &assign->dest->index_expr;
+                index_expression_t* index = &assign->dest->exprindex;
                 ok = mc_compiler_compileexpression(comp, index->left);
                 if(!ok)
                 {
@@ -3967,92 +4585,88 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
             break;
         }
         case MC_EXPR_LOGICAL:
-        {
-            logical_expression_t* logi = &expr->logical;
-
-            ok = mc_compiler_compileexpression(comp, logi->left);
-            if(!ok)
             {
-                goto error;
+                int afterrightip;
+                logical_expression_t* logi;
+                logi = &expr->exprlogical;
+                ok = mc_compiler_compileexpression(comp, logi->left);
+                if(!ok)
+                {
+                    goto error;
+                }
+                ip = mc_compiler_emit(comp, OPCODE_DUP, 0, NULL);
+                if(ip < 0)
+                {
+                    goto error;
+                }
+                int afterleftjumpip = 0;
+                if(logi->op == OPERATOR_LOGICAL_AND)
+                {
+                    opbuf[0] = 0xbeef;
+                    afterleftjumpip = mc_compiler_emit(comp, OPCODE_JUMP_IF_FALSE, 1, opbuf);
+                }
+                else
+                {
+                    opbuf[0] = 0xbeef;
+                    afterleftjumpip = mc_compiler_emit(comp, OPCODE_JUMP_IF_TRUE, 1, opbuf);
+                }
+                if(afterleftjumpip < 0)
+                {
+                    goto error;
+                }
+                ip = mc_compiler_emit(comp, OPCODE_POP, 0, NULL);
+                if(ip < 0)
+                {
+                    goto error;
+                }
+                ok = mc_compiler_compileexpression(comp, logi->right);
+                if(!ok)
+                {
+                    goto error;
+                }
+                afterrightip = mc_compiler_getip(comp);
+                mc_compiler_changeuint16operand(comp, afterleftjumpip + 1, afterrightip);
             }
-
-            ip = mc_compiler_emit(comp, OPCODE_DUP, 0, NULL);
-            if(ip < 0)
-            {
-                goto error;
-            }
-
-            int afterleftjumpip = 0;
-            if(logi->op == OPERATOR_LOGICAL_AND)
-            {
-                afterleftjumpip = mc_compiler_emit(comp, OPCODE_JUMP_IF_FALSE, 1, (uint64_t[]){ 0xbeef });
-            }
-            else
-            {
-                afterleftjumpip = mc_compiler_emit(comp, OPCODE_JUMP_IF_TRUE, 1, (uint64_t[]){ 0xbeef });
-            }
-
-            if(afterleftjumpip < 0)
-            {
-                goto error;
-            }
-
-            ip = mc_compiler_emit(comp, OPCODE_POP, 0, NULL);
-            if(ip < 0)
-            {
-                goto error;
-            }
-
-            ok = mc_compiler_compileexpression(comp, logi->right);
-            if(!ok)
-            {
-                goto error;
-            }
-
-            int afterrightip = mc_compiler_getip(comp);
-            mc_compiler_changeuint16operand(comp, afterleftjumpip + 1, afterrightip);
-
             break;
-        }
+
         case MC_EXPR_TERNARY:
-        {
-            ternary_expression_t* ternary = &expr->ternary;
-
-            ok = mc_compiler_compileexpression(comp, ternary->test);
-            if(!ok)
             {
-                goto error;
+                int endip;
+                int elseip;
+                int endjumpip;
+                int elsejumpip;
+                ternary_expression_t* ternary;
+                ternary = &expr->exprternary;
+                ok = mc_compiler_compileexpression(comp, ternary->tercond);
+                if(!ok)
+                {
+                    goto error;
+                }
+                opbuf[0] = 0xbeef;
+                elsejumpip = mc_compiler_emit(comp, OPCODE_JUMP_IF_FALSE, 1, opbuf);
+                ok = mc_compiler_compileexpression(comp, ternary->teriftrue);
+                if(!ok)
+                {
+                    goto error;
+                }
+                opbuf[0] = 0xbeef;
+                endjumpip = mc_compiler_emit(comp, OPCODE_JUMP, 1, opbuf);
+                elseip = mc_compiler_getip(comp);
+                mc_compiler_changeuint16operand(comp, elsejumpip + 1, elseip);
+                ok = mc_compiler_compileexpression(comp, ternary->teriffalse);
+                if(!ok)
+                {
+                    goto error;
+                }
+                endip = mc_compiler_getip(comp);
+                mc_compiler_changeuint16operand(comp, endjumpip + 1, endip);
             }
-
-            int elsejumpip = mc_compiler_emit(comp, OPCODE_JUMP_IF_FALSE, 1, (uint64_t[]){ 0xbeef });
-
-            ok = mc_compiler_compileexpression(comp, ternary->if_true);
-            if(!ok)
-            {
-                goto error;
-            }
-
-            int endjumpip = mc_compiler_emit(comp, OPCODE_JUMP, 1, (uint64_t[]){ 0xbeef });
-
-            int elseip = mc_compiler_getip(comp);
-            mc_compiler_changeuint16operand(comp, elsejumpip + 1, elseip);
-
-            ok = mc_compiler_compileexpression(comp, ternary->if_false);
-            if(!ok)
-            {
-                goto error;
-            }
-
-            int endip = mc_compiler_getip(comp);
-            mc_compiler_changeuint16operand(comp, endjumpip + 1, endip);
-
             break;
-        }
         default:
-        {
-            ARCANE_ASSERT(false);
+            {
+                MC_ASSERT(false);
+            }
             break;
-        }
     }
     res = true;
     goto end;
@@ -4060,28 +4674,30 @@ error:
     res = false;
 end:
     array_pop(comp->src_positions_stack, NULL);
-    expression_destroy(exproptimised);
+    expression_destroy(exproptimized);
     return res;
 }
 
 TMPSEMISTATIC bool mc_compiler_compilecodeblock(mcastcompiler_t* comp, code_block_t* block)
 {
     bool ok;
-    mcastsymtable_t* symbol_table = mc_compiler_getsymtable(comp);
-    if(!symbol_table)
+    int i;
+    int ip;
+    mcastsymtable_t* symtab;
+    mcastexpression_t* expr;
+    symtab = mc_compiler_getsymtable(comp);
+    if(!symtab)
     {
         return false;
     }
-
-    ok = symbol_table_push_block_scope(symbol_table);
+    ok = symbol_table_push_block_scope(symtab);
     if(!ok)
     {
         return false;
     }
-
     if(ptrarray_count(block->statements) == 0)
     {
-        int ip = mc_compiler_emit(comp, OPCODE_NULL, 0, NULL);
+        ip = mc_compiler_emit(comp, OPCODE_NULL, 0, NULL);
         if(ip < 0)
         {
             return false;
@@ -4092,17 +4708,16 @@ TMPSEMISTATIC bool mc_compiler_compilecodeblock(mcastcompiler_t* comp, code_bloc
             return false;
         }
     }
-
-    for(int i = 0; i < ptrarray_count(block->statements); i++)
+    for(i = 0; i < ptrarray_count(block->statements); i++)
     {
-        mcastexpression_t* stmt = ptrarray_get(block->statements, i);
-        ok = mc_compiler_compilestatement(comp, stmt);
+        expr = (mcastexpression_t*)ptrarray_get(block->statements, i);
+        ok = mc_compiler_compilestatement(comp, expr);
         if(!ok)
         {
             return false;
         }
     }
-    symbol_table_pop_block_scope(symbol_table);
+    symbol_table_pop_block_scope(symtab);
     return true;
 }
 
@@ -4123,7 +4738,7 @@ TMPSTATIC void mc_compiler_changeuint16operand(mcastcompiler_t* comp, int ip, ui
     mcbasicarray_t* bytecode = mc_compiler_getbytecode(comp);
     if((ip + 1) >= array_count(bytecode))
     {
-        ARCANE_ASSERT(false);
+        MC_ASSERT(false);
         return;
     }
     uint8_t hi = operand >> 8;
@@ -4132,30 +4747,35 @@ TMPSTATIC void mc_compiler_changeuint16operand(mcastcompiler_t* comp, int ip, ui
     array_set(bytecode, ip + 1, &lo);
 }
 
-TMPSTATIC bool mc_compiler_lastopcodeis(mcastcompiler_t* comp, opcode_t op)
+TMPSTATIC bool mc_compiler_lastopcodeis(mcastcompiler_t* comp, mcinternopcode_t op)
 {
-    opcode_t last_opcode = mc_compiler_getlastopcode(comp);
+    mcinternopcode_t last_opcode = mc_compiler_getlastopcode(comp);
     return last_opcode == op;
 }
 
 TMPSTATIC bool mc_compiler_readsymbol(mcastcompiler_t* comp, mcastsymbol_t* symbol)
 {
     int ip = -1;
+    uint64_t opbuf[10];
     if(symbol->type == SYMBOL_MODULE_GLOBAL)
     {
-        ip = mc_compiler_emit(comp, OPCODE_GET_MODULE_GLOBAL, 1, (uint64_t[]){ symbol->index });
+        opbuf[0] = symbol->index;
+        ip = mc_compiler_emit(comp, OPCODE_GET_MODULE_GLOBAL, 1, opbuf);
     }
-    else if(symbol->type == SYMBOL_ARCANE_GLOBAL)
+    else if(symbol->type == SYMBOL_GLOBALBUILTIN)
     {
-        ip = mc_compiler_emit(comp, OPCODE_GET_ARCANE_GLOBAL, 1, (uint64_t[]){ symbol->index });
+        opbuf[0] = symbol->index;
+        ip = mc_compiler_emit(comp, OPCODE_GETGLOBALBUILTIN, 1, opbuf);
     }
     else if(symbol->type == SYMBOL_LOCAL)
     {
-        ip = mc_compiler_emit(comp, OPCODE_GET_LOCAL, 1, (uint64_t[]){ symbol->index });
+        opbuf[0] = symbol->index;
+        ip = mc_compiler_emit(comp, OPCODE_GET_LOCAL, 1, opbuf);
     }
     else if(symbol->type == SYMBOL_FREE)
     {
-        ip = mc_compiler_emit(comp, OPCODE_GET_FREE, 1, (uint64_t[]){ symbol->index });
+        opbuf[0] = symbol->index;
+        ip = mc_compiler_emit(comp, OPCODE_GET_FREE, 1, opbuf);
     }
     else if(symbol->type == SYMBOL_FUNCTION)
     {
@@ -4170,32 +4790,39 @@ TMPSTATIC bool mc_compiler_readsymbol(mcastcompiler_t* comp, mcastsymbol_t* symb
 
 TMPSTATIC bool mc_compiler_storesymbol(mcastcompiler_t* comp, mcastsymbol_t* symbol, bool define)
 {
-    int ip = -1;
+    int ip;
+    uint64_t opbuf[10];
+    ip = -1;
     if(symbol->type == SYMBOL_MODULE_GLOBAL)
     {
         if(define)
         {
-            ip = mc_compiler_emit(comp, OPCODE_DEFINE_MODULE_GLOBAL, 1, (uint64_t[]){ symbol->index });
+            opbuf[0] = symbol->index;
+            ip = mc_compiler_emit(comp, OPCODE_DEFINE_MODULE_GLOBAL, 1, opbuf);
         }
         else
         {
-            ip = mc_compiler_emit(comp, OPCODE_SET_MODULE_GLOBAL, 1, (uint64_t[]){ symbol->index });
+            opbuf[0] = symbol->index;
+            ip = mc_compiler_emit(comp, OPCODE_SET_MODULE_GLOBAL, 1, opbuf);
         }
     }
     else if(symbol->type == SYMBOL_LOCAL)
     {
         if(define)
         {
-            ip = mc_compiler_emit(comp, OPCODE_DEFINE_LOCAL, 1, (uint64_t[]){ symbol->index });
+            opbuf[0] = symbol->index;
+            ip = mc_compiler_emit(comp, OPCODE_DEFINE_LOCAL, 1, opbuf);
         }
         else
         {
-            ip = mc_compiler_emit(comp, OPCODE_SET_LOCAL, 1, (uint64_t[]){ symbol->index });
+            opbuf[0] = symbol->index;
+            ip = mc_compiler_emit(comp, OPCODE_SET_LOCAL, 1, opbuf);
         }
     }
     else if(symbol->type == SYMBOL_FREE)
     {
-        ip = mc_compiler_emit(comp, OPCODE_SET_FREE, 1, (uint64_t[]){ symbol->index });
+        opbuf[0] = symbol->index;
+        ip = mc_compiler_emit(comp, OPCODE_SET_FREE, 1, opbuf);
     }
     return ip >= 0;
 }
@@ -4211,7 +4838,7 @@ TMPSTATIC void mc_compiler_popbreakip(mcastcompiler_t* comp)
     mcastscopecomp_t* compscope = mc_compiler_getcompilationscope(comp);
     if(array_count(compscope->break_ip_stack) == 0)
     {
-        ARCANE_ASSERT(false);
+        MC_ASSERT(false);
         return;
     }
     array_pop(compscope->break_ip_stack, NULL);
@@ -4224,7 +4851,7 @@ TMPSTATIC int mc_compiler_getbreakip(mcastcompiler_t* comp)
     {
         return -1;
     }
-    int* res = array_top(compscope->break_ip_stack);
+    int* res = (int*)array_top(compscope->break_ip_stack);
     return *res;
 }
 
@@ -4239,7 +4866,7 @@ TMPSTATIC void mc_compiler_popcontinueip(mcastcompiler_t* comp)
     mcastscopecomp_t* compscope = mc_compiler_getcompilationscope(comp);
     if(array_count(compscope->continue_ip_stack) == 0)
     {
-        ARCANE_ASSERT(false);
+        MC_ASSERT(false);
         return;
     }
     array_pop(compscope->continue_ip_stack, NULL);
@@ -4250,34 +4877,34 @@ TMPSTATIC int mc_compiler_getcontinueip(mcastcompiler_t* comp)
     mcastscopecomp_t* compscope = mc_compiler_getcompilationscope(comp);
     if(array_count(compscope->continue_ip_stack) == 0)
     {
-        ARCANE_ASSERT(false);
+        MC_ASSERT(false);
         return -1;
     }
-    int* res = array_top(compscope->continue_ip_stack);
+    int* res = (int*)array_top(compscope->continue_ip_stack);
     return *res;
 }
 
 TMPSTATIC int mc_compiler_getip(mcastcompiler_t* comp)
 {
-    mcastscopecomp_t* compilation_scope = mc_compiler_getcompilationscope(comp);
-    return array_count(compilation_scope->bytecode);
+    mcastscopecomp_t* compscope = mc_compiler_getcompilationscope(comp);
+    return array_count(compscope->bytecode);
 }
 
 TMPSTATIC mcbasicarray_t* mc_compiler_getsrcpositions(mcastcompiler_t* comp)
 {
-    mcastscopecomp_t* compilation_scope = mc_compiler_getcompilationscope(comp);
-    return compilation_scope->src_positions;
+    mcastscopecomp_t* compscope = mc_compiler_getcompilationscope(comp);
+    return compscope->src_positions;
 }
 
 TMPSTATIC mcbasicarray_t* mc_compiler_getbytecode(mcastcompiler_t* comp)
 {
-    mcastscopecomp_t* compilation_scope = mc_compiler_getcompilationscope(comp);
-    return compilation_scope->bytecode;
+    mcastscopecomp_t* compscope = mc_compiler_getcompilationscope(comp);
+    return compscope->bytecode;
 }
 
 TMPSTATIC mcastscopefile_t* mc_compiler_filescopemake(mcastcompiler_t* comp, mcastcompiledfile_t* file)
 {
-    mcastscopefile_t* filescope = (mcastscopefile_t*)allocator_malloc(comp->pstate, sizeof(mcastscopefile_t));
+    mcastscopefile_t* filescope = (mcastscopefile_t*)mc_allocator_alloc(comp->pstate, sizeof(mcastscopefile_t));
     if(!filescope)
     {
         return NULL;
@@ -4304,14 +4931,16 @@ err:
 
 TMPSTATIC void mc_compiler_filescopedestroy(mcastscopefile_t* scope)
 {
-    for(int i = 0; i < ptrarray_count(scope->loaded_module_names); i++)
+    int i;
+    void* name;
+    for(i = 0; i < ptrarray_count(scope->loaded_module_names); i++)
     {
-        void* name = ptrarray_get(scope->loaded_module_names, i);
-        allocator_free(scope->pstate, name);
+        name = (void*)ptrarray_get(scope->loaded_module_names, i);
+        mc_allocator_free(scope->pstate, name);
     }
     ptrarray_destroy(scope->loaded_module_names);
     parser_destroy(scope->parser);
-    allocator_free(scope->pstate, scope);
+    mc_allocator_free(scope->pstate, scope);
 }
 
 TMPSTATIC bool mc_compiler_filescopepush(mcastcompiler_t* comp, const char* filepath)
@@ -4377,10 +5006,10 @@ TMPSTATIC void mc_compiler_filescopepop(mcastcompiler_t* comp)
     {
         mc_compiler_popsymtable(comp);
     }
-    mcastscopefile_t* scope = ptrarray_top(comp->file_scopes);
+    mcastscopefile_t* scope = (mcastscopefile_t*)ptrarray_top(comp->file_scopes);
     if(!scope)
     {
-        ARCANE_ASSERT(false);
+        MC_ASSERT(false);
         return;
     }
     mc_compiler_filescopedestroy(scope);
@@ -4402,14 +5031,14 @@ TMPSTATIC void mc_compiler_setcompilationscope(mcastcompiler_t* comp, mcastscope
 
 TMPSTATIC module_t* mc_module_make(mcstate_t* state, const char* name)
 {
-    module_t* module = (module_t*)allocator_malloc(state, sizeof(module_t));
+    module_t* module = (module_t*)mc_allocator_alloc(state, sizeof(module_t));
     if(!module)
     {
         return NULL;
     }
     memset(module, 0, sizeof(module_t));
     module->pstate = state;
-    module->name = arcane_strdup(state, name);
+    module->name = mc_util_strdup(state, name);
     if(!module->name)
     {
         mc_module_destroy(module);
@@ -4430,27 +5059,28 @@ TMPSTATIC void mc_module_destroy(module_t* module)
     {
         return;
     }
-    allocator_free(module->pstate, module->name);
-    ptrarray_destroy_with_items_(module->symbols, (ptrarrayitemdestroyfn)symbol_destroy);
-    allocator_free(module->pstate, module);
+    mc_allocator_free(module->pstate, module->name);
+    ptrarray_destroy_with_items_(module->symbols, (mcptrarrayitemdestroyfn_t)symbol_destroy);
+    mc_allocator_free(module->pstate, module);
 }
 
 TMPSTATIC module_t* mc_module_copy(module_t* src)
 {
-    module_t* copy = (module_t*)allocator_malloc(src->pstate, sizeof(module_t));
+    module_t* copy;
+    copy = (module_t*)mc_allocator_alloc(src->pstate, sizeof(module_t));
     if(!copy)
     {
         return NULL;
     }
     memset(copy, 0, sizeof(module_t));
     copy->pstate = src->pstate;
-    copy->name = arcane_strdup(copy->pstate, src->name);
+    copy->name = mc_util_strdup(copy->pstate, src->name);
     if(!copy->name)
     {
         mc_module_destroy(copy);
         return NULL;
     }
-    copy->symbols = ptrarray_copy_with_items_(src->symbols, (ptrarrayitemcopyfn)symbol_copy, (ptrarrayitemdestroyfn)symbol_destroy);
+    copy->symbols = ptrarray_copy_with_items_(src->symbols, (mcptrarrayitemcopyfn_t)symbol_copy, (mcptrarrayitemdestroyfn_t)symbol_destroy);
     if(!copy->symbols)
     {
         mc_module_destroy(copy);
@@ -4461,7 +5091,8 @@ TMPSTATIC module_t* mc_module_copy(module_t* src)
 
 TMPSTATIC const char* mc_util_getmodulename(const char* path)
 {
-    const char* lastslashpos = strrchr(path, '/');
+    const char* lastslashpos;
+    lastslashpos = strrchr(path, '/');
     if(lastslashpos)
     {
         return lastslashpos + 1;
@@ -4472,18 +5103,20 @@ TMPSTATIC const char* mc_util_getmodulename(const char* path)
 TMPSTATIC bool mc_module_addsymbol(module_t* module, mcastsymbol_t* symbol)
 {
     bool ok;
-    mcprintstate_t* namebuf = mc_printer_make(module->pstate, NULL);
+    mcastsymbol_t* modulesymbol;
+    mcprintstate_t* namebuf;
+    namebuf = mc_printer_make(module->pstate, NULL);
     if(!namebuf)
     {
         return false;
     }
-    ok = mc_printer_appendf(namebuf, "%s::%s", module->name, symbol->name);
+    ok = mc_printer_printf(namebuf, "%s::%s", module->name, symbol->name);
     if(!ok)
     {
         mc_printer_destroy(namebuf);
         return false;
     }
-    mcastsymbol_t* modulesymbol = symbol_make(module->pstate, mc_printer_getstring(namebuf), SYMBOL_MODULE_GLOBAL, symbol->index, false);
+    modulesymbol = symbol_make(module->pstate, mc_printer_getstring(namebuf), SYMBOL_MODULE_GLOBAL, symbol->index, false);
     mc_printer_destroy(namebuf);
     if(!modulesymbol)
     {
@@ -4500,94 +5133,95 @@ TMPSTATIC bool mc_module_addsymbol(module_t* module, mcastsymbol_t* symbol)
 
 TMPSTATIC mcastsymbol_t* mc_compiler_defsymbol(mcastcompiler_t* comp, mcastlocation_t pos, const char* name, bool assignable, bool canshadow)
 {
-    mcastsymtable_t* symbol_table = mc_compiler_getsymtable(comp);
-    if(!canshadow && !symbol_table_is_top_global_scope(symbol_table))
+    mcastsymbol_t* symbol;
+    mcastsymbol_t* currentsymbol;
+    mcastsymtable_t* symtab;
+    symtab = mc_compiler_getsymtable(comp);
+    if(!canshadow && !symbol_table_is_top_global_scope(symtab))
     {
-        mcastsymbol_t* currentsymbol = symbol_table_resolve(symbol_table, name);
+        currentsymbol = symbol_table_resolve(symtab, name);
         if(currentsymbol)
         {
-            errors_add_errorf(comp->errors, ARCANE_ERROR_COMPILATION, pos, "Symbol \"%s\" is already defined", name);
+            errors_add_errorf(comp->errors, MC_ERROR_COMPILING, pos, "Symbol \"%s\" is already defined", name);
             return NULL;
         }
     }
-
-    mcastsymbol_t* symbol = symbol_table_define(symbol_table, name, assignable);
+    symbol = symbol_table_define(symtab, name, assignable);
     if(!symbol)
     {
-        errors_add_errorf(comp->errors, ARCANE_ERROR_COMPILATION, pos, "Cannot define symbol \"%s\"", name);
-        return false;
+        errors_add_errorf(comp->errors, MC_ERROR_COMPILING, pos, "Cannot define symbol \"%s\"", name);
+        return NULL;
     }
-
     return symbol;
 }
 
 TMPSTATIC mcastparser_t* parser_make(mcstate_t* state, mcconfig_t* config, mcerrlist_t* errors)
 {
-    mcastparser_t* parser = (mcastparser_t*)allocator_malloc(state, sizeof(mcastparser_t));
+    mcastparser_t* parser;
+    parser = (mcastparser_t*)mc_allocator_alloc(state, sizeof(mcastparser_t));
     if(!parser)
     {
         return NULL;
     }
     memset(parser, 0, sizeof(mcastparser_t));
-
     parser->pstate = state;
     parser->config = config;
     parser->errors = errors;
-
-    parser->right_assoc_parse_fns[TOKEN_IDENT] = parse_identifier;
-    parser->right_assoc_parse_fns[TOKEN_NUMBER] = parse_number_literal;
-    parser->right_assoc_parse_fns[TOKEN_TRUE] = parse_bool_literal;
-    parser->right_assoc_parse_fns[TOKEN_FALSE] = parse_bool_literal;
-    parser->right_assoc_parse_fns[TOKEN_STRING] = parse_string_literal;
-    parser->right_assoc_parse_fns[TOKEN_TEMPLATE_STRING] = parse_template_string_literal;
-    parser->right_assoc_parse_fns[TOKEN_NULL] = parse_null_literal;
-    parser->right_assoc_parse_fns[TOKEN_BANG] = parse_prefix_expression;
-    parser->right_assoc_parse_fns[TOKEN_MINUS] = parse_prefix_expression;
-    parser->right_assoc_parse_fns[TOKEN_LPAREN] = parse_grouped_expression;
-    parser->right_assoc_parse_fns[TOKEN_FUNCTION] = parse_function_literal;
-    parser->right_assoc_parse_fns[TOKEN_LBRACKET] = parse_array_literal;
-    parser->right_assoc_parse_fns[TOKEN_LBRACE] = parse_map_literal;
-    parser->right_assoc_parse_fns[TOKEN_PLUS_PLUS] = parse_incdec_prefix_expression;
-    parser->right_assoc_parse_fns[TOKEN_MINUS_MINUS] = parse_incdec_prefix_expression;
-
-    parser->left_assoc_parse_fns[TOKEN_PLUS] = parse_infix_expression;
-    parser->left_assoc_parse_fns[TOKEN_MINUS] = parse_infix_expression;
-    parser->left_assoc_parse_fns[TOKEN_SLASH] = parse_infix_expression;
-    parser->left_assoc_parse_fns[TOKEN_ASTERISK] = parse_infix_expression;
-    parser->left_assoc_parse_fns[TOKEN_PERCENT] = parse_infix_expression;
-    parser->left_assoc_parse_fns[TOKEN_EQ] = parse_infix_expression;
-    parser->left_assoc_parse_fns[TOKEN_NOT_EQ] = parse_infix_expression;
-    parser->left_assoc_parse_fns[TOKEN_LT] = parse_infix_expression;
-    parser->left_assoc_parse_fns[TOKEN_LTE] = parse_infix_expression;
-    parser->left_assoc_parse_fns[TOKEN_GT] = parse_infix_expression;
-    parser->left_assoc_parse_fns[TOKEN_GTE] = parse_infix_expression;
-    parser->left_assoc_parse_fns[TOKEN_LPAREN] = parse_call_expression;
-    parser->left_assoc_parse_fns[TOKEN_LBRACKET] = parse_index_expression;
-    parser->left_assoc_parse_fns[TOKEN_ASSIGN] = parse_assign_expression;
-    parser->left_assoc_parse_fns[TOKEN_PLUS_ASSIGN] = parse_assign_expression;
-    parser->left_assoc_parse_fns[TOKEN_MINUS_ASSIGN] = parse_assign_expression;
-    parser->left_assoc_parse_fns[TOKEN_SLASH_ASSIGN] = parse_assign_expression;
-    parser->left_assoc_parse_fns[TOKEN_ASTERISK_ASSIGN] = parse_assign_expression;
-    parser->left_assoc_parse_fns[TOKEN_PERCENT_ASSIGN] = parse_assign_expression;
-    parser->left_assoc_parse_fns[TOKEN_BIT_AND_ASSIGN] = parse_assign_expression;
-    parser->left_assoc_parse_fns[TOKEN_BIT_OR_ASSIGN] = parse_assign_expression;
-    parser->left_assoc_parse_fns[TOKEN_BIT_XOR_ASSIGN] = parse_assign_expression;
-    parser->left_assoc_parse_fns[TOKEN_LSHIFT_ASSIGN] = parse_assign_expression;
-    parser->left_assoc_parse_fns[TOKEN_RSHIFT_ASSIGN] = parse_assign_expression;
-    parser->left_assoc_parse_fns[TOKEN_DOT] = parse_dot_expression;
-    parser->left_assoc_parse_fns[TOKEN_AND] = parse_logical_expression;
-    parser->left_assoc_parse_fns[TOKEN_OR] = parse_logical_expression;
-    parser->left_assoc_parse_fns[TOKEN_BIT_AND] = parse_infix_expression;
-    parser->left_assoc_parse_fns[TOKEN_BIT_OR] = parse_infix_expression;
-    parser->left_assoc_parse_fns[TOKEN_BIT_XOR] = parse_infix_expression;
-    parser->left_assoc_parse_fns[TOKEN_LSHIFT] = parse_infix_expression;
-    parser->left_assoc_parse_fns[TOKEN_RSHIFT] = parse_infix_expression;
-    parser->left_assoc_parse_fns[TOKEN_QUESTION] = parse_ternary_expression;
-    parser->left_assoc_parse_fns[TOKEN_PLUS_PLUS] = parse_incdec_postfix_expression;
-    parser->left_assoc_parse_fns[TOKEN_MINUS_MINUS] = parse_incdec_postfix_expression;
-
+    {
+        parser->rightassocfuncs[MC_TOK_IDENT] = parse_identifier;
+        parser->rightassocfuncs[MC_TOK_NUMBER] = parse_number_literal;
+        parser->rightassocfuncs[MC_TOK_TRUE] = parse_bool_literal;
+        parser->rightassocfuncs[MC_TOK_FALSE] = parse_bool_literal;
+        parser->rightassocfuncs[MC_TOK_STRING] = parse_string_literal;
+        parser->rightassocfuncs[MC_TOK_TEMPLATESTRING] = parse_template_string_literal;
+        parser->rightassocfuncs[MC_TOK_NULL] = parse_null_literal;
+        parser->rightassocfuncs[MC_TOK_BANG] = parse_prefix_expression;
+        parser->rightassocfuncs[MC_TOK_MINUS] = parse_prefix_expression;
+        parser->rightassocfuncs[MC_TOK_LPAREN] = parse_grouped_expression;
+        parser->rightassocfuncs[MC_TOK_FUNCTION] = parse_function_literal;
+        parser->rightassocfuncs[MC_TOK_LBRACKET] = parse_array_literal;
+        parser->rightassocfuncs[MC_TOK_LBRACE] = parse_map_literal;
+        parser->rightassocfuncs[MC_TOK_PLUSPLUS] = parse_incdec_prefix_expression;
+        parser->rightassocfuncs[MC_TOK_MINUSMINUS] = parse_incdec_prefix_expression;
+    }
+    {
+        parser->leftassocfuncs[MC_TOK_PLUS] = parse_infix_expression;
+        parser->leftassocfuncs[MC_TOK_MINUS] = parse_infix_expression;
+        parser->leftassocfuncs[MC_TOK_SLASH] = parse_infix_expression;
+        parser->leftassocfuncs[MC_TOK_ASTERISK] = parse_infix_expression;
+        parser->leftassocfuncs[MC_TOK_PERCENT] = parse_infix_expression;
+        parser->leftassocfuncs[MC_TOK_EQ] = parse_infix_expression;
+        parser->leftassocfuncs[MC_TOK_NOTEQ] = parse_infix_expression;
+        parser->leftassocfuncs[MC_TOK_LT] = parse_infix_expression;
+        parser->leftassocfuncs[MC_TOK_LTE] = parse_infix_expression;
+        parser->leftassocfuncs[MC_TOK_GT] = parse_infix_expression;
+        parser->leftassocfuncs[MC_TOK_GTE] = parse_infix_expression;
+        parser->leftassocfuncs[MC_TOK_LPAREN] = parse_call_expression;
+        parser->leftassocfuncs[MC_TOK_LBRACKET] = parse_index_expression;
+        parser->leftassocfuncs[MC_TOK_ASSIGN] = parse_assign_expression;
+        parser->leftassocfuncs[MC_TOK_PLUSASSIGN] = parse_assign_expression;
+        parser->leftassocfuncs[MC_TOK_MINUSASSIGN] = parse_assign_expression;
+        parser->leftassocfuncs[MC_TOK_SLASHASSIGN] = parse_assign_expression;
+        parser->leftassocfuncs[MC_TOK_ASTERISKASSIGN] = parse_assign_expression;
+        parser->leftassocfuncs[MC_TOK_PERCENTASSIGN] = parse_assign_expression;
+        parser->leftassocfuncs[MC_TOK_BITANDASSIGN] = parse_assign_expression;
+        parser->leftassocfuncs[MC_TOK_BITORASSIGN] = parse_assign_expression;
+        parser->leftassocfuncs[MC_TOK_BITXORASSIGN] = parse_assign_expression;
+        parser->leftassocfuncs[MC_TOK_LSHIFTASSIGN] = parse_assign_expression;
+        parser->leftassocfuncs[MC_TOK_RSHIFTASSIGN] = parse_assign_expression;
+        parser->leftassocfuncs[MC_TOK_DOT] = parse_dot_expression;
+        parser->leftassocfuncs[MC_TOK_AND] = parse_logical_expression;
+        parser->leftassocfuncs[MC_TOK_OR] = parse_logical_expression;
+        parser->leftassocfuncs[MC_TOK_BITAND] = parse_infix_expression;
+        parser->leftassocfuncs[MC_TOK_BITOR] = parse_infix_expression;
+        parser->leftassocfuncs[MC_TOK_BITXOR] = parse_infix_expression;
+        parser->leftassocfuncs[MC_TOK_LSHIFT] = parse_infix_expression;
+        parser->leftassocfuncs[MC_TOK_RSHIFT] = parse_infix_expression;
+        parser->leftassocfuncs[MC_TOK_QUESTION] = parse_ternary_expression;
+        parser->leftassocfuncs[MC_TOK_PLUSPLUS] = parse_incdec_postfix_expression;
+        parser->leftassocfuncs[MC_TOK_MINUSMINUS] = parse_incdec_postfix_expression;
+    }
     parser->depth = 0;
-
     return parser;
 }
 
@@ -4597,142 +5231,139 @@ TMPSTATIC void parser_destroy(mcastparser_t* parser)
     {
         return;
     }
-    allocator_free(parser->pstate, parser);
+    mc_allocator_free(parser->pstate, parser);
 }
 
 TMPSTATIC mcptrarray_t* parser_parse_all(mcastparser_t* parser, const char* input, mcastcompiledfile_t* file)
 {
     bool ok;
+    mcastexpression_t* expr;
+    mcptrarray_t* statements;
     parser->depth = 0;
-
     ok = mc_lexer_init(&parser->lexer, parser->pstate, parser->errors, input, file);
     if(!ok)
     {
         return NULL;
     }
-
     mc_lexer_nexttoken(&parser->lexer);
     mc_lexer_nexttoken(&parser->lexer);
-
-    mcptrarray_t* statements = ptrarray_make(parser->pstate);
+    statements = ptrarray_make(parser->pstate);
     if(!statements)
     {
         return NULL;
     }
-
-    while(!mc_lexer_currtokenis(&parser->lexer, TOKEN_EOF))
+    while(!mc_lexer_currtokenis(&parser->lexer, MC_TOK_EOF))
     {
-        if(mc_lexer_currtokenis(&parser->lexer, TOKEN_SEMICOLON))
+        if(mc_lexer_currtokenis(&parser->lexer, MC_TOK_SEMICOLON))
         {
             mc_lexer_nexttoken(&parser->lexer);
             continue;
         }
-        mcastexpression_t* stmt = parse_statement(parser);
-        if(!stmt)
+        expr = parse_statement(parser);
+        if(!expr)
         {
             goto err;
         }
-        ok = ptrarray_push(statements, stmt);
+        ok = ptrarray_push(statements, expr);
         if(!ok)
         {
-            statement_destroy(stmt);
+            statement_destroy(expr);
             goto err;
         }
     }
-
     if(errors_get_count(parser->errors) > 0)
     {
         goto err;
     }
-
     return statements;
 err:
-    ptrarray_destroy_with_items_(statements, (ptrarrayitemdestroyfn)statement_destroy);
+    ptrarray_destroy_with_items_(statements, (mcptrarrayitemdestroyfn_t)statement_destroy);
     return NULL;
 }
 
 TMPSTATIC mcastexpression_t* parse_statement(mcastparser_t* p)
 {
-    mcastlocation_t pos = p->lexer.cur_token.pos;
-
-    mcastexpression_t* res = NULL;
-    switch(p->lexer.cur_token.type)
+    mcastlocation_t pos;
+    mcastexpression_t* res;
+    pos = p->lexer.currtoken.pos;
+    res = NULL;
+    switch(p->lexer.currtoken.type)
     {
-        case TOKEN_VAR:
-        case TOKEN_CONST:
-        {
-            res = parse_define_statement(p);
-            break;
-        }
-        case TOKEN_IF:
-        {
-            res = parse_if_statement(p);
-            break;
-        }
-        case TOKEN_RETURN:
-        {
-            res = parse_return_statement(p);
-            break;
-        }
-        case TOKEN_WHILE:
-        {
-            res = parse_while_loop_statement(p);
-            break;
-        }
-        case TOKEN_BREAK:
-        {
-            res = parse_break_statement(p);
-            break;
-        }
-        case TOKEN_FOR:
-        {
-            res = parse_for_loop_statement(p);
-            break;
-        }
-        case TOKEN_FUNCTION:
-        {
-            if(mc_lexer_peektokenis(&p->lexer, TOKEN_IDENT))
+        case MC_TOK_VAR:
+        case MC_TOK_CONST:
             {
-                res = parse_function_statement(p);
-            }
-            else
-            {
-                res = parse_expression_statement(p);
+                res = parse_define_statement(p);
             }
             break;
-        }
-        case TOKEN_LBRACE:
-        {
-            if(p->config->repl_mode && p->depth == 0)
+        case MC_TOK_IF:
             {
-                res = parse_expression_statement(p);
-            }
-            else
-            {
-                res = parse_block_statement(p);
+                res = parse_if_statement(p);
             }
             break;
-        }
-        case TOKEN_CONTINUE:
-        {
-            res = parse_continue_statement(p);
+        case MC_TOK_RETURN:
+            {
+                res = parse_return_statement(p);
+            }
             break;
-        }
-        case TOKEN_IMPORT:
-        {
-            res = parse_import_statement(p);
+        case MC_TOK_WHILE:
+            {
+                res = parse_while_loop_statement(p);
+            }
             break;
-        }
-        case TOKEN_RECOVER:
-        {
-            res = parse_recover_statement(p);
+        case MC_TOK_BREAK:
+            {
+                res = parse_break_statement(p);
+            }
             break;
-        }
+        case MC_TOK_FOR:
+            {
+                res = parse_for_loop_statement(p);
+            }
+            break;
+        case MC_TOK_FUNCTION:
+            {
+                if(mc_lexer_peektokenis(&p->lexer, MC_TOK_IDENT))
+                {
+                    res = parse_function_statement(p);
+                }
+                else
+                {
+                    res = parse_expression_statement(p);
+                }
+            }
+            break;
+        case MC_TOK_LBRACE:
+            {
+                if(p->config->replmode && p->depth == 0)
+                {
+                    res = parse_expression_statement(p);
+                }
+                else
+                {
+                    res = parse_block_statement(p);
+                }
+            }
+            break;
+        case MC_TOK_CONTINUE:
+            {
+                res = parse_continue_statement(p);
+            }
+            break;
+        case MC_TOK_IMPORT:
+            {
+                res = parse_import_statement(p);
+            }
+            break;
+        case MC_TOK_RECOVER:
+            {
+                res = parse_recover_statement(p);
+            }
+            break;
         default:
-        {
-            res = parse_expression_statement(p);
+            {
+                res = parse_expression_statement(p);
+            }
             break;
-        }
     }
     if(res)
     {
@@ -4743,49 +5374,43 @@ TMPSTATIC mcastexpression_t* parse_statement(mcastparser_t* p)
 
 TMPSEMISTATIC mcastexpression_t* parse_define_statement(mcastparser_t* p)
 {
-    ident_t* nameident = NULL;
-    mcastexpression_t* value = NULL;
-
-    bool assignable = mc_lexer_currtokenis(&p->lexer, TOKEN_VAR);
-
+    bool assignable;
+    ident_t* nameident;
+    mcastexpression_t* value;
+    mcastexpression_t* res;
+    nameident = NULL;
+    value = NULL;
+    assignable = mc_lexer_currtokenis(&p->lexer, MC_TOK_VAR);
     mc_lexer_nexttoken(&p->lexer);
-
-    if(!mc_lexer_expectcurrent(&p->lexer, TOKEN_IDENT))
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_IDENT))
     {
         goto err;
     }
-
-    nameident = ident_make(p->pstate, p->lexer.cur_token);
+    nameident = ident_make(p->pstate, p->lexer.currtoken);
     if(!nameident)
     {
         goto err;
     }
-
     mc_lexer_nexttoken(&p->lexer);
-
-    if(!mc_lexer_expectcurrent(&p->lexer, TOKEN_ASSIGN))
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_ASSIGN))
     {
         goto err;
     }
-
     mc_lexer_nexttoken(&p->lexer);
-
     value = parse_expression(p, PRECEDENCE_LOWEST);
     if(!value)
     {
         goto err;
     }
-
     if(value->type == MC_EXPR_FUNCTIONLITERAL)
     {
-        value->fn_literal.name = arcane_strdup(p->pstate, nameident->value);
-        if(!value->fn_literal.name)
+        value->exprlitfunction.name = mc_util_strdup(p->pstate, nameident->value);
+        if(!value->exprlitfunction.name)
         {
             goto err;
         }
     }
-
-    mcastexpression_t* res = statement_make_define(p->pstate, nameident, value, assignable);
+    res = statement_make_define(p->pstate, nameident, value, assignable);
     if(!res)
     {
         goto err;
@@ -4800,97 +5425,82 @@ err:
 TMPSEMISTATIC mcastexpression_t* parse_if_statement(mcastparser_t* p)
 {
     bool ok;
-    mcptrarray_t* cases = NULL;
-    code_block_t* alternative = NULL;
-
+    mcptrarray_t* cases;
+    if_case_t* cond;
+    if_case_t* elif;
+    code_block_t* alternative;
+    mcastexpression_t* res;
+    cases = NULL;
+    alternative = NULL;
     cases = ptrarray_make(p->pstate);
     if(!cases)
     {
         goto err;
     }
-
     mc_lexer_nexttoken(&p->lexer);
-
-    if(!mc_lexer_expectcurrent(&p->lexer, TOKEN_LPAREN))
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LPAREN))
     {
         goto err;
     }
-
     mc_lexer_nexttoken(&p->lexer);
-
-    if_case_t* cond = if_case_make(p->pstate, NULL, NULL);
+    cond = if_case_make(p->pstate, NULL, NULL);
     if(!cond)
     {
         goto err;
     }
-
     ok = ptrarray_push(cases, cond);
     if(!ok)
     {
         if_case_destroy(cond);
         goto err;
     }
-
-    cond->test = parse_expression(p, PRECEDENCE_LOWEST);
-    if(!cond->test)
+    cond->ifcond = parse_expression(p, PRECEDENCE_LOWEST);
+    if(!cond->ifcond)
     {
         goto err;
     }
-
-    if(!mc_lexer_expectcurrent(&p->lexer, TOKEN_RPAREN))
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
     {
         goto err;
     }
-
     mc_lexer_nexttoken(&p->lexer);
-
     cond->consequence = parse_code_block(p);
     if(!cond->consequence)
     {
         goto err;
     }
-
-    while(mc_lexer_currtokenis(&p->lexer, TOKEN_ELSE))
+    while(mc_lexer_currtokenis(&p->lexer, MC_TOK_ELSE))
     {
         mc_lexer_nexttoken(&p->lexer);
-
-        if(mc_lexer_currtokenis(&p->lexer, TOKEN_IF))
+        if(mc_lexer_currtokenis(&p->lexer, MC_TOK_IF))
         {
             mc_lexer_nexttoken(&p->lexer);
-
-            if(!mc_lexer_expectcurrent(&p->lexer, TOKEN_LPAREN))
+            if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LPAREN))
             {
                 goto err;
             }
-
             mc_lexer_nexttoken(&p->lexer);
-
-            if_case_t* elif = if_case_make(p->pstate, NULL, NULL);
+            elif = if_case_make(p->pstate, NULL, NULL);
             if(!elif)
             {
                 goto err;
             }
-
             ok = ptrarray_push(cases, elif);
             if(!ok)
             {
                 if_case_destroy(elif);
                 goto err;
             }
-
-            elif->test = parse_expression(p, PRECEDENCE_LOWEST);
-            if(!elif->test)
+            elif->ifcond = parse_expression(p, PRECEDENCE_LOWEST);
+            if(!elif->ifcond)
             {
                 goto err;
             }
-
-            if(!mc_lexer_expectcurrent(&p->lexer, TOKEN_RPAREN))
+            if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
             {
                 goto err;
             }
-
             mc_lexer_nexttoken(&p->lexer);
-
             elif->consequence = parse_code_block(p);
             if(!elif->consequence)
             {
@@ -4906,26 +5516,25 @@ TMPSEMISTATIC mcastexpression_t* parse_if_statement(mcastparser_t* p)
             }
         }
     }
-
-    mcastexpression_t* res = statement_make_if(p->pstate, cases, alternative);
+    res = statement_make_if(p->pstate, cases, alternative);
     if(!res)
     {
         goto err;
     }
     return res;
 err:
-    ptrarray_destroy_with_items_(cases, (ptrarrayitemdestroyfn)if_case_destroy);
+    ptrarray_destroy_with_items_(cases, (mcptrarrayitemdestroyfn_t)if_case_destroy);
     code_block_destroy(alternative);
     return NULL;
 }
 
 TMPSEMISTATIC mcastexpression_t* parse_return_statement(mcastparser_t* p)
 {
-    mcastexpression_t* expr = NULL;
-
+    mcastexpression_t* res;
+    mcastexpression_t* expr;
+    expr = NULL;
     mc_lexer_nexttoken(&p->lexer);
-
-    if(!mc_lexer_currtokenis(&p->lexer, TOKEN_SEMICOLON) && !mc_lexer_currtokenis(&p->lexer, TOKEN_RBRACE) && !mc_lexer_currtokenis(&p->lexer, TOKEN_EOF))
+    if(!mc_lexer_currtokenis(&p->lexer, MC_TOK_SEMICOLON) && !mc_lexer_currtokenis(&p->lexer, MC_TOK_RBRACE) && !mc_lexer_currtokenis(&p->lexer, MC_TOK_EOF))
     {
         expr = parse_expression(p, PRECEDENCE_LOWEST);
         if(!expr)
@@ -4933,8 +5542,7 @@ TMPSEMISTATIC mcastexpression_t* parse_return_statement(mcastparser_t* p)
             return NULL;
         }
     }
-
-    mcastexpression_t* res = statement_make_return(p->pstate, expr);
+    res = statement_make_return(p->pstate, expr);
     if(!res)
     {
         expression_destroy(expr);
@@ -4945,23 +5553,23 @@ TMPSEMISTATIC mcastexpression_t* parse_return_statement(mcastparser_t* p)
 
 TMPSEMISTATIC mcastexpression_t* parse_expression_statement(mcastparser_t* p)
 {
-    mcastexpression_t* expr = parse_expression(p, PRECEDENCE_LOWEST);
+    mcastexpression_t* res;
+    mcastexpression_t* expr;
+    expr = parse_expression(p, PRECEDENCE_LOWEST);
     if(!expr)
     {
         return NULL;
     }
-
-    if(expr && (!p->config->repl_mode || p->depth > 0))
+    if(expr && (!p->config->replmode || p->depth > 0))
     {
         if(expr->type != MC_EXPR_ASSIGN && expr->type != MC_EXPR_CALL)
         {
-            errors_add_errorf(p->errors, ARCANE_ERROR_PARSING, expr->pos, "Only assignments and function calls can be expression statements");
+            errors_add_errorf(p->errors, MC_ERROR_PARSING, expr->pos, "Only assignments and function calls can be expression statements");
             expression_destroy(expr);
             return NULL;
         }
     }
-
-    mcastexpression_t* res = statement_make_expression(p->pstate, expr);
+    res = statement_make_expression(p->pstate, expr);
     if(!res)
     {
         expression_destroy(expr);
@@ -4972,38 +5580,33 @@ TMPSEMISTATIC mcastexpression_t* parse_expression_statement(mcastparser_t* p)
 
 TMPSEMISTATIC mcastexpression_t* parse_while_loop_statement(mcastparser_t* p)
 {
-    mcastexpression_t* test = NULL;
-    code_block_t* body = NULL;
-
+    mcastexpression_t* res;
+    mcastexpression_t* test;
+    code_block_t* body;
+    test = NULL;
+    body = NULL;
     mc_lexer_nexttoken(&p->lexer);
-
-    if(!mc_lexer_expectcurrent(&p->lexer, TOKEN_LPAREN))
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LPAREN))
     {
         goto err;
     }
-
     mc_lexer_nexttoken(&p->lexer);
-
     test = parse_expression(p, PRECEDENCE_LOWEST);
     if(!test)
     {
         goto err;
     }
-
-    if(!mc_lexer_expectcurrent(&p->lexer, TOKEN_RPAREN))
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
     {
         goto err;
     }
-
     mc_lexer_nexttoken(&p->lexer);
-
     body = parse_code_block(p);
     if(!body)
     {
         goto err;
     }
-
-    mcastexpression_t* res = statement_make_while_loop(p->pstate, test, body);
+    res = statement_make_while_loop(p->pstate, test, body);
     if(!res)
     {
         goto err;
@@ -5029,12 +5632,14 @@ TMPSEMISTATIC mcastexpression_t* parse_continue_statement(mcastparser_t* p)
 
 TMPSEMISTATIC mcastexpression_t* parse_block_statement(mcastparser_t* p)
 {
-    code_block_t* block = parse_code_block(p);
+    code_block_t* block;
+    mcastexpression_t* res;
+    block = parse_code_block(p);
     if(!block)
     {
         return NULL;
     }
-    mcastexpression_t* res = statement_make_block(p->pstate, block);
+    res = statement_make_block(p->pstate, block);
     if(!res)
     {
         code_block_destroy(block);
@@ -5045,25 +5650,24 @@ TMPSEMISTATIC mcastexpression_t* parse_block_statement(mcastparser_t* p)
 
 TMPSEMISTATIC mcastexpression_t* parse_import_statement(mcastparser_t* p)
 {
+    char* processedname;
+    mcastexpression_t* res;
     mc_lexer_nexttoken(&p->lexer);
-
-    if(!mc_lexer_expectcurrent(&p->lexer, TOKEN_STRING))
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_STRING))
     {
         return NULL;
     }
-
-    char* processedname = process_and_copy_string(p->pstate, p->lexer.cur_token.literal, p->lexer.cur_token.len);
+    processedname = process_and_copy_string(p->pstate, p->lexer.currtoken.literal, p->lexer.currtoken.len);
     if(!processedname)
     {
-        errors_add_error(p->errors, ARCANE_ERROR_PARSING, p->lexer.cur_token.pos, "Error when parsing module name");
+        errors_add_error(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "Error when parsing module name");
         return NULL;
     }
     mc_lexer_nexttoken(&p->lexer);
-
-    mcastexpression_t* res = statement_make_import(p->pstate, processedname);
+    res = statement_make_import(p->pstate, processedname);
     if(!res)
     {
-        allocator_free(p->pstate, processedname);
+        mc_allocator_free(p->pstate, processedname);
         return NULL;
     }
     return res;
@@ -5071,43 +5675,38 @@ TMPSEMISTATIC mcastexpression_t* parse_import_statement(mcastparser_t* p)
 
 TMPSEMISTATIC mcastexpression_t* parse_recover_statement(mcastparser_t* p)
 {
-    ident_t* error_ident = NULL;
-    code_block_t* body = NULL;
-
+    mcastexpression_t* res;
+    ident_t* eid;
+    code_block_t* body;
+    eid = NULL;
+    body = NULL;
     mc_lexer_nexttoken(&p->lexer);
-
-    if(!mc_lexer_expectcurrent(&p->lexer, TOKEN_LPAREN))
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LPAREN))
     {
         return NULL;
     }
     mc_lexer_nexttoken(&p->lexer);
-
-    if(!mc_lexer_expectcurrent(&p->lexer, TOKEN_IDENT))
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_IDENT))
     {
         return NULL;
     }
-
-    error_ident = ident_make(p->pstate, p->lexer.cur_token);
-    if(!error_ident)
+    eid = ident_make(p->pstate, p->lexer.currtoken);
+    if(!eid)
     {
         return NULL;
     }
-
     mc_lexer_nexttoken(&p->lexer);
-
-    if(!mc_lexer_expectcurrent(&p->lexer, TOKEN_RPAREN))
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
     {
         goto err;
     }
     mc_lexer_nexttoken(&p->lexer);
-
     body = parse_code_block(p);
     if(!body)
     {
         goto err;
     }
-
-    mcastexpression_t* res = statement_make_recover(p->pstate, error_ident, body);
+    res = statement_make_recover(p->pstate, eid, body);
     if(!res)
     {
         goto err;
@@ -5115,22 +5714,19 @@ TMPSEMISTATIC mcastexpression_t* parse_recover_statement(mcastparser_t* p)
     return res;
 err:
     code_block_destroy(body);
-    ident_destroy(error_ident);
+    ident_destroy(eid);
     return NULL;
 }
 
 TMPSEMISTATIC mcastexpression_t* parse_for_loop_statement(mcastparser_t* p)
 {
     mc_lexer_nexttoken(&p->lexer);
-
-    if(!mc_lexer_expectcurrent(&p->lexer, TOKEN_LPAREN))
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LPAREN))
     {
         return NULL;
     }
-
     mc_lexer_nexttoken(&p->lexer);
-
-    if(mc_lexer_currtokenis(&p->lexer, TOKEN_IDENT) && mc_lexer_peektokenis(&p->lexer, TOKEN_IN))
+    if(mc_lexer_currtokenis(&p->lexer, MC_TOK_IDENT) && mc_lexer_peektokenis(&p->lexer, MC_TOK_IN))
     {
         return parse_foreach(p);
     }
@@ -5139,45 +5735,40 @@ TMPSEMISTATIC mcastexpression_t* parse_for_loop_statement(mcastparser_t* p)
 
 TMPSTATIC mcastexpression_t* parse_foreach(mcastparser_t* p)
 {
-    mcastexpression_t* source = NULL;
-    code_block_t* body = NULL;
-    ident_t* iteratorident = NULL;
-
-    iteratorident = ident_make(p->pstate, p->lexer.cur_token);
+    mcastexpression_t* res;
+    mcastexpression_t* source;
+    code_block_t* body;
+    ident_t* iteratorident;
+    source = NULL;
+    body = NULL;
+    iteratorident = NULL;
+    iteratorident = ident_make(p->pstate, p->lexer.currtoken);
     if(!iteratorident)
     {
         goto err;
     }
-
     mc_lexer_nexttoken(&p->lexer);
-
-    if(!mc_lexer_expectcurrent(&p->lexer, TOKEN_IN))
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_IN))
     {
         goto err;
     }
-
     mc_lexer_nexttoken(&p->lexer);
-
     source = parse_expression(p, PRECEDENCE_LOWEST);
     if(!source)
     {
         goto err;
     }
-
-    if(!mc_lexer_expectcurrent(&p->lexer, TOKEN_RPAREN))
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
     {
         goto err;
     }
-
     mc_lexer_nexttoken(&p->lexer);
-
     body = parse_code_block(p);
     if(!body)
     {
         goto err;
     }
-
-    mcastexpression_t* res = statement_make_foreach(p->pstate, iteratorident, source, body);
+    res = statement_make_foreach(p->pstate, iteratorident, source, body);
     if(!res)
     {
         goto err;
@@ -5192,12 +5783,15 @@ err:
 
 TMPSTATIC mcastexpression_t* parse_classic_for_loop(mcastparser_t* p)
 {
-    mcastexpression_t* init = NULL;
-    mcastexpression_t* test = NULL;
-    mcastexpression_t* update = NULL;
+    mcastexpression_t* res;
+    mcastexpression_t* init;
+    mcastexpression_t* test;
+    mcastexpression_t* update;
+    init = NULL;
+    test = NULL;
+    update = NULL;
     code_block_t* body = NULL;
-
-    if(!mc_lexer_currtokenis(&p->lexer, TOKEN_SEMICOLON))
+    if(!mc_lexer_currtokenis(&p->lexer, MC_TOK_SEMICOLON))
     {
         init = parse_statement(p);
         if(!init)
@@ -5206,59 +5800,51 @@ TMPSTATIC mcastexpression_t* parse_classic_for_loop(mcastparser_t* p)
         }
         if(init->type != MC_EXPR_STMTDEFINE && init->type != MC_EXPR_STMTEXPRESSION)
         {
-            errors_add_errorf(p->errors, ARCANE_ERROR_PARSING, init->pos, "for loop's init clause should be a define statement or an expression");
+            errors_add_errorf(p->errors, MC_ERROR_PARSING, init->pos, "for loop's init clause should be a define statement or an expression");
             goto err;
         }
-        if(!mc_lexer_expectcurrent(&p->lexer, TOKEN_SEMICOLON))
+        if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_SEMICOLON))
         {
             goto err;
         }
     }
-
     mc_lexer_nexttoken(&p->lexer);
-
-    if(!mc_lexer_currtokenis(&p->lexer, TOKEN_SEMICOLON))
+    if(!mc_lexer_currtokenis(&p->lexer, MC_TOK_SEMICOLON))
     {
         test = parse_expression(p, PRECEDENCE_LOWEST);
         if(!test)
         {
             goto err;
         }
-        if(!mc_lexer_expectcurrent(&p->lexer, TOKEN_SEMICOLON))
+        if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_SEMICOLON))
         {
             goto err;
         }
     }
-
     mc_lexer_nexttoken(&p->lexer);
-
-    if(!mc_lexer_currtokenis(&p->lexer, TOKEN_RPAREN))
+    if(!mc_lexer_currtokenis(&p->lexer, MC_TOK_RPAREN))
     {
         update = parse_expression(p, PRECEDENCE_LOWEST);
         if(!update)
         {
             goto err;
         }
-        if(!mc_lexer_expectcurrent(&p->lexer, TOKEN_RPAREN))
+        if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
         {
             goto err;
         }
     }
-
     mc_lexer_nexttoken(&p->lexer);
-
     body = parse_code_block(p);
     if(!body)
     {
         goto err;
     }
-
-    mcastexpression_t* res = statement_make_for_loop(p->pstate, init, test, update, body);
+    res = statement_make_for_loop(p->pstate, init, test, update, body);
     if(!res)
     {
         goto err;
     }
-
     return res;
 err:
     statement_destroy(init);
@@ -5270,47 +5856,41 @@ err:
 
 TMPSEMISTATIC mcastexpression_t* parse_function_statement(mcastparser_t* p)
 {
-    ident_t* nameident = NULL;
-    mcastexpression_t* value = NULL;
-
-    mcastlocation_t pos = p->lexer.cur_token.pos;
-
+    ident_t* nameident;
+    mcastexpression_t* res;
+    mcastexpression_t* value;
+    mcastlocation_t pos;
+    nameident = NULL;
+    value = NULL;
+    pos = p->lexer.currtoken.pos;
     mc_lexer_nexttoken(&p->lexer);
-
-    if(!mc_lexer_expectcurrent(&p->lexer, TOKEN_IDENT))
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_IDENT))
     {
         goto err;
     }
-
-    nameident = ident_make(p->pstate, p->lexer.cur_token);
+    nameident = ident_make(p->pstate, p->lexer.currtoken);
     if(!nameident)
     {
         goto err;
     }
-
     mc_lexer_nexttoken(&p->lexer);
-
     value = parse_function_literal(p);
     if(!value)
     {
         goto err;
     }
-
     value->pos = pos;
-    value->fn_literal.name = arcane_strdup(p->pstate, nameident->value);
-
-    if(!value->fn_literal.name)
+    value->exprlitfunction.name = mc_util_strdup(p->pstate, nameident->value);
+    if(!value->exprlitfunction.name)
     {
         goto err;
     }
-
-    mcastexpression_t* res = statement_make_define(p->pstate, nameident, value, false);
+    res = statement_make_define(p->pstate, nameident, value, false);
     if(!res)
     {
         goto err;
     }
     return res;
-
 err:
     expression_destroy(value);
     ident_destroy(nameident);
@@ -5320,97 +5900,95 @@ err:
 TMPSTATIC code_block_t* parse_code_block(mcastparser_t* p)
 {
     bool ok;
-    if(!mc_lexer_expectcurrent(&p->lexer, TOKEN_LBRACE))
+    code_block_t* res;
+    mcastexpression_t* expr;
+    mcptrarray_t* statements;
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LBRACE))
     {
         return NULL;
     }
-
     mc_lexer_nexttoken(&p->lexer);
     p->depth++;
-
-    mcptrarray_t* statements = ptrarray_make(p->pstate);
+    statements = ptrarray_make(p->pstate);
     if(!statements)
     {
         goto err;
     }
-
-    while(!mc_lexer_currtokenis(&p->lexer, TOKEN_RBRACE))
+    while(!mc_lexer_currtokenis(&p->lexer, MC_TOK_RBRACE))
     {
-        if(mc_lexer_currtokenis(&p->lexer, TOKEN_EOF))
+        if(mc_lexer_currtokenis(&p->lexer, MC_TOK_EOF))
         {
-            errors_add_error(p->errors, ARCANE_ERROR_PARSING, p->lexer.cur_token.pos, "Unexpected EOF");
+            errors_add_error(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "Unexpected EOF");
             goto err;
         }
-        if(mc_lexer_currtokenis(&p->lexer, TOKEN_SEMICOLON))
+        if(mc_lexer_currtokenis(&p->lexer, MC_TOK_SEMICOLON))
         {
             mc_lexer_nexttoken(&p->lexer);
             continue;
         }
-        mcastexpression_t* stmt = parse_statement(p);
-        if(!stmt)
+        expr = parse_statement(p);
+        if(!expr)
         {
             goto err;
         }
-        ok = ptrarray_push(statements, stmt);
+        ok = ptrarray_push(statements, expr);
         if(!ok)
         {
-            statement_destroy(stmt);
+            statement_destroy(expr);
             goto err;
         }
     }
-
     mc_lexer_nexttoken(&p->lexer);
-
     p->depth--;
-
-    code_block_t* res = code_block_make(p->pstate, statements);
+    res = code_block_make(p->pstate, statements);
     if(!res)
     {
         goto err;
     }
     return res;
-
 err:
     p->depth--;
-    ptrarray_destroy_with_items_(statements, (ptrarrayitemdestroyfn)statement_destroy);
+    ptrarray_destroy_with_items_(statements, (mcptrarrayitemdestroyfn_t)statement_destroy);
     return NULL;
 }
 
 TMPSTATIC mcastexpression_t* parse_expression(mcastparser_t* p, mcastprecedence_t prec)
 {
-    mcastlocation_t pos = p->lexer.cur_token.pos;
-
-    if(p->lexer.cur_token.type == TOKEN_INVALID)
+    char* literal;
+    mcastlocation_t pos;
+    mcleftassocparsefn_t parseleftassoc;
+    mcastrightassocparsefn_t parserightassoc;
+    mcastexpression_t* newleftexpr;
+    mcastexpression_t* leftexpr;
+    pos = p->lexer.currtoken.pos;
+    if(p->lexer.currtoken.type == MC_TOK_INVALID)
     {
-        errors_add_error(p->errors, ARCANE_ERROR_PARSING, p->lexer.cur_token.pos, "Illegal token");
+        errors_add_error(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "Illegal token");
         return NULL;
     }
-
-    rightassocparsefn parse_right_assoc = p->right_assoc_parse_fns[p->lexer.cur_token.type];
-    if(!parse_right_assoc)
+    parserightassoc = p->rightassocfuncs[p->lexer.currtoken.type];
+    if(!parserightassoc)
     {
-        char* literal = token_duplicate_literal(p->pstate, &p->lexer.cur_token);
-        errors_add_errorf(p->errors, ARCANE_ERROR_PARSING, p->lexer.cur_token.pos, "No prefix parse function for \"%s\" found", literal);
-        allocator_free(p->pstate, literal);
+        literal = token_duplicate_literal(p->pstate, &p->lexer.currtoken);
+        errors_add_errorf(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "No prefix parse function for \"%s\" found", literal);
+        mc_allocator_free(p->pstate, literal);
         return NULL;
     }
-
-    mcastexpression_t* leftexpr = parse_right_assoc(p);
+    leftexpr = parserightassoc(p);
     if(!leftexpr)
     {
         return NULL;
     }
     leftexpr->pos = pos;
-
-    while(!mc_lexer_currtokenis(&p->lexer, TOKEN_SEMICOLON) && prec < get_precedence(p->lexer.cur_token.type))
+    while(!mc_lexer_currtokenis(&p->lexer, MC_TOK_SEMICOLON) && prec < get_precedence(p->lexer.currtoken.type))
     {
-        leftassocparsefn parse_left_assoc = p->left_assoc_parse_fns[p->lexer.cur_token.type];
-        if(!parse_left_assoc)
+        parseleftassoc = p->leftassocfuncs[p->lexer.currtoken.type];
+        if(!parseleftassoc)
         {
             return leftexpr;
         }
-        pos = p->lexer.cur_token.pos;
-        mcastexpression_t* newleftexpr = parse_left_assoc(p, leftexpr);
+        pos = p->lexer.currtoken.pos;
+        newleftexpr = parseleftassoc(p, leftexpr);
         if(!newleftexpr)
         {
             expression_destroy(leftexpr);
@@ -5419,18 +5997,19 @@ TMPSTATIC mcastexpression_t* parse_expression(mcastparser_t* p, mcastprecedence_
         newleftexpr->pos = pos;
         leftexpr = newleftexpr;
     }
-
     return leftexpr;
 }
 
 TMPSTATIC mcastexpression_t* parse_identifier(mcastparser_t* p)
 {
-    ident_t* ident = ident_make(p->pstate, p->lexer.cur_token);
+    ident_t* ident;
+    mcastexpression_t* res;
+    ident = ident_make(p->pstate, p->lexer.currtoken);
     if(!ident)
     {
         return NULL;
     }
-    mcastexpression_t* res = expression_make_ident(p->pstate, ident);
+    res = expression_make_ident(p->pstate, ident);
     if(!res)
     {
         ident_destroy(ident);
@@ -5442,16 +6021,19 @@ TMPSTATIC mcastexpression_t* parse_identifier(mcastparser_t* p)
 
 TMPSTATIC mcastexpression_t* parse_number_literal(mcastparser_t* p)
 {
+    double number;
+    long parsedlen;
     char* end;
-    double number = 0;
+    char* literal;
+    number = 0;
     errno = 0;
-    number = strtod(p->lexer.cur_token.literal, &end);
-    long parsedlen = end - p->lexer.cur_token.literal;
-    if(errno || parsedlen != p->lexer.cur_token.len)
+    number = strtod(p->lexer.currtoken.literal, &end);
+    parsedlen = end - p->lexer.currtoken.literal;
+    if(errno || parsedlen != p->lexer.currtoken.len)
     {
-        char* literal = token_duplicate_literal(p->pstate, &p->lexer.cur_token);
-        errors_add_errorf(p->errors, ARCANE_ERROR_PARSING, p->lexer.cur_token.pos, "Parsing number literal \"%s\" failed", literal);
-        allocator_free(p->pstate, literal);
+        literal = token_duplicate_literal(p->pstate, &p->lexer.currtoken);
+        errors_add_errorf(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "Parsing number literal \"%s\" failed", literal);
+        mc_allocator_free(p->pstate, literal);
         return NULL;
     }
     mc_lexer_nexttoken(&p->lexer);
@@ -5460,24 +6042,29 @@ TMPSTATIC mcastexpression_t* parse_number_literal(mcastparser_t* p)
 
 TMPSTATIC mcastexpression_t* parse_bool_literal(mcastparser_t* p)
 {
-    mcastexpression_t* res = expression_make_bool_literal(p->pstate, p->lexer.cur_token.type == TOKEN_TRUE);
+    mcastexpression_t* res;
+    res = expression_make_bool_literal(p->pstate, p->lexer.currtoken.type == MC_TOK_TRUE);
     mc_lexer_nexttoken(&p->lexer);
     return res;
 }
 
 TMPSTATIC mcastexpression_t* parse_string_literal(mcastparser_t* p)
 {
-    char* processedliteral = process_and_copy_string(p->pstate, p->lexer.cur_token.literal, p->lexer.cur_token.len);
+    size_t len;
+    char* processedliteral;
+    mcastexpression_t* res;
+    processedliteral = process_and_copy_string(p->pstate, p->lexer.currtoken.literal, p->lexer.currtoken.len);
     if(!processedliteral)
     {
-        errors_add_error(p->errors, ARCANE_ERROR_PARSING, p->lexer.cur_token.pos, "Error when parsing string literal");
+        errors_add_error(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "Error when parsing string literal");
         return NULL;
     }
     mc_lexer_nexttoken(&p->lexer);
-    mcastexpression_t* res = expression_make_string_literal(p->pstate, processedliteral);
+    len = strlen(processedliteral);
+    res = expression_make_string_literal(p->pstate, processedliteral, len);
     if(!res)
     {
-        allocator_free(p->pstate, processedliteral);
+        mc_allocator_free(p->pstate, processedliteral);
         return NULL;
     }
     return res;
@@ -5485,45 +6072,49 @@ TMPSTATIC mcastexpression_t* parse_string_literal(mcastparser_t* p)
 
 TMPSTATIC mcastexpression_t* parse_template_string_literal(mcastparser_t* p)
 {
-    char* processedliteral = NULL;
-    mcastexpression_t* leftstringexpr = NULL;
-    mcastexpression_t* templateexpr = NULL;
-    mcastexpression_t* tostrcallexpr = NULL;
-    mcastexpression_t* leftaddexpr = NULL;
-    mcastexpression_t* rightexpr = NULL;
-    mcastexpression_t* rightaddexpr = NULL;
-
-    processedliteral = process_and_copy_string(p->pstate, p->lexer.cur_token.literal, p->lexer.cur_token.len);
+    size_t len;
+    char* processedliteral;
+    mcastlocation_t pos;
+    mcastexpression_t* leftstringexpr;
+    mcastexpression_t* templateexpr;
+    mcastexpression_t* tostrcallexpr;
+    mcastexpression_t* leftaddexpr;
+    mcastexpression_t* rightexpr;
+    mcastexpression_t* rightaddexpr;
+    processedliteral = NULL;
+    leftstringexpr = NULL;
+    templateexpr = NULL;
+    tostrcallexpr = NULL;
+    leftaddexpr = NULL;
+    rightexpr = NULL;
+    rightaddexpr = NULL;
+    processedliteral = process_and_copy_string(p->pstate, p->lexer.currtoken.literal, p->lexer.currtoken.len);
     if(!processedliteral)
     {
-        errors_add_error(p->errors, ARCANE_ERROR_PARSING, p->lexer.cur_token.pos, "Error when parsing string literal");
+        errors_add_error(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "Error when parsing string literal");
         return NULL;
     }
     mc_lexer_nexttoken(&p->lexer);
-
-    if(!mc_lexer_expectcurrent(&p->lexer, TOKEN_LBRACE))
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LBRACE))
     {
         goto err;
     }
     mc_lexer_nexttoken(&p->lexer);
-
-    mcastlocation_t pos = p->lexer.cur_token.pos;
-
-    leftstringexpr = expression_make_string_literal(p->pstate, processedliteral);
+    pos = p->lexer.currtoken.pos;
+    len = strlen(processedliteral);
+    leftstringexpr = expression_make_string_literal(p->pstate, processedliteral, len);
     if(!leftstringexpr)
     {
         goto err;
     }
     leftstringexpr->pos = pos;
     processedliteral = NULL;
-
-    pos = p->lexer.cur_token.pos;
+    pos = p->lexer.currtoken.pos;
     templateexpr = parse_expression(p, PRECEDENCE_LOWEST);
     if(!templateexpr)
     {
         goto err;
     }
-
     tostrcallexpr = wrap_expression_in_function_call(p->pstate, templateexpr, "tostring");
     if(!tostrcallexpr)
     {
@@ -5531,7 +6122,6 @@ TMPSTATIC mcastexpression_t* parse_template_string_literal(mcastparser_t* p)
     }
     tostrcallexpr->pos = pos;
     templateexpr = NULL;
-
     leftaddexpr = expression_make_infix(p->pstate, OPERATOR_PLUS, leftstringexpr, tostrcallexpr);
     if(!leftaddexpr)
     {
@@ -5540,8 +6130,7 @@ TMPSTATIC mcastexpression_t* parse_template_string_literal(mcastparser_t* p)
     leftaddexpr->pos = pos;
     leftstringexpr = NULL;
     tostrcallexpr = NULL;
-
-    if(!mc_lexer_expectcurrent(&p->lexer, TOKEN_RBRACE))
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RBRACE))
     {
         goto err;
     }
@@ -5549,15 +6138,12 @@ TMPSTATIC mcastexpression_t* parse_template_string_literal(mcastparser_t* p)
     mc_lexer_conttplstring(&p->lexer);
     mc_lexer_nexttoken(&p->lexer);
     mc_lexer_nexttoken(&p->lexer);
-
-    pos = p->lexer.cur_token.pos;
-
+    pos = p->lexer.currtoken.pos;
     rightexpr = parse_expression(p, PRECEDENCE_HIGHEST);
     if(!rightexpr)
     {
         goto err;
     }
-
     rightaddexpr = expression_make_infix(p->pstate, OPERATOR_PLUS, leftaddexpr, rightexpr);
     if(!rightaddexpr)
     {
@@ -5566,7 +6152,6 @@ TMPSTATIC mcastexpression_t* parse_template_string_literal(mcastparser_t* p)
     rightaddexpr->pos = pos;
     leftaddexpr = NULL;
     rightexpr = NULL;
-
     return rightaddexpr;
 err:
     expression_destroy(rightaddexpr);
@@ -5575,7 +6160,7 @@ err:
     expression_destroy(tostrcallexpr);
     expression_destroy(templateexpr);
     expression_destroy(leftstringexpr);
-    allocator_free(p->pstate, processedliteral);
+    mc_allocator_free(p->pstate, processedliteral);
     return NULL;
 }
 
@@ -5587,15 +6172,17 @@ TMPSTATIC mcastexpression_t* parse_null_literal(mcastparser_t* p)
 
 TMPSTATIC mcastexpression_t* parse_array_literal(mcastparser_t* p)
 {
-    mcptrarray_t* array = parse_expression_list(p, TOKEN_LBRACKET, TOKEN_RBRACKET, true);
+    mcptrarray_t* array;
+    mcastexpression_t* res;
+    array = parse_expression_list(p, MC_TOK_LBRACKET, MC_TOK_RBRACKET, true);
     if(!array)
     {
         return NULL;
     }
-    mcastexpression_t* res = expression_make_array_literal(p->pstate, array);
+    res = expression_make_array_literal(p->pstate, array);
     if(!res)
     {
-        ptrarray_destroy_with_items_(array, (ptrarrayitemdestroyfn)expression_destroy);
+        ptrarray_destroy_with_items_(array, (mcptrarrayitemdestroyfn_t)expression_destroy);
         return NULL;
     }
     return res;
@@ -5604,29 +6191,34 @@ TMPSTATIC mcastexpression_t* parse_array_literal(mcastparser_t* p)
 TMPSTATIC mcastexpression_t* parse_map_literal(mcastparser_t* p)
 {
     bool ok;
-    mcptrarray_t* keys = ptrarray_make(p->pstate);
-    mcptrarray_t* values = ptrarray_make(p->pstate);
-
+    size_t len;
+    char* str;
+    mcptrarray_t* keys;
+    mcptrarray_t* values;
+    mcastexpression_t* res;
+    mcastexpression_t* key;
+    mcastexpression_t* value;
+    keys = ptrarray_make(p->pstate);
+    values = ptrarray_make(p->pstate);
     if(!keys || !values)
     {
         goto err;
     }
-
     mc_lexer_nexttoken(&p->lexer);
-
-    while(!mc_lexer_currtokenis(&p->lexer, TOKEN_RBRACE))
+    while(!mc_lexer_currtokenis(&p->lexer, MC_TOK_RBRACE))
     {
-        mcastexpression_t* key = NULL;
-        if(mc_lexer_currtokenis(&p->lexer, TOKEN_IDENT))
+        key = NULL;
+        if(mc_lexer_currtokenis(&p->lexer, MC_TOK_IDENT))
         {
-            char* str = token_duplicate_literal(p->pstate, &p->lexer.cur_token);
-            key = expression_make_string_literal(p->pstate, str);
+            str = token_duplicate_literal(p->pstate, &p->lexer.currtoken);
+            len = strlen(str);
+            key = expression_make_string_literal(p->pstate, str, len);
             if(!key)
             {
-                allocator_free(p->pstate, str);
+                mc_allocator_free(p->pstate, str);
                 goto err;
             }
-            key->pos = p->lexer.cur_token.pos;
+            key->pos = p->lexer.currtoken.pos;
             mc_lexer_nexttoken(&p->lexer);
         }
         else
@@ -5646,28 +6238,24 @@ TMPSTATIC mcastexpression_t* parse_map_literal(mcastparser_t* p)
                 }
                 default:
                 {
-                    errors_add_errorf(p->errors, ARCANE_ERROR_PARSING, key->pos, "Invalid map literal key type");
+                    errors_add_errorf(p->errors, MC_ERROR_PARSING, key->pos, "Invalid map literal key type");
                     expression_destroy(key);
                     goto err;
                 }
             }
         }
-
         ok = ptrarray_push(keys, key);
         if(!ok)
         {
             expression_destroy(key);
             goto err;
         }
-
-        if(!mc_lexer_expectcurrent(&p->lexer, TOKEN_COLON))
+        if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_COLON))
         {
             goto err;
         }
-
         mc_lexer_nexttoken(&p->lexer);
-
-        mcastexpression_t* value = parse_expression(p, PRECEDENCE_LOWEST);
+        value = parse_expression(p, PRECEDENCE_LOWEST);
         if(!value)
         {
             goto err;
@@ -5678,44 +6266,42 @@ TMPSTATIC mcastexpression_t* parse_map_literal(mcastparser_t* p)
             expression_destroy(value);
             goto err;
         }
-
-        if(mc_lexer_currtokenis(&p->lexer, TOKEN_RBRACE))
+        if(mc_lexer_currtokenis(&p->lexer, MC_TOK_RBRACE))
         {
             break;
         }
-
-        if(!mc_lexer_expectcurrent(&p->lexer, TOKEN_COMMA))
+        if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_COMMA))
         {
             goto err;
         }
-
         mc_lexer_nexttoken(&p->lexer);
     }
-
     mc_lexer_nexttoken(&p->lexer);
-
-    mcastexpression_t* res = expression_make_map_literal(p->pstate, keys, values);
+    res = expression_make_map_literal(p->pstate, keys, values);
     if(!res)
     {
         goto err;
     }
     return res;
 err:
-    ptrarray_destroy_with_items_(keys, (ptrarrayitemdestroyfn)expression_destroy);
-    ptrarray_destroy_with_items_(values, (ptrarrayitemdestroyfn)expression_destroy);
+    ptrarray_destroy_with_items_(keys, (mcptrarrayitemdestroyfn_t)expression_destroy);
+    ptrarray_destroy_with_items_(values, (mcptrarrayitemdestroyfn_t)expression_destroy);
     return NULL;
 }
 
 TMPSTATIC mcastexpression_t* parse_prefix_expression(mcastparser_t* p)
 {
-    mcastmathoptype_t op = token_to_operator(p->lexer.cur_token.type);
+    mcastmathoptype_t op;
+    mcastexpression_t* res;
+    mcastexpression_t* right;
+    op = token_to_operator(p->lexer.currtoken.type);
     mc_lexer_nexttoken(&p->lexer);
-    mcastexpression_t* right = parse_expression(p, PRECEDENCE_PREFIX);
+    right = parse_expression(p, PRECEDENCE_PREFIX);
     if(!right)
     {
         return NULL;
     }
-    mcastexpression_t* res = expression_make_prefix(p->pstate, op, right);
+    res = expression_make_prefix(p->pstate, op, right);
     if(!res)
     {
         expression_destroy(right);
@@ -5726,15 +6312,19 @@ TMPSTATIC mcastexpression_t* parse_prefix_expression(mcastparser_t* p)
 
 TMPSTATIC mcastexpression_t* parse_infix_expression(mcastparser_t* p, mcastexpression_t* left)
 {
-    mcastmathoptype_t op = token_to_operator(p->lexer.cur_token.type);
-    mcastprecedence_t prec = get_precedence(p->lexer.cur_token.type);
+    mcastmathoptype_t op;
+    mcastprecedence_t prec;
+    mcastexpression_t* res;
+    mcastexpression_t* right;
+    op = token_to_operator(p->lexer.currtoken.type);
+    prec = get_precedence(p->lexer.currtoken.type);
     mc_lexer_nexttoken(&p->lexer);
-    mcastexpression_t* right = parse_expression(p, prec);
+    right = parse_expression(p, prec);
     if(!right)
     {
         return NULL;
     }
-    mcastexpression_t* res = expression_make_infix(p->pstate, op, left, right);
+    res = expression_make_infix(p->pstate, op, left, right);
     if(!res)
     {
         expression_destroy(right);
@@ -5745,9 +6335,10 @@ TMPSTATIC mcastexpression_t* parse_infix_expression(mcastparser_t* p, mcastexpre
 
 TMPSTATIC mcastexpression_t* parse_grouped_expression(mcastparser_t* p)
 {
+    mcastexpression_t* expr;
     mc_lexer_nexttoken(&p->lexer);
-    mcastexpression_t* expr = parse_expression(p, PRECEDENCE_LOWEST);
-    if(!expr || !mc_lexer_expectcurrent(&p->lexer, TOKEN_RPAREN))
+    expr = parse_expression(p, PRECEDENCE_LOWEST);
+    if(!expr || !mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
     {
         expression_destroy(expr);
         return NULL;
@@ -5759,42 +6350,37 @@ TMPSTATIC mcastexpression_t* parse_grouped_expression(mcastparser_t* p)
 TMPSTATIC mcastexpression_t* parse_function_literal(mcastparser_t* p)
 {
     bool ok;
+    mcptrarray_t* params;
+    code_block_t* body;
+    mcastexpression_t* res;
     p->depth++;
-    mcptrarray_t* params = NULL;
-    code_block_t* body = NULL;
-
-    if(mc_lexer_currtokenis(&p->lexer, TOKEN_FUNCTION))
+    params = NULL;
+    body = NULL;
+    if(mc_lexer_currtokenis(&p->lexer, MC_TOK_FUNCTION))
     {
         mc_lexer_nexttoken(&p->lexer);
     }
-
     params = ptrarray_make(p->pstate);
-
     ok = parse_function_parameters(p, params);
-
     if(!ok)
     {
         goto err;
     }
-
     body = parse_code_block(p);
     if(!body)
     {
         goto err;
     }
-
-    mcastexpression_t* res = expression_make_fn_literal(p->pstate, params, body);
+    res = expression_make_fn_literal(p->pstate, params, body);
     if(!res)
     {
         goto err;
     }
-
     p->depth -= 1;
-
     return res;
 err:
     code_block_destroy(body);
-    ptrarray_destroy_with_items_(params, (ptrarrayitemdestroyfn)ident_destroy);
+    ptrarray_destroy_with_items_(params, (mcptrarrayitemdestroyfn_t)ident_destroy);
     p->depth -= 1;
     return NULL;
 }
@@ -5803,49 +6389,40 @@ TMPSTATIC bool parse_function_parameters(mcastparser_t* p, mcptrarray_t* outpara
 {
     bool ok;
     ident_t* ident;
-    if(!mc_lexer_expectcurrent(&p->lexer, TOKEN_LPAREN))
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LPAREN))
     {
         return false;
     }
-
     mc_lexer_nexttoken(&p->lexer);
-
-    if(mc_lexer_currtokenis(&p->lexer, TOKEN_RPAREN))
+    if(mc_lexer_currtokenis(&p->lexer, MC_TOK_RPAREN))
     {
         mc_lexer_nexttoken(&p->lexer);
         return true;
     }
-
-    if(!mc_lexer_expectcurrent(&p->lexer, TOKEN_IDENT))
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_IDENT))
     {
         return false;
     }
-
-    ident = ident_make(p->pstate, p->lexer.cur_token);
+    ident = ident_make(p->pstate, p->lexer.currtoken);
     if(!ident)
     {
         return false;
     }
-
     ok = ptrarray_push(outparams, ident);
     if(!ok)
     {
         ident_destroy(ident);
         return false;
     }
-
     mc_lexer_nexttoken(&p->lexer);
-
-    while(mc_lexer_currtokenis(&p->lexer, TOKEN_COMMA))
+    while(mc_lexer_currtokenis(&p->lexer, MC_TOK_COMMA))
     {
         mc_lexer_nexttoken(&p->lexer);
-
-        if(!mc_lexer_expectcurrent(&p->lexer, TOKEN_IDENT))
+        if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_IDENT))
         {
             return false;
         }
-
-        ident = ident_make(p->pstate, p->lexer.cur_token);
+        ident = ident_make(p->pstate, p->lexer.currtoken);
         if(!ident)
         {
             return false;
@@ -5856,32 +6433,31 @@ TMPSTATIC bool parse_function_parameters(mcastparser_t* p, mcptrarray_t* outpara
             ident_destroy(ident);
             return false;
         }
-
         mc_lexer_nexttoken(&p->lexer);
     }
-
-    if(!mc_lexer_expectcurrent(&p->lexer, TOKEN_RPAREN))
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
     {
         return false;
     }
-
     mc_lexer_nexttoken(&p->lexer);
-
     return true;
 }
 
 TMPSTATIC mcastexpression_t* parse_call_expression(mcastparser_t* p, mcastexpression_t* left)
 {
-    mcastexpression_t* function = left;
-    mcptrarray_t* args = parse_expression_list(p, TOKEN_LPAREN, TOKEN_RPAREN, false);
+    mcptrarray_t* args;
+    mcastexpression_t* res;
+    mcastexpression_t* function;
+    function = left;
+    args = parse_expression_list(p, MC_TOK_LPAREN, MC_TOK_RPAREN, false);
     if(!args)
     {
         return NULL;
     }
-    mcastexpression_t* res = expression_make_call(p->pstate, function, args);
+    res = expression_make_call(p->pstate, function, args);
     if(!res)
     {
-        ptrarray_destroy_with_items_(args, (ptrarrayitemdestroyfn)expression_destroy);
+        ptrarray_destroy_with_items_(args, (mcptrarrayitemdestroyfn_t)expression_destroy);
         return NULL;
     }
     return res;
@@ -5890,22 +6466,20 @@ TMPSTATIC mcastexpression_t* parse_call_expression(mcastparser_t* p, mcastexpres
 TMPSTATIC mcptrarray_t* parse_expression_list(mcastparser_t* p, mcasttoktype_t starttoken, mcasttoktype_t endtoken, bool trailingcommaallowed)
 {
     bool ok;
+    mcptrarray_t* res;
+    mcastexpression_t* argexpr;
     if(!mc_lexer_expectcurrent(&p->lexer, starttoken))
     {
         return NULL;
     }
-
     mc_lexer_nexttoken(&p->lexer);
-
-    mcptrarray_t* res = ptrarray_make(p->pstate);
-
+    res = ptrarray_make(p->pstate);
     if(mc_lexer_currtokenis(&p->lexer, endtoken))
     {
         mc_lexer_nexttoken(&p->lexer);
         return res;
     }
-
-    mcastexpression_t* argexpr = parse_expression(p, PRECEDENCE_LOWEST);
+    argexpr = parse_expression(p, PRECEDENCE_LOWEST);
     if(!argexpr)
     {
         goto err;
@@ -5916,22 +6490,18 @@ TMPSTATIC mcptrarray_t* parse_expression_list(mcastparser_t* p, mcasttoktype_t s
         expression_destroy(argexpr);
         goto err;
     }
-
-    while(mc_lexer_currtokenis(&p->lexer, TOKEN_COMMA))
+    while(mc_lexer_currtokenis(&p->lexer, MC_TOK_COMMA))
     {
         mc_lexer_nexttoken(&p->lexer);
-
         if(trailingcommaallowed && mc_lexer_currtokenis(&p->lexer, endtoken))
         {
             break;
         }
-
         argexpr = parse_expression(p, PRECEDENCE_LOWEST);
         if(!argexpr)
         {
             goto err;
         }
-
         ok = ptrarray_push(res, argexpr);
         if(!ok)
         {
@@ -5939,99 +6509,100 @@ TMPSTATIC mcptrarray_t* parse_expression_list(mcastparser_t* p, mcasttoktype_t s
             goto err;
         }
     }
-
     if(!mc_lexer_expectcurrent(&p->lexer, endtoken))
     {
         goto err;
     }
-
     mc_lexer_nexttoken(&p->lexer);
-
     return res;
 err:
-    ptrarray_destroy_with_items_(res, (ptrarrayitemdestroyfn)expression_destroy);
+    ptrarray_destroy_with_items_(res, (mcptrarrayitemdestroyfn_t)expression_destroy);
     return NULL;
 }
 
 TMPSTATIC mcastexpression_t* parse_index_expression(mcastparser_t* p, mcastexpression_t* left)
 {
+    mcastexpression_t* res;
+    mcastexpression_t* index;
     mc_lexer_nexttoken(&p->lexer);
-
-    mcastexpression_t* index = parse_expression(p, PRECEDENCE_LOWEST);
+    index = parse_expression(p, PRECEDENCE_LOWEST);
     if(!index)
     {
         return NULL;
     }
-
-    if(!mc_lexer_expectcurrent(&p->lexer, TOKEN_RBRACKET))
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RBRACKET))
     {
         expression_destroy(index);
         return NULL;
     }
-
     mc_lexer_nexttoken(&p->lexer);
-
-    mcastexpression_t* res = expression_make_index(p->pstate, left, index);
+    res = expression_make_index(p->pstate, left, index);
     if(!res)
     {
         expression_destroy(index);
         return NULL;
     }
-
     return res;
 }
 
 TMPSTATIC mcastexpression_t* parse_assign_expression(mcastparser_t* p, mcastexpression_t* left)
 {
-    mcastexpression_t* source = NULL;
-    mcasttoktype_t assigntype = p->lexer.cur_token.type;
-
+    mcastlocation_t pos;
+    mcastmathoptype_t op;
+    mcasttoktype_t assigntype;
+    mcastexpression_t* res;
+    mcastexpression_t* source;
+    mcastexpression_t* leftcopy;
+    mcastexpression_t* newsource;
+    source = NULL;
+    assigntype = p->lexer.currtoken.type;
     mc_lexer_nexttoken(&p->lexer);
-
     source = parse_expression(p, PRECEDENCE_LOWEST);
     if(!source)
     {
         goto err;
     }
-
     switch(assigntype)
     {
-        case TOKEN_PLUS_ASSIGN:
-        case TOKEN_MINUS_ASSIGN:
-        case TOKEN_SLASH_ASSIGN:
-        case TOKEN_ASTERISK_ASSIGN:
-        case TOKEN_PERCENT_ASSIGN:
-        case TOKEN_BIT_AND_ASSIGN:
-        case TOKEN_BIT_OR_ASSIGN:
-        case TOKEN_BIT_XOR_ASSIGN:
-        case TOKEN_LSHIFT_ASSIGN:
-        case TOKEN_RSHIFT_ASSIGN:
-        {
-            mcastmathoptype_t op = token_to_operator(assigntype);
-            mcastexpression_t* leftcopy = expression_copy(left);
-            if(!leftcopy)
+        case MC_TOK_PLUSASSIGN:
+        case MC_TOK_MINUSASSIGN:
+        case MC_TOK_SLASHASSIGN:
+        case MC_TOK_ASTERISKASSIGN:
+        case MC_TOK_PERCENTASSIGN:
+        case MC_TOK_BITANDASSIGN:
+        case MC_TOK_BITORASSIGN:
+        case MC_TOK_BITXORASSIGN:
+        case MC_TOK_LSHIFTASSIGN:
+        case MC_TOK_RSHIFTASSIGN:
             {
-                goto err;
+                op = token_to_operator(assigntype);
+                leftcopy = expression_copy(left);
+                if(!leftcopy)
+                {
+                    goto err;
+                }
+                pos = source->pos;
+                newsource = expression_make_infix(p->pstate, op, leftcopy, source);
+                if(!newsource)
+                {
+                    expression_destroy(leftcopy);
+                    goto err;
+                }
+                newsource->pos = pos;
+                source = newsource;
             }
-            mcastlocation_t pos = source->pos;
-            mcastexpression_t* newsource = expression_make_infix(p->pstate, op, leftcopy, source);
-            if(!newsource)
-            {
-                expression_destroy(leftcopy);
-                goto err;
-            }
-            newsource->pos = pos;
-            source = newsource;
             break;
-        }
-        case TOKEN_ASSIGN:
+        case MC_TOK_ASSIGN:
+            {
+            }
             break;
         default:
-            ARCANE_ASSERT(false);
+            {
+                MC_ASSERT(false);
+            }
             break;
     }
-
-    mcastexpression_t* res = expression_make_assign(p->pstate, left, source, false);
+    res = expression_make_assign(p->pstate, left, source, false);
     if(!res)
     {
         goto err;
@@ -6044,15 +6615,19 @@ err:
 
 TMPSTATIC mcastexpression_t* parse_logical_expression(mcastparser_t* p, mcastexpression_t* left)
 {
-    mcastmathoptype_t op = token_to_operator(p->lexer.cur_token.type);
-    mcastprecedence_t prec = get_precedence(p->lexer.cur_token.type);
+    mcastmathoptype_t op;
+    mcastprecedence_t prec;
+    mcastexpression_t* res;
+    mcastexpression_t* right;
+    op = token_to_operator(p->lexer.currtoken.type);
+    prec = get_precedence(p->lexer.currtoken.type);
     mc_lexer_nexttoken(&p->lexer);
-    mcastexpression_t* right = parse_expression(p, prec);
+    right = parse_expression(p, prec);
     if(!right)
     {
         return NULL;
     }
-    mcastexpression_t* res = expression_make_logical(p->pstate, op, left, right);
+    res = expression_make_logical(p->pstate, op, left, right);
     if(!res)
     {
         expression_destroy(right);
@@ -6063,72 +6638,73 @@ TMPSTATIC mcastexpression_t* parse_logical_expression(mcastparser_t* p, mcastexp
 
 TMPSTATIC mcastexpression_t* parse_ternary_expression(mcastparser_t* p, mcastexpression_t* left)
 {
+    mcastexpression_t* res;
+    mcastexpression_t* ift;
+    mcastexpression_t* iffalse;
     mc_lexer_nexttoken(&p->lexer);
-
-    mcastexpression_t* if_true = parse_expression(p, PRECEDENCE_LOWEST);
-    if(!if_true)
+    ift = parse_expression(p, PRECEDENCE_LOWEST);
+    if(!ift)
     {
         return NULL;
     }
-
-    if(!mc_lexer_expectcurrent(&p->lexer, TOKEN_COLON))
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_COLON))
     {
-        expression_destroy(if_true);
+        expression_destroy(ift);
         return NULL;
     }
     mc_lexer_nexttoken(&p->lexer);
-
-    mcastexpression_t* if_false = parse_expression(p, PRECEDENCE_LOWEST);
-    if(!if_false)
+    iffalse = parse_expression(p, PRECEDENCE_LOWEST);
+    if(!iffalse)
     {
-        expression_destroy(if_true);
+        expression_destroy(ift);
         return NULL;
     }
-
-    mcastexpression_t* res = expression_make_ternary(p->pstate, left, if_true, if_false);
+    res = expression_make_ternary(p->pstate, left, ift, iffalse);
     if(!res)
     {
-        expression_destroy(if_true);
-        expression_destroy(if_false);
+        expression_destroy(ift);
+        expression_destroy(iffalse);
         return NULL;
     }
-
     return res;
 }
 
 TMPSTATIC mcastexpression_t* parse_incdec_prefix_expression(mcastparser_t* p)
 {
-    mcastexpression_t* source = NULL;
-    mcasttoktype_t operationtype = p->lexer.cur_token.type;
-    mcastlocation_t pos = p->lexer.cur_token.pos;
-
+    mcastlocation_t pos;
+    mcastmathoptype_t op;
+    mcasttoktype_t operationtype;
+    mcastexpression_t* res;
+    mcastexpression_t* dest;
+    mcastexpression_t* source;
+    mcastexpression_t* destcopy;
+    mcastexpression_t* operation;
+    mcastexpression_t* oneliteral;
+    source = NULL;
+    operationtype = p->lexer.currtoken.type;
+    pos = p->lexer.currtoken.pos;
     mc_lexer_nexttoken(&p->lexer);
-
-    mcastmathoptype_t op = token_to_operator(operationtype);
-
-    mcastexpression_t* dest = parse_expression(p, PRECEDENCE_PREFIX);
+    op = token_to_operator(operationtype);
+    dest = parse_expression(p, PRECEDENCE_PREFIX);
     if(!dest)
     {
         goto err;
     }
-
-    mcastexpression_t* oneliteral = expression_make_number_literal(p->pstate, 1);
+    oneliteral = expression_make_number_literal(p->pstate, 1);
     if(!oneliteral)
     {
         expression_destroy(dest);
         goto err;
     }
     oneliteral->pos = pos;
-
-    mcastexpression_t* destcopy = expression_copy(dest);
+    destcopy = expression_copy(dest);
     if(!destcopy)
     {
         expression_destroy(oneliteral);
         expression_destroy(dest);
         goto err;
     }
-
-    mcastexpression_t* operation = expression_make_infix(p->pstate, op, destcopy, oneliteral);
+    operation = expression_make_infix(p->pstate, op, destcopy, oneliteral);
     if(!operation)
     {
         expression_destroy(destcopy);
@@ -6137,8 +6713,7 @@ TMPSTATIC mcastexpression_t* parse_incdec_prefix_expression(mcastparser_t* p)
         goto err;
     }
     operation->pos = pos;
-
-    mcastexpression_t* res = expression_make_assign(p->pstate, dest, operation, false);
+    res = expression_make_assign(p->pstate, dest, operation, false);
     if(!res)
     {
         expression_destroy(dest);
@@ -6153,28 +6728,32 @@ err:
 
 TMPSTATIC mcastexpression_t* parse_incdec_postfix_expression(mcastparser_t* p, mcastexpression_t* left)
 {
-    mcastexpression_t* source = NULL;
-    mcasttoktype_t operationtype = p->lexer.cur_token.type;
-    mcastlocation_t pos = p->lexer.cur_token.pos;
-
+    mcastlocation_t pos;
+    mcastmathoptype_t op;
+    mcasttoktype_t operationtype;
+    mcastexpression_t* res;
+    mcastexpression_t* source;
+    mcastexpression_t* leftcopy;
+    mcastexpression_t* operation;
+    mcastexpression_t* oneliteral;
+    source = NULL;
+    operationtype = p->lexer.currtoken.type;
+    pos = p->lexer.currtoken.pos;
     mc_lexer_nexttoken(&p->lexer);
-
-    mcastmathoptype_t op = token_to_operator(operationtype);
-    mcastexpression_t* leftcopy = expression_copy(left);
+    op = token_to_operator(operationtype);
+    leftcopy = expression_copy(left);
     if(!leftcopy)
     {
         goto err;
     }
-
-    mcastexpression_t* oneliteral = expression_make_number_literal(p->pstate, 1);
+    oneliteral = expression_make_number_literal(p->pstate, 1);
     if(!oneliteral)
     {
         expression_destroy(leftcopy);
         goto err;
     }
     oneliteral->pos = pos;
-
-    mcastexpression_t* operation = expression_make_infix(p->pstate, op, leftcopy, oneliteral);
+    operation = expression_make_infix(p->pstate, op, leftcopy, oneliteral);
     if(!operation)
     {
         expression_destroy(oneliteral);
@@ -6182,14 +6761,12 @@ TMPSTATIC mcastexpression_t* parse_incdec_postfix_expression(mcastparser_t* p, m
         goto err;
     }
     operation->pos = pos;
-
-    mcastexpression_t* res = expression_make_assign(p->pstate, left, operation, true);
+    res = expression_make_assign(p->pstate, left, operation, true);
     if(!res)
     {
         expression_destroy(operation);
         goto err;
     }
-
     return res;
 err:
     expression_destroy(source);
@@ -6198,25 +6775,26 @@ err:
 
 TMPSTATIC mcastexpression_t* parse_dot_expression(mcastparser_t* p, mcastexpression_t* left)
 {
+    size_t len;
+    char* str;
+    mcastexpression_t* res;
+    mcastexpression_t* index;
     mc_lexer_nexttoken(&p->lexer);
-
-    if(!mc_lexer_expectcurrent(&p->lexer, TOKEN_IDENT))
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_IDENT))
     {
         return NULL;
     }
-
-    char* str = token_duplicate_literal(p->pstate, &p->lexer.cur_token);
-    mcastexpression_t* index = expression_make_string_literal(p->pstate, str);
+    str = token_duplicate_literal(p->pstate, &p->lexer.currtoken);
+    len = strlen(str);
+    index = expression_make_string_literal(p->pstate, str, len);
     if(!index)
     {
-        allocator_free(p->pstate, str);
+        mc_allocator_free(p->pstate, str);
         return NULL;
     }
-    index->pos = p->lexer.cur_token.pos;
-
+    index->pos = p->lexer.currtoken.pos;
     mc_lexer_nexttoken(&p->lexer);
-
-    mcastexpression_t* res = expression_make_index(p->pstate, left, index);
+    res = expression_make_index(p->pstate, left, index);
     if(!res)
     {
         expression_destroy(index);
@@ -6229,75 +6807,55 @@ TMPSTATIC mcastprecedence_t get_precedence(mcasttoktype_t tk)
 {
     switch(tk)
     {
-        case TOKEN_EQ:
+        case MC_TOK_EQ:
+        case MC_TOK_NOTEQ:
             return PRECEDENCE_EQUALS;
-        case TOKEN_NOT_EQ:
-            return PRECEDENCE_EQUALS;
-        case TOKEN_LT:
+        case MC_TOK_LT:
+        case MC_TOK_LTE:
+        case MC_TOK_GT:
+        case MC_TOK_GTE:
             return PRECEDENCE_LESSGREATER;
-        case TOKEN_LTE:
-            return PRECEDENCE_LESSGREATER;
-        case TOKEN_GT:
-            return PRECEDENCE_LESSGREATER;
-        case TOKEN_GTE:
-            return PRECEDENCE_LESSGREATER;
-        case TOKEN_PLUS:
+        case MC_TOK_PLUS:
+        case MC_TOK_MINUS:
             return PRECEDENCE_SUM;
-        case TOKEN_MINUS:
-            return PRECEDENCE_SUM;
-        case TOKEN_SLASH:
+        case MC_TOK_SLASH:
+        case MC_TOK_ASTERISK:
+        case MC_TOK_PERCENT:
             return PRECEDENCE_PRODUCT;
-        case TOKEN_ASTERISK:
-            return PRECEDENCE_PRODUCT;
-        case TOKEN_PERCENT:
-            return PRECEDENCE_PRODUCT;
-        case TOKEN_LPAREN:
+        case MC_TOK_LPAREN:
+        case MC_TOK_LBRACKET:
             return PRECEDENCE_POSTFIX;
-        case TOKEN_LBRACKET:
+        case MC_TOK_ASSIGN:
+        case MC_TOK_PLUSASSIGN:
+        case MC_TOK_MINUSASSIGN:
+        case MC_TOK_ASTERISKASSIGN:
+        case MC_TOK_SLASHASSIGN:
+        case MC_TOK_PERCENTASSIGN:
+        case MC_TOK_BITANDASSIGN:
+        case MC_TOK_BITORASSIGN:
+        case MC_TOK_BITXORASSIGN:
+        case MC_TOK_LSHIFTASSIGN:
+        case MC_TOK_RSHIFTASSIGN:
+            return PRECEDENCE_ASSIGN;
+        case MC_TOK_DOT:
             return PRECEDENCE_POSTFIX;
-        case TOKEN_ASSIGN:
-            return PRECEDENCE_ASSIGN;
-        case TOKEN_PLUS_ASSIGN:
-            return PRECEDENCE_ASSIGN;
-        case TOKEN_MINUS_ASSIGN:
-            return PRECEDENCE_ASSIGN;
-        case TOKEN_ASTERISK_ASSIGN:
-            return PRECEDENCE_ASSIGN;
-        case TOKEN_SLASH_ASSIGN:
-            return PRECEDENCE_ASSIGN;
-        case TOKEN_PERCENT_ASSIGN:
-            return PRECEDENCE_ASSIGN;
-        case TOKEN_BIT_AND_ASSIGN:
-            return PRECEDENCE_ASSIGN;
-        case TOKEN_BIT_OR_ASSIGN:
-            return PRECEDENCE_ASSIGN;
-        case TOKEN_BIT_XOR_ASSIGN:
-            return PRECEDENCE_ASSIGN;
-        case TOKEN_LSHIFT_ASSIGN:
-            return PRECEDENCE_ASSIGN;
-        case TOKEN_RSHIFT_ASSIGN:
-            return PRECEDENCE_ASSIGN;
-        case TOKEN_DOT:
-            return PRECEDENCE_POSTFIX;
-        case TOKEN_AND:
+        case MC_TOK_AND:
             return PRECEDENCE_LOGICAL_AND;
-        case TOKEN_OR:
+        case MC_TOK_OR:
             return PRECEDENCE_LOGICAL_OR;
-        case TOKEN_BIT_OR:
+        case MC_TOK_BITOR:
             return PRECEDENCE_BIT_OR;
-        case TOKEN_BIT_XOR:
+        case MC_TOK_BITXOR:
             return PRECEDENCE_BIT_XOR;
-        case TOKEN_BIT_AND:
+        case MC_TOK_BITAND:
             return PRECEDENCE_BIT_AND;
-        case TOKEN_LSHIFT:
+        case MC_TOK_LSHIFT:
+        case MC_TOK_RSHIFT:
             return PRECEDENCE_SHIFT;
-        case TOKEN_RSHIFT:
-            return PRECEDENCE_SHIFT;
-        case TOKEN_QUESTION:
+        case MC_TOK_QUESTION:
             return PRECEDENCE_TERNARY;
-        case TOKEN_PLUS_PLUS:
-            return PRECEDENCE_INCDEC;
-        case TOKEN_MINUS_MINUS:
+        case MC_TOK_PLUSPLUS:
+        case MC_TOK_MINUSMINUS:
             return PRECEDENCE_INCDEC;
         default:
             return PRECEDENCE_LOWEST;
@@ -6308,79 +6866,81 @@ TMPSTATIC mcastmathoptype_t token_to_operator(mcasttoktype_t tk)
 {
     switch(tk)
     {
-        case TOKEN_ASSIGN:
+        case MC_TOK_ASSIGN:
             return OPERATOR_ASSIGN;
-        case TOKEN_PLUS:
+        case MC_TOK_PLUS:
             return OPERATOR_PLUS;
-        case TOKEN_MINUS:
+        case MC_TOK_MINUS:
             return OPERATOR_MINUS;
-        case TOKEN_BANG:
+        case MC_TOK_BANG:
             return OPERATOR_BANG;
-        case TOKEN_ASTERISK:
+        case MC_TOK_ASTERISK:
             return OPERATOR_ASTERISK;
-        case TOKEN_SLASH:
+        case MC_TOK_SLASH:
             return OPERATOR_SLASH;
-        case TOKEN_LT:
+        case MC_TOK_LT:
             return OPERATOR_LT;
-        case TOKEN_LTE:
+        case MC_TOK_LTE:
             return OPERATOR_LTE;
-        case TOKEN_GT:
+        case MC_TOK_GT:
             return OPERATOR_GT;
-        case TOKEN_GTE:
+        case MC_TOK_GTE:
             return OPERATOR_GTE;
-        case TOKEN_EQ:
+        case MC_TOK_EQ:
             return OPERATOR_EQ;
-        case TOKEN_NOT_EQ:
+        case MC_TOK_NOTEQ:
             return OPERATOR_NOT_EQ;
-        case TOKEN_PERCENT:
+        case MC_TOK_PERCENT:
             return OPERATOR_MODULUS;
-        case TOKEN_AND:
+        case MC_TOK_AND:
             return OPERATOR_LOGICAL_AND;
-        case TOKEN_OR:
+        case MC_TOK_OR:
             return OPERATOR_LOGICAL_OR;
-        case TOKEN_PLUS_ASSIGN:
+        case MC_TOK_PLUSASSIGN:
             return OPERATOR_PLUS;
-        case TOKEN_MINUS_ASSIGN:
+        case MC_TOK_MINUSASSIGN:
             return OPERATOR_MINUS;
-        case TOKEN_ASTERISK_ASSIGN:
+        case MC_TOK_ASTERISKASSIGN:
             return OPERATOR_ASTERISK;
-        case TOKEN_SLASH_ASSIGN:
+        case MC_TOK_SLASHASSIGN:
             return OPERATOR_SLASH;
-        case TOKEN_PERCENT_ASSIGN:
+        case MC_TOK_PERCENTASSIGN:
             return OPERATOR_MODULUS;
-        case TOKEN_BIT_AND_ASSIGN:
+        case MC_TOK_BITANDASSIGN:
             return OPERATOR_BIT_AND;
-        case TOKEN_BIT_OR_ASSIGN:
+        case MC_TOK_BITORASSIGN:
             return OPERATOR_BIT_OR;
-        case TOKEN_BIT_XOR_ASSIGN:
+        case MC_TOK_BITXORASSIGN:
             return OPERATOR_BIT_XOR;
-        case TOKEN_LSHIFT_ASSIGN:
+        case MC_TOK_LSHIFTASSIGN:
             return OPERATOR_LSHIFT;
-        case TOKEN_RSHIFT_ASSIGN:
+        case MC_TOK_RSHIFTASSIGN:
             return OPERATOR_RSHIFT;
-        case TOKEN_BIT_AND:
+        case MC_TOK_BITAND:
             return OPERATOR_BIT_AND;
-        case TOKEN_BIT_OR:
+        case MC_TOK_BITOR:
             return OPERATOR_BIT_OR;
-        case TOKEN_BIT_XOR:
+        case MC_TOK_BITXOR:
             return OPERATOR_BIT_XOR;
-        case TOKEN_LSHIFT:
+        case MC_TOK_LSHIFT:
             return OPERATOR_LSHIFT;
-        case TOKEN_RSHIFT:
+        case MC_TOK_RSHIFT:
             return OPERATOR_RSHIFT;
-        case TOKEN_PLUS_PLUS:
+        case MC_TOK_PLUSPLUS:
             return OPERATOR_PLUS;
-        case TOKEN_MINUS_MINUS:
+        case MC_TOK_MINUSMINUS:
             return OPERATOR_MINUS;
         default:
-        {
-            ARCANE_ASSERT(false);
-            return OPERATOR_NONE;
-        }
+            {
+                MC_ASSERT(false);
+            }
+            break;
     }
+    return OPERATOR_NONE;
+
 }
 
-TMPSTATIC char escarcane_char(char c)
+TMPSTATIC char escape_char(char c)
 {
     switch(c)
     {
@@ -6403,27 +6963,29 @@ TMPSTATIC char escarcane_char(char c)
         case '0':
             return '\0';
         default:
-            return c;
+            break;
     }
+    return c;
 }
 
 TMPSTATIC char* process_and_copy_string(mcstate_t* state, const char* input, size_t len)
 {
-    char* output = (char*)allocator_malloc(state, len + 1);
+    size_t ini;
+    size_t outi;
+    char* output;
+    output = (char*)mc_allocator_alloc(state, len + 1);
     if(!output)
     {
         return NULL;
     }
-
-    size_t ini = 0;
-    size_t outi = 0;
-
+    ini = 0;
+    outi = 0;
     while(input[ini] != '\0' && ini < len)
     {
         if(input[ini] == '\\')
         {
             ini++;
-            output[outi] = escarcane_char(input[ini]);
+            output[outi] = escape_char(input[ini]);
             if(output[outi] < 0)
             {
                 goto error;
@@ -6439,7 +7001,7 @@ TMPSTATIC char* process_and_copy_string(mcstate_t* state, const char* input, siz
     output[outi] = '\0';
     return output;
 error:
-    allocator_free(state, output);
+    mc_allocator_free(state, output);
     return NULL;
 }
 
@@ -6447,17 +7009,19 @@ TMPSTATIC mcastexpression_t* wrap_expression_in_function_call(mcstate_t* state, 
 {
     bool ok;
     mcasttoken_t fntoken;
-    token_init(&fntoken, TOKEN_IDENT, function_name, strlen(function_name));
+    ident_t* ident;
+    mcptrarray_t* args;
+    mcastexpression_t* ce;
+    mcastexpression_t* functionidentexpr;
+    token_init(&fntoken, MC_TOK_IDENT, function_name, strlen(function_name));
     fntoken.pos = expr->pos;
-
-    ident_t* ident = ident_make(state, fntoken);
+    ident = ident_make(state, fntoken);
     if(!ident)
     {
         return NULL;
     }
     ident->pos = fntoken.pos;
-
-    mcastexpression_t* functionidentexpr = expression_make_ident(state, ident);
+    functionidentexpr = expression_make_ident(state, ident);
     if(!functionidentexpr)
     {
         ident_destroy(ident);
@@ -6465,14 +7029,12 @@ TMPSTATIC mcastexpression_t* wrap_expression_in_function_call(mcstate_t* state, 
     }
     functionidentexpr->pos = expr->pos;
     ident = NULL;
-
-    mcptrarray_t* args = ptrarray_make(state);
+    args = ptrarray_make(state);
     if(!args)
     {
         expression_destroy(functionidentexpr);
         return NULL;
     }
-
     ok = ptrarray_push(args, expr);
     if(!ok)
     {
@@ -6480,143 +7042,148 @@ TMPSTATIC mcastexpression_t* wrap_expression_in_function_call(mcstate_t* state, 
         expression_destroy(functionidentexpr);
         return NULL;
     }
-
-    mcastexpression_t* call_expr = expression_make_call(state, functionidentexpr, args);
-    if(!call_expr)
+    ce = expression_make_call(state, functionidentexpr, args);
+    if(!ce)
     {
         ptrarray_destroy(args);
         expression_destroy(functionidentexpr);
         return NULL;
     }
-    call_expr->pos = expr->pos;
-
-    return call_expr;
+    ce->pos = expr->pos;
+    return ce;
 }
 
-TMPSEMISTATIC mcastexpression_t* optimise_expression(mcastexpression_t* expr)
+TMPSEMISTATIC mcastexpression_t* mc_optimizer_optexpression(mcastexpression_t* expr)
 {
     switch(expr->type)
     {
         case MC_EXPR_INFIX:
-            return optimise_infix_expression(expr);
+            return mc_optimizer_optinfixexpr(expr);
         case MC_EXPR_PREFIX:
-            return optimise_prefix_expression(expr);
+            return mc_optimizer_optprefixexpr(expr);
         default:
-            return NULL;
+            break;
     }
+    return NULL;
 }
 
-TMPSTATIC mcastexpression_t* optimise_infix_expression(mcastexpression_t* expr)
+TMPSTATIC mcastexpression_t* mc_optimizer_optinfixexpr(mcastexpression_t* expr)
 {
-    mcastexpression_t* left = expr->infix.left;
-    mcastexpression_t* leftoptimised = optimise_expression(left);
-    if(leftoptimised)
+    bool leftisnumeric;
+    bool rightisnumeric;
+    bool leftisstring;
+    bool rightisstring;
+    double dnleft;
+    double dnright;
+    size_t len;
+    mcstate_t* state;
+    mcastexpression_t* res;
+    mcastexpression_t* left;
+    mcastexpression_t* right;
+    mcastexpression_t* leftoptimized;
+    mcastexpression_t* rightoptimized;
+    state = expr->pstate;
+    left = expr->exprinfix.left;
+    leftoptimized = mc_optimizer_optexpression(left);
+    if(leftoptimized)
     {
-        left = leftoptimised;
+        left = leftoptimized;
     }
-
-    mcastexpression_t* right = expr->infix.right;
-    mcastexpression_t* rightoptimised = optimise_expression(right);
-    if(rightoptimised)
+    right = expr->exprinfix.right;
+    rightoptimized = mc_optimizer_optexpression(right);
+    if(rightoptimized)
     {
-        right = rightoptimised;
+        right = rightoptimized;
     }
-
-    mcastexpression_t* res = NULL;
-
-    bool leftisnumeric = left->type == MC_EXPR_NUMBERLITERAL || left->type == MC_EXPR_BOOLLITERAL;
-    bool rightisnumeric = right->type == MC_EXPR_NUMBERLITERAL || right->type == MC_EXPR_BOOLLITERAL;
-
-    bool leftisstring = left->type == MC_EXPR_STRINGLITERAL;
-    bool rightisstring = right->type == MC_EXPR_STRINGLITERAL;
-
-    mcstate_t* state = expr->pstate;
+    res = NULL;
+    leftisnumeric = left->type == MC_EXPR_NUMBERLITERAL || left->type == MC_EXPR_BOOLLITERAL;
+    rightisnumeric = right->type == MC_EXPR_NUMBERLITERAL || right->type == MC_EXPR_BOOLLITERAL;
+    leftisstring = left->type == MC_EXPR_STRINGLITERAL;
+    rightisstring = right->type == MC_EXPR_STRINGLITERAL;
     if(leftisnumeric && rightisnumeric)
     {
-        double leftval = left->type == MC_EXPR_NUMBERLITERAL ? left->number_literal : left->bool_literal;
-        double rightval = right->type == MC_EXPR_NUMBERLITERAL ? right->number_literal : right->bool_literal;
-        int64_t leftvalint = (int64_t)leftval;
-        int64_t rightvalint = (int64_t)rightval;
-        switch(expr->infix.op)
+        dnleft = left->type == MC_EXPR_NUMBERLITERAL ? left->exprlitnumber : left->exprlitbool;
+        dnright = right->type == MC_EXPR_NUMBERLITERAL ? right->exprlitnumber : right->exprlitbool;
+        switch(expr->exprinfix.op)
         {
             case OPERATOR_PLUS:
             {
-                res = expression_make_number_literal(state, leftval + rightval);
+                res = expression_make_number_literal(state, mc_mathutil_add(dnleft, dnright));
                 break;
             }
             case OPERATOR_MINUS:
             {
-                res = expression_make_number_literal(state, leftval - rightval);
+                res = expression_make_number_literal(state, mc_mathutil_sub(dnleft, dnright));
                 break;
             }
             case OPERATOR_ASTERISK:
             {
-                res = expression_make_number_literal(state, leftval * rightval);
+                res = expression_make_number_literal(state, mc_mathutil_mult(dnleft, dnright));
                 break;
             }
             case OPERATOR_SLASH:
             {
-                res = expression_make_number_literal(state, leftval / rightval);
+                res = expression_make_number_literal(state, mc_mathutil_div(dnleft, dnright));
                 break;
             }
             case OPERATOR_LT:
             {
-                res = expression_make_bool_literal(state, leftval < rightval);
+                res = expression_make_bool_literal(state, dnleft < dnright);
                 break;
             }
             case OPERATOR_LTE:
             {
-                res = expression_make_bool_literal(state, leftval <= rightval);
+                res = expression_make_bool_literal(state, dnleft <= dnright);
                 break;
             }
             case OPERATOR_GT:
             {
-                res = expression_make_bool_literal(state, leftval > rightval);
+                res = expression_make_bool_literal(state, dnleft > dnright);
                 break;
             }
             case OPERATOR_GTE:
             {
-                res = expression_make_bool_literal(state, leftval >= rightval);
+                res = expression_make_bool_literal(state, dnleft >= dnright);
                 break;
             }
             case OPERATOR_EQ:
             {
-                res = expression_make_bool_literal(state, ARCANE_DBLEQ(leftval, rightval));
+                res = expression_make_bool_literal(state, MC_UTIL_CMPFLOAT(dnleft, dnright));
                 break;
             }
             case OPERATOR_NOT_EQ:
             {
-                res = expression_make_bool_literal(state, !ARCANE_DBLEQ(leftval, rightval));
+                res = expression_make_bool_literal(state, !MC_UTIL_CMPFLOAT(dnleft, dnright));
                 break;
             }
             case OPERATOR_MODULUS:
             {
-                res = expression_make_number_literal(state, fmod(leftval, rightval));
+                res = expression_make_number_literal(state, mc_mathutil_mod(dnleft, dnright));
                 break;
             }
             case OPERATOR_BIT_AND:
             {
-                res = expression_make_number_literal(state, (double)(leftvalint & rightvalint));
+                res = expression_make_number_literal(state, mc_mathutil_binand(dnleft, dnright));
                 break;
             }
             case OPERATOR_BIT_OR:
             {
-                res = expression_make_number_literal(state, (double)(leftvalint | rightvalint));
+                res = expression_make_number_literal(state, mc_mathutil_binor(dnleft, dnright));
                 break;
             }
             case OPERATOR_BIT_XOR:
             {
-                res = expression_make_number_literal(state, (double)(leftvalint ^ rightvalint));
+                res = expression_make_number_literal(state, mc_mathutil_binxor(dnleft, dnright));
                 break;
             }
             case OPERATOR_LSHIFT:
             {
-                res = expression_make_number_literal(state, (double)(leftvalint << rightvalint));
+                res = expression_make_number_literal(state, mc_mathutil_binshiftleft(dnleft, dnright));
                 break;
             }
             case OPERATOR_RSHIFT:
             {
-                res = expression_make_number_literal(state, (double)(leftvalint >> rightvalint));
+                res = expression_make_number_literal(state, mc_mathutil_binshiftright(dnleft, dnright));
                 break;
             }
             default:
@@ -6625,50 +7192,55 @@ TMPSTATIC mcastexpression_t* optimise_infix_expression(mcastexpression_t* expr)
             }
         }
     }
-    else if(expr->infix.op == OPERATOR_PLUS && leftisstring && rightisstring)
+    else if(expr->exprinfix.op == OPERATOR_PLUS && leftisstring && rightisstring)
     {
-        const char* strleft = left->string_literal;
-        const char* strright = right->string_literal;
-        char* resstr = arcane_stringf(state, "%s%s", strleft, strright);
+        /* TODO:FIXME: horrible method of joining strings!!!!!!! */
+        char* resstr;
+        const char* strleft;
+        const char* strright;
+        strleft = left->exprlitstring.data;
+        strright = right->exprlitstring.data;
+        resstr = mc_util_stringallocfmt(state, "%s%s", strleft, strright);
+        len = strlen(resstr);
         if(resstr)
         {
-            res = expression_make_string_literal(state, resstr);
+            res = expression_make_string_literal(state, resstr, len);
             if(!res)
             {
-                allocator_free(state, resstr);
+                mc_allocator_free(state, resstr);
             }
         }
     }
-
-    expression_destroy(leftoptimised);
-    expression_destroy(rightoptimised);
-
+    expression_destroy(leftoptimized);
+    expression_destroy(rightoptimized);
     if(res)
     {
         res->pos = expr->pos;
     }
-
     return res;
 }
 
-TMPSTATIC mcastexpression_t* optimise_prefix_expression(mcastexpression_t* expr)
+TMPSTATIC mcastexpression_t* mc_optimizer_optprefixexpr(mcastexpression_t* expr)
 {
-    mcastexpression_t* right = expr->prefix.right;
-    mcastexpression_t* rightoptimised = optimise_expression(right);
-    if(rightoptimised)
+    mcastexpression_t* res;
+    mcastexpression_t* right;
+    mcastexpression_t* rightoptimized;
+    right = expr->exprprefix.right;
+    rightoptimized = mc_optimizer_optexpression(right);
+    if(rightoptimized)
     {
-        right = rightoptimised;
+        right = rightoptimized;
     }
-    mcastexpression_t* res = NULL;
-    if(expr->prefix.op == OPERATOR_MINUS && right->type == MC_EXPR_NUMBERLITERAL)
+    res = NULL;
+    if(expr->exprprefix.op == OPERATOR_MINUS && right->type == MC_EXPR_NUMBERLITERAL)
     {
-        res = expression_make_number_literal(expr->pstate, -right->number_literal);
+        res = expression_make_number_literal(expr->pstate, -right->exprlitnumber);
     }
-    else if(expr->prefix.op == OPERATOR_BANG && right->type == MC_EXPR_BOOLLITERAL)
+    else if(expr->exprprefix.op == OPERATOR_BANG && right->type == MC_EXPR_BOOLLITERAL)
     {
-        res = expression_make_bool_literal(expr->pstate, !right->bool_literal);
+        res = expression_make_bool_literal(expr->pstate, !right->exprlitbool);
     }
-    expression_destroy(rightoptimised);
+    expression_destroy(rightoptimized);
     if(res)
     {
         res->pos = expr->pos;
@@ -6679,6 +7251,7 @@ TMPSTATIC mcastexpression_t* optimise_prefix_expression(mcastexpression_t* expr)
 TMPSTATIC mcstate_t* mc_state_make(void* ctx)
 {
     mcstate_t* state;
+    (void)ctx;
     state = (mcstate_t*)malloc(sizeof(mcstate_t));
     if(!state)
     {
@@ -6715,182 +7288,168 @@ err:
     return NULL;
 }
 
-TMPSTATIC void arcane_destroy(mcstate_t* state)
+TMPSTATIC void mc_state_destroy(mcstate_t* state)
 {
     if(!state)
     {
         return;
     }
     arcane_deinit(state);
-    allocator_free(state, state);
+    mc_allocator_free(state, state);
 }
 
-TMPSTATIC void arcane_free_allocated(mcstate_t* state, void* ptr)
+TMPSTATIC void mc_state_freeallocated(mcstate_t* state, void* ptr)
 {
-    allocator_free(state, ptr);
+    mc_allocator_free(state, ptr);
 }
 
-TMPSTATIC void arcane_set_repl_mode(mcstate_t* state, bool enabled)
+TMPSTATIC void mc_state_setreplmode(mcstate_t* state, bool enabled)
 {
-    state->config.repl_mode = enabled;
+    state->config.replmode = enabled;
 }
 
-TMPSTATIC bool arcane_set_timeout(mcstate_t* state, double max_execution_time_ms)
+TMPSTATIC bool mc_state_settimeout(mcstate_t* state, double maxexecms)
 {
     if(!arcane_timer_platform_supported())
     {
-        state->config.max_execution_time_ms = 0;
-        state->config.max_execution_time_set = false;
+        state->config.maxexecutiontime = 0;
+        state->config.havemaxexectime = false;
         return false;
     }
-
-    if(max_execution_time_ms >= 0)
+    if(maxexecms >= 0)
     {
-        state->config.max_execution_time_ms = max_execution_time_ms;
-        state->config.max_execution_time_set = true;
+        state->config.maxexecutiontime = maxexecms;
+        state->config.havemaxexectime = true;
     }
     else
     {
-        state->config.max_execution_time_ms = 0;
-        state->config.max_execution_time_set = false;
+        state->config.maxexecutiontime = 0;
+        state->config.havemaxexectime = false;
     }
     return true;
 }
 
-TMPSTATIC void arcane_set_stdout_write_function(mcstate_t* state, arcanestdoutwritefn stdoutwrite, void* context)
+TMPSTATIC void mc_state_setstdoutwritefunction(mcstate_t* state, mcstdoutwritefn_t stdoutwrite, void* context)
 {
-    state->config.stdio.write.fnprintto = stdoutwrite;
-    state->config.stdio.write.context = context;
+    state->config.stdio.fnprintto = stdoutwrite;
+    state->config.stdio.context = context;
 }
 
-TMPSTATIC void arcane_set_file_write_function(mcstate_t* state, arcanewritefilefn filewrite, void* context)
+TMPSTATIC void mc_state_setfilewritefunction(mcstate_t* state, mcwritefilefn_t filewrite, void* context)
 {
-    state->config.fileio.write_file.write_file = filewrite;
-    state->config.fileio.write_file.context = context;
+    state->config.fileio.fnwritefile = filewrite;
+    state->config.fileio.context = context;
 }
 
-TMPSTATIC void arcane_set_file_read_function(mcstate_t* state, arcanereadfilefn fileread, void* context)
+TMPSTATIC void mc_state_setfilereadfunction(mcstate_t* state, mcreadfilefn_t fileread, void* context)
 {
-    state->config.fileio.read_file.read_file = fileread;
-    state->config.fileio.read_file.context = context;
+    state->config.fileio.fnreadfile = fileread;
+    state->config.fileio.context = context;
 }
 
 TMPSTATIC mccompiledprogram_t* mc_state_compilesource(mcstate_t* state, const char* code)
 {
+    mccompiledprogram_t* program;
+    compilation_result_t* compres;
     arcane_clear_errors(state);
-
-    compilation_result_t* comp_res = mc_compiler_compilesource(state->compiler, code);
-
-    if(!comp_res || errors_get_count(&state->errors) > 0)
+    compres = mc_compiler_compilesource(state->compiler, code);
+    if(!compres || errors_get_count(&state->errors) > 0)
     {
         goto err;
     }
-
-    mccompiledprogram_t* program = (mccompiledprogram_t*)allocator_malloc(state, sizeof(mccompiledprogram_t));
+    program = (mccompiledprogram_t*)mc_allocator_alloc(state, sizeof(mccompiledprogram_t));
     if(!program)
     {
         goto err;
     }
     program->pstate = state;
-    program->comp_res = comp_res;
+    program->comp_res = compres;
     return program;
-
 err:
-    compilation_result_destroy(comp_res);
+    compilation_result_destroy(compres);
     return NULL;
 }
 
-
-TMPSTATIC mcvalue_t arcane_execute_program(mcstate_t* state, mccompiledprogram_t* program)
+TMPSTATIC mcvalue_t mc_program_execute(mcstate_t* state, mccompiledprogram_t* program)
 {
     bool ok;
+    mcvalue_t res;
     if(program == NULL)
     {
-        errors_add_error(&state->errors, ARCANE_ERROR_USER, srcposinvalid, "program passed to execute was null.");
+        errors_add_error(&state->errors, MC_ERROR_USER, srcposinvalid, "program passed to execute was null.");
         return mc_value_makenull();
     }
-
     reset_state(state);
-
     if(state != program->pstate)
     {
-        errors_add_error(&state->errors, ARCANE_ERROR_USER, srcposinvalid, "arcane program was compiled with a different arcane instance");
+        errors_add_error(&state->errors, MC_ERROR_USER, srcposinvalid, "arcane program was compiled with a different arcane instance");
         return mc_value_makenull();
     }
-
-    ok = vm_run(state, program->comp_res, mc_compiler_getconstants(state->compiler));
+    ok = mc_vm_runexecfunc(state, program->comp_res, mc_compiler_getconstants(state->compiler));
     if(!ok || errors_get_count(&state->errors) > 0)
     {
         return mc_value_makenull();
     }
-
-    ARCANE_ASSERT(state->sp == 0);
-
-    mcvalue_t res = vm_get_last_popped(state);
-    if(res.type == ARCANE_OBJECT_NONE)
+    MC_ASSERT(state->sp == 0);
+    res = vm_get_last_popped(state);
+    if(res.type == MC_OBJ_NONE)
     {
         return mc_value_makenull();
     }
-
     return res;
 }
 
-TMPSTATIC void arcane_program_destroy(mccompiledprogram_t* program)
+TMPSTATIC void mc_program_destroy(mccompiledprogram_t* program)
 {
     if(!program)
     {
         return;
     }
     compilation_result_destroy(program->comp_res);
-    allocator_free(program->pstate, program);
+    mc_allocator_free(program->pstate, program);
 }
 
-TMPSTATIC mcvalue_t arcane_execute(mcstate_t* state, const char* code)
+TMPUNUSED mcvalue_t arcane_execute(mcstate_t* state, const char* code)
 {
     bool ok;
+    mcvalue_t res;
+    compilation_result_t* compres;
     reset_state(state);
-
-    compilation_result_t* comp_res = mc_compiler_compilesource(state->compiler, code);
-
-    if(!comp_res || errors_get_count(&state->errors) > 0)
+    compres = mc_compiler_compilesource(state->compiler, code);
+    if(!compres || errors_get_count(&state->errors) > 0)
     {
         goto err;
     }
-
-    ok = vm_run(state, comp_res, mc_compiler_getconstants(state->compiler));
+    ok = mc_vm_runexecfunc(state, compres, mc_compiler_getconstants(state->compiler));
     if(!ok || errors_get_count(&state->errors) > 0)
     {
         goto err;
     }
-
-    ARCANE_ASSERT(state->sp == 0);
-
-    mcvalue_t res = vm_get_last_popped(state);
-    if(res.type == ARCANE_OBJECT_NONE)
+    MC_ASSERT(state->sp == 0);
+    res = vm_get_last_popped(state);
+    if(res.type == MC_OBJ_NONE)
     {
         goto err;
     }
-
-    compilation_result_destroy(comp_res);
-
+    compilation_result_destroy(compres);
     return res;
-
 err:
-    compilation_result_destroy(comp_res);
+    compilation_result_destroy(compres);
     return mc_value_makenull();
 }
 
 
-TMPSTATIC mcvalue_t arcane_call(mcstate_t* state, const char* function_name, int argc, mcvalue_t* args)
+TMPUNUSED mcvalue_t arcane_call(mcstate_t* state, const char* function_name, int argc, mcvalue_t* args)
 {
+    mcvalue_t res;
+    mcvalue_t callee;
     reset_state(state);
-
-    mcvalue_t callee = arcane_get_object(state, function_name);
-    if(callee.type == ARCANE_OBJECT_NULL)
+    callee = arcane_get_object(state, function_name);
+    if(callee.type == MC_OBJ_NULL)
     {
         return mc_value_makenull();
     }
-    mcvalue_t res = vm_call(state, mc_compiler_getconstants(state->compiler), callee, argc, (mcvalue_t*)args);
+    res = vm_call(state, mc_compiler_getconstants(state->compiler), callee, argc, (mcvalue_t*)args);
     if(errors_get_count(&state->errors) > 0)
     {
         return mc_value_makenull();
@@ -6898,12 +7457,12 @@ TMPSTATIC mcvalue_t arcane_call(mcstate_t* state, const char* function_name, int
     return res;
 }
 
-TMPSTATIC bool arcane_has_errors(mcstate_t* state)
+TMPSTATIC bool mc_state_haserrors(mcstate_t* state)
 {
-    return arcane_errors_count(state) > 0;
+    return mc_state_errorcount(state) > 0;
 }
 
-TMPSTATIC int arcane_errors_count(mcstate_t* state)
+TMPSTATIC int mc_state_errorcount(mcstate_t* state)
 {
     return errors_get_count(&state->errors);
 }
@@ -6913,14 +7472,15 @@ TMPSTATIC void arcane_clear_errors(mcstate_t* state)
     errors_clear(&state->errors);
 }
 
-TMPSTATIC mcerror_t* arcane_get_error(mcstate_t* state, int index)
+TMPSTATIC mcerror_t* mc_state_geterror(mcstate_t* state, int index)
 {
     return (mcerror_t*)errors_getc(&state->errors, index);
 }
 
-TMPSTATIC bool arcane_set_native_function(mcstate_t* state, const char* name, arcanenativefn fn, void* data)
+TMPSTATIC bool mc_state_setnativefunction(mcstate_t* state, const char* name, mcnativefn_t fn, void* data)
 {
-    mcvalue_t obj = arcane_object_make_native_function_with_name(state, name, fn, data);
+    mcvalue_t obj;
+    obj = arcane_object_make_native_function_with_name(state, name, fn, data);
     if(arcane_object_is_null(obj))
     {
         return false;
@@ -6936,85 +7496,92 @@ TMPSTATIC bool arcane_set_global_constant(mcstate_t* state, const char* name, mc
 TMPSTATIC mcvalue_t arcane_get_object(mcstate_t* state, const char* name)
 {
     bool ok;
-    mcastsymtable_t* st = mc_compiler_getsymtable(state->compiler);
-    mcastsymbol_t* symbol = symbol_table_resolve(st, name);
+    mcvalue_t res;
+    mcastsymbol_t* symbol;
+    mcastsymtable_t* st;
+    st = mc_compiler_getsymtable(state->compiler);
+    symbol = symbol_table_resolve(st, name);
     if(!symbol)
     {
-        errors_add_errorf(&state->errors, ARCANE_ERROR_USER, srcposinvalid, "Symbol \"%s\" is not defined", name);
+        errors_add_errorf(&state->errors, MC_ERROR_USER, srcposinvalid, "Symbol \"%s\" is not defined", name);
         return mc_value_makenull();
     }
-    mcvalue_t res = mc_value_makenull();
+    res = mc_value_makenull();
     if(symbol->type == SYMBOL_MODULE_GLOBAL)
     {
         res = vm_get_global(state, symbol->index);
     }
-    else if(symbol->type == SYMBOL_ARCANE_GLOBAL)
+    else if(symbol->type == SYMBOL_GLOBALBUILTIN)
     {
         ok = false;
         res = global_store_get_object_at(state->global_store, symbol->index, &ok);
         if(!ok)
         {
-            errors_add_errorf(&state->errors, ARCANE_ERROR_USER, srcposinvalid, "Failed to get global object at %d", symbol->index);
+            errors_add_errorf(&state->errors, MC_ERROR_USER, srcposinvalid, "Failed to get global object at %d", symbol->index);
             return mc_value_makenull();
         }
     }
     else
     {
-        errors_add_errorf(&state->errors, ARCANE_ERROR_USER, srcposinvalid, "Value associated with symbol \"%s\" could not be loaded", name);
+        errors_add_errorf(&state->errors, MC_ERROR_USER, srcposinvalid, "Value associated with symbol \"%s\" could not be loaded", name);
         return mc_value_makenull();
     }
     return res;
 }
 
-TMPSTATIC mcvalue_t arcane_object_make_error(mcstate_t* state, const char* msg)
+TMPUNUSED mcvalue_t arcane_object_make_error(mcstate_t* state, const char* msg)
 {
     return object_make_error(state, msg);
 }
 
-TMPSTATIC mcvalue_t arcane_object_make_errorf(mcstate_t* state, const char* fmt, ...)
+TMPUNUSED mcvalue_t arcane_object_make_errorf(mcstate_t* state, const char* fmt, ...)
 {
+    int towrite;
+    int written;
+    char* res;
     va_list args;
     va_start(args, fmt);
-    int towrite = vsnprintf(NULL, 0, fmt, args);
+    towrite = vsnprintf(NULL, 0, fmt, args);
     va_end(args);
     va_start(args, fmt);
-    char* res = (char*)allocator_malloc(state, towrite + 1);
+    res = (char*)mc_allocator_alloc(state, towrite + 1);
     if(!res)
     {
         return mc_value_makenull();
     }
-    int written = vsprintf(res, fmt, args);
+    written = vsprintf(res, fmt, args);
     (void)written;
-    ARCANE_ASSERT(written == towrite);
+    MC_ASSERT(written == towrite);
     va_end(args);
     return object_make_error_no_copy(state, res);
 }
 
 TMPSTATIC bool arcane_object_is_null(mcvalue_t obj)
 {
-    return obj.type == ARCANE_OBJECT_NULL;
+    return obj.type == MC_OBJ_NULL;
 }
-
 
 TMPSTATIC void arcane_set_runtime_error(mcstate_t* state, const char* message)
 {
-    errors_add_error(&state->errors, ARCANE_ERROR_RUNTIME, srcposinvalid, message);
+    errors_add_error(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, message);
 }
 
 TMPSEMISTATIC void arcane_set_runtime_errorf(mcstate_t* state, const char* fmt, ...)
 {
+    int written;
+    int towrite;
     va_list args;
-    va_start(args, fmt);
-    int towrite = vsnprintf(NULL, 0, fmt, args);
-    (void)towrite;
-    va_end(args);
-    va_start(args, fmt);
     char res[MC_CONF_ERROR_MSGMAXLENGTH];
-    int written = vsnprintf(res, MC_CONF_ERROR_MSGMAXLENGTH, fmt, args);
+    (void)towrite;
     (void)written;
-    ARCANE_ASSERT(towrite == written);
+    va_start(args, fmt);
+    towrite = vsnprintf(NULL, 0, fmt, args);
     va_end(args);
-    errors_add_error(&state->errors, ARCANE_ERROR_RUNTIME, srcposinvalid, res);
+    va_start(args, fmt);
+    written = vsnprintf(res, MC_CONF_ERROR_MSGMAXLENGTH, fmt, args);
+    MC_ASSERT(towrite == written);
+    va_end(args);
+    errors_add_error(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, res);
 }
 
 TMPSTATIC mcobjtype_t object_get_type(mcvalue_t v)
@@ -7024,95 +7591,62 @@ TMPSTATIC mcobjtype_t object_get_type(mcvalue_t v)
 
 TMPSTATIC bool object_is_numeric(mcvalue_t obj)
 {
-    mcobjtype_t type = object_get_type(obj);
-    return type == ARCANE_OBJECT_NUMBER || type == ARCANE_OBJECT_BOOL;
+    mcobjtype_t type;
+    type = object_get_type(obj);
+    return type == MC_OBJ_NUMBER || type == MC_OBJ_BOOL;
 }
 
 TMPSTATIC bool object_is_null(mcvalue_t obj)
 {
-    return object_get_type(obj) == ARCANE_OBJECT_NULL;
+    return object_get_type(obj) == MC_OBJ_NULL;
 }
 
 TMPSTATIC bool object_is_callable(mcvalue_t obj)
 {
-    mcobjtype_t type = object_get_type(obj);
-    return type == ARCANE_OBJECT_NATIVE_FUNCTION || type == ARCANE_OBJECT_FUNCTION;
-}
-
-TMPSTATIC mcobjtype_t arcane_object_get_type(mcvalue_t arcaneobj)
-{
-    mcvalue_t obj = arcaneobj;
-    switch(object_get_type(obj))
-    {
-        case ARCANE_OBJECT_NONE:
-            return ARCANE_OBJECT_NONE;
-        case ARCANE_OBJECT_ERROR:
-            return ARCANE_OBJECT_ERROR;
-        case ARCANE_OBJECT_NUMBER:
-            return ARCANE_OBJECT_NUMBER;
-        case ARCANE_OBJECT_BOOL:
-            return ARCANE_OBJECT_BOOL;
-        case ARCANE_OBJECT_STRING:
-            return ARCANE_OBJECT_STRING;
-        case ARCANE_OBJECT_NULL:
-            return ARCANE_OBJECT_NULL;
-        case ARCANE_OBJECT_NATIVE_FUNCTION:
-            return ARCANE_OBJECT_NATIVE_FUNCTION;
-        case ARCANE_OBJECT_ARRAY:
-            return ARCANE_OBJECT_ARRAY;
-        case ARCANE_OBJECT_MAP:
-            return ARCANE_OBJECT_MAP;
-        case ARCANE_OBJECT_FUNCTION:
-            return ARCANE_OBJECT_FUNCTION;
-        case ARCANE_OBJECT_EXTERNAL:
-            return ARCANE_OBJECT_EXTERNAL;
-        case ARCANE_OBJECT_FREED:
-            return ARCANE_OBJECT_FREED;
-        case ARCANE_OBJECT_ANY:
-            return ARCANE_OBJECT_ANY;
-        default:
-            return ARCANE_OBJECT_NONE;
-    }
+    mcobjtype_t type;
+    type = object_get_type(obj);
+    return type == MC_OBJ_NATIVE_FUNCTION || type == MC_OBJ_FUNCTION;
 }
 
 TMPSTATIC const char* arcane_object_get_type_name(mcobjtype_t type)
 {
     switch(type)
     {
-        case ARCANE_OBJECT_NONE:
+        case MC_OBJ_NONE:
             return "NONE";
-        case ARCANE_OBJECT_ERROR:
+        case MC_OBJ_ERROR:
             return "ERROR";
-        case ARCANE_OBJECT_NUMBER:
+        case MC_OBJ_NUMBER:
             return "NUMBER";
-        case ARCANE_OBJECT_BOOL:
+        case MC_OBJ_BOOL:
             return "BOOL";
-        case ARCANE_OBJECT_STRING:
+        case MC_OBJ_STRING:
             return "STRING";
-        case ARCANE_OBJECT_NULL:
+        case MC_OBJ_NULL:
             return "NULL";
-        case ARCANE_OBJECT_NATIVE_FUNCTION:
+        case MC_OBJ_NATIVE_FUNCTION:
             return "NATIVE_FUNCTION";
-        case ARCANE_OBJECT_ARRAY:
+        case MC_OBJ_ARRAY:
             return "ARRAY";
-        case ARCANE_OBJECT_MAP:
+        case MC_OBJ_MAP:
             return "MAP";
-        case ARCANE_OBJECT_FUNCTION:
+        case MC_OBJ_FUNCTION:
             return "FUNCTION";
-        case ARCANE_OBJECT_EXTERNAL:
+        case MC_OBJ_EXTERNAL:
             return "EXTERNAL";
-        case ARCANE_OBJECT_FREED:
+        case MC_OBJ_FREED:
             return "FREED";
-        case ARCANE_OBJECT_ANY:
+        case MC_OBJ_ANY:
             return "ANY";
         default:
-            return "NONE";
+            break;
     }
+    return "NONE";
 }
 
-TMPSTATIC const char* arcane_object_get_string(mcvalue_t obj)
+TMPUNUSED const char* arcane_object_get_string(mcvalue_t obj)
 {
-    return object_get_string(obj);
+    return mc_value_stringgetdata(obj);
 }
 
 TMPSTATIC mcvalue_t mc_object_makedatafrom(mcobjtype_t type, mcobjdata_t* data)
@@ -7140,7 +7674,7 @@ TMPSTATIC mcvalue_t mc_value_makeempty(mcobjtype_t t)
 TMPSTATIC mcvalue_t mc_value_makenumber(double val)
 {
     mcvalue_t o;
-    o = mc_value_makeempty(ARCANE_OBJECT_NUMBER);
+    o = mc_value_makeempty(MC_OBJ_NUMBER);
     o.valnumber = val;
     /*
     if((o.objdatahandle & MC_CONF_OBJECT_PATTERN) == MC_CONF_OBJECT_PATTERN)
@@ -7154,7 +7688,7 @@ TMPSTATIC mcvalue_t mc_value_makenumber(double val)
 TMPSTATIC mcvalue_t mc_value_makebool(bool val)
 {
     mcvalue_t o;
-    o = mc_value_makeempty(ARCANE_OBJECT_BOOL);
+    o = mc_value_makeempty(MC_OBJ_BOOL);
     o.valbool = val;
     /*
     o.objdatahandle = MC_CONF_OBJECT_HDRBOOL | val;
@@ -7165,7 +7699,7 @@ TMPSTATIC mcvalue_t mc_value_makebool(bool val)
 TMPSTATIC mcvalue_t mc_value_makenull()
 {
     mcvalue_t o;
-    o = mc_value_makeempty(ARCANE_OBJECT_NULL);
+    o = mc_value_makeempty(MC_OBJ_NULL);
     /*
     o.objdatahandle = MC_CONF_OBJECT_NULLPATTERN;
     */
@@ -7175,7 +7709,8 @@ TMPSTATIC mcvalue_t mc_value_makenull()
 TMPSTATIC mcvalue_t mc_value_makestrcapacity(mcstate_t* vm, int capacity)
 {
     bool ok;
-    mcobjdata_t* data = gcmem_get_object_data_from_pool(vm, ARCANE_OBJECT_STRING);
+    mcobjdata_t* data;
+    data = gcmem_get_object_data_from_pool(vm, MC_OBJ_STRING);
     if(!data)
     {
         data = gcmem_alloc_object_data(vm);
@@ -7183,38 +7718,43 @@ TMPSTATIC mcvalue_t mc_value_makestrcapacity(mcstate_t* vm, int capacity)
         {
             return mc_value_makenull();
         }
-        data->string.capacity = MC_CONF_OBJECT_STRING_BUF_SIZE - 1;
-        data->string.is_allocated = false;
+        data->valstring.capacity = MC_CONF_OBJECT_STRING_BUF_SIZE - 1;
+        data->valstring.is_allocated = false;
+        data->valstring.data = data->valstring.actualonstack;
     }
-    data->string.length = 0;
-    data->string.hash = 0;
-    if(capacity > data->string.capacity)
+    data->valstring.length = 0;
+    data->valstring.hash = 0;
+    if(capacity > data->valstring.capacity)
     {
-        ok = object_data_string_reserve_capacity(data, capacity);
+        ok = mc_value_stringreservecapacity(data, capacity);
         if(!ok)
         {
             return mc_value_makenull();
         }
     }
-    return mc_object_makedatafrom(ARCANE_OBJECT_STRING, data);
+    return mc_object_makedatafrom(MC_OBJ_STRING, data);
 }
 
-TMPSTATIC mcvalue_t mc_value_makestrformat(mcstate_t* vm, const char* fmt, ...)
+TMPUNUSED mcvalue_t mc_value_makestrformat(mcstate_t* vm, const char* fmt, ...)
 {
+    int towrite;
+    int written;
+    char* resbuf;
     va_list args;
+    mcvalue_t res;
+    (void)written;
     va_start(args, fmt);
-    int towrite = vsnprintf(NULL, 0, fmt, args);
+    towrite = vsnprintf(NULL, 0, fmt, args);
     va_end(args);
     va_start(args, fmt);
-    mcvalue_t res = mc_value_makestrcapacity(vm, towrite);
+    res = mc_value_makestrcapacity(vm, towrite);
     if(object_is_null(res))
     {
         return mc_value_makenull();
     }
-    char* resbuf = object_get_mutable_string(res);
-    int written = vsprintf(resbuf, fmt, args);
-    (void)written;
-    ARCANE_ASSERT(written == towrite);
+    resbuf = mc_value_stringgetmutabledata(res);
+    written = vsprintf(resbuf, fmt, args);
+    MC_ASSERT(written == towrite);
     va_end(args);
     object_set_string_length(res, towrite);
     return res;
@@ -7229,7 +7769,7 @@ TMPSTATIC mcvalue_t mc_value_makestringlen(mcstate_t* vm, const char* string, si
     {
         return res;
     }
-    ok = mc_value_strappend(res, string, len);
+    ok = mc_value_stringappend(res, string, len);
     if(!ok)
     {
         return mc_value_makenull();
@@ -7242,18 +7782,19 @@ TMPSTATIC mcvalue_t mc_value_makestring(mcstate_t* vm, const char* string)
     return mc_value_makestringlen(vm, string, strlen(string));
 }
 
-TMPSTATIC mcvalue_t object_make_native_function(mcstate_t* vm, const char* name, nativefn fn, void* data, int data_len)
+TMPSTATIC mcvalue_t object_make_native_function(mcstate_t* vm, const char* name, mcnativeactualfn_t fn, void* data, int data_len)
 {
+    mcobjdata_t* obj;
     if(data_len > NATIVE_FN_MAX_DATA_LEN)
     {
         return mc_value_makenull();
     }
-    mcobjdata_t* obj = gcmem_alloc_object_data(vm);
+    obj = gcmem_alloc_object_data(vm);
     if(!obj)
     {
         return mc_value_makenull();
     }
-    obj->native_function.name = arcane_strdup(vm, name);
+    obj->native_function.name = mc_util_strdup(vm, name);
     if(!obj->native_function.name)
     {
         return mc_value_makenull();
@@ -7264,7 +7805,7 @@ TMPSTATIC mcvalue_t object_make_native_function(mcstate_t* vm, const char* name,
         memcpy(obj->native_function.data, data, data_len);
     }
     obj->native_function.data_len = data_len;
-    return mc_object_makedatafrom(ARCANE_OBJECT_NATIVE_FUNCTION, obj);
+    return mc_object_makedatafrom(MC_OBJ_NATIVE_FUNCTION, obj);
 }
 
 TMPSTATIC mcvalue_t object_make_array(mcstate_t* vm)
@@ -7274,11 +7815,12 @@ TMPSTATIC mcvalue_t object_make_array(mcstate_t* vm)
 
 TMPSTATIC mcvalue_t object_make_array_with_capacity(mcstate_t* vm, unsigned capacity)
 {
-    mcobjdata_t* data = gcmem_get_object_data_from_pool(vm, ARCANE_OBJECT_ARRAY);
+    mcobjdata_t* data;
+    data = gcmem_get_object_data_from_pool(vm, MC_OBJ_ARRAY);
     if(data)
     {
         array_clear(data->array);
-        return mc_object_makedatafrom(ARCANE_OBJECT_ARRAY, data);
+        return mc_object_makedatafrom(MC_OBJ_ARRAY, data);
     }
     data = gcmem_alloc_object_data(vm);
     if(!data)
@@ -7290,7 +7832,7 @@ TMPSTATIC mcvalue_t object_make_array_with_capacity(mcstate_t* vm, unsigned capa
     {
         return mc_value_makenull();
     }
-    return mc_object_makedatafrom(ARCANE_OBJECT_ARRAY, data);
+    return mc_object_makedatafrom(MC_OBJ_ARRAY, data);
 }
 
 TMPSTATIC mcvalue_t object_make_map(mcstate_t* vm)
@@ -7300,11 +7842,12 @@ TMPSTATIC mcvalue_t object_make_map(mcstate_t* vm)
 
 TMPSTATIC mcvalue_t object_make_map_with_capacity(mcstate_t* vm, unsigned capacity)
 {
-    mcobjdata_t* data = gcmem_get_object_data_from_pool(vm, ARCANE_OBJECT_MAP);
+    mcobjdata_t* data;
+    data = gcmem_get_object_data_from_pool(vm, MC_OBJ_MAP);
     if(data)
     {
         valdict_clear(data->map);
-        return mc_object_makedatafrom(ARCANE_OBJECT_MAP, data);
+        return mc_object_makedatafrom(MC_OBJ_MAP, data);
     }
     data = gcmem_alloc_object_data(vm);
     if(!data)
@@ -7316,22 +7859,24 @@ TMPSTATIC mcvalue_t object_make_map_with_capacity(mcstate_t* vm, unsigned capaci
     {
         return mc_value_makenull();
     }
-    valdict_set_hash_function(data->map, (collectionshashfn)object_hash);
-    valdict_set_equals_function(data->map, (collectionsequalsfn)object_equals_wrapped);
-    return mc_object_makedatafrom(ARCANE_OBJECT_MAP, data);
+    valdict_set_hash_function(data->map, (mccollectionshashfn_t)object_hash);
+    valdict_set_equals_function(data->map, (mccollectionsequalsfn_t)object_equals_wrapped);
+    return mc_object_makedatafrom(MC_OBJ_MAP, data);
 }
 
 TMPSTATIC mcvalue_t object_make_error(mcstate_t* vm, const char* error)
 {
-    char* errorstr = arcane_strdup(vm, error);
+    char* errorstr;
+    mcvalue_t res;
+    errorstr = mc_util_strdup(vm, error);
     if(!errorstr)
     {
         return mc_value_makenull();
     }
-    mcvalue_t res = object_make_error_no_copy(vm, errorstr);
+    res = object_make_error_no_copy(vm, errorstr);
     if(object_is_null(res))
     {
-        allocator_free(vm, errorstr);
+        mc_allocator_free(vm, errorstr);
         return mc_value_makenull();
     }
     return res;
@@ -7339,51 +7884,56 @@ TMPSTATIC mcvalue_t object_make_error(mcstate_t* vm, const char* error)
 
 TMPSTATIC mcvalue_t object_make_error_no_copy(mcstate_t* vm, char* error)
 {
-    mcobjdata_t* data = gcmem_alloc_object_data(vm);
+    mcobjdata_t* data;
+    data = gcmem_alloc_object_data(vm);
     if(!data)
     {
         return mc_value_makenull();
     }
     data->error.message = error;
     data->error.traceback = NULL;
-    return mc_object_makedatafrom(ARCANE_OBJECT_ERROR, data);
+    return mc_object_makedatafrom(MC_OBJ_ERROR, data);
 }
 
-TMPSTATIC mcvalue_t object_make_errorf(mcstate_t* vm, const char* fmt, ...)
+TMPUNUSED mcvalue_t object_make_errorf(mcstate_t* vm, const char* fmt, ...)
 {
+    int towrite;
+    int written;
+    char* res;
     va_list args;
+    mcvalue_t resobj;
+    (void)written;
     va_start(args, fmt);
-    int towrite = vsnprintf(NULL, 0, fmt, args);
+    towrite = vsnprintf(NULL, 0, fmt, args);
     va_end(args);
     va_start(args, fmt);
-    char* res = (char*)allocator_malloc(vm, towrite + 1);
+    res = (char*)mc_allocator_alloc(vm, towrite + 1);
     if(!res)
     {
         return mc_value_makenull();
     }
-    int written = vsprintf(res, fmt, args);
-    (void)written;
-    ARCANE_ASSERT(written == towrite);
+    written = vsprintf(res, fmt, args);
+    MC_ASSERT(written == towrite);
     va_end(args);
-    mcvalue_t resobj = object_make_error_no_copy(vm, res);
+    resobj = object_make_error_no_copy(vm, res);
     if(object_is_null(resobj))
     {
-        allocator_free(vm, res);
+        mc_allocator_free(vm, res);
         return mc_value_makenull();
     }
     return resobj;
 }
 
-TMPSTATIC mcvalue_t object_make_function(mcstate_t* vm, const char* name, compilation_result_t* comp_res, bool owns_data, int num_locals, int num_args, int free_vals_count)
+TMPSTATIC mcvalue_t object_make_function(mcstate_t* vm, const char* name, compilation_result_t* cres, bool ownsdt, int nlocals, int num_args, int fvc)
 {
     mcobjdata_t* data = gcmem_alloc_object_data(vm);
     if(!data)
     {
         return mc_value_makenull();
     }
-    if(owns_data)
+    if(ownsdt)
     {
-        data->function.name = name ? arcane_strdup(vm, name) : arcane_strdup(vm, "anonymous");
+        data->function.name = name ? mc_util_strdup(vm, name) : mc_util_strdup(vm, "anonymous");
         if(!data->function.name)
         {
             return mc_value_makenull();
@@ -7393,25 +7943,26 @@ TMPSTATIC mcvalue_t object_make_function(mcstate_t* vm, const char* name, compil
     {
         data->function.const_name = name ? name : "anonymous";
     }
-    data->function.comp_result = comp_res;
-    data->function.owns_data = owns_data;
-    data->function.num_locals = num_locals;
+    data->function.comp_result = cres;
+    data->function.owns_data = ownsdt;
+    data->function.num_locals = nlocals;
     data->function.num_args = num_args;
-    if(free_vals_count >= ARCANE_ARRAY_LEN(data->function.free_vals_buf))
+    if(fvc >= MC_UTIL_STATICARRAYSIZE(data->function.free_vals_buf))
     {
-        data->function.free_vals_allocated = (mcvalue_t*)allocator_malloc(vm, sizeof(mcvalue_t) * free_vals_count);
+        data->function.free_vals_allocated = (mcvalue_t*)mc_allocator_alloc(vm, sizeof(mcvalue_t) * fvc);
         if(!data->function.free_vals_allocated)
         {
             return mc_value_makenull();
         }
     }
-    data->function.free_vals_count = free_vals_count;
-    return mc_object_makedatafrom(ARCANE_OBJECT_FUNCTION, data);
+    data->function.free_vals_count = fvc;
+    return mc_object_makedatafrom(MC_OBJ_FUNCTION, data);
 }
 
 TMPSTATIC mcvalue_t object_make_external(mcstate_t* vm, void* data)
 {
-    mcobjdata_t* obj = gcmem_alloc_object_data(vm);
+    mcobjdata_t* obj;
+    obj = gcmem_alloc_object_data(vm);
     if(!obj)
     {
         return mc_value_makenull();
@@ -7419,14 +7970,15 @@ TMPSTATIC mcvalue_t object_make_external(mcstate_t* vm, void* data)
     obj->external.data = data;
     obj->external.data_destroy_fn = NULL;
     obj->external.data_copy_fn = NULL;
-    return mc_object_makedatafrom(ARCANE_OBJECT_EXTERNAL, obj);
+    return mc_object_makedatafrom(MC_OBJ_EXTERNAL, obj);
 }
 
-TMPSTATIC void object_deinit(mcvalue_t obj)
+TMPUNUSED void object_deinit(mcvalue_t obj)
 {
+    mcobjdata_t* data;
     if(object_is_allocated(obj))
     {
-        mcobjdata_t* data = object_get_allocated_data(obj);
+        data = object_get_allocated_data(obj);
         object_data_deinit(data);
     }
 }
@@ -7435,67 +7987,69 @@ TMPSTATIC void object_data_deinit(mcobjdata_t* data)
 {
     switch(data->type)
     {
-        case ARCANE_OBJECT_FREED:
-        {
-            ARCANE_ASSERT(false);
-            return;
-        }
-        case ARCANE_OBJECT_STRING:
-        {
-            if(data->string.is_allocated)
+        case MC_OBJ_FREED:
             {
-                allocator_free(data->pstate, data->string.actualallocated);
+                MC_ASSERT(false);
+                return;
             }
             break;
-        }
-        case ARCANE_OBJECT_FUNCTION:
-        {
-            if(data->function.owns_data)
+        case MC_OBJ_STRING:
             {
-                allocator_free(data->pstate, data->function.name);
-                compilation_result_destroy(data->function.comp_result);
-            }
-            if(freevals_are_allocated(&data->function))
-            {
-                allocator_free(data->pstate, data->function.free_vals_allocated);
+                if(data->valstring.is_allocated)
+                {
+                    mc_allocator_free(data->pstate, data->valstring.actualallocated);
+                }
             }
             break;
-        }
-        case ARCANE_OBJECT_ARRAY:
-        {
-            array_destroy(data->array);
-            break;
-        }
-        case ARCANE_OBJECT_MAP:
-        {
-            valdict_destroy(data->map);
-            break;
-        }
-        case ARCANE_OBJECT_NATIVE_FUNCTION:
-        {
-            allocator_free(data->pstate, data->native_function.name);
-            break;
-        }
-        case ARCANE_OBJECT_EXTERNAL:
-        {
-            if(data->external.data_destroy_fn)
+
+        case MC_OBJ_FUNCTION:
             {
-                data->external.data_destroy_fn(data->external.data);
+                if(data->function.owns_data)
+                {
+                    mc_allocator_free(data->pstate, data->function.name);
+                    compilation_result_destroy(data->function.comp_result);
+                }
+                if(freevals_are_allocated(&data->function))
+                {
+                    mc_allocator_free(data->pstate, data->function.free_vals_allocated);
+                }
             }
             break;
-        }
-        case ARCANE_OBJECT_ERROR:
-        {
-            allocator_free(data->pstate, data->error.message);
-            traceback_destroy(data->error.traceback);
+        case MC_OBJ_ARRAY:
+            {
+                array_destroy(data->array);
+            }
             break;
-        }
+        case MC_OBJ_MAP:
+            {
+                valdict_destroy(data->map);
+            }
+            break;
+        case MC_OBJ_NATIVE_FUNCTION:
+            {
+                mc_allocator_free(data->pstate, data->native_function.name);
+            }
+            break;
+        case MC_OBJ_EXTERNAL:
+            {
+                if(data->external.data_destroy_fn)
+                {
+                    data->external.data_destroy_fn(data->external.data);
+                }
+            }
+            break;
+        case MC_OBJ_ERROR:
+            {
+                mc_allocator_free(data->pstate, data->error.message);
+                traceback_destroy(data->error.traceback);
+            }
+            break;
         default:
-        {
+            {
+            }
             break;
-        }
     }
-    data->type = ARCANE_OBJECT_FREED;
+    data->type = MC_OBJ_FREED;
 }
 
 TMPSTATIC bool object_is_allocated(mcvalue_t object)
@@ -7503,7 +8057,7 @@ TMPSTATIC bool object_is_allocated(mcvalue_t object)
     return object.isallocated;
 }
 
-TMPSTATIC mcgcmemory_t* object_get_mem(mcvalue_t obj)
+TMPUNUSED mcgcmemory_t* object_get_mem(mcvalue_t obj)
 {
     mcobjdata_t* data = object_get_allocated_data(obj);
     return data->mem;
@@ -7534,7 +8088,7 @@ TMPSTATIC const char* arcane_error_get_line(mcerror_t* error)
     {
         return NULL;
     }
-    const char* line = ptrarray_get(lines, error->pos.line);
+    const char* line = (const char*)ptrarray_get(lines, error->pos.line);
     return line;
 }
 
@@ -7560,22 +8114,22 @@ TMPSTATIC mcerrtype_t arcane_error_get_type(mcerror_t* error)
 {
     switch(error->type)
     {
-        case ARCANE_ERROR_NONE:
-            return ARCANE_ERROR_NONE;
-        case ARCANE_ERROR_PARSING:
-            return ARCANE_ERROR_PARSING;
-        case ARCANE_ERROR_COMPILATION:
-            return ARCANE_ERROR_COMPILATION;
-        case ARCANE_ERROR_RUNTIME:
-            return ARCANE_ERROR_RUNTIME;
-        case ARCANE_ERROR_TIMEOUT:
-            return ARCANE_ERROR_TIMEOUT;
-        case ARCANE_ERROR_ALLOCATION:
-            return ARCANE_ERROR_ALLOCATION;
-        case ARCANE_ERROR_USER:
-            return ARCANE_ERROR_USER;
+        case MC_ERROR_NONE:
+            return MC_ERROR_NONE;
+        case MC_ERROR_PARSING:
+            return MC_ERROR_PARSING;
+        case MC_ERROR_COMPILING:
+            return MC_ERROR_COMPILING;
+        case MC_ERROR_RUNTIME:
+            return MC_ERROR_RUNTIME;
+        case MC_ERROR_TIMEOUT:
+            return MC_ERROR_TIMEOUT;
+        case MC_ERROR_MEMORY:
+            return MC_ERROR_MEMORY;
+        case MC_ERROR_USER:
+            return MC_ERROR_USER;
         default:
-            return ARCANE_ERROR_NONE;
+            return MC_ERROR_NONE;
     }
 }
 
@@ -7588,25 +8142,26 @@ TMPSTATIC const char* arcane_error_type_to_string(mcerrtype_t type)
 {
     switch(type)
     {
-        case ARCANE_ERROR_PARSING:
+        case MC_ERROR_PARSING:
             return "PARSING";
-        case ARCANE_ERROR_COMPILATION:
+        case MC_ERROR_COMPILING:
             return "COMPILATION";
-        case ARCANE_ERROR_RUNTIME:
+        case MC_ERROR_RUNTIME:
             return "RUNTIME";
-        case ARCANE_ERROR_TIMEOUT:
+        case MC_ERROR_TIMEOUT:
             return "TIMEOUT";
-        case ARCANE_ERROR_ALLOCATION:
+        case MC_ERROR_MEMORY:
             return "ALLOCATION";
-        case ARCANE_ERROR_USER:
+        case MC_ERROR_USER:
             return "USER";
         default:
             return "NONE";
     }
 }
 
-TMPSTATIC char* arcane_error_serialize(mcstate_t* state, mcerror_t* err)
+TMPSTATIC char* mc_error_serializetostring(mcstate_t* state, mcerror_t* err)
 {
+    int j;
     const char* typestr = arcane_error_get_type_string(err);
     const char* filename = arcane_error_get_filepath(err);
     const char* line = arcane_error_get_line(err);
@@ -7619,22 +8174,22 @@ TMPSTATIC char* arcane_error_serialize(mcstate_t* state, mcerror_t* err)
     }
     if(line)
     {
-        mc_printer_append(buf, line);
-        mc_printer_append(buf, "\n");
+        mc_printer_puts(buf, line);
+        mc_printer_puts(buf, "\n");
         if(colnum >= 0)
         {
-            for(int j = 0; j < (colnum - 1); j++)
+            for(j = 0; j < (colnum - 1); j++)
             {
-                mc_printer_append(buf, " ");
+                mc_printer_puts(buf, " ");
             }
-            mc_printer_append(buf, "^\n");
+            mc_printer_puts(buf, "^\n");
         }
     }
-    mc_printer_appendf(buf, "%s ERROR in \"%s\" on %d:%d: %s\n", typestr, filename, linenum, colnum, arcane_error_get_message(err));
+    mc_printer_printf(buf, "%s ERROR in \"%s\" on %d:%d: %s\n", typestr, filename, linenum, colnum, arcane_error_get_message(err));
     mctraceback_t* traceback = arcane_error_get_traceback(err);
     if(traceback)
     {
-        mc_printer_appendf(buf, "Traceback:\n");
+        mc_printer_printf(buf, "Traceback:\n");
         traceback_to_string((mctraceback_t*)arcane_error_get_traceback(err), buf);
     }
     if(mc_printer_failed(buf))
@@ -7650,14 +8205,14 @@ TMPSTATIC mctraceback_t* arcane_error_get_traceback(mcerror_t* error)
     return (mctraceback_t*)error->traceback;
 }
 
-TMPSTATIC int arcane_traceback_get_depth(mctraceback_t* traceback)
+TMPUNUSED int arcane_traceback_get_depth(mctraceback_t* traceback)
 {
     return array_count(traceback->items);
 }
 
-TMPSTATIC const char* arcane_traceback_get_filepath(mctraceback_t* traceback, int depth)
+TMPUNUSED const char* arcane_traceback_get_filepath(mctraceback_t* traceback, int depth)
 {
-    mctraceitem_t* item = array_get(traceback->items, depth);
+    mctraceitem_t* item = (mctraceitem_t*)array_get(traceback->items, depth);
     if(!item)
     {
         return NULL;
@@ -7665,9 +8220,9 @@ TMPSTATIC const char* arcane_traceback_get_filepath(mctraceback_t* traceback, in
     return traceback_item_get_filepath(item);
 }
 
-TMPSTATIC const char* arcane_traceback_get_line(mctraceback_t* traceback, int depth)
+TMPUNUSED const char* arcane_traceback_get_line(mctraceback_t* traceback, int depth)
 {
-    mctraceitem_t* item = array_get(traceback->items, depth);
+    mctraceitem_t* item = (mctraceitem_t*)array_get(traceback->items, depth);
     if(!item)
     {
         return NULL;
@@ -7675,9 +8230,9 @@ TMPSTATIC const char* arcane_traceback_get_line(mctraceback_t* traceback, int de
     return traceback_item_get_line(item);
 }
 
-int arcane_traceback_get_line_number(mctraceback_t* traceback, int depth)
+TMPUNUSED int arcane_traceback_get_line_number(mctraceback_t* traceback, int depth)
 {
-    mctraceitem_t* item = array_get(traceback->items, depth);
+    mctraceitem_t* item = (mctraceitem_t*)array_get(traceback->items, depth);
     if(!item)
     {
         return -1;
@@ -7685,9 +8240,9 @@ int arcane_traceback_get_line_number(mctraceback_t* traceback, int depth)
     return item->pos.line;
 }
 
-int arcane_traceback_get_column_number(mctraceback_t* traceback, int depth)
+TMPUNUSED int arcane_traceback_get_column_number(mctraceback_t* traceback, int depth)
 {
-    mctraceitem_t* item = array_get(traceback->items, depth);
+    mctraceitem_t* item = (mctraceitem_t*)array_get(traceback->items, depth);
     if(!item)
     {
         return -1;
@@ -7695,9 +8250,9 @@ int arcane_traceback_get_column_number(mctraceback_t* traceback, int depth)
     return item->pos.column;
 }
 
-const char* arcane_traceback_get_function_name(mctraceback_t* traceback, int depth)
+TMPUNUSED const char* arcane_traceback_get_function_name(mctraceback_t* traceback, int depth)
 {
-    mctraceitem_t* item = array_get(traceback->items, depth);
+    mctraceitem_t* item = (mctraceitem_t*)array_get(traceback->items, depth);
     if(!item)
     {
         return "";
@@ -7710,7 +8265,7 @@ TMPSTATIC void arcane_deinit(mcstate_t* state)
     mc_compiler_destroy(state->compiler);
     global_store_destroy(state->global_store);
     gcmem_destroy(state->mem);
-    ptrarray_destroy_with_items_(state->files, (ptrarrayitemdestroyfn)mc_compiledfile_destroy);
+    ptrarray_destroy_with_items_(state->files, (mcptrarrayitemdestroyfn_t)mc_compiledfile_destroy);
     errors_deinit(&state->errors);
     vm_destroy(state);
 }
@@ -7718,10 +8273,10 @@ TMPSTATIC void arcane_deinit(mcstate_t* state)
 TMPSTATIC mcvalue_t arcane_native_fn_wrapper(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)state;
-    mcnatfnbox_t* wrapper = data;
-    ARCANE_ASSERT(state == wrapper->state);
+    mcnatfnbox_t* wrapper = (mcnatfnbox_t*)data;
+    MC_ASSERT(state == wrapper->pstate);
     mcvalue_t res = wrapper->fn(wrapper->pstate, wrapper->data, argc, (mcvalue_t*)args);
-    if(arcane_has_errors(wrapper->pstate))
+    if(mc_state_haserrors(wrapper->pstate))
     {
         return mc_value_makenull();
     }
@@ -7729,7 +8284,7 @@ TMPSTATIC mcvalue_t arcane_native_fn_wrapper(mcstate_t* state, void* data, int a
 }
 
 
-TMPSTATIC mcvalue_t arcane_object_make_native_function_with_name(mcstate_t* state, const char* name, arcanenativefn fn, void* data)
+TMPSTATIC mcvalue_t arcane_object_make_native_function_with_name(mcstate_t* state, const char* name, mcnativefn_t fn, void* data)
 {
     mcnatfnbox_t wrapper;
     memset(&wrapper, 0, sizeof(mcnatfnbox_t));
@@ -7753,16 +8308,16 @@ TMPSTATIC void reset_state(mcstate_t* state)
 TMPSTATIC void set_default_config(mcstate_t* state)
 {
     memset(&state->config, 0, sizeof(mcconfig_t));
-    arcane_set_repl_mode(state, false);
-    arcane_set_timeout(state, -1);
-    arcane_set_file_read_function(state, read_file_default, state);
-    arcane_set_file_write_function(state, write_file_default, state);
-    arcane_set_stdout_write_function(state, stdout_write_default, state);
+    mc_state_setreplmode(state, false);
+    mc_state_settimeout(state, -1);
+    mc_state_setfilereadfunction(state, read_file_default, state);
+    mc_state_setfilewritefunction(state, write_file_default, state);
+    mc_state_setstdoutwritefunction(state, stdout_write_default, state);
 }
 
 TMPSTATIC char* read_file_default(void* ctx, const char* filename)
 {
-    mcstate_t* state = ctx;
+    mcstate_t* state = (mcstate_t*)ctx;
     FILE* fp = fopen(filename, "r");
     size_t sizetoread = 0;
     size_t sizeread = 0;
@@ -7781,7 +8336,7 @@ TMPSTATIC char* read_file_default(void* ctx, const char* filename)
     }
     sizetoread = pos;
     rewind(fp);
-    filecontents = (char*)allocator_malloc(state, sizeof(char) * (sizetoread + 1));
+    filecontents = (char*)mc_allocator_alloc(state, sizeof(char) * (sizetoread + 1));
     if(!filecontents)
     {
         fclose(fp);
@@ -7818,55 +8373,56 @@ TMPSTATIC size_t stdout_write_default(void* ctx, const void* data, size_t size)
     return fwrite(data, 1, size, stdout);
 }
 
-
-
-mcastexpression_t* expression_make_ident(mcstate_t* state, ident_t* ident)
+TMPSTATIC mcastexpression_t* expression_make_ident(mcstate_t* state, ident_t* ident)
 {
     mcastexpression_t* res = expression_make(state, MC_EXPR_IDENT);
     if(!res)
     {
         return NULL;
     }
-    res->ident = ident;
+    res->exprident = ident;
     return res;
 }
 
-mcastexpression_t* expression_make_number_literal(mcstate_t* state, double val)
+TMPSTATIC mcastexpression_t* expression_make_number_literal(mcstate_t* state, double val)
 {
     mcastexpression_t* res = expression_make(state, MC_EXPR_NUMBERLITERAL);
     if(!res)
     {
         return NULL;
     }
-    res->number_literal = val;
+    res->exprlitnumber = val;
     return res;
 }
 
-mcastexpression_t* expression_make_bool_literal(mcstate_t* state, bool val)
+TMPSTATIC mcastexpression_t* expression_make_bool_literal(mcstate_t* state, bool val)
 {
     mcastexpression_t* res = expression_make(state, MC_EXPR_BOOLLITERAL);
     if(!res)
     {
         return NULL;
     }
-    res->bool_literal = val;
+    res->exprlitbool = val;
     return res;
 }
 
-mcastexpression_t* expression_make_string_literal(mcstate_t* state, char* value)
+TMPSTATIC mcastexpression_t* expression_make_string_literal(mcstate_t* state, char* value, size_t len)
 {
-    mcastexpression_t* res = expression_make(state, MC_EXPR_STRINGLITERAL);
+    mcastexpression_t* res;
+    res = expression_make(state, MC_EXPR_STRINGLITERAL);
     if(!res)
     {
         return NULL;
     }
-    res->string_literal = value;
+    res->exprlitstring.data = value;
+    res->exprlitstring.length = len;
     return res;
 }
 
-mcastexpression_t* expression_make_null_literal(mcstate_t* state)
+TMPSTATIC mcastexpression_t* expression_make_null_literal(mcstate_t* state)
 {
-    mcastexpression_t* res = expression_make(state, MC_EXPR_NULLLITERAL);
+    mcastexpression_t* res;
+    res = expression_make(state, MC_EXPR_NULLLITERAL);
     if(!res)
     {
         return NULL;
@@ -7874,131 +8430,131 @@ mcastexpression_t* expression_make_null_literal(mcstate_t* state)
     return res;
 }
 
-mcastexpression_t* expression_make_array_literal(mcstate_t* state, mcptrarray_t* values)
+TMPSTATIC mcastexpression_t* expression_make_array_literal(mcstate_t* state, mcptrarray_t* values)
 {
     mcastexpression_t* res = expression_make(state, MC_EXPR_ARRAYLITERAL);
     if(!res)
     {
         return NULL;
     }
-    res->array = values;
+    res->exprlitarray = values;
     return res;
 }
 
-mcastexpression_t* expression_make_map_literal(mcstate_t* state, mcptrarray_t* keys, mcptrarray_t* values)
+TMPSTATIC mcastexpression_t* expression_make_map_literal(mcstate_t* state, mcptrarray_t* keys, mcptrarray_t* values)
 {
     mcastexpression_t* res = expression_make(state, MC_EXPR_MAPLITERAL);
     if(!res)
     {
         return NULL;
     }
-    res->map.keys = keys;
-    res->map.values = values;
+    res->exprlitmap.keys = keys;
+    res->exprlitmap.values = values;
     return res;
 }
 
-mcastexpression_t* expression_make_prefix(mcstate_t* state, mcastmathoptype_t op, mcastexpression_t* right)
+TMPSTATIC mcastexpression_t* expression_make_prefix(mcstate_t* state, mcastmathoptype_t op, mcastexpression_t* right)
 {
     mcastexpression_t* res = expression_make(state, MC_EXPR_PREFIX);
     if(!res)
     {
         return NULL;
     }
-    res->prefix.op = op;
-    res->prefix.right = right;
+    res->exprprefix.op = op;
+    res->exprprefix.right = right;
     return res;
 }
 
-mcastexpression_t* expression_make_infix(mcstate_t* state, mcastmathoptype_t op, mcastexpression_t* left, mcastexpression_t* right)
+TMPSTATIC mcastexpression_t* expression_make_infix(mcstate_t* state, mcastmathoptype_t op, mcastexpression_t* left, mcastexpression_t* right)
 {
     mcastexpression_t* res = expression_make(state, MC_EXPR_INFIX);
     if(!res)
     {
         return NULL;
     }
-    res->infix.op = op;
-    res->infix.left = left;
-    res->infix.right = right;
+    res->exprinfix.op = op;
+    res->exprinfix.left = left;
+    res->exprinfix.right = right;
     return res;
 }
 
-mcastexpression_t* expression_make_fn_literal(mcstate_t* state, mcptrarray_t* params, code_block_t* body)
+TMPSTATIC mcastexpression_t* expression_make_fn_literal(mcstate_t* state, mcptrarray_t* params, code_block_t* body)
 {
     mcastexpression_t* res = expression_make(state, MC_EXPR_FUNCTIONLITERAL);
     if(!res)
     {
         return NULL;
     }
-    res->fn_literal.name = NULL;
-    res->fn_literal.params = params;
-    res->fn_literal.body = body;
+    res->exprlitfunction.name = NULL;
+    res->exprlitfunction.params = params;
+    res->exprlitfunction.body = body;
     return res;
 }
 
-mcastexpression_t* expression_make_call(mcstate_t* state, mcastexpression_t* function, mcptrarray_t* args)
+TMPSTATIC mcastexpression_t* expression_make_call(mcstate_t* state, mcastexpression_t* function, mcptrarray_t* args)
 {
     mcastexpression_t* res = expression_make(state, MC_EXPR_CALL);
     if(!res)
     {
         return NULL;
     }
-    res->call_expr.function = function;
-    res->call_expr.args = args;
+    res->exprcall.function = function;
+    res->exprcall.args = args;
     return res;
 }
 
-mcastexpression_t* expression_make_index(mcstate_t* state, mcastexpression_t* left, mcastexpression_t* index)
+TMPSTATIC mcastexpression_t* expression_make_index(mcstate_t* state, mcastexpression_t* left, mcastexpression_t* index)
 {
     mcastexpression_t* res = expression_make(state, MC_EXPR_INDEX);
     if(!res)
     {
         return NULL;
     }
-    res->index_expr.left = left;
-    res->index_expr.index = index;
+    res->exprindex.left = left;
+    res->exprindex.index = index;
     return res;
 }
 
-mcastexpression_t* expression_make_assign(mcstate_t* state, mcastexpression_t* dest, mcastexpression_t* source, bool is_postfix)
+TMPSTATIC mcastexpression_t* expression_make_assign(mcstate_t* state, mcastexpression_t* dest, mcastexpression_t* source, bool is_postfix)
 {
     mcastexpression_t* res = expression_make(state, MC_EXPR_ASSIGN);
     if(!res)
     {
         return NULL;
     }
-    res->assign.dest = dest;
-    res->assign.source = source;
-    res->assign.is_postfix = is_postfix;
+    res->exprassign.dest = dest;
+    res->exprassign.source = source;
+    res->exprassign.is_postfix = is_postfix;
     return res;
 }
 
-mcastexpression_t* expression_make_logical(mcstate_t* state, mcastmathoptype_t op, mcastexpression_t* left, mcastexpression_t* right)
+TMPSTATIC mcastexpression_t* expression_make_logical(mcstate_t* state, mcastmathoptype_t op, mcastexpression_t* left, mcastexpression_t* right)
 {
     mcastexpression_t* res = expression_make(state, MC_EXPR_LOGICAL);
     if(!res)
     {
         return NULL;
     }
-    res->logical.op = op;
-    res->logical.left = left;
-    res->logical.right = right;
+    res->exprlogical.op = op;
+    res->exprlogical.left = left;
+    res->exprlogical.right = right;
     return res;
 }
 
-mcastexpression_t* expression_make_ternary(mcstate_t* state, mcastexpression_t* test, mcastexpression_t* if_true, mcastexpression_t* if_false)
+TMPSTATIC mcastexpression_t* expression_make_ternary(mcstate_t* state, mcastexpression_t* test, mcastexpression_t* ift, mcastexpression_t* iffalse)
 {
     mcastexpression_t* res = expression_make(state, MC_EXPR_TERNARY);
     if(!res)
     {
         return NULL;
     }
-    res->ternary.test = test;
-    res->ternary.if_true = if_true;
-    res->ternary.if_false = if_false;
+    res->exprternary.tercond = test;
+    res->exprternary.teriftrue = ift;
+    res->exprternary.teriffalse = iffalse;
     return res;
 }
 
-void expression_destroy(mcastexpression_t* expr)
+TMPSTATIC void expression_destroy(mcastexpression_t* expr)
 {
     if(!expr)
     {
@@ -8009,12 +8565,12 @@ void expression_destroy(mcastexpression_t* expr)
     {
         case MC_EXPR_NONE:
         {
-            ARCANE_ASSERT(false);
+            MC_ASSERT(false);
             break;
         }
         case MC_EXPR_IDENT:
         {
-            ident_destroy(expr->ident);
+            ident_destroy(expr->exprident);
             break;
         }
         case MC_EXPR_NUMBERLITERAL:
@@ -8024,7 +8580,7 @@ void expression_destroy(mcastexpression_t* expr)
         }
         case MC_EXPR_STRINGLITERAL:
         {
-            allocator_free(expr->pstate, expr->string_literal);
+            mc_allocator_free(expr->pstate, expr->exprlitstring.data);
             break;
         }
         case MC_EXPR_NULLLITERAL:
@@ -8033,72 +8589,72 @@ void expression_destroy(mcastexpression_t* expr)
         }
         case MC_EXPR_ARRAYLITERAL:
         {
-            ptrarray_destroy_with_items_(expr->array, (ptrarrayitemdestroyfn)expression_destroy);
+            ptrarray_destroy_with_items_(expr->exprlitarray, (mcptrarrayitemdestroyfn_t)expression_destroy);
             break;
         }
         case MC_EXPR_MAPLITERAL:
         {
-            ptrarray_destroy_with_items_(expr->map.keys, (ptrarrayitemdestroyfn)expression_destroy);
-            ptrarray_destroy_with_items_(expr->map.values, (ptrarrayitemdestroyfn)expression_destroy);
+            ptrarray_destroy_with_items_(expr->exprlitmap.keys, (mcptrarrayitemdestroyfn_t)expression_destroy);
+            ptrarray_destroy_with_items_(expr->exprlitmap.values, (mcptrarrayitemdestroyfn_t)expression_destroy);
             break;
         }
         case MC_EXPR_PREFIX:
         {
-            expression_destroy(expr->prefix.right);
+            expression_destroy(expr->exprprefix.right);
             break;
         }
         case MC_EXPR_INFIX:
         {
-            expression_destroy(expr->infix.left);
-            expression_destroy(expr->infix.right);
+            expression_destroy(expr->exprinfix.left);
+            expression_destroy(expr->exprinfix.right);
             break;
         }
         case MC_EXPR_FUNCTIONLITERAL:
         {
-            fn_literal_t* fn = &expr->fn_literal;
-            allocator_free(expr->pstate, fn->name);
-            ptrarray_destroy_with_items_(fn->params, (ptrarrayitemdestroyfn)ident_destroy);
+            fn_literal_t* fn = &expr->exprlitfunction;
+            mc_allocator_free(expr->pstate, fn->name);
+            ptrarray_destroy_with_items_(fn->params, (mcptrarrayitemdestroyfn_t)ident_destroy);
             code_block_destroy(fn->body);
             break;
         }
         case MC_EXPR_CALL:
         {
-            ptrarray_destroy_with_items_(expr->call_expr.args, (ptrarrayitemdestroyfn)expression_destroy);
-            expression_destroy(expr->call_expr.function);
+            ptrarray_destroy_with_items_(expr->exprcall.args, (mcptrarrayitemdestroyfn_t)expression_destroy);
+            expression_destroy(expr->exprcall.function);
             break;
         }
         case MC_EXPR_INDEX:
         {
-            expression_destroy(expr->index_expr.left);
-            expression_destroy(expr->index_expr.index);
+            expression_destroy(expr->exprindex.left);
+            expression_destroy(expr->exprindex.index);
             break;
         }
         case MC_EXPR_ASSIGN:
         {
-            expression_destroy(expr->assign.dest);
-            expression_destroy(expr->assign.source);
+            expression_destroy(expr->exprassign.dest);
+            expression_destroy(expr->exprassign.source);
             break;
         }
         case MC_EXPR_LOGICAL:
         {
-            expression_destroy(expr->logical.left);
-            expression_destroy(expr->logical.right);
+            expression_destroy(expr->exprlogical.left);
+            expression_destroy(expr->exprlogical.right);
             break;
         }
         case MC_EXPR_TERNARY:
         {
-            expression_destroy(expr->ternary.test);
-            expression_destroy(expr->ternary.if_true);
-            expression_destroy(expr->ternary.if_false);
+            expression_destroy(expr->exprternary.tercond);
+            expression_destroy(expr->exprternary.teriftrue);
+            expression_destroy(expr->exprternary.teriffalse);
             break;
         }
         default:
             break;
     }
-    allocator_free(expr->pstate, expr);
+    mc_allocator_free(expr->pstate, expr);
 }
 
-mcastexpression_t* expression_copy(mcastexpression_t* expr)
+TMPSTATIC mcastexpression_t* expression_copy(mcastexpression_t* expr)
 {
     if(!expr)
     {
@@ -8109,12 +8665,12 @@ mcastexpression_t* expression_copy(mcastexpression_t* expr)
     {
         case MC_EXPR_NONE:
         {
-            ARCANE_ASSERT(false);
+            MC_ASSERT(false);
             break;
         }
         case MC_EXPR_IDENT:
         {
-            ident_t* ident = ident_copy(expr->ident);
+            ident_t* ident = ident_copy(expr->exprident);
             if(!ident)
             {
                 return NULL;
@@ -8129,25 +8685,25 @@ mcastexpression_t* expression_copy(mcastexpression_t* expr)
         }
         case MC_EXPR_NUMBERLITERAL:
         {
-            res = expression_make_number_literal(expr->pstate, expr->number_literal);
+            res = expression_make_number_literal(expr->pstate, expr->exprlitnumber);
             break;
         }
         case MC_EXPR_BOOLLITERAL:
         {
-            res = expression_make_bool_literal(expr->pstate, expr->bool_literal);
+            res = expression_make_bool_literal(expr->pstate, expr->exprlitbool);
             break;
         }
         case MC_EXPR_STRINGLITERAL:
         {
-            char* stringcopy = arcane_strdup(expr->pstate, expr->string_literal);
+            char* stringcopy = mc_util_strndup(expr->pstate, expr->exprlitstring.data, expr->exprlitstring.length);
             if(!stringcopy)
             {
                 return NULL;
             }
-            res = expression_make_string_literal(expr->pstate, stringcopy);
+            res = expression_make_string_literal(expr->pstate, stringcopy, expr->exprlitstring.length);
             if(!res)
             {
-                allocator_free(expr->pstate, stringcopy);
+                mc_allocator_free(expr->pstate, stringcopy);
                 return NULL;
             }
             break;
@@ -8159,7 +8715,7 @@ mcastexpression_t* expression_copy(mcastexpression_t* expr)
         }
         case MC_EXPR_ARRAYLITERAL:
         {
-            mcptrarray_t* valuescopy = ptrarray_copy_with_items_(expr->array, (ptrarrayitemcopyfn)expression_copy, (ptrarrayitemdestroyfn)expression_destroy);
+            mcptrarray_t* valuescopy = ptrarray_copy_with_items_(expr->exprlitarray, (mcptrarrayitemcopyfn_t)expression_copy, (mcptrarrayitemdestroyfn_t)expression_destroy);
             if(!valuescopy)
             {
                 return NULL;
@@ -8167,38 +8723,38 @@ mcastexpression_t* expression_copy(mcastexpression_t* expr)
             res = expression_make_array_literal(expr->pstate, valuescopy);
             if(!res)
             {
-                ptrarray_destroy_with_items_(valuescopy, (ptrarrayitemdestroyfn)expression_destroy);
+                ptrarray_destroy_with_items_(valuescopy, (mcptrarrayitemdestroyfn_t)expression_destroy);
                 return NULL;
             }
             break;
         }
         case MC_EXPR_MAPLITERAL:
         {
-            mcptrarray_t* keyscopy = ptrarray_copy_with_items_(expr->map.keys, (ptrarrayitemcopyfn)expression_copy, (ptrarrayitemdestroyfn)expression_destroy);
-            mcptrarray_t* valuescopy = ptrarray_copy_with_items_(expr->map.values, (ptrarrayitemcopyfn)expression_copy, (ptrarrayitemdestroyfn)expression_destroy);
+            mcptrarray_t* keyscopy = ptrarray_copy_with_items_(expr->exprlitmap.keys, (mcptrarrayitemcopyfn_t)expression_copy, (mcptrarrayitemdestroyfn_t)expression_destroy);
+            mcptrarray_t* valuescopy = ptrarray_copy_with_items_(expr->exprlitmap.values, (mcptrarrayitemcopyfn_t)expression_copy, (mcptrarrayitemdestroyfn_t)expression_destroy);
             if(!keyscopy || !valuescopy)
             {
-                ptrarray_destroy_with_items_(keyscopy, (ptrarrayitemdestroyfn)expression_destroy);
-                ptrarray_destroy_with_items_(valuescopy, (ptrarrayitemdestroyfn)expression_destroy);
+                ptrarray_destroy_with_items_(keyscopy, (mcptrarrayitemdestroyfn_t)expression_destroy);
+                ptrarray_destroy_with_items_(valuescopy, (mcptrarrayitemdestroyfn_t)expression_destroy);
                 return NULL;
             }
             res = expression_make_map_literal(expr->pstate, keyscopy, valuescopy);
             if(!res)
             {
-                ptrarray_destroy_with_items_(keyscopy, (ptrarrayitemdestroyfn)expression_destroy);
-                ptrarray_destroy_with_items_(valuescopy, (ptrarrayitemdestroyfn)expression_destroy);
+                ptrarray_destroy_with_items_(keyscopy, (mcptrarrayitemdestroyfn_t)expression_destroy);
+                ptrarray_destroy_with_items_(valuescopy, (mcptrarrayitemdestroyfn_t)expression_destroy);
                 return NULL;
             }
             break;
         }
         case MC_EXPR_PREFIX:
         {
-            mcastexpression_t* rightcopy = expression_copy(expr->prefix.right);
+            mcastexpression_t* rightcopy = expression_copy(expr->exprprefix.right);
             if(!rightcopy)
             {
                 return NULL;
             }
-            res = expression_make_prefix(expr->pstate, expr->prefix.op, rightcopy);
+            res = expression_make_prefix(expr->pstate, expr->exprprefix.op, rightcopy);
             if(!res)
             {
                 expression_destroy(rightcopy);
@@ -8208,15 +8764,15 @@ mcastexpression_t* expression_copy(mcastexpression_t* expr)
         }
         case MC_EXPR_INFIX:
         {
-            mcastexpression_t* leftcopy = expression_copy(expr->infix.left);
-            mcastexpression_t* rightcopy = expression_copy(expr->infix.right);
+            mcastexpression_t* leftcopy = expression_copy(expr->exprinfix.left);
+            mcastexpression_t* rightcopy = expression_copy(expr->exprinfix.right);
             if(!leftcopy || !rightcopy)
             {
                 expression_destroy(leftcopy);
                 expression_destroy(rightcopy);
                 return NULL;
             }
-            res = expression_make_infix(expr->pstate, expr->infix.op, leftcopy, rightcopy);
+            res = expression_make_infix(expr->pstate, expr->exprinfix.op, leftcopy, rightcopy);
             if(!res)
             {
                 expression_destroy(leftcopy);
@@ -8227,50 +8783,50 @@ mcastexpression_t* expression_copy(mcastexpression_t* expr)
         }
         case MC_EXPR_FUNCTIONLITERAL:
         {
-            mcptrarray_t* paramscopy = ptrarray_copy_with_items_(expr->fn_literal.params, (ptrarrayitemcopyfn)ident_copy, (ptrarrayitemdestroyfn)ident_destroy);
-            code_block_t* bodycopy = code_block_copy(expr->fn_literal.body);
-            char* namecopy = arcane_strdup(expr->pstate, expr->fn_literal.name);
+            mcptrarray_t* paramscopy = ptrarray_copy_with_items_(expr->exprlitfunction.params, (mcptrarrayitemcopyfn_t)ident_copy, (mcptrarrayitemdestroyfn_t)ident_destroy);
+            code_block_t* bodycopy = code_block_copy(expr->exprlitfunction.body);
+            char* namecopy = mc_util_strdup(expr->pstate, expr->exprlitfunction.name);
             if(!paramscopy || !bodycopy)
             {
-                ptrarray_destroy_with_items_(paramscopy, (ptrarrayitemdestroyfn)ident_destroy);
+                ptrarray_destroy_with_items_(paramscopy, (mcptrarrayitemdestroyfn_t)ident_destroy);
                 code_block_destroy(bodycopy);
-                allocator_free(expr->pstate, namecopy);
+                mc_allocator_free(expr->pstate, namecopy);
                 return NULL;
             }
             res = expression_make_fn_literal(expr->pstate, paramscopy, bodycopy);
             if(!res)
             {
-                ptrarray_destroy_with_items_(paramscopy, (ptrarrayitemdestroyfn)ident_destroy);
+                ptrarray_destroy_with_items_(paramscopy, (mcptrarrayitemdestroyfn_t)ident_destroy);
                 code_block_destroy(bodycopy);
-                allocator_free(expr->pstate, namecopy);
+                mc_allocator_free(expr->pstate, namecopy);
                 return NULL;
             }
-            res->fn_literal.name = namecopy;
+            res->exprlitfunction.name = namecopy;
             break;
         }
         case MC_EXPR_CALL:
         {
-            mcastexpression_t* functioncopy = expression_copy(expr->call_expr.function);
-            mcptrarray_t* argscopy = ptrarray_copy_with_items_(expr->call_expr.args, (ptrarrayitemcopyfn)expression_copy, (ptrarrayitemdestroyfn)expression_destroy);
+            mcastexpression_t* functioncopy = expression_copy(expr->exprcall.function);
+            mcptrarray_t* argscopy = ptrarray_copy_with_items_(expr->exprcall.args, (mcptrarrayitemcopyfn_t)expression_copy, (mcptrarrayitemdestroyfn_t)expression_destroy);
             if(!functioncopy || !argscopy)
             {
                 expression_destroy(functioncopy);
-                ptrarray_destroy_with_items_(expr->call_expr.args, (ptrarrayitemdestroyfn)expression_destroy);
+                ptrarray_destroy_with_items_(expr->exprcall.args, (mcptrarrayitemdestroyfn_t)expression_destroy);
                 return NULL;
             }
             res = expression_make_call(expr->pstate, functioncopy, argscopy);
             if(!res)
             {
                 expression_destroy(functioncopy);
-                ptrarray_destroy_with_items_(expr->call_expr.args, (ptrarrayitemdestroyfn)expression_destroy);
+                ptrarray_destroy_with_items_(expr->exprcall.args, (mcptrarrayitemdestroyfn_t)expression_destroy);
                 return NULL;
             }
             break;
         }
         case MC_EXPR_INDEX:
         {
-            mcastexpression_t* leftcopy = expression_copy(expr->index_expr.left);
-            mcastexpression_t* indexcopy = expression_copy(expr->index_expr.index);
+            mcastexpression_t* leftcopy = expression_copy(expr->exprindex.left);
+            mcastexpression_t* indexcopy = expression_copy(expr->exprindex.index);
             if(!leftcopy || !indexcopy)
             {
                 expression_destroy(leftcopy);
@@ -8288,15 +8844,15 @@ mcastexpression_t* expression_copy(mcastexpression_t* expr)
         }
         case MC_EXPR_ASSIGN:
         {
-            mcastexpression_t* destcopy = expression_copy(expr->assign.dest);
-            mcastexpression_t* sourcecopy = expression_copy(expr->assign.source);
+            mcastexpression_t* destcopy = expression_copy(expr->exprassign.dest);
+            mcastexpression_t* sourcecopy = expression_copy(expr->exprassign.source);
             if(!destcopy || !sourcecopy)
             {
                 expression_destroy(destcopy);
                 expression_destroy(sourcecopy);
                 return NULL;
             }
-            res = expression_make_assign(expr->pstate, destcopy, sourcecopy, expr->assign.is_postfix);
+            res = expression_make_assign(expr->pstate, destcopy, sourcecopy, expr->exprassign.is_postfix);
             if(!res)
             {
                 expression_destroy(destcopy);
@@ -8307,15 +8863,15 @@ mcastexpression_t* expression_copy(mcastexpression_t* expr)
         }
         case MC_EXPR_LOGICAL:
         {
-            mcastexpression_t* leftcopy = expression_copy(expr->logical.left);
-            mcastexpression_t* rightcopy = expression_copy(expr->logical.right);
+            mcastexpression_t* leftcopy = expression_copy(expr->exprlogical.left);
+            mcastexpression_t* rightcopy = expression_copy(expr->exprlogical.right);
             if(!leftcopy || !rightcopy)
             {
                 expression_destroy(leftcopy);
                 expression_destroy(rightcopy);
                 return NULL;
             }
-            res = expression_make_logical(expr->pstate, expr->logical.op, leftcopy, rightcopy);
+            res = expression_make_logical(expr->pstate, expr->exprlogical.op, leftcopy, rightcopy);
             if(!res)
             {
                 expression_destroy(leftcopy);
@@ -8326,9 +8882,9 @@ mcastexpression_t* expression_copy(mcastexpression_t* expr)
         }
         case MC_EXPR_TERNARY:
         {
-            mcastexpression_t* testcopy = expression_copy(expr->ternary.test);
-            mcastexpression_t* iftruecopy = expression_copy(expr->ternary.if_true);
-            mcastexpression_t* iffalsecopy = expression_copy(expr->ternary.if_false);
+            mcastexpression_t* testcopy = expression_copy(expr->exprternary.tercond);
+            mcastexpression_t* iftruecopy = expression_copy(expr->exprternary.teriftrue);
+            mcastexpression_t* iffalsecopy = expression_copy(expr->exprternary.teriffalse);
             if(!testcopy || !iftruecopy || !iffalsecopy)
             {
                 expression_destroy(testcopy);
@@ -8357,66 +8913,66 @@ mcastexpression_t* expression_copy(mcastexpression_t* expr)
     return res;
 }
 
-mcastexpression_t* statement_make_define(mcstate_t* state, ident_t* name, mcastexpression_t* value, bool assignable)
+TMPSTATIC mcastexpression_t* statement_make_define(mcstate_t* state, ident_t* name, mcastexpression_t* value, bool assignable)
 {
     mcastexpression_t* res = statement_make(state, MC_EXPR_STMTDEFINE);
     if(!res)
     {
         return NULL;
     }
-    res->define.name = name;
-    res->define.value = value;
-    res->define.assignable = assignable;
+    res->exprdefine.name = name;
+    res->exprdefine.value = value;
+    res->exprdefine.assignable = assignable;
     return res;
 }
 
-mcastexpression_t* statement_make_if(mcstate_t* state, mcptrarray_t* cases, code_block_t* alternative)
+TMPSTATIC mcastexpression_t* statement_make_if(mcstate_t* state, mcptrarray_t* cases, code_block_t* alternative)
 {
     mcastexpression_t* res = statement_make(state, MC_EXPR_STMTIF);
     if(!res)
     {
         return NULL;
     }
-    res->if_statement.cases = cases;
-    res->if_statement.alternative = alternative;
+    res->exprifstmt.cases = cases;
+    res->exprifstmt.alternative = alternative;
     return res;
 }
 
-mcastexpression_t* statement_make_return(mcstate_t* state, mcastexpression_t* value)
+TMPSTATIC mcastexpression_t* statement_make_return(mcstate_t* state, mcastexpression_t* value)
 {
     mcastexpression_t* res = statement_make(state, MC_EXPR_STMTRETURN);
     if(!res)
     {
         return NULL;
     }
-    res->return_value = value;
+    res->exprreturnvalue = value;
     return res;
 }
 
-mcastexpression_t* statement_make_expression(mcstate_t* state, mcastexpression_t* value)
+TMPSTATIC mcastexpression_t* statement_make_expression(mcstate_t* state, mcastexpression_t* value)
 {
     mcastexpression_t* res = statement_make(state, MC_EXPR_STMTEXPRESSION);
     if(!res)
     {
         return NULL;
     }
-    res->expression = value;
+    res->exprexpression = value;
     return res;
 }
 
-mcastexpression_t* statement_make_while_loop(mcstate_t* state, mcastexpression_t* test, code_block_t* body)
+TMPSTATIC mcastexpression_t* statement_make_while_loop(mcstate_t* state, mcastexpression_t* test, code_block_t* body)
 {
     mcastexpression_t* res = statement_make(state, MC_EXPR_STMTLOOPWHILE);
     if(!res)
     {
         return NULL;
     }
-    res->while_loop.test = test;
-    res->while_loop.body = body;
+    res->exprwhileloopstmt.loopcond = test;
+    res->exprwhileloopstmt.body = body;
     return res;
 }
 
-mcastexpression_t* statement_make_break(mcstate_t* state)
+TMPSTATIC mcastexpression_t* statement_make_break(mcstate_t* state)
 {
     mcastexpression_t* res = statement_make(state, MC_EXPR_STMTBREAK);
     if(!res)
@@ -8426,34 +8982,34 @@ mcastexpression_t* statement_make_break(mcstate_t* state)
     return res;
 }
 
-mcastexpression_t* statement_make_foreach(mcstate_t* state, ident_t* iterator, mcastexpression_t* source, code_block_t* body)
+TMPSTATIC mcastexpression_t* statement_make_foreach(mcstate_t* state, ident_t* iterator, mcastexpression_t* source, code_block_t* body)
 {
     mcastexpression_t* res = statement_make(state, MC_EXPR_STMTLOOPFOREACH);
     if(!res)
     {
         return NULL;
     }
-    res->foreach.iterator = iterator;
-    res->foreach.source = source;
-    res->foreach.body = body;
+    res->exprforeachloopstmt.iterator = iterator;
+    res->exprforeachloopstmt.source = source;
+    res->exprforeachloopstmt.body = body;
     return res;
 }
 
-mcastexpression_t* statement_make_for_loop(mcstate_t* state, mcastexpression_t* init, mcastexpression_t* test, mcastexpression_t* update, code_block_t* body)
+TMPSTATIC mcastexpression_t* statement_make_for_loop(mcstate_t* state, mcastexpression_t* init, mcastexpression_t* test, mcastexpression_t* update, code_block_t* body)
 {
     mcastexpression_t* res = statement_make(state, MC_EXPR_STMTLOOPFORCLASSIC);
     if(!res)
     {
         return NULL;
     }
-    res->for_loop.init = init;
-    res->for_loop.test = test;
-    res->for_loop.update = update;
-    res->for_loop.body = body;
+    res->exprforloopstmt.init = init;
+    res->exprforloopstmt.loopcond = test;
+    res->exprforloopstmt.update = update;
+    res->exprforloopstmt.body = body;
     return res;
 }
 
-mcastexpression_t* statement_make_continue(mcstate_t* state)
+TMPSTATIC mcastexpression_t* statement_make_continue(mcstate_t* state)
 {
     mcastexpression_t* res = statement_make(state, MC_EXPR_STMTCONTINUE);
     if(!res)
@@ -8463,79 +9019,79 @@ mcastexpression_t* statement_make_continue(mcstate_t* state)
     return res;
 }
 
-mcastexpression_t* statement_make_block(mcstate_t* state, code_block_t* block)
+TMPSTATIC mcastexpression_t* statement_make_block(mcstate_t* state, code_block_t* block)
 {
     mcastexpression_t* res = statement_make(state, MC_EXPR_STMTBLOCK);
     if(!res)
     {
         return NULL;
     }
-    res->block = block;
+    res->exprblockstmt = block;
     return res;
 }
 
-mcastexpression_t* statement_make_import(mcstate_t* state, char* path)
+TMPSTATIC mcastexpression_t* statement_make_import(mcstate_t* state, char* path)
 {
     mcastexpression_t* res = statement_make(state, MC_EXPR_STMTIMPORT);
     if(!res)
     {
         return NULL;
     }
-    res->import.path = path;
+    res->exprimportstmt.path = path;
     return res;
 }
 
-mcastexpression_t* statement_make_recover(mcstate_t* state, ident_t* error_ident, code_block_t* body)
+TMPSTATIC mcastexpression_t* statement_make_recover(mcstate_t* state, ident_t* eid, code_block_t* body)
 {
     mcastexpression_t* res = statement_make(state, MC_EXPR_STMTRECOVER);
     if(!res)
     {
         return NULL;
     }
-    res->recover.error_ident = error_ident;
-    res->recover.body = body;
+    res->exprrecoverstmt.errident = eid;
+    res->exprrecoverstmt.body = body;
     return res;
 }
 
-void statement_destroy(mcastexpression_t* stmt)
+TMPSTATIC void statement_destroy(mcastexpression_t* expr)
 {
-    if(!stmt)
+    if(!expr)
     {
         return;
     }
-    switch(stmt->type)
+    switch(expr->type)
     {
         case MC_EXPR_NONE:
         {
-            ARCANE_ASSERT(false);
+            MC_ASSERT(false);
             break;
         }
         case MC_EXPR_STMTDEFINE:
         {
-            ident_destroy(stmt->define.name);
-            expression_destroy(stmt->define.value);
+            ident_destroy(expr->exprdefine.name);
+            expression_destroy(expr->exprdefine.value);
             break;
         }
         case MC_EXPR_STMTIF:
         {
-            ptrarray_destroy_with_items_(stmt->if_statement.cases, (ptrarrayitemdestroyfn)if_case_destroy);
-            code_block_destroy(stmt->if_statement.alternative);
+            ptrarray_destroy_with_items_(expr->exprifstmt.cases, (mcptrarrayitemdestroyfn_t)if_case_destroy);
+            code_block_destroy(expr->exprifstmt.alternative);
             break;
         }
         case MC_EXPR_STMTRETURN:
         {
-            expression_destroy(stmt->return_value);
+            expression_destroy(expr->exprreturnvalue);
             break;
         }
         case MC_EXPR_STMTEXPRESSION:
         {
-            expression_destroy(stmt->expression);
+            expression_destroy(expr->exprexpression);
             break;
         }
         case MC_EXPR_STMTLOOPWHILE:
         {
-            expression_destroy(stmt->while_loop.test);
-            code_block_destroy(stmt->while_loop.body);
+            expression_destroy(expr->exprwhileloopstmt.loopcond);
+            code_block_destroy(expr->exprwhileloopstmt.body);
             break;
         }
         case MC_EXPR_STMTBREAK:
@@ -8548,63 +9104,63 @@ void statement_destroy(mcastexpression_t* stmt)
         }
         case MC_EXPR_STMTLOOPFOREACH:
         {
-            ident_destroy(stmt->foreach.iterator);
-            expression_destroy(stmt->foreach.source);
-            code_block_destroy(stmt->foreach.body);
+            ident_destroy(expr->exprforeachloopstmt.iterator);
+            expression_destroy(expr->exprforeachloopstmt.source);
+            code_block_destroy(expr->exprforeachloopstmt.body);
             break;
         }
         case MC_EXPR_STMTLOOPFORCLASSIC:
         {
-            statement_destroy(stmt->for_loop.init);
-            expression_destroy(stmt->for_loop.test);
-            expression_destroy(stmt->for_loop.update);
-            code_block_destroy(stmt->for_loop.body);
+            statement_destroy(expr->exprforloopstmt.init);
+            expression_destroy(expr->exprforloopstmt.loopcond);
+            expression_destroy(expr->exprforloopstmt.update);
+            code_block_destroy(expr->exprforloopstmt.body);
             break;
         }
         case MC_EXPR_STMTBLOCK:
         {
-            code_block_destroy(stmt->block);
+            code_block_destroy(expr->exprblockstmt);
             break;
         }
         case MC_EXPR_STMTIMPORT:
         {
-            allocator_free(stmt->pstate, stmt->import.path);
+            mc_allocator_free(expr->pstate, expr->exprimportstmt.path);
             break;
         }
         case MC_EXPR_STMTRECOVER:
         {
-            code_block_destroy(stmt->recover.body);
-            ident_destroy(stmt->recover.error_ident);
+            code_block_destroy(expr->exprrecoverstmt.body);
+            ident_destroy(expr->exprrecoverstmt.errident);
             break;
         }
         default:
             break;
     }
-    allocator_free(stmt->pstate, stmt);
+    mc_allocator_free(expr->pstate, expr);
 }
 
-mcastexpression_t* statement_copy(mcastexpression_t* stmt)
+TMPSTATIC mcastexpression_t* statement_copy(mcastexpression_t* expr)
 {
-    if(!stmt)
+    if(!expr)
     {
         return NULL;
     }
     mcastexpression_t* res = NULL;
-    switch(stmt->type)
+    switch(expr->type)
     {
         case MC_EXPR_NONE:
         {
-            ARCANE_ASSERT(false);
+            MC_ASSERT(false);
             break;
         }
         case MC_EXPR_STMTDEFINE:
         {
-            mcastexpression_t* valuecopy = expression_copy(stmt->define.value);
+            mcastexpression_t* valuecopy = expression_copy(expr->exprdefine.value);
             if(!valuecopy)
             {
                 return NULL;
             }
-            res = statement_make_define(stmt->pstate, ident_copy(stmt->define.name), valuecopy, stmt->define.assignable);
+            res = statement_make_define(expr->pstate, ident_copy(expr->exprdefine.name), valuecopy, expr->exprdefine.assignable);
             if(!res)
             {
                 expression_destroy(valuecopy);
@@ -8614,18 +9170,18 @@ mcastexpression_t* statement_copy(mcastexpression_t* stmt)
         }
         case MC_EXPR_STMTIF:
         {
-            mcptrarray_t* casescopy = ptrarray_copy_with_items_(stmt->if_statement.cases, (ptrarrayitemcopyfn)if_case_copy, (ptrarrayitemdestroyfn)if_case_destroy);
-            code_block_t* alternativecopy = code_block_copy(stmt->if_statement.alternative);
+            mcptrarray_t* casescopy = ptrarray_copy_with_items_(expr->exprifstmt.cases, (mcptrarrayitemcopyfn_t)if_case_copy, (mcptrarrayitemdestroyfn_t)if_case_destroy);
+            code_block_t* alternativecopy = code_block_copy(expr->exprifstmt.alternative);
             if(!casescopy || !alternativecopy)
             {
-                ptrarray_destroy_with_items_(casescopy, (ptrarrayitemdestroyfn)if_case_destroy);
+                ptrarray_destroy_with_items_(casescopy, (mcptrarrayitemdestroyfn_t)if_case_destroy);
                 code_block_destroy(alternativecopy);
                 return NULL;
             }
-            res = statement_make_if(stmt->pstate, casescopy, alternativecopy);
+            res = statement_make_if(expr->pstate, casescopy, alternativecopy);
             if(res)
             {
-                ptrarray_destroy_with_items_(casescopy, (ptrarrayitemdestroyfn)if_case_destroy);
+                ptrarray_destroy_with_items_(casescopy, (mcptrarrayitemdestroyfn_t)if_case_destroy);
                 code_block_destroy(alternativecopy);
                 return NULL;
             }
@@ -8633,12 +9189,12 @@ mcastexpression_t* statement_copy(mcastexpression_t* stmt)
         }
         case MC_EXPR_STMTRETURN:
         {
-            mcastexpression_t* valuecopy = expression_copy(stmt->return_value);
+            mcastexpression_t* valuecopy = expression_copy(expr->exprreturnvalue);
             if(!valuecopy)
             {
                 return NULL;
             }
-            res = statement_make_return(stmt->pstate, valuecopy);
+            res = statement_make_return(expr->pstate, valuecopy);
             if(!res)
             {
                 expression_destroy(valuecopy);
@@ -8648,12 +9204,12 @@ mcastexpression_t* statement_copy(mcastexpression_t* stmt)
         }
         case MC_EXPR_STMTEXPRESSION:
         {
-            mcastexpression_t* valuecopy = expression_copy(stmt->expression);
+            mcastexpression_t* valuecopy = expression_copy(expr->exprexpression);
             if(!valuecopy)
             {
                 return NULL;
             }
-            res = statement_make_expression(stmt->pstate, valuecopy);
+            res = statement_make_expression(expr->pstate, valuecopy);
             if(!res)
             {
                 expression_destroy(valuecopy);
@@ -8663,15 +9219,15 @@ mcastexpression_t* statement_copy(mcastexpression_t* stmt)
         }
         case MC_EXPR_STMTLOOPWHILE:
         {
-            mcastexpression_t* testcopy = expression_copy(stmt->while_loop.test);
-            code_block_t* bodycopy = code_block_copy(stmt->while_loop.body);
+            mcastexpression_t* testcopy = expression_copy(expr->exprwhileloopstmt.loopcond);
+            code_block_t* bodycopy = code_block_copy(expr->exprwhileloopstmt.body);
             if(!testcopy || !bodycopy)
             {
                 expression_destroy(testcopy);
                 code_block_destroy(bodycopy);
                 return NULL;
             }
-            res = statement_make_while_loop(stmt->pstate, testcopy, bodycopy);
+            res = statement_make_while_loop(expr->pstate, testcopy, bodycopy);
             if(!res)
             {
                 expression_destroy(testcopy);
@@ -8682,25 +9238,25 @@ mcastexpression_t* statement_copy(mcastexpression_t* stmt)
         }
         case MC_EXPR_STMTBREAK:
         {
-            res = statement_make_break(stmt->pstate);
+            res = statement_make_break(expr->pstate);
             break;
         }
         case MC_EXPR_STMTCONTINUE:
         {
-            res = statement_make_continue(stmt->pstate);
+            res = statement_make_continue(expr->pstate);
             break;
         }
         case MC_EXPR_STMTLOOPFOREACH:
         {
-            mcastexpression_t* sourcecopy = expression_copy(stmt->foreach.source);
-            code_block_t* bodycopy = code_block_copy(stmt->foreach.body);
+            mcastexpression_t* sourcecopy = expression_copy(expr->exprforeachloopstmt.source);
+            code_block_t* bodycopy = code_block_copy(expr->exprforeachloopstmt.body);
             if(!sourcecopy || !bodycopy)
             {
                 expression_destroy(sourcecopy);
                 code_block_destroy(bodycopy);
                 return NULL;
             }
-            res = statement_make_foreach(stmt->pstate, ident_copy(stmt->foreach.iterator), sourcecopy, bodycopy);
+            res = statement_make_foreach(expr->pstate, ident_copy(expr->exprforeachloopstmt.iterator), sourcecopy, bodycopy);
             if(!res)
             {
                 expression_destroy(sourcecopy);
@@ -8711,10 +9267,10 @@ mcastexpression_t* statement_copy(mcastexpression_t* stmt)
         }
         case MC_EXPR_STMTLOOPFORCLASSIC:
         {
-            mcastexpression_t* initcopy = statement_copy(stmt->for_loop.init);
-            mcastexpression_t* testcopy = expression_copy(stmt->for_loop.test);
-            mcastexpression_t* updatecopy = expression_copy(stmt->for_loop.update);
-            code_block_t* bodycopy = code_block_copy(stmt->for_loop.body);
+            mcastexpression_t* initcopy = statement_copy(expr->exprforloopstmt.init);
+            mcastexpression_t* testcopy = expression_copy(expr->exprforloopstmt.loopcond);
+            mcastexpression_t* updatecopy = expression_copy(expr->exprforloopstmt.update);
+            code_block_t* bodycopy = code_block_copy(expr->exprforloopstmt.body);
             if(!initcopy || !testcopy || !updatecopy || !bodycopy)
             {
                 statement_destroy(initcopy);
@@ -8723,7 +9279,7 @@ mcastexpression_t* statement_copy(mcastexpression_t* stmt)
                 code_block_destroy(bodycopy);
                 return NULL;
             }
-            res = statement_make_for_loop(stmt->pstate, initcopy, testcopy, updatecopy, bodycopy);
+            res = statement_make_for_loop(expr->pstate, initcopy, testcopy, updatecopy, bodycopy);
             if(!res)
             {
                 statement_destroy(initcopy);
@@ -8736,12 +9292,12 @@ mcastexpression_t* statement_copy(mcastexpression_t* stmt)
         }
         case MC_EXPR_STMTBLOCK:
         {
-            code_block_t* blockcopy = code_block_copy(stmt->block);
+            code_block_t* blockcopy = code_block_copy(expr->exprblockstmt);
             if(!blockcopy)
             {
                 return NULL;
             }
-            res = statement_make_block(stmt->pstate, blockcopy);
+            res = statement_make_block(expr->pstate, blockcopy);
             if(!res)
             {
                 code_block_destroy(blockcopy);
@@ -8751,30 +9307,30 @@ mcastexpression_t* statement_copy(mcastexpression_t* stmt)
         }
         case MC_EXPR_STMTIMPORT:
         {
-            char* pathcopy = arcane_strdup(stmt->pstate, stmt->import.path);
+            char* pathcopy = mc_util_strdup(expr->pstate, expr->exprimportstmt.path);
             if(!pathcopy)
             {
                 return NULL;
             }
-            res = statement_make_import(stmt->pstate, pathcopy);
+            res = statement_make_import(expr->pstate, pathcopy);
             if(!res)
             {
-                allocator_free(stmt->pstate, pathcopy);
+                mc_allocator_free(expr->pstate, pathcopy);
                 return NULL;
             }
             break;
         }
         case MC_EXPR_STMTRECOVER:
         {
-            code_block_t* bodycopy = code_block_copy(stmt->recover.body);
-            ident_t* erroridentcopy = ident_copy(stmt->recover.error_ident);
+            code_block_t* bodycopy = code_block_copy(expr->exprrecoverstmt.body);
+            ident_t* erroridentcopy = ident_copy(expr->exprrecoverstmt.errident);
             if(!bodycopy || !erroridentcopy)
             {
                 code_block_destroy(bodycopy);
                 ident_destroy(erroridentcopy);
                 return NULL;
             }
-            res = statement_make_recover(stmt->pstate, erroridentcopy, bodycopy);
+            res = statement_make_recover(expr->pstate, erroridentcopy, bodycopy);
             if(!res)
             {
                 code_block_destroy(bodycopy);
@@ -8790,13 +9346,13 @@ mcastexpression_t* statement_copy(mcastexpression_t* stmt)
     {
         return NULL;
     }
-    res->pos = stmt->pos;
+    res->pos = expr->pos;
     return res;
 }
 
-code_block_t* code_block_make(mcstate_t* state, mcptrarray_t* statements)
+TMPSTATIC code_block_t* code_block_make(mcstate_t* state, mcptrarray_t* statements)
 {
-    code_block_t* block = (code_block_t*)allocator_malloc(state, sizeof(code_block_t));
+    code_block_t* block = (code_block_t*)mc_allocator_alloc(state, sizeof(code_block_t));
     if(!block)
     {
         return NULL;
@@ -8806,23 +9362,23 @@ code_block_t* code_block_make(mcstate_t* state, mcptrarray_t* statements)
     return block;
 }
 
-void code_block_destroy(code_block_t* block)
+TMPSTATIC void code_block_destroy(code_block_t* block)
 {
     if(!block)
     {
         return;
     }
-    ptrarray_destroy_with_items_(block->statements, (ptrarrayitemdestroyfn)statement_destroy);
-    allocator_free(block->pstate, block);
+    ptrarray_destroy_with_items_(block->statements, (mcptrarrayitemdestroyfn_t)statement_destroy);
+    mc_allocator_free(block->pstate, block);
 }
 
-code_block_t* code_block_copy(code_block_t* block)
+TMPSTATIC code_block_t* code_block_copy(code_block_t* block)
 {
     if(!block)
     {
         return NULL;
     }
-    mcptrarray_t* statementscopy = ptrarray_copy_with_items_(block->statements, (ptrarrayitemcopyfn)statement_copy, (ptrarrayitemdestroyfn)statement_destroy);
+    mcptrarray_t* statementscopy = ptrarray_copy_with_items_(block->statements, (mcptrarrayitemcopyfn_t)statement_copy, (mcptrarrayitemdestroyfn_t)statement_destroy);
     if(!statementscopy)
     {
         return NULL;
@@ -8830,172 +9386,170 @@ code_block_t* code_block_copy(code_block_t* block)
     code_block_t* res = code_block_make(block->pstate, statementscopy);
     if(!res)
     {
-        ptrarray_destroy_with_items_(statementscopy, (ptrarrayitemdestroyfn)statement_destroy);
+        ptrarray_destroy_with_items_(statementscopy, (mcptrarrayitemdestroyfn_t)statement_destroy);
         return NULL;
     }
     return res;
 }
 
-char* statements_to_string(mcstate_t* state, mcptrarray_t* statements)
+TMPSTATIC void mc_astprint_stmtlist(mcprintstate_t* pr, mcptrarray_t* statements)
 {
-    mcprintstate_t* buf = mc_printer_make(state, NULL);
-    if(!buf)
+    int i;
+    int count;
+    mcastexpression_t* expr;
+    count = ptrarray_count(statements);
+    for(i = 0; i < count; i++)
     {
-        return NULL;
-    }
-    int count = ptrarray_count(statements);
-    for(int i = 0; i < count; i++)
-    {
-        mcastexpression_t* stmt = ptrarray_get(statements, i);
-        statement_to_string(stmt, buf);
+        expr = (mcastexpression_t*)ptrarray_get(statements, i);
+        mc_astprint_statement(expr, pr);
         if(i < (count - 1))
         {
-            mc_printer_append(buf, "\n");
+            mc_printer_puts(pr, "\n");
         }
     }
-    return mc_printer_get_string_and_destroy(buf);
 }
 
-void statement_to_string(mcastexpression_t* stmt, mcprintstate_t* buf)
+TMPSTATIC void mc_astprint_statement(mcastexpression_t* expr, mcprintstate_t* buf)
 {
-    switch(stmt->type)
+    switch(expr->type)
     {
         case MC_EXPR_STMTDEFINE:
         {
-            define_statement_t* defstmt = &stmt->define;
-            if(stmt->define.assignable)
+            define_statement_t* defstmt = &expr->exprdefine;
+            if(expr->exprdefine.assignable)
             {
-                mc_printer_append(buf, "var ");
+                mc_printer_puts(buf, "var ");
             }
             else
             {
-                mc_printer_append(buf, "const ");
+                mc_printer_puts(buf, "const ");
             }
-            mc_printer_append(buf, defstmt->name->value);
-            mc_printer_append(buf, " = ");
+            mc_printer_puts(buf, defstmt->name->value);
+            mc_printer_puts(buf, " = ");
 
             if(defstmt->value)
             {
-                expression_to_string(defstmt->value, buf);
+                mc_astprint_expression(defstmt->value, buf);
             }
 
             break;
         }
         case MC_EXPR_STMTIF:
-        {
-            if_case_t* ifcase = ptrarray_get(stmt->if_statement.cases, 0);
-            mc_printer_append(buf, "if (");
-            expression_to_string(ifcase->test, buf);
-            mc_printer_append(buf, ") ");
-            code_block_to_string(ifcase->consequence, buf);
-            for(int i = 1; i < ptrarray_count(stmt->if_statement.cases); i++)
             {
-                if_case_t* elifcase = ptrarray_get(stmt->if_statement.cases, i);
-                mc_printer_append(buf, " elif (");
-                expression_to_string(elifcase->test, buf);
-                mc_printer_append(buf, ") ");
-                code_block_to_string(elifcase->consequence, buf);
-            }
-            if(stmt->if_statement.alternative)
-            {
-                mc_printer_append(buf, " else ");
-                code_block_to_string(stmt->if_statement.alternative, buf);
+                int i;
+                if_case_t* ifcase = (if_case_t*)ptrarray_get(expr->exprifstmt.cases, 0);
+                mc_printer_puts(buf, "if (");
+                mc_astprint_expression(ifcase->ifcond, buf);
+                mc_printer_puts(buf, ") ");
+                mc_astprint_codeblock(ifcase->consequence, buf);
+                for(i = 1; i < ptrarray_count(expr->exprifstmt.cases); i++)
+                {
+                    if_case_t* elifcase = (if_case_t*)ptrarray_get(expr->exprifstmt.cases, i);
+                    mc_printer_puts(buf, " elif (");
+                    mc_astprint_expression(elifcase->ifcond, buf);
+                    mc_printer_puts(buf, ") ");
+                    mc_astprint_codeblock(elifcase->consequence, buf);
+                }
+                if(expr->exprifstmt.alternative)
+                {
+                    mc_printer_puts(buf, " else ");
+                    mc_astprint_codeblock(expr->exprifstmt.alternative, buf);
+                }
             }
             break;
-        }
         case MC_EXPR_STMTRETURN:
         {
-            mc_printer_append(buf, "return ");
-            if(stmt->return_value)
+            mc_printer_puts(buf, "return ");
+            if(expr->exprreturnvalue)
             {
-                expression_to_string(stmt->return_value, buf);
+                mc_astprint_expression(expr->exprreturnvalue, buf);
             }
             break;
         }
         case MC_EXPR_STMTEXPRESSION:
         {
-            if(stmt->expression)
+            if(expr->exprexpression)
             {
-                expression_to_string(stmt->expression, buf);
+                mc_astprint_expression(expr->exprexpression, buf);
             }
             break;
         }
         case MC_EXPR_STMTLOOPWHILE:
         {
-            mc_printer_append(buf, "while (");
-            expression_to_string(stmt->while_loop.test, buf);
-            mc_printer_append(buf, ")");
-            code_block_to_string(stmt->while_loop.body, buf);
+            mc_printer_puts(buf, "while (");
+            mc_astprint_expression(expr->exprwhileloopstmt.loopcond, buf);
+            mc_printer_puts(buf, ")");
+            mc_astprint_codeblock(expr->exprwhileloopstmt.body, buf);
             break;
         }
         case MC_EXPR_STMTLOOPFORCLASSIC:
         {
-            mc_printer_append(buf, "for (");
-            if(stmt->for_loop.init)
+            mc_printer_puts(buf, "for (");
+            if(expr->exprforloopstmt.init)
             {
-                statement_to_string(stmt->for_loop.init, buf);
-                mc_printer_append(buf, " ");
+                mc_astprint_statement(expr->exprforloopstmt.init, buf);
+                mc_printer_puts(buf, " ");
             }
             else
             {
-                mc_printer_append(buf, ";");
+                mc_printer_puts(buf, ";");
             }
-            if(stmt->for_loop.test)
+            if(expr->exprforloopstmt.loopcond)
             {
-                expression_to_string(stmt->for_loop.test, buf);
-                mc_printer_append(buf, "; ");
+                mc_astprint_expression(expr->exprforloopstmt.loopcond, buf);
+                mc_printer_puts(buf, "; ");
             }
             else
             {
-                mc_printer_append(buf, ";");
+                mc_printer_puts(buf, ";");
             }
-            if(stmt->for_loop.update)
+            if(expr->exprforloopstmt.update)
             {
-                expression_to_string(stmt->for_loop.test, buf);
+                mc_astprint_expression(expr->exprforloopstmt.loopcond, buf);
             }
-            mc_printer_append(buf, ")");
-            code_block_to_string(stmt->for_loop.body, buf);
+            mc_printer_puts(buf, ")");
+            mc_astprint_codeblock(expr->exprforloopstmt.body, buf);
             break;
         }
         case MC_EXPR_STMTLOOPFOREACH:
         {
-            mc_printer_append(buf, "for (");
-            mc_printer_appendf(buf, "%s", stmt->foreach.iterator->value);
-            mc_printer_append(buf, " in ");
-            expression_to_string(stmt->foreach.source, buf);
-            mc_printer_append(buf, ")");
-            code_block_to_string(stmt->foreach.body, buf);
+            mc_printer_puts(buf, "for (");
+            mc_printer_printf(buf, "%s", expr->exprforeachloopstmt.iterator->value);
+            mc_printer_puts(buf, " in ");
+            mc_astprint_expression(expr->exprforeachloopstmt.source, buf);
+            mc_printer_puts(buf, ")");
+            mc_astprint_codeblock(expr->exprforeachloopstmt.body, buf);
             break;
         }
         case MC_EXPR_STMTBLOCK:
         {
-            code_block_to_string(stmt->block, buf);
+            mc_astprint_codeblock(expr->exprblockstmt, buf);
             break;
         }
         case MC_EXPR_STMTBREAK:
         {
-            mc_printer_append(buf, "break");
+            mc_printer_puts(buf, "break");
             break;
         }
         case MC_EXPR_STMTCONTINUE:
         {
-            mc_printer_append(buf, "continue");
+            mc_printer_puts(buf, "continue");
             break;
         }
         case MC_EXPR_STMTIMPORT:
         {
-            mc_printer_appendf(buf, "import \"%s\"", stmt->import.path);
+            mc_printer_printf(buf, "import \"%s\"", expr->exprimportstmt.path);
             break;
         }
         case MC_EXPR_NONE:
         {
-            mc_printer_append(buf, "MC_EXPR_NONE");
+            mc_printer_puts(buf, "MC_EXPR_NONE");
             break;
         }
         case MC_EXPR_STMTRECOVER:
         {
-            mc_printer_appendf(buf, "recover (%s)", stmt->recover.error_ident->value);
-            code_block_to_string(stmt->recover.body, buf);
+            mc_printer_printf(buf, "recover (%s)", expr->exprrecoverstmt.errident->value);
+            mc_astprint_codeblock(expr->exprrecoverstmt.body, buf);
             break;
         }
         default:
@@ -9003,170 +9557,172 @@ void statement_to_string(mcastexpression_t* stmt, mcprintstate_t* buf)
     }
 }
 
-void expression_to_string(mcastexpression_t* expr, mcprintstate_t* buf)
+TMPSTATIC void mc_astprint_expression(mcastexpression_t* expr, mcprintstate_t* buf)
 {
     switch(expr->type)
     {
         case MC_EXPR_IDENT:
         {
-            mc_printer_append(buf, expr->ident->value);
+            mc_printer_puts(buf, expr->exprident->value);
             break;
         }
         case MC_EXPR_NUMBERLITERAL:
         {
-            mc_printer_appendf(buf, "%1.17g", expr->number_literal);
+            mc_printer_printf(buf, "%1.17g", expr->exprlitnumber);
             break;
         }
         case MC_EXPR_BOOLLITERAL:
         {
-            mc_printer_appendf(buf, "%s", expr->bool_literal ? "true" : "false");
+            mc_printer_printf(buf, "%s", expr->exprlitbool ? "true" : "false");
             break;
         }
         case MC_EXPR_STRINGLITERAL:
         {
-            mc_printer_appendf(buf, "\"%s\"", expr->string_literal);
+            mc_printer_printf(buf, "\"%.*s\"", (int)expr->exprlitstring.length, expr->exprlitstring.data);
             break;
         }
         case MC_EXPR_NULLLITERAL:
         {
-            mc_printer_append(buf, "null");
+            mc_printer_puts(buf, "null");
             break;
         }
         case MC_EXPR_ARRAYLITERAL:
-        {
-            mc_printer_append(buf, "[");
-            for(int i = 0; i < ptrarray_count(expr->array); i++)
             {
-                mcastexpression_t* arrexpr = ptrarray_get(expr->array, i);
-                expression_to_string(arrexpr, buf);
-                if(i < (ptrarray_count(expr->array) - 1))
+                int i;
+                mc_printer_puts(buf, "[");
+                for(i = 0; i < ptrarray_count(expr->exprlitarray); i++)
                 {
-                    mc_printer_append(buf, ", ");
+                    mcastexpression_t* arrexpr = (mcastexpression_t*)ptrarray_get(expr->exprlitarray, i);
+                    mc_astprint_expression(arrexpr, buf);
+                    if(i < (ptrarray_count(expr->exprlitarray) - 1))
+                    {
+                        mc_printer_puts(buf, ", ");
+                    }
                 }
+                mc_printer_puts(buf, "]");
             }
-            mc_printer_append(buf, "]");
             break;
-        }
         case MC_EXPR_MAPLITERAL:
         {
-            map_literal_t* map = &expr->map;
-
-            mc_printer_append(buf, "{");
-            for(int i = 0; i < ptrarray_count(map->keys); i++)
+            int i;
+            map_literal_t* map;
+            map = &expr->exprlitmap;
+            mc_printer_puts(buf, "{");
+            for(i = 0; i < ptrarray_count(map->keys); i++)
             {
-                mcastexpression_t* keyexpr = ptrarray_get(map->keys, i);
-                mcastexpression_t* valexpr = ptrarray_get(map->values, i);
+                mcastexpression_t* keyexpr = (mcastexpression_t*)ptrarray_get(map->keys, i);
+                mcastexpression_t* valexpr = (mcastexpression_t*)ptrarray_get(map->values, i);
 
-                expression_to_string(keyexpr, buf);
-                mc_printer_append(buf, " : ");
-                expression_to_string(valexpr, buf);
+                mc_astprint_expression(keyexpr, buf);
+                mc_printer_puts(buf, " : ");
+                mc_astprint_expression(valexpr, buf);
 
                 if(i < (ptrarray_count(map->keys) - 1))
                 {
-                    mc_printer_append(buf, ", ");
+                    mc_printer_puts(buf, ", ");
                 }
             }
-            mc_printer_append(buf, "}");
+            mc_printer_puts(buf, "}");
             break;
         }
         case MC_EXPR_PREFIX:
         {
-            mc_printer_append(buf, "(");
-            mc_printer_append(buf, operator_to_string(expr->infix.op));
-            expression_to_string(expr->prefix.right, buf);
-            mc_printer_append(buf, ")");
+            mc_printer_puts(buf, "(");
+            mc_printer_puts(buf, operator_to_string(expr->exprinfix.op));
+            mc_astprint_expression(expr->exprprefix.right, buf);
+            mc_printer_puts(buf, ")");
             break;
         }
         case MC_EXPR_INFIX:
         {
-            mc_printer_append(buf, "(");
-            expression_to_string(expr->infix.left, buf);
-            mc_printer_append(buf, " ");
-            mc_printer_append(buf, operator_to_string(expr->infix.op));
-            mc_printer_append(buf, " ");
-            expression_to_string(expr->infix.right, buf);
-            mc_printer_append(buf, ")");
+            mc_printer_puts(buf, "(");
+            mc_astprint_expression(expr->exprinfix.left, buf);
+            mc_printer_puts(buf, " ");
+            mc_printer_puts(buf, operator_to_string(expr->exprinfix.op));
+            mc_printer_puts(buf, " ");
+            mc_astprint_expression(expr->exprinfix.right, buf);
+            mc_printer_puts(buf, ")");
             break;
         }
         case MC_EXPR_FUNCTIONLITERAL:
         {
-            fn_literal_t* fn = &expr->fn_literal;
-
-            mc_printer_append(buf, "fn");
-
-            mc_printer_append(buf, "(");
-            for(int i = 0; i < ptrarray_count(fn->params); i++)
+            int i;
+            fn_literal_t* fn = &expr->exprlitfunction;
+            mc_printer_puts(buf, "function");
+            mc_printer_puts(buf, "(");
+            for(i = 0; i < ptrarray_count(fn->params); i++)
             {
-                ident_t* param = ptrarray_get(fn->params, i);
-                mc_printer_append(buf, param->value);
+                ident_t* param = (ident_t*)ptrarray_get(fn->params, i);
+                mc_printer_puts(buf, param->value);
                 if(i < (ptrarray_count(fn->params) - 1))
                 {
-                    mc_printer_append(buf, ", ");
+                    mc_printer_puts(buf, ", ");
                 }
             }
-            mc_printer_append(buf, ") ");
+            mc_printer_puts(buf, ") ");
 
-            code_block_to_string(fn->body, buf);
+            mc_astprint_codeblock(fn->body, buf);
 
             break;
         }
         case MC_EXPR_CALL:
         {
-            call_expression_t* call_expr = &expr->call_expr;
+            int i;
+            call_expression_t* ce = &expr->exprcall;
 
-            expression_to_string(call_expr->function, buf);
+            mc_astprint_expression(ce->function, buf);
 
-            mc_printer_append(buf, "(");
-            for(int i = 0; i < ptrarray_count(call_expr->args); i++)
+            mc_printer_puts(buf, "(");
+            for(i = 0; i < ptrarray_count(ce->args); i++)
             {
-                mcastexpression_t* arg = ptrarray_get(call_expr->args, i);
-                expression_to_string(arg, buf);
-                if(i < (ptrarray_count(call_expr->args) - 1))
+                mcastexpression_t* arg = (mcastexpression_t*)ptrarray_get(ce->args, i);
+                mc_astprint_expression(arg, buf);
+                if(i < (ptrarray_count(ce->args) - 1))
                 {
-                    mc_printer_append(buf, ", ");
+                    mc_printer_puts(buf, ", ");
                 }
             }
-            mc_printer_append(buf, ")");
+            mc_printer_puts(buf, ")");
 
             break;
         }
         case MC_EXPR_INDEX:
         {
-            mc_printer_append(buf, "(");
-            expression_to_string(expr->index_expr.left, buf);
-            mc_printer_append(buf, "[");
-            expression_to_string(expr->index_expr.index, buf);
-            mc_printer_append(buf, "])");
+            mc_printer_puts(buf, "(");
+            mc_astprint_expression(expr->exprindex.left, buf);
+            mc_printer_puts(buf, "[");
+            mc_astprint_expression(expr->exprindex.index, buf);
+            mc_printer_puts(buf, "])");
             break;
         }
         case MC_EXPR_ASSIGN:
         {
-            expression_to_string(expr->assign.dest, buf);
-            mc_printer_append(buf, " = ");
-            expression_to_string(expr->assign.source, buf);
+            mc_astprint_expression(expr->exprassign.dest, buf);
+            mc_printer_puts(buf, " = ");
+            mc_astprint_expression(expr->exprassign.source, buf);
             break;
         }
         case MC_EXPR_LOGICAL:
         {
-            expression_to_string(expr->logical.left, buf);
-            mc_printer_append(buf, " ");
-            mc_printer_append(buf, operator_to_string(expr->infix.op));
-            mc_printer_append(buf, " ");
-            expression_to_string(expr->logical.right, buf);
+            mc_astprint_expression(expr->exprlogical.left, buf);
+            mc_printer_puts(buf, " ");
+            mc_printer_puts(buf, operator_to_string(expr->exprinfix.op));
+            mc_printer_puts(buf, " ");
+            mc_astprint_expression(expr->exprlogical.right, buf);
             break;
         }
         case MC_EXPR_TERNARY:
         {
-            expression_to_string(expr->ternary.test, buf);
-            mc_printer_append(buf, " ? ");
-            expression_to_string(expr->ternary.if_true, buf);
-            mc_printer_append(buf, " : ");
-            expression_to_string(expr->ternary.if_false, buf);
+            mc_astprint_expression(expr->exprternary.tercond, buf);
+            mc_printer_puts(buf, " ? ");
+            mc_astprint_expression(expr->exprternary.teriftrue, buf);
+            mc_printer_puts(buf, " : ");
+            mc_astprint_expression(expr->exprternary.teriffalse, buf);
             break;
         }
         case MC_EXPR_NONE:
         {
-            mc_printer_append(buf, "MC_EXPR_NONE");
+            mc_printer_puts(buf, "MC_EXPR_NONE");
             break;
         }
         default:
@@ -9174,19 +9730,21 @@ void expression_to_string(mcastexpression_t* expr, mcprintstate_t* buf)
     }
 }
 
-void code_block_to_string(code_block_t* stmt, mcprintstate_t* buf)
+TMPSTATIC void mc_astprint_codeblock(code_block_t* expr, mcprintstate_t* buf)
 {
-    mc_printer_append(buf, "{ ");
-    for(int i = 0; i < ptrarray_count(stmt->statements); i++)
+    int i;
+    mcastexpression_t* istmt;
+    mc_printer_puts(buf, "{ ");
+    for(i = 0; i < ptrarray_count(expr->statements); i++)
     {
-        mcastexpression_t* istmt = ptrarray_get(stmt->statements, i);
-        statement_to_string(istmt, buf);
-        mc_printer_append(buf, "\n");
+        istmt = (mcastexpression_t*)ptrarray_get(expr->statements, i);
+        mc_astprint_statement(istmt, buf);
+        mc_printer_puts(buf, "\n");
     }
-    mc_printer_append(buf, " }");
+    mc_printer_puts(buf, " }");
 }
 
-const char* operator_to_string(mcastmathoptype_t op)
+TMPSTATIC const char* operator_to_string(mcastmathoptype_t op)
 {
     switch(op)
     {
@@ -9233,7 +9791,7 @@ const char* operator_to_string(mcastmathoptype_t op)
     }
 }
 
-const char* expression_type_to_string(mcastexprtype_t type)
+TMPUNUSED const char* expression_type_to_string(mcastexprtype_t type)
 {
     switch(type)
     {
@@ -9272,9 +9830,9 @@ const char* expression_type_to_string(mcastexprtype_t type)
     }
 }
 
-ident_t* ident_make(mcstate_t* state, mcasttoken_t tok)
+TMPSTATIC ident_t* ident_make(mcstate_t* state, mcasttoken_t tok)
 {
-    ident_t* res = (ident_t*)allocator_malloc(state, sizeof(ident_t));
+    ident_t* res = (ident_t*)mc_allocator_alloc(state, sizeof(ident_t));
     if(!res)
     {
         return NULL;
@@ -9283,68 +9841,68 @@ ident_t* ident_make(mcstate_t* state, mcasttoken_t tok)
     res->value = token_duplicate_literal(state, &tok);
     if(!res->value)
     {
-        allocator_free(state, res);
+        mc_allocator_free(state, res);
         return NULL;
     }
     res->pos = tok.pos;
     return res;
 }
 
-ident_t* ident_copy(ident_t* ident)
+TMPSTATIC ident_t* ident_copy(ident_t* ident)
 {
-    ident_t* res = allocator_malloc(ident->pstate, sizeof(ident_t));
+    ident_t* res = (ident_t*)mc_allocator_alloc(ident->pstate, sizeof(ident_t));
     if(!res)
     {
         return NULL;
     }
     res->pstate = ident->pstate;
-    res->value = arcane_strdup(ident->pstate, ident->value);
+    res->value = mc_util_strdup(ident->pstate, ident->value);
     if(!res->value)
     {
-        allocator_free(ident->pstate, res);
+        mc_allocator_free(ident->pstate, res);
         return NULL;
     }
     res->pos = ident->pos;
     return res;
 }
 
-void ident_destroy(ident_t* ident)
+TMPSTATIC void ident_destroy(ident_t* ident)
 {
     if(!ident)
     {
         return;
     }
-    allocator_free(ident->pstate, ident->value);
+    mc_allocator_free(ident->pstate, ident->value);
     ident->value = NULL;
     ident->pos = srcposinvalid;
-    allocator_free(ident->pstate, ident);
+    mc_allocator_free(ident->pstate, ident);
 }
 
-if_case_t* if_case_make(mcstate_t* state, mcastexpression_t* test, code_block_t* consequence)
+TMPSTATIC if_case_t* if_case_make(mcstate_t* state, mcastexpression_t* test, code_block_t* consequence)
 {
-    if_case_t* res = (if_case_t*)allocator_malloc(state, sizeof(if_case_t));
+    if_case_t* res = (if_case_t*)mc_allocator_alloc(state, sizeof(if_case_t));
     if(!res)
     {
         return NULL;
     }
     res->pstate = state;
-    res->test = test;
+    res->ifcond = test;
     res->consequence = consequence;
     return res;
 }
 
-void if_case_destroy(if_case_t* cond)
+TMPSTATIC void if_case_destroy(if_case_t* cond)
 {
     if(!cond)
     {
         return;
     }
-    expression_destroy(cond->test);
+    expression_destroy(cond->ifcond);
     code_block_destroy(cond->consequence);
-    allocator_free(cond->pstate, cond);
+    mc_allocator_free(cond->pstate, cond);
 }
 
-if_case_t* if_case_copy(if_case_t* ifcase)
+TMPSTATIC if_case_t* if_case_copy(if_case_t* ifcase)
 {
     if(!ifcase)
     {
@@ -9354,7 +9912,7 @@ if_case_t* if_case_copy(if_case_t* ifcase)
     code_block_t* consequencecopy = NULL;
     if_case_t* if_case_copy = NULL;
 
-    testcopy = expression_copy(ifcase->test);
+    testcopy = expression_copy(ifcase->ifcond);
     if(!testcopy)
     {
         goto err;
@@ -9379,7 +9937,7 @@ err:
 
 TMPSTATIC mcastexpression_t* expression_make(mcstate_t* state, mcastexprtype_t type)
 {
-    mcastexpression_t* res = (mcastexpression_t*)allocator_malloc(state, sizeof(mcastexpression_t));
+    mcastexpression_t* res = (mcastexpression_t*)mc_allocator_alloc(state, sizeof(mcastexpression_t));
     if(!res)
     {
         return NULL;
@@ -9392,7 +9950,7 @@ TMPSTATIC mcastexpression_t* expression_make(mcstate_t* state, mcastexprtype_t t
 
 TMPSTATIC mcastexpression_t* statement_make(mcstate_t* state, mcastexprtype_t type)
 {
-    mcastexpression_t* res = (mcastexpression_t*)allocator_malloc(state, sizeof(mcastexpression_t));
+    mcastexpression_t* res = (mcastexpression_t*)mc_allocator_alloc(state, sizeof(mcastexpression_t));
     if(!res)
     {
         return NULL;
@@ -9403,98 +9961,103 @@ TMPSTATIC mcastexpression_t* statement_make(mcstate_t* state, mcastexprtype_t ty
     return res;
 }
 
-#define CHECK_ARGS(state, generateerror, argc, args, ...) \
-    mc_args_check((state), (generateerror), (argc), (args), sizeof((mcobjtype_t[]){ __VA_ARGS__ }) / sizeof(mcobjtype_t), (mcobjtype_t[]){ __VA_ARGS__ })
+#if defined(__cplusplus) || 1
+    #define CHECK_ARGS(state, generateerror, argc, args, ...) true
+#else
+    #define CHECK_ARGS(state, generateerror, argc, args, ...) \
+        mc_args_check((state), (generateerror), (argc), (args), sizeof((mcobjtype_t[]){ __VA_ARGS__ }) / sizeof(mcobjtype_t), (mcobjtype_t[]){ __VA_ARGS__ })
+#endif
 
-static struct
+TMPUNUSED bool mc_args_check(mcstate_t* vm, bool generateerror, int argc, mcvalue_t* args, int expectedargc, const mcobjtype_t* expectedtypes)
 {
-    const char* name;
-    nativefn fn;
-} gnativefunctions[] = {
-    /*
-    set_native_function(state, "externalfntest", externalfntest, &gexternalfntest);
-    set_global_constant(state, "test", mc_value_makenumber(42));
-    set_global_constant(state, "teststr", mc_value_makestrformat(state, "%s %s", "lorem", "ipsum"));
-    set_native_function(state, "testcheckargs", testcheckargsfun, NULL);
-    set_native_function(state, "vec2add", vec2addfun, NULL);
-    set_native_function(state, "vec2sub", vec2subfun, NULL);
-    */
-    { "maketestdict", cfn_maketestdict },
-    { "squarearray", cfn_squarearray },
-    { "len", cfn_len },
-    { "println", cfn_println },
-    { "print", cfn_print },
-    { "read_file", cfn_readfile },
-    { "write_file", cfn_writefile },
-    { "first", cfn_first },
-    { "last", cfn_last },
-    { "rest", cfn_rest },
-    { "append", cfn_append },
-    { "remove", cfn_remove },
-    { "removeat", cfn_removeat },
-    { "tostring", cfn_tostring },
-    { "tonum", cfn_tonum },
-    { "range", cfn_range },
-    { "keys", cfn_keys },
-    { "values", cfn_values },
-    { "copy", cfn_copy },
-    { "deepcopy", cfn_copydeep },
-    { "concat", cfn_concat },
-    { "chr", cfn_chr },
-    { "reverse", cfn_reverse },
-    { "array", cfn_array },
-    { "error", cfn_error },
-    { "crash", cfn_crash },
-    { "assert", cfn_assert },
-    { "randomseed", cfn_randseed },
-    { "random", cfn_random },
-    { "slice", cfn_slice },
+    int i;
+    if(argc != expectedargc)
+    {
+        if(generateerror)
+        {
+            errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, srcposinvalid, "Invalid number or arguments, got %d instead of %d", argc, expectedargc);
+        }
+        return false;
+    }
 
-    /* Custom */
-    { "indexof", cfn_index },
-    { "left", cfn_left },
-    { "right", cfn_right },
-    { "replace", cfn_replace },
-    { "replacefirst", cfn_replacefirst },
-    { "trim", cfn_trim },
-
-    /* Type checks */
-    { "isstring", cfn_isstring },
-    { "isarray", cfn_isarray },
-    { "ismap", cfn_ismap },
-    { "isnumber", cfn_isnumber },
-    { "isbool", cfn_isbool },
-    { "isnull", cfn_isnull },
-    { "isfunction", cfn_isfunction },
-    { "isexternal", cfn_isexternal },
-    { "iserror", cfn_iserror },
-    { "isnativefunction", cfn_isnative_function },
-
-    /* Math */
-    { "sqrt", cfn_sqrt },
-    { "pow", cfn_pow },
-    { "sin", cfn_sin },
-    { "cos", cfn_cos },
-    { "tan", cfn_tan },
-    { "log", cfn_log },
-    { "ceil", cfn_ceil },
-    { "floor", cfn_floor },
-    { "abs", cfn_abs },
-};
-
-int builtins_count()
-{
-    return ARCANE_ARRAY_LEN(gnativefunctions);
+    for(i = 0; i < argc; i++)
+    {
+        mcvalue_t arg = args[i];
+        mcobjtype_t type = object_get_type(arg);
+        mcobjtype_t expectedtype = expectedtypes[i];
+        if(!(type & expectedtype))
+        {
+            if(generateerror)
+            {
+                const char* typestr = object_get_type_name(type);
+                char* expectedtypestr = object_get_type_union_name(vm, expectedtype);
+                if(!expectedtypestr)
+                {
+                    return false;
+                }
+                errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, srcposinvalid, "Invalid argument %d type, got %s, expected %s", i, typestr, expectedtypestr);
+                mc_allocator_free(vm, expectedtypestr);
+            }
+            return false;
+        }
+    }
+    return true;
 }
 
-nativefn builtins_get_fn(int ix)
+
+TMPUNUSED mcvalue_t cfn_binnot(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
-    return gnativefunctions[ix].fn;
+    double dn;
+    int64_t iv;
+    (void)state;
+    (void)data;
+    (void)argc;
+    dn = args[0].valnumber;
+    iv = (int64_t)dn;
+    iv = ~iv;
+    return mc_value_makenumber(iv);
 }
 
-const char* builtins_get_name(int ix)
+
+TMPUNUSED mcvalue_t cfn_ord(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
-    return gnativefunctions[ix].name;
+    char ch;
+    const char* str;
+    (void)state;
+    (void)data;
+    (void)argc;
+    str = args[0].objdatahandle->valstring.data;
+    ch = str[0];
+    return mc_value_makenumber(ch);
+}
+
+
+TMPUNUSED mcvalue_t cfn_arrayjoin(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    int i;
+    (void)state;
+    (void)argc;
+    (void)data;
+    mcprintstate_t pr;
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_ARRAY, MC_OBJ_ANY))
+    {
+        return mc_value_makenull();
+    }
+    mcvalue_t array = args[0];
+    int alen = mv_value_arraygetlength(array);
+    mc_printer_init(&pr, state, alen, NULL, true);
+    for(i=1; i<alen; i++)
+    {
+        mcvalue_t item = mc_value_arraygetvalueat(array, i);
+        mc_printer_printobject(item, &pr, false);
+    }
+    const char* str = pr.data;
+    int slen = pr.len;
+    mcvalue_t rt = mc_value_makestringlen(state, str, slen);
+    mc_printer_destroy(&pr);
+    return rt;
+
+
 }
 
 /**
@@ -9509,13 +10072,13 @@ TMPSTATIC mcvalue_t cfn_index(mcstate_t* state, void* data, int argc, mcvalue_t*
 {
     (void)state;
     (void)data;
-    int startindex = argc == 3 && args[2].type == ARCANE_OBJECT_NUMBER ? object_get_number(args[2]) : 0;
+    int startindex = argc == 3 && args[2].type == MC_OBJ_NUMBER ? object_get_number(args[2]) : 0;
 
-    if((argc == 2 || argc == 3) && args[0].type == ARCANE_OBJECT_STRING && args[1].type == ARCANE_OBJECT_STRING)
+    if((argc == 2 || argc == 3) && args[0].type == MC_OBJ_STRING && args[1].type == MC_OBJ_STRING)
     {
-        const char* searchstr = object_get_string(args[0]);
-        const char* searchfor = object_get_string(args[1]);
-        char* result = strstr(searchstr + startindex, searchfor);
+        const char* searchstr = mc_value_stringgetdata(args[0]);
+        const char* searchfor = mc_value_stringgetdata(args[1]);
+        char* result = (char*)strstr(searchstr + startindex, searchfor);
 
         if(result == NULL)
         {
@@ -9539,9 +10102,9 @@ TMPSTATIC mcvalue_t cfn_index(mcstate_t* state, void* data, int argc, mcvalue_t*
 TMPSTATIC mcvalue_t cfn_left(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
-    if(argc == 2 && args[0].type == ARCANE_OBJECT_STRING && args[1].type == ARCANE_OBJECT_NUMBER)
+    if(argc == 2 && args[0].type == MC_OBJ_STRING && args[1].type == MC_OBJ_NUMBER)
     {
-        const char* searchstr = object_get_string(args[0]);
+        const char* searchstr = mc_value_stringgetdata(args[0]);
         int length = object_get_number(args[1]);
         /*
         * If the requested length is longer than the string then return a new string
@@ -9582,9 +10145,9 @@ TMPSTATIC mcvalue_t cfn_left(mcstate_t* state, void* data, int argc, mcvalue_t* 
 TMPSTATIC mcvalue_t cfn_right(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
-    if(argc == 2 && args[0].type == ARCANE_OBJECT_STRING && args[1].type == ARCANE_OBJECT_NUMBER)
+    if(argc == 2 && args[0].type == MC_OBJ_STRING && args[1].type == MC_OBJ_NUMBER)
     {
-        const char* searchstr = object_get_string(args[0]);
+        const char* searchstr = mc_value_stringgetdata(args[0]);
         int length = object_get_number(args[1]);
         /*
         * If the requested length is longer than the string then return a new string
@@ -9626,11 +10189,11 @@ TMPSTATIC mcvalue_t cfn_right(mcstate_t* state, void* data, int argc, mcvalue_t*
 TMPSTATIC mcvalue_t cfn_replace(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
-    if(argc == 3 && args[0].type == ARCANE_OBJECT_STRING && args[1].type == ARCANE_OBJECT_STRING && args[2].type == ARCANE_OBJECT_STRING)
+    if(argc == 3 && args[0].type == MC_OBJ_STRING && args[1].type == MC_OBJ_STRING && args[2].type == MC_OBJ_STRING)
     {
-        const char* str = object_get_string(args[0]);
-        const char* searchstr = object_get_string(args[1]);
-        const char* replacestr = object_get_string(args[2]);
+        const char* str = mc_value_stringgetdata(args[0]);
+        const char* searchstr = mc_value_stringgetdata(args[1]);
+        const char* replacestr = mc_value_stringgetdata(args[2]);
 
         size_t searchlen = strlen(searchstr);
         size_t replacelen = strlen(replacestr);
@@ -9686,11 +10249,11 @@ TMPSTATIC mcvalue_t cfn_replace(mcstate_t* state, void* data, int argc, mcvalue_
 TMPSTATIC mcvalue_t cfn_replacefirst(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
-    if(argc == 3 && args[0].type == ARCANE_OBJECT_STRING && args[1].type == ARCANE_OBJECT_STRING && args[2].type == ARCANE_OBJECT_STRING)
+    if(argc == 3 && args[0].type == MC_OBJ_STRING && args[1].type == MC_OBJ_STRING && args[2].type == MC_OBJ_STRING)
     {
-        const char* str = object_get_string(args[0]);
-        const char* searchstr = object_get_string(args[1]);
-        const char* replacestr = object_get_string(args[2]);
+        const char* str = mc_value_stringgetdata(args[0]);
+        const char* searchstr = mc_value_stringgetdata(args[1]);
+        const char* replacestr = mc_value_stringgetdata(args[2]);
 
         size_t searchlen = strlen(searchstr);
         size_t replacelen = strlen(replacestr);
@@ -9703,7 +10266,7 @@ TMPSTATIC mcvalue_t cfn_replacefirst(mcstate_t* state, void* data, int argc, mcv
 
         /* Allocate new string to store result */
         size_t newlen = strlen(str) + (replacelen - searchlen) + 1;
-        char* result = (char*)malloc(newlen);
+        char* result = (char*)malloc(newlen + 1);
         if(result == NULL)
         {
             return mc_value_makenull();
@@ -9712,7 +10275,7 @@ TMPSTATIC mcvalue_t cfn_replacefirst(mcstate_t* state, void* data, int argc, mcv
         /* Replace the first instance of searchstr with replacestr */
         size_t len = temp - str;
         memcpy(result, str, len);
-        memcpy(result + len, replacestr, replacelen);
+        strcpy(result + len, replacestr);
         strcpy(result + len + replacelen, temp + searchlen);
 
         mcvalue_t obj = mc_value_makestring(state, result);
@@ -9734,9 +10297,9 @@ TMPSTATIC mcvalue_t cfn_replacefirst(mcstate_t* state, void* data, int argc, mcv
 TMPSTATIC mcvalue_t cfn_trim(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
-    if(argc == 1 && args[0].type == ARCANE_OBJECT_STRING)
+    if(argc == 1 && args[0].type == MC_OBJ_STRING)
     {
-        const char* str = object_get_string(args[0]);
+        const char* str = mc_value_stringgetdata(args[0]);
 
         if(IS_NULLSTR(str))
         {
@@ -9754,7 +10317,8 @@ TMPSTATIC mcvalue_t cfn_trim(mcstate_t* state, void* data, int argc, mcvalue_t* 
         strncpy(result, str, length);
         result[length] = '\0';
 
-        int i = 0, j = length - 1;
+        int i = 0;
+        int j = length - 1;
 
         /* Trim whitespace from the front of the string */
         while((isspace(result[i]) || result[i] == '\t') && result[i] != '\0')
@@ -9789,26 +10353,28 @@ TMPSTATIC mcvalue_t cfn_trim(mcstate_t* state, void* data, int argc, mcvalue_t* 
 TMPSTATIC mcvalue_t cfn_len(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
-    if(!CHECK_ARGS(state, true, argc, args, ARCANE_OBJECT_STRING | ARCANE_OBJECT_ARRAY | ARCANE_OBJECT_MAP))
+    (void)state;
+    (void)argc;
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_STRING | MC_OBJ_ARRAY | MC_OBJ_MAP))
     {
         return mc_value_makenull();
     }
 
     mcvalue_t arg = args[0];
     mcobjtype_t type = arg.type;
-    if(type == ARCANE_OBJECT_STRING)
+    if(type == MC_OBJ_STRING)
     {
-        int len = object_get_string_length(arg);
+        int len = mc_value_stringgetlength(arg);
         return mc_value_makenumber(len);
     }
-    if(type == ARCANE_OBJECT_ARRAY)
+    if(type == MC_OBJ_ARRAY)
     {
-        int len = object_get_array_length(arg);
+        int len = mv_value_arraygetlength(arg);
         return mc_value_makenumber(len);
     }
-    if(type == ARCANE_OBJECT_MAP)
+    if(type == MC_OBJ_MAP)
     {
-        int len = object_get_map_length(arg);
+        int len = mc_value_mapgetlength(arg);
         return mc_value_makenumber(len);
     }
 
@@ -9817,36 +10383,43 @@ TMPSTATIC mcvalue_t cfn_len(mcstate_t* state, void* data, int argc, mcvalue_t* a
 
 TMPSTATIC mcvalue_t cfn_first(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
+    (void)state;
     (void)data;
-    if(!CHECK_ARGS(state, true, argc, args, ARCANE_OBJECT_ARRAY))
+    (void)argc;
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_ARRAY))
     {
         return mc_value_makenull();
     }
     mcvalue_t arg = args[0];
-    return object_get_array_value_at(arg, 0);
+    return mc_value_arraygetvalueat(arg, 0);
 }
 
 TMPSTATIC mcvalue_t cfn_last(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
+    (void)state;
+    (void)argc;
     (void)data;
-    if(!CHECK_ARGS(state, true, argc, args, ARCANE_OBJECT_ARRAY))
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_ARRAY))
     {
         return mc_value_makenull();
     }
     mcvalue_t arg = args[0];
-    return object_get_array_value_at(arg, object_get_array_length(arg) - 1);
+    return mc_value_arraygetvalueat(arg, mv_value_arraygetlength(arg) - 1);
 }
 
 TMPSTATIC mcvalue_t cfn_rest(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     bool ok;
+    int i;
+    (void)state;
+    (void)argc;
     (void)data;
-    if(!CHECK_ARGS(state, true, argc, args, ARCANE_OBJECT_ARRAY))
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_ARRAY))
     {
         return mc_value_makenull();
     }
     mcvalue_t arg = args[0];
-    int len = object_get_array_length(arg);
+    int len = mv_value_arraygetlength(arg);
     if(len == 0)
     {
         return mc_value_makenull();
@@ -9857,10 +10430,10 @@ TMPSTATIC mcvalue_t cfn_rest(mcstate_t* state, void* data, int argc, mcvalue_t* 
     {
         return mc_value_makenull();
     }
-    for(int i = 1; i < len; i++)
+    for(i = 1; i < len; i++)
     {
-        mcvalue_t item = object_get_array_value_at(arg, i);
-        ok = object_add_array_value(res, item);
+        mcvalue_t item = mc_value_arraygetvalueat(arg, i);
+        ok = mc_value_arraypush(res, item);
         if(!ok)
         {
             return mc_value_makenull();
@@ -9872,25 +10445,28 @@ TMPSTATIC mcvalue_t cfn_rest(mcstate_t* state, void* data, int argc, mcvalue_t* 
 TMPSTATIC mcvalue_t cfn_reverse(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     bool ok;
+    int i;
+    (void)state;
+    (void)argc;
     (void)data;
-    if(!CHECK_ARGS(state, true, argc, args, ARCANE_OBJECT_ARRAY | ARCANE_OBJECT_STRING))
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_ARRAY | MC_OBJ_STRING))
     {
         return mc_value_makenull();
     }
     mcvalue_t arg = args[0];
     mcobjtype_t type = arg.type;
-    if(type == ARCANE_OBJECT_ARRAY)
+    if(type == MC_OBJ_ARRAY)
     {
-        int len = object_get_array_length(arg);
+        int len = mv_value_arraygetlength(arg);
         mcvalue_t res = object_make_array_with_capacity(state, len);
         if(object_is_null(res))
         {
             return mc_value_makenull();
         }
-        for(int i = 0; i < len; i++)
+        for(i = 0; i < len; i++)
         {
-            mcvalue_t obj = object_get_array_value_at(arg, i);
-            ok = object_set_array_value_at(res, len - i - 1, obj);
+            mcvalue_t obj = mc_value_arraygetvalueat(arg, i);
+            ok = mc_value_arraysetvalueat(res, len - i - 1, obj);
             if(!ok)
             {
                 return mc_value_makenull();
@@ -9898,18 +10474,18 @@ TMPSTATIC mcvalue_t cfn_reverse(mcstate_t* state, void* data, int argc, mcvalue_
         }
         return res;
     }
-    if(type == ARCANE_OBJECT_STRING)
+    if(type == MC_OBJ_STRING)
     {
-        const char* str = object_get_string(arg);
-        int len = object_get_string_length(arg);
+        const char* str = mc_value_stringgetdata(arg);
+        int len = mc_value_stringgetlength(arg);
 
         mcvalue_t res = mc_value_makestrcapacity(state, len);
         if(object_is_null(res))
         {
             return mc_value_makenull();
         }
-        char* resbuf = object_get_mutable_string(res);
-        for(int i = 0; i < len; i++)
+        char* resbuf = mc_value_stringgetmutabledata(res);
+        for(i = 0; i < len; i++)
         {
             resbuf[len - i - 1] = str[i];
         }
@@ -9923,10 +10499,13 @@ TMPSTATIC mcvalue_t cfn_reverse(mcstate_t* state, void* data, int argc, mcvalue_
 TMPSTATIC mcvalue_t cfn_array(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     bool ok;
+    int i;
+    (void)state;
+    (void)argc;
     (void)data;
     if(argc == 1)
     {
-        if(!CHECK_ARGS(state, true, argc, args, ARCANE_OBJECT_NUMBER))
+        if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_NUMBER))
         {
             return mc_value_makenull();
         }
@@ -9937,9 +10516,9 @@ TMPSTATIC mcvalue_t cfn_array(mcstate_t* state, void* data, int argc, mcvalue_t*
             return mc_value_makenull();
         }
         mcvalue_t objnull = mc_value_makenull();
-        for(int i = 0; i < capacity; i++)
+        for(i = 0; i < capacity; i++)
         {
-            ok = object_add_array_value(res, objnull);
+            ok = mc_value_arraypush(res, objnull);
             if(!ok)
             {
                 return mc_value_makenull();
@@ -9949,7 +10528,7 @@ TMPSTATIC mcvalue_t cfn_array(mcstate_t* state, void* data, int argc, mcvalue_t*
     }
     if(argc == 2)
     {
-        if(!CHECK_ARGS(state, true, argc, args, ARCANE_OBJECT_NUMBER, ARCANE_OBJECT_ANY))
+        if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_NUMBER, MC_OBJ_ANY))
         {
             return mc_value_makenull();
         }
@@ -9959,9 +10538,9 @@ TMPSTATIC mcvalue_t cfn_array(mcstate_t* state, void* data, int argc, mcvalue_t*
         {
             return mc_value_makenull();
         }
-        for(int i = 0; i < capacity; i++)
+        for(i = 0; i < capacity; i++)
         {
-            ok = object_add_array_value(res, args[1]);
+            ok = mc_value_arraypush(res, args[1]);
             if(!ok)
             {
                 return mc_value_makenull();
@@ -9969,25 +10548,32 @@ TMPSTATIC mcvalue_t cfn_array(mcstate_t* state, void* data, int argc, mcvalue_t*
         }
         return res;
     }
-    CHECK_ARGS(state, true, argc, args, ARCANE_OBJECT_NUMBER);
+    CHECK_ARGS(state, true, argc, args, MC_OBJ_NUMBER);
     return mc_value_makenull();
 }
 
-TMPSTATIC mcvalue_t cfn_append(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_arraypush(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     bool ok;
+    int i;
+    (void)state;
+    (void)argc;
     (void)data;
-    if(!CHECK_ARGS(state, true, argc, args, ARCANE_OBJECT_ARRAY, ARCANE_OBJECT_ANY))
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_ARRAY, MC_OBJ_ANY))
     {
         return mc_value_makenull();
     }
-    ok = object_add_array_value(args[0], args[1]);
-    if(!ok)
+    for(i=1; i<argc; i++)
     {
-        return mc_value_makenull();
+        ok = mc_value_arraypush(args[0], args[i]);
+        if(!ok)
+        {
+            return mc_value_makenull();
+        }
     }
-    int len = object_get_array_length(args[0]);
+    int len = mv_value_arraygetlength(args[0]);
     return mc_value_makenumber(len);
+
 }
 
 TMPSTATIC mcvalue_t cfn_externalfn(mcstate_t* state, void *data, int argc, mcvalue_t *args)
@@ -10001,65 +10587,72 @@ TMPSTATIC mcvalue_t cfn_externalfn(mcstate_t* state, void *data, int argc, mcval
     return mc_value_makenull();
 }
 
-TMPSTATIC mcvalue_t vec2_add_fun(mcstate_t *state, void *data, int argc, mcvalue_t *args)
+TMPSTATIC mcvalue_t cfn_vec2add(mcstate_t *state, void *data, int argc, mcvalue_t *args)
 {
     mcvalue_t keyx;
     mcvalue_t keyy;
-    (void)data;    
-    if (!CHECK_ARGS(state, true, argc, args, ARCANE_OBJECT_MAP, ARCANE_OBJECT_MAP))
+    (void)state;
+    (void)argc;
+    (void)data;
+    if (!CHECK_ARGS(state, true, argc, args, MC_OBJ_MAP, MC_OBJ_MAP))
     {
         return mc_value_makenull();
     }
     keyx = mc_value_makestring(state, "x");
     keyy = mc_value_makestring(state, "y");
-    double a_x = object_get_number(object_get_map_value(args[0], keyx));
-    double a_y = object_get_number(object_get_map_value(args[0], keyy));
+    double a_x = object_get_number(mc_value_mapgetvalue(args[0], keyx));
+    double a_y = object_get_number(mc_value_mapgetvalue(args[0], keyy));
 
-    double b_x = object_get_number(object_get_map_value(args[1], keyx));
-    double b_y = object_get_number(object_get_map_value(args[1], keyy));
+    double b_x = object_get_number(mc_value_mapgetvalue(args[1], keyx));
+    double b_y = object_get_number(mc_value_mapgetvalue(args[1], keyy));
 
     mcvalue_t res = object_make_map(state);
-    if (object_get_type(res) == ARCANE_OBJECT_NULL) {
+    if (object_get_type(res) == MC_OBJ_NULL) {
         return res;
     }
-    object_set_map_value(res, keyx, mc_value_makenumber(a_x + b_x));
-    object_set_map_value(res, keyy, mc_value_makenumber(a_y + b_y));
+    mc_value_mapsetvalue(res, keyx, mc_value_makenumber(a_x + b_x));
+    mc_value_mapsetvalue(res, keyy, mc_value_makenumber(a_y + b_y));
     return res;
 }
 
-TMPSTATIC mcvalue_t vec2_sub_fun(mcstate_t *state, void *data, int argc, mcvalue_t *args)
+TMPSTATIC mcvalue_t cfn_vec2sub(mcstate_t *state, void *data, int argc, mcvalue_t *args)
 {
     mcvalue_t keyx;
     mcvalue_t keyy;
+    (void)state;
+    (void)argc;
     (void)data;
-    if (!CHECK_ARGS(state, true, argc, args, ARCANE_OBJECT_MAP, ARCANE_OBJECT_MAP)) {
+    if (!CHECK_ARGS(state, true, argc, args, MC_OBJ_MAP, MC_OBJ_MAP)) {
         return mc_value_makenull();
     }
     keyx = mc_value_makestring(state, "x");
-    keyx = mc_value_makestring(state, "y");
-    double a_x = object_get_number(object_get_map_value(args[0], keyx));
-    double a_y = object_get_number(object_get_map_value(args[0], keyy));
+    keyy = mc_value_makestring(state, "y");
+    double a_x = object_get_number(mc_value_mapgetvalue(args[0], keyx));
+    double a_y = object_get_number(mc_value_mapgetvalue(args[0], keyy));
 
-    double b_x = object_get_number(object_get_map_value(args[1], keyx));
-    double b_y = object_get_number(object_get_map_value(args[1], keyy));
+    double b_x = object_get_number(mc_value_mapgetvalue(args[1], keyx));
+    double b_y = object_get_number(mc_value_mapgetvalue(args[1], keyy));
 
     mcvalue_t res = object_make_map(state);
-    object_set_map_value(res, keyx, mc_value_makenumber(a_x - b_x));
-    object_set_map_value(res, keyy, mc_value_makenumber(a_y - b_y));
+    mc_value_mapsetvalue(res, keyx, mc_value_makenumber(a_x - b_x));
+    mc_value_mapsetvalue(res, keyy, mc_value_makenumber(a_y - b_y));
     return res;
 }
 
 TMPSTATIC mcvalue_t cfn_test_check_args(mcstate_t* state, void *data, int argc, mcvalue_t *args)
 {
+    (void)state;
+    (void)args;
+    (void)argc;
     (void)data;
     if (!CHECK_ARGS(state, true, argc, args,
-                  ARCANE_OBJECT_NUMBER,
-                  ARCANE_OBJECT_ARRAY | ARCANE_OBJECT_MAP,
-                  ARCANE_OBJECT_MAP,
-                  ARCANE_OBJECT_STRING,
-                  ARCANE_OBJECT_NUMBER | ARCANE_OBJECT_BOOL,
-                  ARCANE_OBJECT_FUNCTION | ARCANE_OBJECT_NATIVE_FUNCTION,
-                  ARCANE_OBJECT_ANY))
+                  MC_OBJ_NUMBER,
+                  MC_OBJ_ARRAY | MC_OBJ_MAP,
+                  MC_OBJ_MAP,
+                  MC_OBJ_STRING,
+                  MC_OBJ_NUMBER | MC_OBJ_BOOL,
+                  MC_OBJ_FUNCTION | MC_OBJ_NATIVE_FUNCTION,
+                  MC_OBJ_ANY))
     {
         return mc_value_makenull();
     }
@@ -10067,67 +10660,68 @@ TMPSTATIC mcvalue_t cfn_test_check_args(mcstate_t* state, void *data, int argc, 
 }
 
 
-TMPSTATIC mcvalue_t cfn_maketestdict(mcstate_t *vm, void *data, int argc, mcvalue_t *args)
+TMPSTATIC mcvalue_t cfn_maketestdict(mcstate_t *state, void *data, int argc, mcvalue_t *args)
 {
+    int i;
     (void)data;
     if (argc != 1)
     {
-        arcane_set_runtime_errorf(vm, "Invalid type passed to maketestdict, got %d, expected 1", argc);
+        arcane_set_runtime_errorf(state, "Invalid type passed to maketestdict, got %d, expected 1", argc);
         return mc_value_makenull();
     }    
-    if (args[0].type != ARCANE_OBJECT_NUMBER)
+    if (args[0].type != MC_OBJ_NUMBER)
     {
-        const char *typename = arcane_object_get_type_name(args[0].type);
-        arcane_set_runtime_errorf(vm, "Invalid type passed to maketestdict, got %s", typename);
+        const char *tname = arcane_object_get_type_name(args[0].type);
+        arcane_set_runtime_errorf(state, "Invalid type passed to maketestdict, got %s", tname);
         return mc_value_makenull();
     }
     int numitems = object_get_number(args[0]);
-    mcvalue_t res = object_make_map(vm);
-    if (res.type == ARCANE_OBJECT_NULL)
+    mcvalue_t res = object_make_map(state);
+    if (res.type == MC_OBJ_NULL)
     {
         return mc_value_makenull();
     }
-    for (int i = 0; i < numitems; i++)
+    for (i = 0; i < numitems; i++)
     {
         char keybuf[64];
         sprintf(keybuf, "%d", i);
-        mcvalue_t key = mc_value_makestring(vm, keybuf);
+        mcvalue_t key = mc_value_makestring(state, keybuf);
         mcvalue_t val = mc_value_makenumber(i);
-        object_set_map_value(res, key, val);
+        mc_value_mapsetvalue(res, key, val);
     }
     return res;
 }
 
-TMPSTATIC mcvalue_t cfn_squarearray(mcstate_t *vm, void *data, int argc, mcvalue_t *args)
+TMPSTATIC mcvalue_t cfn_squarearray(mcstate_t *state, void *data, int argc, mcvalue_t *args)
 {
     int i;
     double num;
     mcvalue_t res;
     mcvalue_t resitem;    
     (void)data;
-    res = object_make_array_with_capacity(vm, argc);
+    res = object_make_array_with_capacity(state, argc);
 
     for(i = 0; i < argc; i++)
     {
-        if(object_get_type(args[i]) != ARCANE_OBJECT_NUMBER)
+        if(object_get_type(args[i]) != MC_OBJ_NUMBER)
         {
-            arcane_set_runtime_error(vm, "Invalid type passed to squarearray");
+            arcane_set_runtime_error(state, "Invalid type passed to squarearray");
             return mc_value_makenull();
         }
         num = object_get_number(args[i]);
         resitem = mc_value_makenumber(num * num);
-        object_add_array_value(res, resitem);
+        mc_value_arraypush(res, resitem);
     }
     return res;
 }
 
-TMPSTATIC mcvalue_t cfn_print(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_print(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     int i;
     mcvalue_t arg;
     mcprintstate_t pr;
     (void)data;
-    mc_printer_init(&pr, vm, 0, stdout, true);
+    mc_printer_init(&pr, state, 0, stdout, true);
     for(i = 0; i < argc; i++)
     {
         arg = args[i];
@@ -10137,75 +10731,81 @@ TMPSTATIC mcvalue_t cfn_print(mcstate_t* vm, void* data, int argc, mcvalue_t* ar
     return mc_value_makenull();
 }
 
-TMPSTATIC mcvalue_t cfn_println(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_println(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     mcvalue_t o;
-    o = cfn_print(vm, data, argc, args);
+    o = cfn_print(state, data, argc, args);
     fputc('\n', stdout);
     fflush(stdout);
     return o;
 }
 
-TMPSTATIC mcvalue_t cfn_writefile(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_writefile(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
+    (void)state;
+    (void)argc;
     (void)data;
-    if(!CHECK_ARGS(vm, true, argc, args, ARCANE_OBJECT_STRING, ARCANE_OBJECT_STRING))
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_STRING, MC_OBJ_STRING))
     {
         return mc_value_makenull();
     }
 
-    mcconfig_t* config = &vm->config;
+    mcconfig_t* config = &state->config;
 
-    if(!config->fileio.write_file.write_file)
+    if(!config->fileio.fnwritefile)
     {
         return mc_value_makenull();
     }
 
-    const char* path = object_get_string(args[0]);
-    const char* string = object_get_string(args[1]);
-    int stringlen = object_get_string_length(args[1]);
+    const char* path = mc_value_stringgetdata(args[0]);
+    const char* string = mc_value_stringgetdata(args[1]);
+    int stringlen = mc_value_stringgetlength(args[1]);
 
-    int written = config->fileio.write_file.write_file(config->fileio.write_file.context, path, string, stringlen);
+    int written = config->fileio.fnwritefile(config->fileio.context, path, string, stringlen);
 
     return mc_value_makenumber(written);
 }
 
-TMPSTATIC mcvalue_t cfn_readfile(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_readfile(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
+    (void)state;
+    (void)argc;
     (void)data;
-    if(!CHECK_ARGS(vm, true, argc, args, ARCANE_OBJECT_STRING))
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_STRING))
     {
         return mc_value_makenull();
     }
 
-    mcconfig_t* config = &vm->config;
+    mcconfig_t* config = &state->config;
 
-    if(!config->fileio.read_file.read_file)
+    if(!config->fileio.fnreadfile)
     {
         return mc_value_makenull();
     }
 
-    const char* path = object_get_string(args[0]);
+    const char* path = mc_value_stringgetdata(args[0]);
 
-    char* contents = config->fileio.read_file.read_file(config->fileio.read_file.context, path);
+    char* contents = config->fileio.fnreadfile(config->fileio.context, path);
     if(!contents)
     {
         return mc_value_makenull();
     }
-    mcvalue_t res = mc_value_makestring(vm, contents);
-    allocator_free(vm, contents);
+    mcvalue_t res = mc_value_makestring(state, contents);
+    mc_allocator_free(state, contents);
     return res;
 }
 
-TMPSTATIC mcvalue_t cfn_tostring(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_tostring(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
+    (void)state;
+    (void)argc;
     (void)data;
-    if(!CHECK_ARGS(vm, true, argc, args, ARCANE_OBJECT_STRING | ARCANE_OBJECT_NUMBER | ARCANE_OBJECT_BOOL | ARCANE_OBJECT_NULL | ARCANE_OBJECT_MAP | ARCANE_OBJECT_ARRAY))
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_STRING | MC_OBJ_NUMBER | MC_OBJ_BOOL | MC_OBJ_NULL | MC_OBJ_MAP | MC_OBJ_ARRAY))
     {
         return mc_value_makenull();
     }
     mcvalue_t arg = args[0];
-    mcprintstate_t* buf = mc_printer_make(vm, NULL);
+    mcprintstate_t* buf = mc_printer_make(state, NULL);
     if(!buf)
     {
         return mc_value_makenull();
@@ -10216,15 +10816,17 @@ TMPSTATIC mcvalue_t cfn_tostring(mcstate_t* vm, void* data, int argc, mcvalue_t*
         mc_printer_destroy(buf);
         return mc_value_makenull();
     }
-    mcvalue_t res = mc_value_makestring(vm, mc_printer_getstring(buf));
+    mcvalue_t res = mc_value_makestring(state, mc_printer_getstring(buf));
     mc_printer_destroy(buf);
     return res;
 }
 
-TMPSTATIC mcvalue_t cfn_tonum(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_tonum(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
+    (void)state;
+    (void)argc;
     (void)data;
-    if(!CHECK_ARGS(vm, true, argc, args, ARCANE_OBJECT_STRING | ARCANE_OBJECT_NUMBER | ARCANE_OBJECT_BOOL | ARCANE_OBJECT_NULL))
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_STRING | MC_OBJ_NUMBER | MC_OBJ_BOOL | MC_OBJ_NULL))
     {
         return mc_value_makenull();
     }
@@ -10238,9 +10840,9 @@ TMPSTATIC mcvalue_t cfn_tonum(mcstate_t* vm, void* data, int argc, mcvalue_t* ar
     {
         result = 0;
     }
-    else if(args[0].type == ARCANE_OBJECT_STRING)
+    else if(args[0].type == MC_OBJ_STRING)
     {
-        string = object_get_string(args[0]);
+        string = mc_value_stringgetdata(args[0]);
         char* end;
         errno = 0;
         result = strtod(string, &end);
@@ -10252,7 +10854,7 @@ TMPSTATIC mcvalue_t cfn_tonum(mcstate_t* vm, void* data, int argc, mcvalue_t* ar
         {
             goto err;
         }
-        int stringlen = object_get_string_length(args[0]);
+        int stringlen = mc_value_stringgetlength(args[0]);
         int parsedlen = end - string;
         if(stringlen != parsedlen)
         {
@@ -10265,14 +10867,16 @@ TMPSTATIC mcvalue_t cfn_tonum(mcstate_t* vm, void* data, int argc, mcvalue_t* ar
     }
     return mc_value_makenumber(result);
 err:
-    errors_add_errorf(&vm->errors, ARCANE_ERROR_RUNTIME, srcposinvalid, "Cannot convert \"%s\" to number", string);
+    errors_add_errorf(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "Cannot convert \"%s\" to number", string);
     return mc_value_makenull();
 }
 
-TMPSTATIC mcvalue_t cfn_chr(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_chr(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
+    (void)state;
+    (void)argc;
     (void)data;
-    if(!CHECK_ARGS(vm, true, argc, args, ARCANE_OBJECT_NUMBER))
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_NUMBER))
     {
         return mc_value_makenull();
     }
@@ -10281,21 +10885,22 @@ TMPSTATIC mcvalue_t cfn_chr(mcstate_t* vm, void* data, int argc, mcvalue_t* args
 
     char c = (char)val;
     char str[2] = { c, '\0' };
-    return mc_value_makestring(vm, str);
+    return mc_value_makestring(state, str);
 }
 
-TMPSTATIC mcvalue_t cfn_range(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_range(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     bool ok;
+    int i;
     (void)data;
-    for(int i = 0; i < argc; i++)
+    for(i = 0; i < argc; i++)
     {
         mcobjtype_t type = args[i].type;
-        if(type != ARCANE_OBJECT_NUMBER)
+        if(type != MC_OBJ_NUMBER)
         {
             const char* typestr = object_get_type_name(type);
-            const char* expectedstr = object_get_type_name(ARCANE_OBJECT_NUMBER);
-            errors_add_errorf(&vm->errors, ARCANE_ERROR_RUNTIME, srcposinvalid, "Invalid argument %d passed to range, got %s instead of %s", i, typestr, expectedstr);
+            const char* expectedstr = object_get_type_name(MC_OBJ_NUMBER);
+            errors_add_errorf(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "Invalid argument %d passed to range, got %s instead of %s", i, typestr, expectedstr);
             return mc_value_makenull();
         }
     }
@@ -10321,25 +10926,25 @@ TMPSTATIC mcvalue_t cfn_range(mcstate_t* vm, void* data, int argc, mcvalue_t* ar
     }
     else
     {
-        errors_add_errorf(&vm->errors, ARCANE_ERROR_RUNTIME, srcposinvalid, "Invalid number of arguments passed to range, got %d", argc);
+        errors_add_errorf(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "Invalid number of arguments passed to range, got %d", argc);
         return mc_value_makenull();
     }
 
     if(step == 0)
     {
-        errors_add_error(&vm->errors, ARCANE_ERROR_RUNTIME, srcposinvalid, "range step cannot be 0");
+        errors_add_error(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "range step cannot be 0");
         return mc_value_makenull();
     }
 
-    mcvalue_t res = object_make_array(vm);
+    mcvalue_t res = object_make_array(state);
     if(object_is_null(res))
     {
         return mc_value_makenull();
     }
-    for(int i = start; i < end; i += step)
+    for(i = start; i < end; i += step)
     {
         mcvalue_t item = mc_value_makenumber(i);
-        ok = object_add_array_value(res, item);
+        ok = mc_value_arraypush(res, item);
         if(!ok)
         {
             return mc_value_makenull();
@@ -10348,25 +10953,28 @@ TMPSTATIC mcvalue_t cfn_range(mcstate_t* vm, void* data, int argc, mcvalue_t* ar
     return res;
 }
 
-TMPSTATIC mcvalue_t cfn_keys(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_keys(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     bool ok;
+    int i;
+    (void)state;
+    (void)argc;
     (void)data;
-    if(!CHECK_ARGS(vm, true, argc, args, ARCANE_OBJECT_MAP))
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_MAP))
     {
         return mc_value_makenull();
     }
     mcvalue_t arg = args[0];
-    mcvalue_t res = object_make_array(vm);
+    mcvalue_t res = object_make_array(state);
     if(object_is_null(res))
     {
         return mc_value_makenull();
     }
-    int len = object_get_map_length(arg);
-    for(int i = 0; i < len; i++)
+    int len = mc_value_mapgetlength(arg);
+    for(i = 0; i < len; i++)
     {
-        mcvalue_t key = object_get_map_key_at(arg, i);
-        ok = object_add_array_value(res, key);
+        mcvalue_t key = mc_value_mapgetkeyat(arg, i);
+        ok = mc_value_arraypush(res, key);
         if(!ok)
         {
             return mc_value_makenull();
@@ -10375,25 +10983,28 @@ TMPSTATIC mcvalue_t cfn_keys(mcstate_t* vm, void* data, int argc, mcvalue_t* arg
     return res;
 }
 
-TMPSTATIC mcvalue_t cfn_values(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_values(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     bool ok;
+    int i;
+    (void)state;
+    (void)argc;
     (void)data;
-    if(!CHECK_ARGS(vm, true, argc, args, ARCANE_OBJECT_MAP))
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_MAP))
     {
         return mc_value_makenull();
     }
     mcvalue_t arg = args[0];
-    mcvalue_t res = object_make_array(vm);
+    mcvalue_t res = object_make_array(state);
     if(object_is_null(res))
     {
         return mc_value_makenull();
     }
-    int len = object_get_map_length(arg);
-    for(int i = 0; i < len; i++)
+    int len = mc_value_mapgetlength(arg);
+    for(i = 0; i < len; i++)
     {
-        mcvalue_t key = object_get_map_value_at(arg, i);
-        ok = object_add_array_value(res, key);
+        mcvalue_t key = mc_value_mapgetvalueat(arg, i);
+        ok = mc_value_arraypush(res, key);
         if(!ok)
         {
             return mc_value_makenull();
@@ -10402,79 +11013,86 @@ TMPSTATIC mcvalue_t cfn_values(mcstate_t* vm, void* data, int argc, mcvalue_t* a
     return res;
 }
 
-TMPSTATIC mcvalue_t cfn_copy(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_copy(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
+    (void)state;
+    (void)argc;
     (void)data;
-    if(!CHECK_ARGS(vm, true, argc, args, ARCANE_OBJECT_ANY))
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_ANY))
     {
         return mc_value_makenull();
     }
-    return object_copy(vm, args[0]);
+    return mc_value_copyflat(state, args[0]);
 }
 
-TMPSTATIC mcvalue_t cfn_copydeep(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_copydeep(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
-    if(!CHECK_ARGS(vm, true, argc, args, ARCANE_OBJECT_ANY))
+    (void)state;
+    (void)argc;
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_ANY))
     {
         return mc_value_makenull();
     }
-    return object_deep_copy(vm, vm->mem, args[0]);
+    return mc_value_copydeep(state, args[0]);
 }
 
-TMPSTATIC mcvalue_t cfn_concat(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_concat(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     bool ok;
+    int i;
     (void)data;
-    if(!CHECK_ARGS(vm, true, argc, args, ARCANE_OBJECT_ARRAY | ARCANE_OBJECT_STRING, ARCANE_OBJECT_ARRAY | ARCANE_OBJECT_STRING))
+    (void)state;
+    (void)argc;
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_ARRAY | MC_OBJ_STRING, MC_OBJ_ARRAY | MC_OBJ_STRING))
     {
         return mc_value_makenull();
     }
     mcobjtype_t type = args[0].type;
     mcobjtype_t itemtype = args[1].type;
-    if(type == ARCANE_OBJECT_ARRAY)
+    if(type == MC_OBJ_ARRAY)
     {
-        if(itemtype != ARCANE_OBJECT_ARRAY)
+        if(itemtype != MC_OBJ_ARRAY)
         {
             const char* itemtypestr = object_get_type_name(itemtype);
-            errors_add_errorf(&vm->errors, ARCANE_ERROR_RUNTIME, srcposinvalid, "Invalid argument 2 passed to concat, got %s", itemtypestr);
+            errors_add_errorf(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "Invalid argument 2 passed to concat, got %s", itemtypestr);
             return mc_value_makenull();
         }
-        for(int i = 0; i < object_get_array_length(args[1]); i++)
+        for(i = 0; i < mv_value_arraygetlength(args[1]); i++)
         {
-            mcvalue_t item = object_get_array_value_at(args[1], i);
-            ok = object_add_array_value(args[0], item);
+            mcvalue_t item = mc_value_arraygetvalueat(args[1], i);
+            ok = mc_value_arraypush(args[0], item);
             if(!ok)
             {
                 return mc_value_makenull();
             }
         }
-        return mc_value_makenumber(object_get_array_length(args[0]));
+        return mc_value_makenumber(mv_value_arraygetlength(args[0]));
     }
-    if(type == ARCANE_OBJECT_STRING)
+    if(type == MC_OBJ_STRING)
     {
-        if(!CHECK_ARGS(vm, true, argc, args, ARCANE_OBJECT_STRING, ARCANE_OBJECT_STRING))
+        if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_STRING, MC_OBJ_STRING))
         {
             return mc_value_makenull();
         }
-        const char* leftval = object_get_string(args[0]);
-        int leftlen = object_get_string_length(args[0]);
+        const char* leftval = mc_value_stringgetdata(args[0]);
+        int leftlen = mc_value_stringgetlength(args[0]);
 
-        const char* rightval = object_get_string(args[1]);
-        int rightlen = object_get_string_length(args[1]);
+        const char* rightval = mc_value_stringgetdata(args[1]);
+        int rightlen = mc_value_stringgetlength(args[1]);
 
-        mcvalue_t res = mc_value_makestrcapacity(vm, leftlen + rightlen);
+        mcvalue_t res = mc_value_makestrcapacity(state, leftlen + rightlen);
         if(object_is_null(res))
         {
             return mc_value_makenull();
         }
 
-        ok = mc_value_strappend(res, leftval, leftlen);
+        ok = mc_value_stringappend(res, leftval, leftlen);
         if(!ok)
         {
             return mc_value_makenull();
         }
-        ok = mc_value_strappend(res, rightval, rightlen);
+        ok = mc_value_stringappend(res, rightval, rightlen);
         if(!ok)
         {
             return mc_value_makenull();
@@ -10485,18 +11103,21 @@ TMPSTATIC mcvalue_t cfn_concat(mcstate_t* vm, void* data, int argc, mcvalue_t* a
     return mc_value_makenull();
 }
 
-TMPSTATIC mcvalue_t cfn_remove(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_remove(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
+    int i;
     (void)data;
-    if(!CHECK_ARGS(vm, true, argc, args, ARCANE_OBJECT_ARRAY, ARCANE_OBJECT_ANY))
+    (void)state;
+    (void)argc;
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_ARRAY, MC_OBJ_ANY))
     {
         return mc_value_makenull();
     }
 
     int ix = -1;
-    for(int i = 0; i < object_get_array_length(args[0]); i++)
+    for(i = 0; i < mv_value_arraygetlength(args[0]); i++)
     {
-        mcvalue_t obj = object_get_array_value_at(args[0], i);
+        mcvalue_t obj = mc_value_arraygetvalueat(args[0], i);
         if(object_equals(obj, args[1]))
         {
             ix = i;
@@ -10509,14 +11130,16 @@ TMPSTATIC mcvalue_t cfn_remove(mcstate_t* vm, void* data, int argc, mcvalue_t* a
         return mc_value_makebool(false);
     }
 
-    bool res = object_remove_array_value_at(args[0], ix);
+    bool res = mc_value_arrayremovevalueat(args[0], ix);
     return mc_value_makebool(res);
 }
 
-TMPSTATIC mcvalue_t cfn_removeat(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_removeat(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
-    if(!CHECK_ARGS(vm, true, argc, args, ARCANE_OBJECT_ARRAY, ARCANE_OBJECT_NUMBER))
+    (void)state;
+    (void)argc;
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_ARRAY, MC_OBJ_NUMBER))
     {
         return mc_value_makenull();
     }
@@ -10526,9 +11149,9 @@ TMPSTATIC mcvalue_t cfn_removeat(mcstate_t* vm, void* data, int argc, mcvalue_t*
 
     switch(type)
     {
-        case ARCANE_OBJECT_ARRAY:
+        case MC_OBJ_ARRAY:
         {
-            bool res = object_remove_array_value_at(args[0], ix);
+            bool res = mc_value_arrayremovevalueat(args[0], ix);
             return mc_value_makebool(res);
         }
         default:
@@ -10538,51 +11161,55 @@ TMPSTATIC mcvalue_t cfn_removeat(mcstate_t* vm, void* data, int argc, mcvalue_t*
     return mc_value_makebool(true);
 }
 
-TMPSTATIC mcvalue_t cfn_error(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_error(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
-    if(argc == 1 && args[0].type == ARCANE_OBJECT_STRING)
+    if(argc == 1 && args[0].type == MC_OBJ_STRING)
     {
-        return object_make_error(vm, object_get_string(args[0]));
+        return object_make_error(state, mc_value_stringgetdata(args[0]));
     }
-    return object_make_error(vm, "");
+    return object_make_error(state, "");
 }
 
-TMPSTATIC mcvalue_t cfn_crash(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_crash(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
-    if(argc == 1 && args[0].type == ARCANE_OBJECT_STRING)
+    if(argc == 1 && args[0].type == MC_OBJ_STRING)
     {
-        errors_add_error(&vm->errors, ARCANE_ERROR_RUNTIME, frame_src_position(vm->current_frame), object_get_string(args[0]));
+        errors_add_error(&state->errors, MC_ERROR_RUNTIME, frame_src_position(state->current_frame), mc_value_stringgetdata(args[0]));
     }
     else
     {
-        errors_add_error(&vm->errors, ARCANE_ERROR_RUNTIME, frame_src_position(vm->current_frame), "");
+        errors_add_error(&state->errors, MC_ERROR_RUNTIME, frame_src_position(state->current_frame), "");
     }
     return mc_value_makenull();
 }
 
-TMPSTATIC mcvalue_t cfn_assert(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_assert(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
-    if(!CHECK_ARGS(vm, true, argc, args, ARCANE_OBJECT_BOOL))
+    (void)state;
+    (void)argc;
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_BOOL))
     {
         return mc_value_makenull();
     }
 
     if(!object_get_bool(args[0]))
     {
-        errors_add_error(&vm->errors, ARCANE_ERROR_RUNTIME, srcposinvalid, "assertion failed");
+        errors_add_error(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "assertion failed");
         return mc_value_makenull();
     }
 
     return mc_value_makebool(true);
 }
 
-TMPSTATIC mcvalue_t cfn_randseed(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_randseed(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
-    if(!CHECK_ARGS(vm, true, argc, args, ARCANE_OBJECT_NUMBER))
+    (void)state;
+    (void)argc;
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_NUMBER))
     {
         return mc_value_makenull();
     }
@@ -10591,9 +11218,11 @@ TMPSTATIC mcvalue_t cfn_randseed(mcstate_t* vm, void* data, int argc, mcvalue_t*
     return mc_value_makebool(true);
 }
 
-TMPSTATIC mcvalue_t cfn_random(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_random(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
+    (void)state;
+    (void)argc;
     double res = (double)rand() / RAND_MAX;
     if(argc == 0)
     {
@@ -10601,7 +11230,7 @@ TMPSTATIC mcvalue_t cfn_random(mcstate_t* vm, void* data, int argc, mcvalue_t* a
     }
     if(argc == 2)
     {
-        if(!CHECK_ARGS(vm, true, argc, args, ARCANE_OBJECT_NUMBER, ARCANE_OBJECT_NUMBER))
+        if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_NUMBER, MC_OBJ_NUMBER))
         {
             return mc_value_makenull();
         }
@@ -10609,30 +11238,33 @@ TMPSTATIC mcvalue_t cfn_random(mcstate_t* vm, void* data, int argc, mcvalue_t* a
         double max = object_get_number(args[1]);
         if(min >= max)
         {
-            errors_add_error(&vm->errors, ARCANE_ERROR_RUNTIME, srcposinvalid, "max is bigger than min");
+            errors_add_error(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "max is bigger than min");
             return mc_value_makenull();
         }
         double range = max - min;
         res = min + (res * range);
         return mc_value_makenumber(res);
     }
-    errors_add_error(&vm->errors, ARCANE_ERROR_RUNTIME, srcposinvalid, "Invalid number or arguments");
+    errors_add_error(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "Invalid number or arguments");
     return mc_value_makenull();
 }
 
-TMPSTATIC mcvalue_t cfn_slice(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_slice(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     bool ok;
+    int i;
     (void)data;
-    if(!CHECK_ARGS(vm, true, argc, args, ARCANE_OBJECT_STRING | ARCANE_OBJECT_ARRAY, ARCANE_OBJECT_NUMBER))
+    (void)state;
+    (void)argc;
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_STRING | MC_OBJ_ARRAY, MC_OBJ_NUMBER))
     {
         return mc_value_makenull();
     }
     mcobjtype_t argtype = args[0].type;
     int index = (int)object_get_number(args[1]);
-    if(argtype == ARCANE_OBJECT_ARRAY)
+    if(argtype == MC_OBJ_ARRAY)
     {
-        int len = object_get_array_length(args[0]);
+        int len = mv_value_arraygetlength(args[0]);
         if(index < 0)
         {
             index = len + index;
@@ -10641,15 +11273,15 @@ TMPSTATIC mcvalue_t cfn_slice(mcstate_t* vm, void* data, int argc, mcvalue_t* ar
                 index = 0;
             }
         }
-        mcvalue_t res = object_make_array_with_capacity(vm, len - index);
+        mcvalue_t res = object_make_array_with_capacity(state, len - index);
         if(object_is_null(res))
         {
             return mc_value_makenull();
         }
-        for(int i = index; i < len; i++)
+        for(i = index; i < len; i++)
         {
-            mcvalue_t item = object_get_array_value_at(args[0], i);
-            ok = object_add_array_value(res, item);
+            mcvalue_t item = mc_value_arraygetvalueat(args[0], i);
+            ok = mc_value_arraypush(res, item);
             if(!ok)
             {
                 return mc_value_makenull();
@@ -10657,32 +11289,32 @@ TMPSTATIC mcvalue_t cfn_slice(mcstate_t* vm, void* data, int argc, mcvalue_t* ar
         }
         return res;
     }
-    if(argtype == ARCANE_OBJECT_STRING)
+    if(argtype == MC_OBJ_STRING)
     {
-        const char* str = object_get_string(args[0]);
-        int len = object_get_string_length(args[0]);
+        const char* str = mc_value_stringgetdata(args[0]);
+        int len = mc_value_stringgetlength(args[0]);
         if(index < 0)
         {
             index = len + index;
             if(index < 0)
             {
-                return mc_value_makestring(vm, "");
+                return mc_value_makestring(state, "");
             }
         }
         if(index >= len)
         {
-            return mc_value_makestring(vm, "");
+            return mc_value_makestring(state, "");
         }
         int reslen = len - index;
-        mcvalue_t res = mc_value_makestrcapacity(vm, reslen);
+        mcvalue_t res = mc_value_makestrcapacity(state, reslen);
         if(object_is_null(res))
         {
             return mc_value_makenull();
         }
 
-        char* resbuf = object_get_mutable_string(res);
+        char* resbuf = mc_value_stringgetmutabledata(res);
         memset(resbuf, 0, reslen + 1);
-        for(int i = index; i < len; i++)
+        for(i = index; i < len; i++)
         {
             char c = str[i];
             resbuf[i - index] = c;
@@ -10691,114 +11323,136 @@ TMPSTATIC mcvalue_t cfn_slice(mcstate_t* vm, void* data, int argc, mcvalue_t* ar
         return res;
     }
     const char* typestr = object_get_type_name(argtype);
-    errors_add_errorf(&vm->errors, ARCANE_ERROR_RUNTIME, srcposinvalid, "Invalid argument 0 passed to slice, got %s instead", typestr);
+    errors_add_errorf(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "Invalid argument 0 passed to slice, got %s instead", typestr);
     return mc_value_makenull();
 }
 
-TMPSTATIC mcvalue_t cfn_isstring(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_isstring(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
-    if(!CHECK_ARGS(vm, true, argc, args, ARCANE_OBJECT_ANY))
+    (void)state;
+    (void)argc;
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_ANY))
     {
         return mc_value_makenull();
     }
-    return mc_value_makebool(args[0].type == ARCANE_OBJECT_STRING);
+    return mc_value_makebool(args[0].type == MC_OBJ_STRING);
 }
 
-TMPSTATIC mcvalue_t cfn_isarray(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_isarray(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
-    if(!CHECK_ARGS(vm, true, argc, args, ARCANE_OBJECT_ANY))
+    (void)state;
+    (void)argc;
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_ANY))
     {
         return mc_value_makenull();
     }
-    return mc_value_makebool(args[0].type == ARCANE_OBJECT_ARRAY);
+    return mc_value_makebool(args[0].type == MC_OBJ_ARRAY);
 }
 
-TMPSTATIC mcvalue_t cfn_ismap(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_ismap(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
-    if(!CHECK_ARGS(vm, true, argc, args, ARCANE_OBJECT_ANY))
+    (void)state;
+    (void)argc;
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_ANY))
     {
         return mc_value_makenull();
     }
-    return mc_value_makebool(args[0].type == ARCANE_OBJECT_MAP);
+    return mc_value_makebool(args[0].type == MC_OBJ_MAP);
 }
 
-TMPSTATIC mcvalue_t cfn_isnumber(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_isnumber(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
-    if(!CHECK_ARGS(vm, true, argc, args, ARCANE_OBJECT_ANY))
+    (void)state;
+    (void)argc;
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_ANY))
     {
         return mc_value_makenull();
     }
-    return mc_value_makebool(args[0].type == ARCANE_OBJECT_NUMBER);
+    return mc_value_makebool(args[0].type == MC_OBJ_NUMBER);
 }
 
-TMPSTATIC mcvalue_t cfn_isbool(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_isbool(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
-    if(!CHECK_ARGS(vm, true, argc, args, ARCANE_OBJECT_ANY))
+    (void)state;
+    (void)argc;
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_ANY))
     {
         return mc_value_makenull();
     }
-    return mc_value_makebool(args[0].type == ARCANE_OBJECT_BOOL);
+    return mc_value_makebool(args[0].type == MC_OBJ_BOOL);
 }
 
-TMPSTATIC mcvalue_t cfn_isnull(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_isnull(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
-    if(!CHECK_ARGS(vm, true, argc, args, ARCANE_OBJECT_ANY))
+    (void)state;
+    (void)argc;
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_ANY))
     {
         return mc_value_makenull();
     }
-    return mc_value_makebool(object_get_type(args[0]) == ARCANE_OBJECT_NULL);
+    return mc_value_makebool(object_get_type(args[0]) == MC_OBJ_NULL);
 }
 
-TMPSTATIC mcvalue_t cfn_isfunction(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_isfunction(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
-    if(!CHECK_ARGS(vm, true, argc, args, ARCANE_OBJECT_ANY))
+    (void)state;
+    (void)argc;
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_ANY))
     {
         return mc_value_makenull();
     }
-    return mc_value_makebool(object_get_type(args[0]) == ARCANE_OBJECT_FUNCTION);
+    return mc_value_makebool(object_get_type(args[0]) == MC_OBJ_FUNCTION);
 }
 
-TMPSTATIC mcvalue_t cfn_isexternal(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_isexternal(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
-    if(!CHECK_ARGS(vm, true, argc, args, ARCANE_OBJECT_ANY))
+    (void)state;
+    (void)argc;
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_ANY))
     {
         return mc_value_makenull();
     }
-    return mc_value_makebool(object_get_type(args[0]) == ARCANE_OBJECT_EXTERNAL);
+    return mc_value_makebool(object_get_type(args[0]) == MC_OBJ_EXTERNAL);
 }
 
-TMPSTATIC mcvalue_t cfn_iserror(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_iserror(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
-    if(!CHECK_ARGS(vm, true, argc, args, ARCANE_OBJECT_ANY))
+    (void)state;
+    (void)argc;
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_ANY))
     {
         return mc_value_makenull();
     }
-    return mc_value_makebool(object_get_type(args[0]) == ARCANE_OBJECT_ERROR);
+    return mc_value_makebool(object_get_type(args[0]) == MC_OBJ_ERROR);
 }
 
-TMPSTATIC mcvalue_t cfn_isnative_function(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_isnative_function(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
-    if(!CHECK_ARGS(vm, true, argc, args, ARCANE_OBJECT_ANY))
+    (void)state;
+    (void)argc;
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_ANY))
     {
         return mc_value_makenull();
     }
-    return mc_value_makebool(object_get_type(args[0]) == ARCANE_OBJECT_NATIVE_FUNCTION);
+    return mc_value_makebool(object_get_type(args[0]) == MC_OBJ_NATIVE_FUNCTION);
 }
 
-TMPSTATIC mcvalue_t cfn_sqrt(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_sqrt(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
-    if(!CHECK_ARGS(vm, true, argc, args, ARCANE_OBJECT_NUMBER))
+    (void)state;
+    (void)argc;
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_NUMBER))
     {
         return mc_value_makenull();
     }
@@ -10807,10 +11461,12 @@ TMPSTATIC mcvalue_t cfn_sqrt(mcstate_t* vm, void* data, int argc, mcvalue_t* arg
     return mc_value_makenumber(res);
 }
 
-TMPSTATIC mcvalue_t cfn_pow(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_pow(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
-    if(!CHECK_ARGS(vm, true, argc, args, ARCANE_OBJECT_NUMBER, ARCANE_OBJECT_NUMBER))
+    (void)state;
+    (void)argc;
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_NUMBER, MC_OBJ_NUMBER))
     {
         return mc_value_makenull();
     }
@@ -10820,10 +11476,12 @@ TMPSTATIC mcvalue_t cfn_pow(mcstate_t* vm, void* data, int argc, mcvalue_t* args
     return mc_value_makenumber(res);
 }
 
-TMPSTATIC mcvalue_t cfn_sin(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_sin(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
-    if(!CHECK_ARGS(vm, true, argc, args, ARCANE_OBJECT_NUMBER))
+    (void)state;
+    (void)argc;
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_NUMBER))
     {
         return mc_value_makenull();
     }
@@ -10832,10 +11490,12 @@ TMPSTATIC mcvalue_t cfn_sin(mcstate_t* vm, void* data, int argc, mcvalue_t* args
     return mc_value_makenumber(res);
 }
 
-TMPSTATIC mcvalue_t cfn_cos(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_cos(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
-    if(!CHECK_ARGS(vm, true, argc, args, ARCANE_OBJECT_NUMBER))
+    (void)state;
+    (void)argc;
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_NUMBER))
     {
         return mc_value_makenull();
     }
@@ -10844,10 +11504,12 @@ TMPSTATIC mcvalue_t cfn_cos(mcstate_t* vm, void* data, int argc, mcvalue_t* args
     return mc_value_makenumber(res);
 }
 
-TMPSTATIC mcvalue_t cfn_tan(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_tan(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
-    if(!CHECK_ARGS(vm, true, argc, args, ARCANE_OBJECT_NUMBER))
+    (void)state;
+    (void)argc;
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_NUMBER))
     {
         return mc_value_makenull();
     }
@@ -10856,10 +11518,12 @@ TMPSTATIC mcvalue_t cfn_tan(mcstate_t* vm, void* data, int argc, mcvalue_t* args
     return mc_value_makenumber(res);
 }
 
-TMPSTATIC mcvalue_t cfn_log(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_log(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
-    if(!CHECK_ARGS(vm, true, argc, args, ARCANE_OBJECT_NUMBER))
+    (void)state;
+    (void)argc;
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_NUMBER))
     {
         return mc_value_makenull();
     }
@@ -10868,10 +11532,12 @@ TMPSTATIC mcvalue_t cfn_log(mcstate_t* vm, void* data, int argc, mcvalue_t* args
     return mc_value_makenumber(res);
 }
 
-TMPSTATIC mcvalue_t cfn_ceil(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_ceil(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
-    if(!CHECK_ARGS(vm, true, argc, args, ARCANE_OBJECT_NUMBER))
+    (void)state;
+    (void)argc;
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_NUMBER))
     {
         return mc_value_makenull();
     }
@@ -10880,10 +11546,12 @@ TMPSTATIC mcvalue_t cfn_ceil(mcstate_t* vm, void* data, int argc, mcvalue_t* arg
     return mc_value_makenumber(res);
 }
 
-TMPSTATIC mcvalue_t cfn_floor(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_floor(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
-    if(!CHECK_ARGS(vm, true, argc, args, ARCANE_OBJECT_NUMBER))
+    (void)state;
+    (void)argc;
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_NUMBER))
     {
         return mc_value_makenull();
     }
@@ -10892,10 +11560,12 @@ TMPSTATIC mcvalue_t cfn_floor(mcstate_t* vm, void* data, int argc, mcvalue_t* ar
     return mc_value_makenumber(res);
 }
 
-TMPSTATIC mcvalue_t cfn_abs(mcstate_t* vm, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t cfn_abs(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
-    if(!CHECK_ARGS(vm, true, argc, args, ARCANE_OBJECT_NUMBER))
+    (void)state;
+    (void)argc;
+    if(!CHECK_ARGS(state, true, argc, args, MC_OBJ_NUMBER))
     {
         return mc_value_makenull();
     }
@@ -10904,58 +11574,119 @@ TMPSTATIC mcvalue_t cfn_abs(mcstate_t* vm, void* data, int argc, mcvalue_t* args
     return mc_value_makenumber(res);
 }
 
-TMPSTATIC bool mc_args_check(mcstate_t* vm, bool generateerror, int argc, mcvalue_t* args, int expectedargc, mcobjtype_t* expectedtypes)
+static struct
 {
-    if(argc != expectedargc)
-    {
-        if(generateerror)
-        {
-            errors_add_errorf(&vm->errors, ARCANE_ERROR_RUNTIME, srcposinvalid, "Invalid number or arguments, got %d instead of %d", argc, expectedargc);
-        }
-        return false;
-    }
+    const char* name;
+    mcnativeactualfn_t fn;
+} gnativefunctions[] = {
+    /*
+    set_native_function(state, "externalfntest", externalfntest, &gexternalfntest);
+    set_global_constant(state, "test", mc_value_makenumber(42));
+    set_global_constant(state, "teststr", mc_value_makestrformat(state, "%s %s", "lorem", "ipsum"));
+    set_native_function(state, "testcheckargs", testcheckargsfun, NULL);
+    set_native_function(state, "vec2add", vec2addfun, NULL);
+    set_native_function(state, "vec2sub", vec2subfun, NULL);
+    */
+    { "maketestdict", cfn_maketestdict },
+    { "squarearray", cfn_squarearray },
+    { "len", cfn_len },
+    { "binnot", cfn_binnot},
+    { "ord", cfn_ord},
+    { "println", cfn_println },
+    { "print", cfn_print },
+    { "read_file", cfn_readfile },
+    { "write_file", cfn_writefile },
+    { "first", cfn_first },
+    { "last", cfn_last },
+    { "rest", cfn_rest },
+    { "arrayjoin", cfn_arrayjoin},
+    { "arraypush", cfn_arraypush },
+    { "remove", cfn_remove },
+    { "removeat", cfn_removeat },
+    { "tostring", cfn_tostring },
+    { "tonum", cfn_tonum },
+    { "range", cfn_range },
+    { "keys", cfn_keys },
+    { "values", cfn_values },
+    { "copy", cfn_copy },
+    { "deepcopy", cfn_copydeep },
+    { "concat", cfn_concat },
+    { "chr", cfn_chr },
+    { "reverse", cfn_reverse },
+    { "array", cfn_array },
+    { "error", cfn_error },
+    { "crash", cfn_crash },
+    { "assert", cfn_assert },
+    { "randomseed", cfn_randseed },
+    { "random", cfn_random },
+    { "slice", cfn_slice },
 
-    for(int i = 0; i < argc; i++)
-    {
-        mcvalue_t arg = args[i];
-        mcobjtype_t type = object_get_type(arg);
-        mcobjtype_t expectedtype = expectedtypes[i];
-        if(!(type & expectedtype))
-        {
-            if(generateerror)
-            {
-                const char* typestr = object_get_type_name(type);
-                char* expectedtypestr = object_get_type_union_name(vm, expectedtype);
-                if(!expectedtypestr)
-                {
-                    return false;
-                }
-                errors_add_errorf(&vm->errors, ARCANE_ERROR_RUNTIME, srcposinvalid, "Invalid argument %d type, got %s, expected %s", i, typestr, expectedtypestr);
-                allocator_free(vm, expectedtypestr);
-            }
-            return false;
-        }
-    }
-    return true;
+    /* Custom */
+    { "indexof", cfn_index },
+    { "left", cfn_left },
+    { "right", cfn_right },
+    { "replace", cfn_replace },
+    { "replacefirst", cfn_replacefirst },
+    { "trim", cfn_trim },
+
+    /* Type checks */
+    { "isstring", cfn_isstring },
+    { "isarray", cfn_isarray },
+    { "ismap", cfn_ismap },
+    { "isnumber", cfn_isnumber },
+    { "isbool", cfn_isbool },
+    { "isnull", cfn_isnull },
+    { "isfunction", cfn_isfunction },
+    { "isexternal", cfn_isexternal },
+    { "iserror", cfn_iserror },
+    { "isnativefunction", cfn_isnative_function },
+
+    /* Math */
+    { "sqrt", cfn_sqrt },
+    { "pow", cfn_pow },
+    { "sin", cfn_sin },
+    { "cos", cfn_cos },
+    { "tan", cfn_tan },
+    { "log", cfn_log },
+    { "ceil", cfn_ceil },
+    { "floor", cfn_floor },
+    { "abs", cfn_abs },
+};
+
+TMPSTATIC int builtins_count()
+{
+    return MC_UTIL_STATICARRAYSIZE(gnativefunctions);
 }
 
-void code_to_string(uint8_t* code, mcastlocation_t* sourcepositions, size_t codesize, mcprintstate_t* res)
+TMPSTATIC mcnativeactualfn_t builtins_get_fn(int ix)
+{
+    return gnativefunctions[ix].fn;
+}
+
+TMPSTATIC const char* builtins_get_name(int ix)
+{
+    return gnativefunctions[ix].name;
+}
+
+TMPSTATIC void code_to_string(uint8_t* code, mcastlocation_t* sourcepositions, size_t codesize, mcprintstate_t* res)
 {
     bool ok;
-    unsigned pos = 0;
+    int i;
+    unsigned pos;
+    pos = 0;
     while(pos < codesize)
     {
         uint8_t op = code[pos];
         mcopdefinition_t* def = opcode_lookup(op);
-        ARCANE_ASSERT(def);
+        MC_ASSERT(def);
         if(sourcepositions)
         {
             mcastlocation_t srcpos = sourcepositions[pos];
-            mc_printer_appendf(res, "%d:%-4d\t%04d\t%s", srcpos.line, srcpos.column, pos, def->name);
+            mc_printer_printf(res, "%d:%-4d\t%04d\t%s", srcpos.line, srcpos.column, pos, def->name);
         }
         else
         {
-            mc_printer_appendf(res, "%04d %s", pos, def->name);
+            mc_printer_printf(res, "%04d %s", pos, def->name);
         }
         pos++;
 
@@ -10965,29 +11696,33 @@ void code_to_string(uint8_t* code, mcastlocation_t* sourcepositions, size_t code
         {
             return;
         }
-        for(int i = 0; i < def->num_operands; i++)
+        for(i = 0; i < def->num_operands; i++)
         {
             if(op == OPCODE_NUMBER)
             {
-                double val_double = arcane_uint64_to_double(operands[i]);
-                mc_printer_appendf(res, " %1.17g", val_double);
+                double val_double = mc_util_uint64todouble(operands[i]);
+                mc_printer_printf(res, " %1.17g", val_double);
             }
             else
             {
-                mc_printer_appendf(res, " %llu", operands[i]);
+                mc_printer_printf(res, " %llu", operands[i]);
             }
             pos += def->operand_widths[i];
         }
-        mc_printer_append(res, "\n");
+        mc_printer_puts(res, "\n");
     }
 }
 
-bool code_read_operands(mcopdefinition_t* def, uint8_t* instr, uint64_t outoperands[2])
+TMPSTATIC bool code_read_operands(mcopdefinition_t* def, const uint8_t* instr, uint64_t outoperands[2])
 {
-    int offset = 0;
-    for(int i = 0; i < def->num_operands; i++)
+    int i;
+    int offset;
+    int operandwidth;
+    uint64_t operand;
+    offset = 0;
+    for(i = 0; i < def->num_operands; i++)
     {
-        int operandwidth = def->operand_widths[i];
+        operandwidth = def->operand_widths[i];
         switch(operandwidth)
         {
             case 1:
@@ -10997,7 +11732,7 @@ bool code_read_operands(mcopdefinition_t* def, uint8_t* instr, uint64_t outopera
             }
             case 2:
             {
-                uint64_t operand = 0;
+                operand = 0;
                 operand = operand | ((uint64_t)instr[offset] << 8);
                 operand = operand | ((uint64_t)instr[offset + 1]);
                 outoperands[i] = operand;
@@ -11005,7 +11740,7 @@ bool code_read_operands(mcopdefinition_t* def, uint8_t* instr, uint64_t outopera
             }
             case 4:
             {
-                uint64_t operand = 0;
+                operand = 0;
                 operand = operand | ((uint64_t)instr[offset + 0] << 24);
                 operand = operand | ((uint64_t)instr[offset + 1] << 16);
                 operand = operand | ((uint64_t)instr[offset + 2] << 8);
@@ -11015,7 +11750,7 @@ bool code_read_operands(mcopdefinition_t* def, uint8_t* instr, uint64_t outopera
             }
             case 8:
             {
-                uint64_t operand = 0;
+                operand = 0;
                 operand = operand | ((uint64_t)instr[offset + 0] << 56);
                 operand = operand | ((uint64_t)instr[offset + 1] << 48);
                 operand = operand | ((uint64_t)instr[offset + 2] << 40);
@@ -11029,7 +11764,7 @@ bool code_read_operands(mcopdefinition_t* def, uint8_t* instr, uint64_t outopera
             }
             default:
             {
-                ARCANE_ASSERT(false);
+                MC_ASSERT(false);
                 return false;
             }
         }
@@ -11047,7 +11782,7 @@ bool code_read_operands(mcopdefinition_t* def, uint8_t* instr, uint64_t outopera
 
 TMPSTATIC char* collections_strndup(mcstate_t* state, const char* string, size_t n)
 {
-    char* outputstring = (char*)allocator_malloc(state, n + 1);
+    char* outputstring = (char*)mc_allocator_alloc(state, n + 1);
     if(!outputstring)
     {
         return NULL;
@@ -11066,49 +11801,13 @@ TMPSTATIC char* collections_strdup(mcstate_t* state, const char* string)
     return collections_strndup(state, string, strlen(string));
 }
 
-TMPSTATIC unsigned long collections_hash(void* ptr, size_t len)
-{
-    /* djb2 */
-    uint8_t* ptru8 = ptr;
-    unsigned long hash = 5381;
-    for(size_t i = 0; i < len; i++)
-    {
-        uint8_t val = ptru8[i];
-        hash = ((hash << 5) + hash) + val;
-    }
-    return hash;
-}
-
-TMPSTATIC unsigned int upper_power_of_two(unsigned int v)
-{
-    v--;
-    v |= v >> 1;
-    v |= v >> 2;
-    v |= v >> 4;
-    v |= v >> 8;
-    v |= v >> 16;
-    v++;
-    return v;
-}
-
-void* allocator_malloc(mcstate_t* state, size_t size)
-{
-    return malloc(size);
-}
-
-void allocator_free(mcstate_t* state, void* ptr)
-{
-    free(ptr);
-    return;
-}
-
 #define DICT_INVALID_IX UINT_MAX
 #define DICT_INITIAL_SIZE 32
 
-mcgenericdict_t* dict_make_(mcstate_t* state, dictitemcopyfn copy_fn, dictitemdestroyfn destroy_fn)
+TMPSTATIC mcgenericdict_t* dict_make_(mcstate_t* state, mcdictitemcopyfn_t copy_fn, mcdictitemdestroyfn_t destroy_fn)
 {
     bool ok;
-    mcgenericdict_t* dict = (mcgenericdict_t*)allocator_malloc(state, sizeof(mcgenericdict_t));
+    mcgenericdict_t* dict = (mcgenericdict_t*)mc_allocator_alloc(state, sizeof(mcgenericdict_t));
     if(dict == NULL)
     {
         return NULL;
@@ -11116,14 +11815,14 @@ mcgenericdict_t* dict_make_(mcstate_t* state, dictitemcopyfn copy_fn, dictitemde
     ok = dict_init(dict, state, DICT_INITIAL_SIZE, copy_fn, destroy_fn);
     if(!ok)
     {
-        allocator_free(state, dict);
+        mc_allocator_free(state, dict);
         return NULL;
     }
     dict->pstate = state;
     return dict;
 }
 
-void dict_destroy(mcgenericdict_t* dict)
+TMPSTATIC void dict_destroy(mcgenericdict_t* dict)
 {
     mcstate_t* state;
     if(!dict)
@@ -11132,33 +11831,33 @@ void dict_destroy(mcgenericdict_t* dict)
     }
     state = dict->pstate;
     dict_deinit(dict, true);
-    allocator_free(state, dict);
+    mc_allocator_free(state, dict);
 }
 
-void dict_destroy_with_items(mcgenericdict_t* dict)
+TMPSTATIC void dict_destroy_with_items(mcgenericdict_t* dict)
 {
+    unsigned int i;
     if(!dict)
     {
         return;
     }
-
     if(dict->destroy_fn)
     {
-        for(unsigned int i = 0; i < dict->count; i++)
+        for(i = 0; i < dict->count; i++)
         {
             dict->destroy_fn(dict->values[i]);
         }
     }
-
     dict_destroy(dict);
 }
 
-mcgenericdict_t* dict_copy_with_items(mcgenericdict_t* dict)
+TMPSTATIC mcgenericdict_t* dict_copy_with_items(mcgenericdict_t* dict)
 {
     bool ok;
+    int i;
     if(!dict->copy_fn || !dict->destroy_fn)
     {
-        return false;
+        return NULL;
     }
 
     mcgenericdict_t* dictcopy = dict_make_(dict->pstate, dict->copy_fn, dict->destroy_fn);
@@ -11167,7 +11866,7 @@ mcgenericdict_t* dict_copy_with_items(mcgenericdict_t* dict)
         return NULL;
     }
     dictcopy->pstate = dict->pstate;
-    for(int i = 0; i < dict_count(dict); i++)
+    for(i = 0; i < dict_count(dict); i++)
     {
         const char* key = dict_get_key_at(dict, i);
         void* item = dict_get_value_at(dict, i);
@@ -11188,12 +11887,12 @@ mcgenericdict_t* dict_copy_with_items(mcgenericdict_t* dict)
     return dictcopy;
 }
 
-bool dict_set(mcgenericdict_t* dict, const char* key, void* value)
+TMPSTATIC bool dict_set(mcgenericdict_t* dict, const char* key, void* value)
 {
     return dict_set_internal(dict, key, NULL, value);
 }
 
-void* dict_get(mcgenericdict_t* dict, const char* key)
+TMPSTATIC void* dict_get(mcgenericdict_t* dict, const char* key)
 {
     unsigned long hash = hash_string(key);
     bool found = false;
@@ -11206,7 +11905,7 @@ void* dict_get(mcgenericdict_t* dict, const char* key)
     return dict->values[itemix];
 }
 
-void* dict_get_value_at(mcgenericdict_t* dict, unsigned int ix)
+TMPSTATIC void* dict_get_value_at(mcgenericdict_t* dict, unsigned int ix)
 {
     if(ix >= dict->count)
     {
@@ -11215,7 +11914,7 @@ void* dict_get_value_at(mcgenericdict_t* dict, unsigned int ix)
     return dict->values[ix];
 }
 
-const char* dict_get_key_at(mcgenericdict_t* dict, unsigned int ix)
+TMPSTATIC const char* dict_get_key_at(mcgenericdict_t* dict, unsigned int ix)
 {
     if(ix >= dict->count)
     {
@@ -11224,7 +11923,7 @@ const char* dict_get_key_at(mcgenericdict_t* dict, unsigned int ix)
     return dict->keys[ix];
 }
 
-int dict_count(mcgenericdict_t* dict)
+TMPSTATIC int dict_count(mcgenericdict_t* dict)
 {
     if(!dict)
     {
@@ -11233,8 +11932,9 @@ int dict_count(mcgenericdict_t* dict)
     return dict->count;
 }
 
-bool dict_remove(mcgenericdict_t* dict, const char* key)
+TMPUNUSED bool dict_remove(mcgenericdict_t* dict, const char* key)
 {
+    unsigned int x;
     unsigned long hash = hash_string(key);
     bool found = false;
     unsigned int cell = dict_get_cell_ix(dict, key, hash, &found);
@@ -11244,7 +11944,7 @@ bool dict_remove(mcgenericdict_t* dict, const char* key)
     }
 
     unsigned int itemix = dict->cells[cell];
-    allocator_free(dict->pstate, dict->keys[itemix]);
+    mc_allocator_free(dict->pstate, dict->keys[itemix]);
     unsigned int lastitemix = dict->count - 1;
     if(itemix < lastitemix)
     {
@@ -11258,7 +11958,7 @@ bool dict_remove(mcgenericdict_t* dict, const char* key)
 
     unsigned int i = cell;
     unsigned int j = i;
-    for(unsigned int x = 0; x < (dict->cell_capacity - 1); x++)
+    for(x = 0; x < (dict->cell_capacity - 1); x++)
     {
         j = (j + 1) & (dict->cell_capacity - 1);
         if(dict->cells[j] == DICT_INVALID_IX)
@@ -11277,8 +11977,9 @@ bool dict_remove(mcgenericdict_t* dict, const char* key)
     return true;
 }
 
-TMPSTATIC bool dict_init(mcgenericdict_t* dict, mcstate_t* state, unsigned int initialcapacity, dictitemcopyfn copy_fn, dictitemdestroyfn destroy_fn)
+TMPSTATIC bool dict_init(mcgenericdict_t* dict, mcstate_t* state, unsigned int initialcapacity, mcdictitemcopyfn_t copy_fn, mcdictitemdestroyfn_t destroy_fn)
 {
+    unsigned int i;
     dict->pstate = state;
     dict->cells = NULL;
     dict->keys = NULL;
@@ -11292,47 +11993,48 @@ TMPSTATIC bool dict_init(mcgenericdict_t* dict, mcstate_t* state, unsigned int i
     dict->copy_fn = copy_fn;
     dict->destroy_fn = destroy_fn;
 
-    dict->cells = (unsigned int*)allocator_malloc(dict->pstate, dict->cell_capacity * sizeof(*dict->cells));
-    dict->keys = (char**)allocator_malloc(dict->pstate, dict->item_capacity * sizeof(*dict->keys));
-    dict->values = (void**)allocator_malloc(dict->pstate, dict->item_capacity * sizeof(*dict->values));
-    dict->cell_ixs = (unsigned int*)allocator_malloc(dict->pstate, dict->item_capacity * sizeof(*dict->cell_ixs));
-    dict->hashes = (long unsigned int*)allocator_malloc(dict->pstate, dict->item_capacity * sizeof(*dict->hashes));
+    dict->cells = (unsigned int*)mc_allocator_alloc(dict->pstate, dict->cell_capacity * sizeof(*dict->cells));
+    dict->keys = (char**)mc_allocator_alloc(dict->pstate, dict->item_capacity * sizeof(*dict->keys));
+    dict->values = (void**)mc_allocator_alloc(dict->pstate, dict->item_capacity * sizeof(*dict->values));
+    dict->cell_ixs = (unsigned int*)mc_allocator_alloc(dict->pstate, dict->item_capacity * sizeof(*dict->cell_ixs));
+    dict->hashes = (long unsigned int*)mc_allocator_alloc(dict->pstate, dict->item_capacity * sizeof(*dict->hashes));
     if(dict->cells == NULL || dict->keys == NULL || dict->values == NULL || dict->cell_ixs == NULL || dict->hashes == NULL)
     {
         goto error;
     }
-    for(unsigned int i = 0; i < dict->cell_capacity; i++)
+    for(i = 0; i < dict->cell_capacity; i++)
     {
         dict->cells[i] = DICT_INVALID_IX;
     }
     return true;
 error:
-    allocator_free(dict->pstate, dict->cells);
-    allocator_free(dict->pstate, dict->keys);
-    allocator_free(dict->pstate, dict->values);
-    allocator_free(dict->pstate, dict->cell_ixs);
-    allocator_free(dict->pstate, dict->hashes);
+    mc_allocator_free(dict->pstate, dict->cells);
+    mc_allocator_free(dict->pstate, dict->keys);
+    mc_allocator_free(dict->pstate, dict->values);
+    mc_allocator_free(dict->pstate, dict->cell_ixs);
+    mc_allocator_free(dict->pstate, dict->hashes);
     return false;
 }
 
 TMPSTATIC void dict_deinit(mcgenericdict_t* dict, bool freekeys)
 {
+    unsigned int i;
     if(freekeys)
     {
-        for(unsigned int i = 0; i < dict->count; i++)
+        for(i = 0; i < dict->count; i++)
         {
-            allocator_free(dict->pstate, dict->keys[i]);
+            mc_allocator_free(dict->pstate, dict->keys[i]);
         }
     }
     dict->count = 0;
     dict->item_capacity = 0;
     dict->cell_capacity = 0;
 
-    allocator_free(dict->pstate, dict->cells);
-    allocator_free(dict->pstate, dict->keys);
-    allocator_free(dict->pstate, dict->values);
-    allocator_free(dict->pstate, dict->cell_ixs);
-    allocator_free(dict->pstate, dict->hashes);
+    mc_allocator_free(dict->pstate, dict->cells);
+    mc_allocator_free(dict->pstate, dict->keys);
+    mc_allocator_free(dict->pstate, dict->values);
+    mc_allocator_free(dict->pstate, dict->cell_ixs);
+    mc_allocator_free(dict->pstate, dict->hashes);
 
     dict->cells = NULL;
     dict->keys = NULL;
@@ -11343,9 +12045,10 @@ TMPSTATIC void dict_deinit(mcgenericdict_t* dict, bool freekeys)
 
 TMPSTATIC unsigned int dict_get_cell_ix(mcgenericdict_t* dict, const char* key, unsigned long hash, bool* outfound)
 {
+    unsigned int i;
     *outfound = false;
     unsigned int cellix = (unsigned int)hash & (dict->cell_capacity - 1);
-    for(unsigned int i = 0; i < dict->cell_capacity; i++)
+    for(i = 0; i < dict->cell_capacity; i++)
     {
         unsigned int ix = (cellix + i) & (dict->cell_capacity - 1);
         unsigned int cell = dict->cells[ix];
@@ -11383,13 +12086,14 @@ TMPSTATIC unsigned long hash_string(const char* str)
 TMPSEMISTATIC bool dict_grow_and_rehash(mcgenericdict_t* dict)
 {
     bool ok;
+    unsigned int i;
     mcgenericdict_t newdict;
     ok = dict_init(&newdict, dict->pstate, dict->cell_capacity * 2, dict->copy_fn, dict->destroy_fn);
     if(!ok)
     {
         return false;
     }
-    for(unsigned int i = 0; i < dict->count; i++)
+    for(i = 0; i < dict->count; i++)
     {
         char* key = dict->keys[i];
         void* value = dict->values[i];
@@ -11450,16 +12154,78 @@ TMPSTATIC bool dict_set_internal(mcgenericdict_t* dict, const char* ckey, char* 
 
 #define VALDICT_INVALID_IX UINT_MAX
 
-mcvaldict_t* valdict_make_(mcstate_t* state, size_t key_size, size_t val_size)
+TMPSTATIC bool valdict_init(mcvaldict_t* dict, mcstate_t* state, size_t key_size, size_t val_size, unsigned int initialcapacity)
+{
+    unsigned int i;
+    dict->pstate = state;
+    dict->key_size = key_size;
+    dict->val_size = val_size;
+    dict->cells = NULL;
+    dict->keys = NULL;
+    dict->values = NULL;
+    dict->cell_ixs = NULL;
+    dict->hashes = NULL;
+    dict->count = 0;
+    dict->cell_capacity = initialcapacity;
+    dict->item_capacity = (unsigned int)(initialcapacity * 0.7f);
+
+    dict->_keys_equals = NULL;
+    dict->_hash_key = NULL;
+
+    dict->cells = (unsigned int*)mc_allocator_alloc(dict->pstate, dict->cell_capacity * sizeof(*dict->cells));
+    dict->keys = (void*)mc_allocator_alloc(dict->pstate, dict->item_capacity * key_size);
+    dict->values = (void*)mc_allocator_alloc(dict->pstate, dict->item_capacity * val_size);
+    dict->cell_ixs = (unsigned int*)mc_allocator_alloc(dict->pstate, dict->item_capacity * sizeof(*dict->cell_ixs));
+    dict->hashes = (long unsigned int*)mc_allocator_alloc(dict->pstate, dict->item_capacity * sizeof(*dict->hashes));
+    if(dict->cells == NULL || dict->keys == NULL || dict->values == NULL || dict->cell_ixs == NULL || dict->hashes == NULL)
+    {
+        goto error;
+    }
+    for(i = 0; i < dict->cell_capacity; i++)
+    {
+        dict->cells[i] = VALDICT_INVALID_IX;
+    }
+    return true;
+error:
+    mc_allocator_free(dict->pstate, dict->cells);
+    mc_allocator_free(dict->pstate, dict->keys);
+    mc_allocator_free(dict->pstate, dict->values);
+    mc_allocator_free(dict->pstate, dict->cell_ixs);
+    mc_allocator_free(dict->pstate, dict->hashes);
+    return false;
+}
+
+TMPSTATIC void valdict_deinit(mcvaldict_t* dict)
+{
+    dict->key_size = 0;
+    dict->val_size = 0;
+    dict->count = 0;
+    dict->item_capacity = 0;
+    dict->cell_capacity = 0;
+
+    mc_allocator_free(dict->pstate, dict->cells);
+    mc_allocator_free(dict->pstate, dict->keys);
+    mc_allocator_free(dict->pstate, dict->values);
+    mc_allocator_free(dict->pstate, dict->cell_ixs);
+    mc_allocator_free(dict->pstate, dict->hashes);
+
+    dict->cells = NULL;
+    dict->keys = NULL;
+    dict->values = NULL;
+    dict->cell_ixs = NULL;
+    dict->hashes = NULL;
+}
+
+TMPSTATIC mcvaldict_t* valdict_make_(mcstate_t* state, size_t key_size, size_t val_size)
 {
     return valdict_make_with_capacity(state, DICT_INITIAL_SIZE, key_size, val_size);
 }
 
-mcvaldict_t* valdict_make_with_capacity(mcstate_t* state, unsigned int mincapacity, size_t key_size, size_t val_size)
+TMPSTATIC mcvaldict_t* valdict_make_with_capacity(mcstate_t* state, unsigned int mincapacity, size_t key_size, size_t val_size)
 {
     bool ok;
-    unsigned int capacity = upper_power_of_two(mincapacity * 2);
-    mcvaldict_t* dict = (mcvaldict_t*)allocator_malloc(state, sizeof(mcvaldict_t));
+    unsigned int capacity = mc_util_upperpowoftwo(mincapacity * 2);
+    mcvaldict_t* dict = (mcvaldict_t*)mc_allocator_alloc(state, sizeof(mcvaldict_t));
     if(!dict)
     {
         return NULL;
@@ -11467,14 +12233,14 @@ mcvaldict_t* valdict_make_with_capacity(mcstate_t* state, unsigned int mincapaci
     ok = valdict_init(dict, state, key_size, val_size, capacity);
     if(!ok)
     {
-        allocator_free(state, dict);
+        mc_allocator_free(state, dict);
         return NULL;
     }
     dict->pstate = state;
     return dict;
 }
 
-void valdict_destroy(mcvaldict_t* dict)
+TMPSTATIC void valdict_destroy(mcvaldict_t* dict)
 {
     mcstate_t* state;
     if(!dict)
@@ -11483,20 +12249,20 @@ void valdict_destroy(mcvaldict_t* dict)
     }
     state = dict->pstate;
     valdict_deinit(dict);
-    allocator_free(state, dict);
+    mc_allocator_free(state, dict);
 }
 
-void valdict_set_hash_function(mcvaldict_t* dict, collectionshashfn hashfn)
+TMPSTATIC void valdict_set_hash_function(mcvaldict_t* dict, mccollectionshashfn_t hashfn)
 {
     dict->_hash_key = hashfn;
 }
 
-void valdict_set_equals_function(mcvaldict_t* dict, collectionsequalsfn equalsfn)
+TMPSTATIC void valdict_set_equals_function(mcvaldict_t* dict, mccollectionsequalsfn_t equalsfn)
 {
     dict->_keys_equals = equalsfn;
 }
 
-bool valdict_set(mcvaldict_t* dict, void* key, void* value)
+TMPSTATIC bool valdict_set(mcvaldict_t* dict, void* key, void* value)
 {
     bool ok;
     unsigned long hash = valdict_hash_key(dict, key);
@@ -11527,8 +12293,12 @@ bool valdict_set(mcvaldict_t* dict, void* key, void* value)
     return true;
 }
 
-void* valdict_get(mcvaldict_t* dict, void* key)
+TMPSTATIC void* valdict_get(mcvaldict_t* dict, void* key)
 {
+    if(dict->count == 0)
+    {
+        return NULL;
+    }
     unsigned long hash = valdict_hash_key(dict, key);
     bool found = false;
     unsigned long cellix = valdict_get_cell_ix(dict, key, hash, &found);
@@ -11540,7 +12310,7 @@ void* valdict_get(mcvaldict_t* dict, void* key)
     return valdict_get_value_at(dict, itemix);
 }
 
-void* valdict_get_key_at(mcvaldict_t* dict, unsigned int ix)
+TMPSTATIC void* valdict_get_key_at(mcvaldict_t* dict, unsigned int ix)
 {
     if(ix >= dict->count)
     {
@@ -11549,7 +12319,7 @@ void* valdict_get_key_at(mcvaldict_t* dict, unsigned int ix)
     return (char*)dict->keys + (dict->key_size * ix);
 }
 
-void* valdict_get_value_at(mcvaldict_t* dict, unsigned int ix)
+TMPSTATIC void* valdict_get_value_at(mcvaldict_t* dict, unsigned int ix)
 {
     if(ix >= dict->count)
     {
@@ -11558,12 +12328,12 @@ void* valdict_get_value_at(mcvaldict_t* dict, unsigned int ix)
     return (char*)dict->values + (dict->val_size * ix);
 }
 
-unsigned int valdict_get_capacity(mcvaldict_t* dict)
+TMPUNUSED unsigned int valdict_get_capacity(mcvaldict_t* dict)
 {
     return dict->item_capacity;
 }
 
-bool valdict_set_value_at(mcvaldict_t* dict, unsigned int ix, void* value)
+TMPSTATIC bool valdict_set_value_at(mcvaldict_t* dict, unsigned int ix, void* value)
 {
     if(ix >= dict->count)
     {
@@ -11574,7 +12344,7 @@ bool valdict_set_value_at(mcvaldict_t* dict, unsigned int ix, void* value)
     return true;
 }
 
-int valdict_count(mcvaldict_t* dict)
+TMPSTATIC int valdict_count(mcvaldict_t* dict)
 {
     if(!dict)
     {
@@ -11583,8 +12353,9 @@ int valdict_count(mcvaldict_t* dict)
     return dict->count;
 }
 
-bool valdict_remove(mcvaldict_t* dict, void* key)
+TMPUNUSED bool valdict_remove(mcvaldict_t* dict, void* key)
 {
+    unsigned int x;
     unsigned long hash = valdict_hash_key(dict, key);
     bool found = false;
     unsigned int cell = valdict_get_cell_ix(dict, key, hash, &found);
@@ -11609,7 +12380,7 @@ bool valdict_remove(mcvaldict_t* dict, void* key)
 
     unsigned int i = cell;
     unsigned int j = i;
-    for(unsigned int x = 0; x < (dict->cell_capacity - 1); x++)
+    for(x = 0; x < (dict->cell_capacity - 1); x++)
     {
         j = (j + 1) & (dict->cell_capacity - 1);
         if(dict->cells[j] == VALDICT_INVALID_IX)
@@ -11628,75 +12399,14 @@ bool valdict_remove(mcvaldict_t* dict, void* key)
     return true;
 }
 
-void valdict_clear(mcvaldict_t* dict)
+TMPSTATIC void valdict_clear(mcvaldict_t* dict)
 {
+    unsigned int i;
     dict->count = 0;
-    for(unsigned int i = 0; i < dict->cell_capacity; i++)
+    for(i = 0; i < dict->cell_capacity; i++)
     {
         dict->cells[i] = VALDICT_INVALID_IX;
     }
-}
-
-TMPSTATIC bool valdict_init(mcvaldict_t* dict, mcstate_t* state, size_t key_size, size_t val_size, unsigned int initialcapacity)
-{
-    dict->pstate = state;
-    dict->key_size = key_size;
-    dict->val_size = val_size;
-    dict->cells = NULL;
-    dict->keys = NULL;
-    dict->values = NULL;
-    dict->cell_ixs = NULL;
-    dict->hashes = NULL;
-
-    dict->count = 0;
-    dict->cell_capacity = initialcapacity;
-    dict->item_capacity = (unsigned int)(initialcapacity * 0.7f);
-
-    dict->_keys_equals = NULL;
-    dict->_hash_key = NULL;
-
-    dict->cells = (unsigned int*)allocator_malloc(dict->pstate, dict->cell_capacity * sizeof(*dict->cells));
-    dict->keys = (void*)allocator_malloc(dict->pstate, dict->item_capacity * key_size);
-    dict->values = (void*)allocator_malloc(dict->pstate, dict->item_capacity * val_size);
-    dict->cell_ixs = (unsigned int*)allocator_malloc(dict->pstate, dict->item_capacity * sizeof(*dict->cell_ixs));
-    dict->hashes = (long unsigned int*)allocator_malloc(dict->pstate, dict->item_capacity * sizeof(*dict->hashes));
-    if(dict->cells == NULL || dict->keys == NULL || dict->values == NULL || dict->cell_ixs == NULL || dict->hashes == NULL)
-    {
-        goto error;
-    }
-    for(unsigned int i = 0; i < dict->cell_capacity; i++)
-    {
-        dict->cells[i] = VALDICT_INVALID_IX;
-    }
-    return true;
-error:
-    allocator_free(dict->pstate, dict->cells);
-    allocator_free(dict->pstate, dict->keys);
-    allocator_free(dict->pstate, dict->values);
-    allocator_free(dict->pstate, dict->cell_ixs);
-    allocator_free(dict->pstate, dict->hashes);
-    return false;
-}
-
-TMPSTATIC void valdict_deinit(mcvaldict_t* dict)
-{
-    dict->key_size = 0;
-    dict->val_size = 0;
-    dict->count = 0;
-    dict->item_capacity = 0;
-    dict->cell_capacity = 0;
-
-    allocator_free(dict->pstate, dict->cells);
-    allocator_free(dict->pstate, dict->keys);
-    allocator_free(dict->pstate, dict->values);
-    allocator_free(dict->pstate, dict->cell_ixs);
-    allocator_free(dict->pstate, dict->hashes);
-
-    dict->cells = NULL;
-    dict->keys = NULL;
-    dict->values = NULL;
-    dict->cell_ixs = NULL;
-    dict->hashes = NULL;
 }
 
 TMPSTATIC unsigned int valdict_get_cell_ix(mcvaldict_t* dict, void* key, unsigned long hash, bool* outfound)
@@ -11723,7 +12433,6 @@ TMPSTATIC unsigned int valdict_get_cell_ix(mcvaldict_t* dict, void* key, unsigne
         {
             continue;
         }
-
         keytocheck = valdict_get_key_at(dict, cell);
         areequal = valdict_keys_are_equal(dict, key, keytocheck);
         if(areequal)
@@ -11739,6 +12448,7 @@ TMPSTATIC bool valdict_grow_and_rehash(mcvaldict_t* dict)
 {
     bool ok;
     mcvaldict_t newdict;
+    unsigned int i;
     unsigned newcapacity = dict->cell_capacity == 0 ? DICT_INITIAL_SIZE : dict->cell_capacity * 2;
     ok = valdict_init(&newdict, dict->pstate, dict->key_size, dict->val_size, newcapacity);
     if(!ok)
@@ -11747,9 +12457,9 @@ TMPSTATIC bool valdict_grow_and_rehash(mcvaldict_t* dict)
     }
     newdict._keys_equals = dict->_keys_equals;
     newdict._hash_key = dict->_hash_key;
-    for(unsigned int i = 0; i < dict->count; i++)
+    for(i = 0; i < dict->count; i++)
     {
-        char* key = valdict_get_key_at(dict, i);
+        char* key = (char*)valdict_get_key_at(dict, i);
         void* value = valdict_get_value_at(dict, i);
         ok = valdict_set(&newdict, key, value);
         if(!ok)
@@ -11789,18 +12499,18 @@ TMPSTATIC unsigned long valdict_hash_key(mcvaldict_t* dict, void* key)
     {
         return dict->_hash_key(key);
     }
-    return collections_hash(key, dict->key_size);
+    return mc_util_hashdata(key, dict->key_size);
 }
 
-mcbasicarray_t* array_make(mcstate_t* state, size_t element_size)
+TMPSTATIC mcbasicarray_t* array_make(mcstate_t* state, size_t element_size)
 {
     return array_make_with_capacity(state, 32, element_size);
 }
 
-mcbasicarray_t* array_make_with_capacity(mcstate_t* state, unsigned int capacity, size_t element_size)
+TMPSTATIC mcbasicarray_t* array_make_with_capacity(mcstate_t* state, unsigned int capacity, size_t element_size)
 {
     bool ok;
-    mcbasicarray_t* arr = (mcbasicarray_t*)allocator_malloc(state, sizeof(mcbasicarray_t));
+    mcbasicarray_t* arr = (mcbasicarray_t*)mc_allocator_alloc(state, sizeof(mcbasicarray_t));
     if(!arr)
     {
         return NULL;
@@ -11809,14 +12519,14 @@ mcbasicarray_t* array_make_with_capacity(mcstate_t* state, unsigned int capacity
     ok = array_init_with_capacity(arr, state, capacity, element_size);
     if(!ok)
     {
-        allocator_free(state, arr);
+        mc_allocator_free(state, arr);
         return NULL;
     }
     arr->pstate = state;
     return arr;
 }
 
-void array_destroy(mcbasicarray_t* arr)
+TMPSTATIC void array_destroy(mcbasicarray_t* arr)
 {
     mcstate_t* state;
     if(!arr)
@@ -11825,12 +12535,13 @@ void array_destroy(mcbasicarray_t* arr)
     }
     state = arr->pstate;
     array_deinit(arr);
-    allocator_free(state, arr);
+    mc_allocator_free(state, arr);
 }
 
-void array_destroy_with_items_(mcbasicarray_t* arr, arrayitemdeinitfn deinit_fn)
+TMPUNUSED void array_destroy_with_items_(mcbasicarray_t* arr, mcarrayitemdeinitfn_t deinit_fn)
 {
-    for(int i = 0; i < array_count(arr); i++)
+    int i;
+    for(i = 0; i < array_count(arr); i++)
     {
         void* item = array_get(arr, i);
         deinit_fn(item);
@@ -11838,9 +12549,9 @@ void array_destroy_with_items_(mcbasicarray_t* arr, arrayitemdeinitfn deinit_fn)
     array_destroy(arr);
 }
 
-mcbasicarray_t* array_copy(mcbasicarray_t* arr)
+TMPSTATIC mcbasicarray_t* array_copy(mcbasicarray_t* arr)
 {
-    mcbasicarray_t* copy = (mcbasicarray_t*)allocator_malloc(arr->pstate, sizeof(mcbasicarray_t));
+    mcbasicarray_t* copy = (mcbasicarray_t*)mc_allocator_alloc(arr->pstate, sizeof(mcbasicarray_t));
     if(!copy)
     {
         return NULL;
@@ -11852,10 +12563,10 @@ mcbasicarray_t* array_copy(mcbasicarray_t* arr)
     copy->lock_capacity = arr->lock_capacity;
     if(arr->data_allocated)
     {
-        copy->data_allocated = (unsigned char*)allocator_malloc(arr->pstate, arr->capacity * arr->element_size);
+        copy->data_allocated = (unsigned char*)mc_allocator_alloc(arr->pstate, arr->capacity * arr->element_size);
         if(!copy->data_allocated)
         {
-            allocator_free(arr->pstate, copy);
+            mc_allocator_free(arr->pstate, copy);
             return NULL;
         }
         copy->data = copy->data_allocated;
@@ -11870,7 +12581,7 @@ mcbasicarray_t* array_copy(mcbasicarray_t* arr)
     return copy;
 }
 
-bool array_add(mcbasicarray_t* arr, void* value)
+TMPSTATIC bool array_add(mcbasicarray_t* arr, void* value)
 {
     if(arr->count >= arr->capacity)
     {
@@ -11880,13 +12591,13 @@ bool array_add(mcbasicarray_t* arr, void* value)
             return false;
         }
         unsigned int newcapacity = arr->capacity > 0 ? arr->capacity * 2 : 1;
-        unsigned char* newdata = (unsigned char*)allocator_malloc(arr->pstate, newcapacity * arr->element_size);
+        unsigned char* newdata = (unsigned char*)mc_allocator_alloc(arr->pstate, newcapacity * arr->element_size);
         if(!newdata)
         {
             return false;
         }
         memcpy(newdata, arr->data, arr->count * arr->element_size);
-        allocator_free(arr->pstate, arr->data_allocated);
+        mc_allocator_free(arr->pstate, arr->data_allocated);
         arr->data_allocated = newdata;
         arr->data = arr->data_allocated;
         arr->capacity = newcapacity;
@@ -11899,10 +12610,11 @@ bool array_add(mcbasicarray_t* arr, void* value)
     return true;
 }
 
-bool array_addn(mcbasicarray_t* arr, void* values, int n)
+TMPUNUSED bool array_addn(mcbasicarray_t* arr, void* values, int n)
 {
     bool ok;
-    for(int i = 0; i < n; i++)
+    int i;
+    for(i = 0; i < n; i++)
     {
         uint8_t* value = NULL;
         if(values)
@@ -11918,16 +12630,17 @@ bool array_addn(mcbasicarray_t* arr, void* values, int n)
     return true;
 }
 
-bool array_add_array(mcbasicarray_t* dest, mcbasicarray_t* source)
+TMPUNUSED bool array_add_array(mcbasicarray_t* dest, mcbasicarray_t* source)
 {
     bool ok;
+    int i;
     COLLECTIONS_ASSERT(dest->element_size == source->element_size);
     if(dest->element_size != source->element_size)
     {
         return false;
     }
     int destbeforecount = array_count(dest);
-    for(int i = 0; i < array_count(source); i++)
+    for(i = 0; i < array_count(source); i++)
     {
         void* item = array_get(source, i);
         ok = array_add(dest, item);
@@ -11940,12 +12653,12 @@ bool array_add_array(mcbasicarray_t* dest, mcbasicarray_t* source)
     return true;
 }
 
-bool array_push(mcbasicarray_t* arr, void* value)
+TMPSTATIC bool array_push(mcbasicarray_t* arr, void* value)
 {
     return array_add(arr, value);
 }
 
-bool array_pop(mcbasicarray_t* arr, void* outvalue)
+TMPSTATIC bool array_pop(mcbasicarray_t* arr, void* outvalue)
 {
     if(arr->count <= 0)
     {
@@ -11960,7 +12673,7 @@ bool array_pop(mcbasicarray_t* arr, void* outvalue)
     return true;
 }
 
-void* array_top(mcbasicarray_t* arr)
+TMPSTATIC void* array_top(mcbasicarray_t* arr)
 {
     if(arr->count <= 0)
     {
@@ -11969,7 +12682,7 @@ void* array_top(mcbasicarray_t* arr)
     return array_get(arr, arr->count - 1);
 }
 
-bool array_set(mcbasicarray_t* arr, unsigned int ix, void* value)
+TMPSTATIC bool array_set(mcbasicarray_t* arr, unsigned int ix, void* value)
 {
     if(ix >= arr->count)
     {
@@ -11981,10 +12694,11 @@ bool array_set(mcbasicarray_t* arr, unsigned int ix, void* value)
     return true;
 }
 
-bool array_setn(mcbasicarray_t* arr, unsigned int ix, void* values, int n)
+TMPUNUSED bool array_setn(mcbasicarray_t* arr, unsigned int ix, void* values, int n)
 {
     bool ok;
-    for(int i = 0; i < n; i++)
+    int i;
+    for(i = 0; i < n; i++)
     {
         int destix = ix + i;
         unsigned char* value = (unsigned char*)values + (i * arr->element_size);
@@ -12008,7 +12722,7 @@ bool array_setn(mcbasicarray_t* arr, unsigned int ix, void* values, int n)
     return true;
 }
 
-void* array_get(mcbasicarray_t* arr, unsigned int ix)
+TMPSTATIC void* array_get(mcbasicarray_t* arr, unsigned int ix)
 {
     if(ix >= arr->count)
     {
@@ -12019,7 +12733,7 @@ void* array_get(mcbasicarray_t* arr, unsigned int ix)
     return arr->data + offset;
 }
 
-void* array_get_const(mcbasicarray_t* arr, unsigned int ix)
+TMPSTATIC void* array_get_const(mcbasicarray_t* arr, unsigned int ix)
 {
     if(ix >= arr->count)
     {
@@ -12030,7 +12744,7 @@ void* array_get_const(mcbasicarray_t* arr, unsigned int ix)
     return arr->data + offset;
 }
 
-void* array_get_last(mcbasicarray_t* arr)
+TMPUNUSED void* array_get_last(mcbasicarray_t* arr)
 {
     if(arr->count <= 0)
     {
@@ -12039,7 +12753,7 @@ void* array_get_last(mcbasicarray_t* arr)
     return array_get(arr, arr->count - 1);
 }
 
-int array_count(mcbasicarray_t* arr)
+TMPSTATIC int array_count(mcbasicarray_t* arr)
 {
     if(!arr)
     {
@@ -12048,12 +12762,12 @@ int array_count(mcbasicarray_t* arr)
     return arr->count;
 }
 
-unsigned int array_get_capacity(mcbasicarray_t* arr)
+TMPUNUSED unsigned int array_get_capacity(mcbasicarray_t* arr)
 {
     return arr->capacity;
 }
 
-bool array_remove_at(mcbasicarray_t* arr, unsigned int ix)
+TMPSTATIC bool array_remove_at(mcbasicarray_t* arr, unsigned int ix)
 {
     if(ix >= arr->count)
     {
@@ -12079,7 +12793,7 @@ bool array_remove_at(mcbasicarray_t* arr, unsigned int ix)
     return true;
 }
 
-bool array_remove_item(mcbasicarray_t* arr, void* ptr)
+TMPSTATIC bool array_remove_item(mcbasicarray_t* arr, void* ptr)
 {
     int ix = array_get_index(arr, ptr);
     if(ix < 0)
@@ -12089,14 +12803,15 @@ bool array_remove_item(mcbasicarray_t* arr, void* ptr)
     return array_remove_at(arr, ix);
 }
 
-void array_clear(mcbasicarray_t* arr)
+TMPSTATIC void array_clear(mcbasicarray_t* arr)
 {
     arr->count = 0;
 }
 
-void array_clear_and_deinit_items_(mcbasicarray_t* arr, arrayitemdeinitfn deinit_fn)
+TMPUNUSED void array_clear_and_deinit_items_(mcbasicarray_t* arr, mcarrayitemdeinitfn_t deinit_fn)
 {
-    for(int i = 0; i < array_count(arr); i++)
+    int i;
+    for(i = 0; i < array_count(arr); i++)
     {
         void* item = array_get(arr, i);
         deinit_fn(item);
@@ -12104,14 +12819,15 @@ void array_clear_and_deinit_items_(mcbasicarray_t* arr, arrayitemdeinitfn deinit
     arr->count = 0;
 }
 
-void array_lock_capacity(mcbasicarray_t* arr)
+TMPSTATIC void array_lock_capacity(mcbasicarray_t* arr)
 {
     arr->lock_capacity = true;
 }
 
-int array_get_index(mcbasicarray_t* arr, void* ptr)
+TMPSTATIC int array_get_index(mcbasicarray_t* arr, void* ptr)
 {
-    for(int i = 0; i < array_count(arr); i++)
+    int i;
+    for(i = 0; i < array_count(arr); i++)
     {
         if(array_get_const(arr, i) == ptr)
         {
@@ -12121,39 +12837,40 @@ int array_get_index(mcbasicarray_t* arr, void* ptr)
     return -1;
 }
 
-bool array_contains(mcbasicarray_t* arr, void* ptr)
+TMPSTATIC bool array_contains(mcbasicarray_t* arr, void* ptr)
 {
     return array_get_index(arr, ptr) >= 0;
 }
 
-void* array_data(mcbasicarray_t* arr)
+TMPSTATIC void* array_data(mcbasicarray_t* arr)
 {
     return arr->data;
 }
 
-void* array_const_data(mcbasicarray_t* arr)
+TMPUNUSED void* array_const_data(mcbasicarray_t* arr)
 {
     return arr->data;
 }
 
-void array_orphan_data(mcbasicarray_t* arr)
+TMPSTATIC void array_orphan_data(mcbasicarray_t* arr)
 {
     array_init_with_capacity(arr, arr->pstate, 0, arr->element_size);
 }
 
-bool array_reverse(mcbasicarray_t* arr)
+TMPSTATIC bool array_reverse(mcbasicarray_t* arr)
 {
+    int aix;
     int count = array_count(arr);
     if(count < 2)
     {
         return true;
     }
-    void* temp = (void*)allocator_malloc(arr->pstate, arr->element_size);
+    void* temp = (void*)mc_allocator_alloc(arr->pstate, arr->element_size);
     if(!temp)
     {
         return false;
     }
-    for(int aix = 0; aix < (count / 2); aix++)
+    for(aix = 0; aix < (count / 2); aix++)
     {
         int bix = count - aix - 1;
         void* a = array_get(arr, aix);
@@ -12163,7 +12880,7 @@ bool array_reverse(mcbasicarray_t* arr)
         array_set(arr, aix, b);
         array_set(arr, bix, temp);
     }
-    allocator_free(arr->pstate, temp);
+    mc_allocator_free(arr->pstate, temp);
     return true;
 }
 
@@ -12172,7 +12889,7 @@ TMPSTATIC bool array_init_with_capacity(mcbasicarray_t* arr, mcstate_t* state, u
     arr->pstate = state;
     if(capacity > 0)
     {
-        arr->data_allocated = (unsigned char*)allocator_malloc(arr->pstate, capacity * element_size);
+        arr->data_allocated = (unsigned char*)mc_allocator_alloc(arr->pstate, capacity * element_size);
         arr->data = arr->data_allocated;
         if(!arr->data_allocated)
         {
@@ -12193,18 +12910,18 @@ TMPSTATIC bool array_init_with_capacity(mcbasicarray_t* arr, mcstate_t* state, u
 
 TMPSTATIC void array_deinit(mcbasicarray_t* arr)
 {
-    allocator_free(arr->pstate, arr->data_allocated);
+    mc_allocator_free(arr->pstate, arr->data_allocated);
 }
 
-mcptrarray_t* ptrarray_make(mcstate_t* state)
+TMPSTATIC mcptrarray_t* ptrarray_make(mcstate_t* state)
 {
     return ptrarray_make_with_capacity(state, 0);
 }
 
-mcptrarray_t* ptrarray_make_with_capacity(mcstate_t* state, unsigned int capacity)
+TMPSTATIC mcptrarray_t* ptrarray_make_with_capacity(mcstate_t* state, unsigned int capacity)
 {
     bool ok;
-    mcptrarray_t* ptrarr = (mcptrarray_t*)allocator_malloc(state, sizeof(mcptrarray_t));
+    mcptrarray_t* ptrarr = (mcptrarray_t*)mc_allocator_alloc(state, sizeof(mcptrarray_t));
     if(!ptrarr)
     {
         return NULL;
@@ -12213,23 +12930,23 @@ mcptrarray_t* ptrarray_make_with_capacity(mcstate_t* state, unsigned int capacit
     ok = array_init_with_capacity(&ptrarr->arr, state, capacity, sizeof(void*));
     if(!ok)
     {
-        allocator_free(state, ptrarr);
+        mc_allocator_free(state, ptrarr);
         return NULL;
     }
     return ptrarr;
 }
 
-void ptrarray_destroy(mcptrarray_t* arr)
+TMPSTATIC void ptrarray_destroy(mcptrarray_t* arr)
 {
     if(!arr)
     {
         return;
     }
     array_deinit(&arr->arr);
-    allocator_free(arr->pstate, arr);
+    mc_allocator_free(arr->pstate, arr);
 }
 
-void ptrarray_destroy_with_items_(mcptrarray_t* arr, ptrarrayitemdestroyfn destroy_fn)
+TMPSTATIC void ptrarray_destroy_with_items_(mcptrarray_t* arr, mcptrarrayitemdestroyfn_t destroy_fn)
 {
     /* todo: destroy and copy in make fn */
     if(arr == NULL)
@@ -12243,17 +12960,18 @@ void ptrarray_destroy_with_items_(mcptrarray_t* arr, ptrarrayitemdestroyfn destr
     ptrarray_destroy(arr);
 }
 
-mcptrarray_t* ptrarray_copy(mcptrarray_t* arr)
+TMPUNUSED mcptrarray_t* ptrarray_copy(mcptrarray_t* arr)
 {
     bool ok;
+    int i;
     mcptrarray_t* arrcopy = ptrarray_make_with_capacity(arr->pstate, arr->arr.capacity);
     if(!arrcopy)
     {
         return NULL;
     }
-    for(int i = 0; i < ptrarray_count(arr); i++)
+    for(i = 0; i < ptrarray_count(arr); i++)
     {
-        void* item = ptrarray_get(arr, i);
+        void* item = (void*)ptrarray_get(arr, i);
         ok = ptrarray_push(arrcopy, item);
         if(!ok)
         {
@@ -12264,17 +12982,18 @@ mcptrarray_t* ptrarray_copy(mcptrarray_t* arr)
     return arrcopy;
 }
 
-mcptrarray_t* ptrarray_copy_with_items_(mcptrarray_t* arr, ptrarrayitemcopyfn copy_fn, ptrarrayitemdestroyfn destroy_fn)
+TMPSTATIC mcptrarray_t* ptrarray_copy_with_items_(mcptrarray_t* arr, mcptrarrayitemcopyfn_t copy_fn, mcptrarrayitemdestroyfn_t destroy_fn)
 {
     bool ok;
+    int i;
     mcptrarray_t* arrcopy = ptrarray_make_with_capacity(arr->pstate, arr->arr.capacity);
     if(!arrcopy)
     {
         return NULL;
     }
-    for(int i = 0; i < ptrarray_count(arr); i++)
+    for(i = 0; i < ptrarray_count(arr); i++)
     {
-        void* item = ptrarray_get(arr, i);
+        void* item = (void*)ptrarray_get(arr, i);
         void* itemcopy = copy_fn(item);
         if(item && !itemcopy)
         {
@@ -12292,12 +13011,12 @@ err:
     return NULL;
 }
 
-bool ptrarray_push(mcptrarray_t* arr, void* ptr)
+TMPSTATIC bool ptrarray_push(mcptrarray_t* arr, void* ptr)
 {
     return array_add(&arr->arr, &ptr);
 }
 
-void* ptrarray_get(mcptrarray_t* arr, unsigned int ix)
+TMPSTATIC void* ptrarray_get(mcptrarray_t* arr, unsigned int ix)
 {
     void* res = array_get(&arr->arr, ix);
     if(!res)
@@ -12307,7 +13026,7 @@ void* ptrarray_get(mcptrarray_t* arr, unsigned int ix)
     return *(void**)res;
 }
 
-void* ptrarray_pop(mcptrarray_t* arr)
+TMPSTATIC void* ptrarray_pop(mcptrarray_t* arr)
 {
     int ix = ptrarray_count(arr) - 1;
     void* res = ptrarray_get(arr, ix);
@@ -12315,7 +13034,7 @@ void* ptrarray_pop(mcptrarray_t* arr)
     return res;
 }
 
-void* ptrarray_top(mcptrarray_t* arr)
+TMPSTATIC void* ptrarray_top(mcptrarray_t* arr)
 {
     int count = ptrarray_count(arr);
     if(count == 0)
@@ -12325,7 +13044,7 @@ void* ptrarray_top(mcptrarray_t* arr)
     return ptrarray_get(arr, count - 1);
 }
 
-int ptrarray_count(mcptrarray_t* arr)
+TMPSTATIC int ptrarray_count(mcptrarray_t* arr)
 {
     if(!arr)
     {
@@ -12334,19 +13053,20 @@ int ptrarray_count(mcptrarray_t* arr)
     return array_count(&arr->arr);
 }
 
-bool ptrarray_remove_at(mcptrarray_t* arr, unsigned int ix)
+TMPSTATIC bool ptrarray_remove_at(mcptrarray_t* arr, unsigned int ix)
 {
     return array_remove_at(&arr->arr, ix);
 }
 
-void ptrarray_clear(mcptrarray_t* arr)
+TMPSTATIC void ptrarray_clear(mcptrarray_t* arr)
 {
     array_clear(&arr->arr);
 }
 
-void ptrarray_clear_and_destroy_items_(mcptrarray_t* arr, ptrarrayitemdestroyfn destroy_fn)
+TMPSTATIC void ptrarray_clear_and_destroy_items_(mcptrarray_t* arr, mcptrarrayitemdestroyfn_t destroy_fn)
 {
-    for(int i = 0; i < ptrarray_count(arr); i++)
+    int i;
+    for(i = 0; i < ptrarray_count(arr); i++)
     {
         void* item = ptrarray_get(arr, i);
         destroy_fn(item);
@@ -12354,14 +13074,15 @@ void ptrarray_clear_and_destroy_items_(mcptrarray_t* arr, ptrarrayitemdestroyfn 
     ptrarray_clear(arr);
 }
 
-void ptrarray_lock_capacity(mcptrarray_t* arr)
+TMPUNUSED void ptrarray_lock_capacity(mcptrarray_t* arr)
 {
     array_lock_capacity(&arr->arr);
 }
 
-int ptrarray_get_index(mcptrarray_t* arr, void* ptr)
+TMPSTATIC int ptrarray_get_index(mcptrarray_t* arr, void* ptr)
 {
-    for(int i = 0; i < ptrarray_count(arr); i++)
+    int i;
+    for(i = 0; i < ptrarray_count(arr); i++)
     {
         if(ptrarray_get(arr, i) == ptr)
         {
@@ -12371,12 +13092,12 @@ int ptrarray_get_index(mcptrarray_t* arr, void* ptr)
     return -1;
 }
 
-bool ptrarray_contains(mcptrarray_t* arr, void* item)
+TMPUNUSED bool ptrarray_contains(mcptrarray_t* arr, void* item)
 {
     return ptrarray_get_index(arr, item) >= 0;
 }
 
-void* ptrarray_get_addr(mcptrarray_t* arr, unsigned int ix)
+TMPUNUSED void* ptrarray_get_addr(mcptrarray_t* arr, unsigned int ix)
 {
     void* res = array_get(&arr->arr, ix);
     if(res == NULL)
@@ -12386,22 +13107,22 @@ void* ptrarray_get_addr(mcptrarray_t* arr, unsigned int ix)
     return res;
 }
 
-void* ptrarray_data(mcptrarray_t* arr)
+TMPUNUSED void* ptrarray_data(mcptrarray_t* arr)
 {
     return array_data(&arr->arr);
 }
 
-void ptrarray_reverse(mcptrarray_t* arr)
+TMPUNUSED void ptrarray_reverse(mcptrarray_t* arr)
 {
     array_reverse(&arr->arr);
 }
 
-mcprintstate_t* mc_printer_make(mcstate_t* state, FILE* ofh)
+TMPSTATIC mcprintstate_t* mc_printer_make(mcstate_t* state, FILE* ofh)
 {
     return mc_printer_make_with_capacity(state, 1, ofh);
 }
 
-bool mc_printer_init(mcprintstate_t* pr, mcstate_t* state, size_t capacity, FILE* ofh, bool onstack)
+TMPSTATIC bool mc_printer_init(mcprintstate_t* pr, mcstate_t* state, size_t capacity, FILE* ofh, bool onstack)
 {
     memset(pr, 0, sizeof(mcprintstate_t));
     pr->pstate = state;
@@ -12413,10 +13134,10 @@ bool mc_printer_init(mcprintstate_t* pr, mcstate_t* state, size_t capacity, FILE
     pr->onstack = onstack;
     if(ofh == NULL)
     {
-        pr->data = (char*)allocator_malloc(state, capacity);
+        pr->data = (char*)mc_allocator_alloc(state, capacity);
         if(pr->data == NULL)
         {
-            allocator_free(state, pr);
+            mc_allocator_free(state, pr);
             return false;
         }
         pr->capacity = capacity;
@@ -12426,10 +13147,10 @@ bool mc_printer_init(mcprintstate_t* pr, mcstate_t* state, size_t capacity, FILE
     return true;
 }
 
-mcprintstate_t* mc_printer_make_with_capacity(mcstate_t* state, unsigned int capacity, FILE* ofh)
+TMPSTATIC mcprintstate_t* mc_printer_make_with_capacity(mcstate_t* state, unsigned int capacity, FILE* ofh)
 {
     mcprintstate_t* pr;
-    pr = (mcprintstate_t*)allocator_malloc(state, sizeof(mcprintstate_t));
+    pr = (mcprintstate_t*)mc_allocator_alloc(state, sizeof(mcprintstate_t));
     if(pr == NULL)
     {
         return NULL;
@@ -12441,20 +13162,24 @@ mcprintstate_t* mc_printer_make_with_capacity(mcstate_t* state, unsigned int cap
     return pr;
 }
 
-void mc_printer_destroy(mcprintstate_t* pr)
+TMPSTATIC void mc_printer_destroy(mcprintstate_t* pr)
 {
     if(pr == NULL)
     {
         return;
     }
-    allocator_free(pr->pstate, pr->data);
-    if(!pr->onstack)
+    if(pr->data != NULL)
     {
-        allocator_free(pr->pstate, pr);
+        mc_allocator_free(pr->pstate, pr->data);
     }
+    if(pr->onstack)
+    {
+        return;
+    }
+    mc_allocator_free(pr->pstate, pr);
 }
 
-void mc_printer_clear(mcprintstate_t* pr)
+TMPUNUSED void mc_printer_clear(mcprintstate_t* pr)
 {
     if(pr->destfile == NULL)
     {
@@ -12467,7 +13192,7 @@ void mc_printer_clear(mcprintstate_t* pr)
     }
 }
 
-bool mc_printer_appendlen(mcprintstate_t* pr, const char* str, size_t len)
+TMPSTATIC bool mc_printer_putlen(mcprintstate_t* pr, const char* str, size_t len)
 {
     bool ok;
     size_t needcap;
@@ -12500,12 +13225,12 @@ bool mc_printer_appendlen(mcprintstate_t* pr, const char* str, size_t len)
     return true;
 }
 
-bool mc_printer_append(mcprintstate_t* pr, const char* str)
+TMPSTATIC bool mc_printer_puts(mcprintstate_t* pr, const char* str)
 {
-    return mc_printer_appendlen(pr, str, strlen(str));
+    return mc_printer_putlen(pr, str, strlen(str));
 }
 
-bool mc_printer_appendf(mcprintstate_t* pr, const char* fmt, ...)
+TMPSTATIC bool mc_printer_printf(mcprintstate_t* pr, const char* fmt, ...)
 {
     bool ok;
     int resz;
@@ -12553,7 +13278,7 @@ bool mc_printer_appendf(mcprintstate_t* pr, const char* fmt, ...)
     return true;
 }
 
-const char* mc_printer_getstring(mcprintstate_t* pr)
+TMPSTATIC const char* mc_printer_getstring(mcprintstate_t* pr)
 {
     if(pr->failed)
     {
@@ -12566,7 +13291,7 @@ const char* mc_printer_getstring(mcprintstate_t* pr)
     return pr->data;
 }
 
-size_t mc_printer_getlength(mcprintstate_t* pr)
+TMPUNUSED size_t mc_printer_getlength(mcprintstate_t* pr)
 {
     if(pr->failed)
     {
@@ -12579,7 +13304,7 @@ size_t mc_printer_getlength(mcprintstate_t* pr)
     return pr->len;
 }
 
-char* mc_printer_get_string_and_destroy(mcprintstate_t* pr)
+TMPSTATIC char* mc_printer_get_string_and_destroy(mcprintstate_t* pr)
 {
     char* res;
     if(pr->failed)
@@ -12597,7 +13322,7 @@ char* mc_printer_get_string_and_destroy(mcprintstate_t* pr)
     return res;
 }
 
-bool mc_printer_failed(mcprintstate_t* pr)
+TMPSTATIC bool mc_printer_failed(mcprintstate_t* pr)
 {
     return pr->failed;
 }
@@ -12609,7 +13334,7 @@ TMPSTATIC bool mc_printer_grow(mcprintstate_t* pr, size_t newcapacity)
     {
         return true;
     }
-    ndata = (char*)allocator_malloc(pr->pstate, newcapacity);
+    ndata = (char*)mc_allocator_alloc(pr->pstate, newcapacity);
     if(ndata == NULL)
     {
         pr->failed = true;
@@ -12617,15 +13342,16 @@ TMPSTATIC bool mc_printer_grow(mcprintstate_t* pr, size_t newcapacity)
     }
     memcpy(ndata, pr->data, pr->len);
     ndata[pr->len] = '\0';
-    allocator_free(pr->pstate, pr->data);
+    mc_allocator_free(pr->pstate, pr->data);
     pr->data = ndata;
     pr->capacity = newcapacity;
     return true;
 }
 
-mcptrarray_t* kg_split_string(mcstate_t* state, const char* str, const char* delimiter)
+TMPSTATIC mcptrarray_t* kg_split_string(mcstate_t* state, const char* str, const char* delimiter)
 {
     bool ok;
+    int i;
     mcptrarray_t* res = ptrarray_make(state);
     char* rest = NULL;
     if(!str)
@@ -12645,7 +13371,7 @@ mcptrarray_t* kg_split_string(mcstate_t* state, const char* str, const char* del
         ok = ptrarray_push(res, line);
         if(!ok)
         {
-            allocator_free(state, line);
+            mc_allocator_free(state, line);
             goto err;
         }
         linestart = lineend + 1;
@@ -12663,40 +13389,42 @@ mcptrarray_t* kg_split_string(mcstate_t* state, const char* str, const char* del
     }
     return res;
 err:
-    allocator_free(state, rest);
+    mc_allocator_free(state, rest);
     if(res)
     {
-        for(int i = 0; i < ptrarray_count(res); i++)
+        for(i = 0; i < ptrarray_count(res); i++)
         {
-            char* line = ptrarray_get(res, i);
-            allocator_free(state, line);
+            char* line = (char*)ptrarray_get(res, i);
+            mc_allocator_free(state, line);
         }
     }
     ptrarray_destroy(res);
     return NULL;
 }
 
-char* kg_join(mcstate_t* state, mcptrarray_t* items, const char* with)
+TMPSTATIC char* kg_join(mcstate_t* state, mcptrarray_t* items, const char* with)
 {
+    int i;
     mcprintstate_t* res = mc_printer_make(state, NULL);
     if(!res)
     {
         return NULL;
     }
-    for(int i = 0; i < ptrarray_count(items); i++)
+    for(i = 0; i < ptrarray_count(items); i++)
     {
-        char* item = ptrarray_get(items, i);
-        mc_printer_append(res, item);
+        char* item = (char*)ptrarray_get(items, i);
+        mc_printer_puts(res, item);
         if(i < (ptrarray_count(items) - 1))
         {
-            mc_printer_append(res, with);
+            mc_printer_puts(res, with);
         }
     }
     return mc_printer_get_string_and_destroy(res);
 }
 
-char* kg_canonicalise_path(mcstate_t* state, const char* path)
+TMPSTATIC char* kg_canonicalise_path(mcstate_t* state, const char* path)
 {
+    int i;
     if(!strchr(path, '/') || (!strstr(path, "/../") && !strstr(path, "./")))
     {
         return collections_strdup(state, path);
@@ -12708,21 +13436,21 @@ char* kg_canonicalise_path(mcstate_t* state, const char* path)
         return NULL;
     }
 
-    for(int i = 0; i < ptrarray_count(split) - 1; i++)
+    for(i = 0; i < ptrarray_count(split) - 1; i++)
     {
-        char* item = ptrarray_get(split, i);
-        char* nextitem = ptrarray_get(split, i + 1);
+        char* item = (char*)ptrarray_get(split, i);
+        char* nextitem = (char*)ptrarray_get(split, i + 1);
         if(kg_streq(item, "."))
         {
-            allocator_free(state, item);
+            mc_allocator_free(state, item);
             ptrarray_remove_at(split, i);
             i = -1;
             continue;
         }
         if(kg_streq(nextitem, ".."))
         {
-            allocator_free(state, item);
-            allocator_free(state, nextitem);
+            mc_allocator_free(state, item);
+            mc_allocator_free(state, nextitem);
             ptrarray_remove_at(split, i);
             ptrarray_remove_at(split, i);
             i = -1;
@@ -12730,38 +13458,38 @@ char* kg_canonicalise_path(mcstate_t* state, const char* path)
     }
 
     char* joined = kg_join(state, split, "/");
-    for(int i = 0; i < ptrarray_count(split); i++)
+    for(i = 0; i < ptrarray_count(split); i++)
     {
         void* item = ptrarray_get(split, i);
-        allocator_free(state, item);
+        mc_allocator_free(state, item);
     }
     ptrarray_destroy(split);
     return joined;
 }
 
-bool kg_is_path_absolute(const char* path)
+TMPSTATIC bool kg_is_path_absolute(const char* path)
 {
     return path[0] == '/';
 }
 
-bool kg_streq(const char* a, const char* b)
+TMPSTATIC bool kg_streq(const char* a, const char* b)
 {
     return strcmp(a, b) == 0;
 }
 
 
-void errors_init(mcerrlist_t* errors)
+TMPSTATIC void errors_init(mcerrlist_t* errors)
 {
     memset(errors, 0, sizeof(mcerrlist_t));
     errors->count = 0;
 }
 
-void errors_deinit(mcerrlist_t* errors)
+TMPSTATIC void errors_deinit(mcerrlist_t* errors)
 {
     errors_clear(errors);
 }
 
-void errors_add_error(mcerrlist_t* errors, mcerrtype_t type, mcastlocation_t pos, const char* message)
+TMPSTATIC void errors_add_error(mcerrlist_t* errors, mcerrtype_t type, mcastlocation_t pos, const char* message)
 {
     if(errors->count >= MC_CONF_ERROR_MAXERRORCOUNT)
     {
@@ -12784,7 +13512,7 @@ void errors_add_error(mcerrlist_t* errors, mcerrtype_t type, mcastlocation_t pos
     errors->count++;
 }
 
-void errors_add_errorf(mcerrlist_t* errors, mcerrtype_t type, mcastlocation_t pos, const char* format, ...)
+TMPSTATIC void errors_add_errorf(mcerrlist_t* errors, mcerrtype_t type, mcastlocation_t pos, const char* format, ...)
 {
     va_list args;
     va_start(args, format);
@@ -12795,14 +13523,15 @@ void errors_add_errorf(mcerrlist_t* errors, mcerrtype_t type, mcastlocation_t po
     char res[MC_CONF_ERROR_MSGMAXLENGTH];
     int written = vsnprintf(res, MC_CONF_ERROR_MSGMAXLENGTH, format, args);
     (void)written;
-    ARCANE_ASSERT(towrite == written);
+    MC_ASSERT(towrite == written);
     va_end(args);
     errors_add_error(errors, type, pos, res);
 }
 
-void errors_clear(mcerrlist_t* errors)
+TMPSTATIC void errors_clear(mcerrlist_t* errors)
 {
-    for(int i = 0; i < errors_get_count(errors); i++)
+    int i;
+    for(i = 0; i < errors_get_count(errors); i++)
     {
         mcerror_t* error = errors_get(errors, i);
         if(error->traceback)
@@ -12813,12 +13542,12 @@ void errors_clear(mcerrlist_t* errors)
     errors->count = 0;
 }
 
-int errors_get_count(mcerrlist_t* errors)
+TMPSTATIC int errors_get_count(mcerrlist_t* errors)
 {
     return errors->count;
 }
 
-mcerror_t* errors_get(mcerrlist_t* errors, int ix)
+TMPSTATIC mcerror_t* errors_get(mcerrlist_t* errors, int ix)
 {
     if(ix >= errors->count)
     {
@@ -12827,7 +13556,7 @@ mcerror_t* errors_get(mcerrlist_t* errors, int ix)
     return &errors->errors[ix];
 }
 
-mcerror_t* errors_getc(mcerrlist_t* errors, int ix)
+TMPSTATIC mcerror_t* errors_getc(mcerrlist_t* errors, int ix)
 {
     if(ix >= errors->count)
     {
@@ -12836,28 +13565,28 @@ mcerror_t* errors_getc(mcerrlist_t* errors, int ix)
     return &errors->errors[ix];
 }
 
-const char* error_type_to_string(mcerrtype_t type)
+TMPUNUSED const char* error_type_to_string(mcerrtype_t type)
 {
     switch(type)
     {
-        case ARCANE_ERROR_PARSING:
+        case MC_ERROR_PARSING:
             return "PARSING";
-        case ARCANE_ERROR_COMPILATION:
+        case MC_ERROR_COMPILING:
             return "COMPILATION";
-        case ARCANE_ERROR_RUNTIME:
+        case MC_ERROR_RUNTIME:
             return "RUNTIME";
-        case ARCANE_ERROR_TIMEOUT:
+        case MC_ERROR_TIMEOUT:
             return "TIMEOUT";
-        case ARCANE_ERROR_ALLOCATION:
+        case MC_ERROR_MEMORY:
             return "ALLOCATION";
-        case ARCANE_ERROR_USER:
+        case MC_ERROR_USER:
             return "USER";
         default:
             return "INVALID";
     }
 }
 
-mcerror_t* errors_get_last_error(mcerrlist_t* errors)
+TMPSTATIC mcerror_t* errors_get_last_error(mcerrlist_t* errors)
 {
     if(errors->count <= 0)
     {
@@ -12866,19 +13595,18 @@ mcerror_t* errors_get_last_error(mcerrlist_t* errors)
     return &errors->errors[errors->count - 1];
 }
 
-bool errors_has_errors(mcerrlist_t* errors)
+TMPSTATIC bool errors_has_errors(mcerrlist_t* errors)
 {
     return errors_get_count(errors) > 0;
 }
 
-
-bool frame_init(mcvmframe_t* frame, mcvalue_t functionobj, int base_pointer)
+TMPSTATIC bool frame_init(mcvmframe_t* frame, mcvalue_t functionobj, int base_pointer)
 {
-    if(object_get_type(functionobj) != ARCANE_OBJECT_FUNCTION)
+    if(object_get_type(functionobj) != MC_OBJ_FUNCTION)
     {
         return false;
     }
-    mcobjfuncscript_t* function = object_get_function(functionobj);
+    mcobjfuncscript_t* function = mc_value_functiongetscriptfunction(functionobj);
     frame->function = functionobj;
     frame->ip = 0;
     frame->base_pointer = base_pointer;
@@ -12891,17 +13619,13 @@ bool frame_init(mcvmframe_t* frame, mcvalue_t functionobj, int base_pointer)
     return true;
 }
 
-mcopcode_t frame_read_opcode(mcvmframe_t* frame)
+TMPSTATIC uint64_t frame_read_uint64(mcvmframe_t* frame)
 {
-    frame->src_ip = frame->ip;
-    return frame_read_uint8(frame);
-}
-
-uint64_t frame_read_uint64(mcvmframe_t* frame)
-{
-    uint8_t* data = frame->bytecode + frame->ip;
+    uint64_t res;
+    uint8_t* data;
+    data = frame->bytecode + frame->ip;
     frame->ip += 8;
-    uint64_t res = 0;
+    res = 0;
     res |= (uint64_t)data[7];
     res |= (uint64_t)data[6] << 8;
     res |= (uint64_t)data[5] << 16;
@@ -12913,21 +13637,29 @@ uint64_t frame_read_uint64(mcvmframe_t* frame)
     return res;
 }
 
-uint16_t frame_read_uint16(mcvmframe_t* frame)
+TMPSTATIC uint16_t frame_read_uint16(mcvmframe_t* frame)
 {
-    uint8_t* data = frame->bytecode + frame->ip;
+    uint8_t* data;
+    data = frame->bytecode + frame->ip;
     frame->ip += 2;
     return (data[0] << 8) | data[1];
 }
 
-uint8_t frame_read_uint8(mcvmframe_t* frame)
+TMPSTATIC uint8_t frame_read_uint8(mcvmframe_t* frame)
 {
-    uint8_t* data = frame->bytecode + frame->ip;
+    uint8_t* data;
+    data = frame->bytecode + frame->ip;
     frame->ip++;
     return data[0];
 }
 
-mcastlocation_t frame_src_position(mcvmframe_t* frame)
+TMPSTATIC mcopcode_t frame_read_opcode(mcvmframe_t* frame)
+{
+    frame->src_ip = frame->ip;
+    return (mcopcode_t)frame_read_uint8(frame);
+}
+
+TMPSTATIC mcastlocation_t frame_src_position(mcvmframe_t* frame)
 {
     if(frame->src_positions)
     {
@@ -12936,9 +13668,10 @@ mcastlocation_t frame_src_position(mcvmframe_t* frame)
     return srcposinvalid;
 }
 
-mcgcmemory_t* gcmem_make(mcstate_t* state)
+TMPSTATIC mcgcmemory_t* gcmem_make(mcstate_t* state)
 {
-    mcgcmemory_t* mem = (mcgcmemory_t*)allocator_malloc(state, sizeof(mcgcmemory_t));
+    int i;
+    mcgcmemory_t* mem = (mcgcmemory_t*)mc_allocator_alloc(state, sizeof(mcgcmemory_t));
     if(!mem)
     {
         return NULL;
@@ -12963,7 +13696,7 @@ mcgcmemory_t* gcmem_make(mcstate_t* state)
     mem->allocssincesweep = 0;
     mem->onlydatapool.count = 0;
 
-    for(int i = 0; i < GCMEM_POOLS_NUM; i++)
+    for(i = 0; i < GCMEM_POOLS_NUM; i++)
     {
         mcgcobjdatapool_t* pool = &mem->mempools[i];
         mem->mempools[i].count = 0;
@@ -12976,8 +13709,10 @@ error:
     return NULL;
 }
 
-void gcmem_destroy(mcgcmemory_t* mem)
+TMPSTATIC void gcmem_destroy(mcgcmemory_t* mem)
 {
+    int i;
+    int j;
     if(!mem)
     {
         return;
@@ -12986,96 +13721,96 @@ void gcmem_destroy(mcgcmemory_t* mem)
     array_destroy(mem->gcobjlistremains);
     ptrarray_destroy(mem->gcobjlistback);
 
-    for(int i = 0; i < ptrarray_count(mem->gcobjlist); i++)
+    for(i = 0; i < ptrarray_count(mem->gcobjlist); i++)
     {
-        mcobjdata_t* obj = ptrarray_get(mem->gcobjlist, i);
+        mcobjdata_t* obj = (mcobjdata_t*)ptrarray_get(mem->gcobjlist, i);
         object_data_deinit(obj);
-        allocator_free(mem->pstate, obj);
+        mc_allocator_free(mem->pstate, obj);
     }
     ptrarray_destroy(mem->gcobjlist);
 
-    for(int i = 0; i < GCMEM_POOLS_NUM; i++)
+    for(i = 0; i < GCMEM_POOLS_NUM; i++)
     {
         mcgcobjdatapool_t* pool = &mem->mempools[i];
-        for(int j = 0; j < pool->count; j++)
+        for(j = 0; j < pool->count; j++)
         {
             mcobjdata_t* data = pool->data[j];
             object_data_deinit(data);
-            allocator_free(mem->pstate, data);
+            mc_allocator_free(mem->pstate, data);
         }
         memset(pool, 0, sizeof(mcgcobjdatapool_t));
     }
 
-    for(int i = 0; i < mem->onlydatapool.count; i++)
+    for(i = 0; i < mem->onlydatapool.count; i++)
     {
-        allocator_free(mem->pstate, mem->onlydatapool.data[i]);
+        mc_allocator_free(mem->pstate, mem->onlydatapool.data[i]);
     }
 
-    allocator_free(mem->pstate, mem);
+    mc_allocator_free(mem->pstate, mem);
 }
 
-mcobjdata_t* gcmem_alloc_object_data(mcstate_t* vm)
+TMPSTATIC mcobjdata_t* gcmem_alloc_object_data(mcstate_t* state)
 {
     bool ok;
     mcobjdata_t* data = NULL;
-    vm->mem->allocssincesweep++;
-    if(vm->mem->onlydatapool.count > 0)
+    state->mem->allocssincesweep++;
+    if(state->mem->onlydatapool.count > 0)
     {
-        data = vm->mem->onlydatapool.data[vm->mem->onlydatapool.count - 1];
-        vm->mem->onlydatapool.count--;
+        data = state->mem->onlydatapool.data[state->mem->onlydatapool.count - 1];
+        state->mem->onlydatapool.count--;
     }
     else
     {
-        data = (mcobjdata_t*)allocator_malloc(vm, sizeof(mcobjdata_t));
+        data = (mcobjdata_t*)mc_allocator_alloc(state, sizeof(mcobjdata_t));
         if(!data)
         {
             return NULL;
         }
     }
     memset(data, 0, sizeof(mcobjdata_t));
-    data->pstate = vm;
-    ARCANE_ASSERT(ptrarray_count(v->mem->gcobjlistback) >= ptrarray_count(vm->mem->gcobjlist));
+    data->pstate = state;
+    MC_ASSERT(ptrarray_count(state->mem->gcobjlistback) >= ptrarray_count(state->mem->gcobjlist));
     /*
     * we want to make sure that appending to gcobjlistback never fails in sweep
     * so this only reserves space there.
     */
-    ok = ptrarray_push(vm->mem->gcobjlistback, data);
+    ok = ptrarray_push(state->mem->gcobjlistback, data);
     if(!ok)
     {
-        allocator_free(vm, data);
+        mc_allocator_free(state, data);
         return NULL;
     }
-    ok = ptrarray_push(vm->mem->gcobjlist, data);
+    ok = ptrarray_push(state->mem->gcobjlist, data);
     if(!ok)
     {
-        allocator_free(vm, data);
+        mc_allocator_free(state, data);
         return NULL;
     }
-    data->mem = vm->mem;
+    data->mem = state->mem;
     return data;
 }
 
-mcobjdata_t* gcmem_get_object_data_from_pool(mcstate_t* vm, mcobjtype_t type)
+TMPSTATIC mcobjdata_t* gcmem_get_object_data_from_pool(mcstate_t* state, mcobjtype_t type)
 {
     bool ok;
-    mcgcobjdatapool_t* pool = get_pool_for_type(vm->mem, type);
+    mcgcobjdatapool_t* pool = get_pool_for_type(state->mem, type);
     if(!pool || pool->count <= 0)
     {
         return NULL;
     }
     mcobjdata_t* data = pool->data[pool->count - 1];
 
-    ARCANE_ASSERT(ptrarray_count(vm->mem->gcobjlistback) >= ptrarray_count(vm->mem->gcobjlist));
+    MC_ASSERT(ptrarray_count(state->mem->gcobjlistback) >= ptrarray_count(state->mem->gcobjlist));
     /*
     * we want to make sure that appending to gcobjlistback never fails in sweep
     * so this only reserves space there.
     */
-    ok = ptrarray_push(vm->mem->gcobjlistback, data);
+    ok = ptrarray_push(state->mem->gcobjlistback, data);
     if(!ok)
     {
         return NULL;
     }
-    ok = ptrarray_push(vm->mem->gcobjlist, data);
+    ok = ptrarray_push(state->mem->gcobjlist, data);
     if(!ok)
     {
         return NULL;
@@ -13086,25 +13821,27 @@ mcobjdata_t* gcmem_get_object_data_from_pool(mcstate_t* vm, mcobjtype_t type)
     return data;
 }
 
-void gc_unmark_all(mcgcmemory_t* mem)
+TMPSTATIC void gc_unmark_all(mcgcmemory_t* mem)
 {
-    for(int i = 0; i < ptrarray_count(mem->gcobjlist); i++)
+    int i;
+    for(i = 0; i < ptrarray_count(mem->gcobjlist); i++)
     {
-        mcobjdata_t* data = ptrarray_get(mem->gcobjlist, i);
+        mcobjdata_t* data = (mcobjdata_t*)ptrarray_get(mem->gcobjlist, i);
         data->gcmark = false;
     }
 }
 
-void gc_mark_objects(mcvalue_t* objects, int count)
+TMPSTATIC void gc_mark_objects(mcvalue_t* objects, int count)
 {
-    for(int i = 0; i < count; i++)
+    int i;
+    for(i = 0; i < count; i++)
     {
         mcvalue_t obj = objects[i];
         gc_mark_object(obj);
     }
 }
 
-void gc_mark_object(mcvalue_t obj)
+TMPSTATIC void gc_mark_object(mcvalue_t obj)
 {
     if(!object_is_allocated(obj))
     {
@@ -13118,12 +13855,13 @@ void gc_mark_object(mcvalue_t obj)
     data->gcmark = true;
     switch(obj.type)
     {
-        case ARCANE_OBJECT_MAP:
+        case MC_OBJ_MAP:
         {
-            int len = object_get_map_length(obj);
-            for(int i = 0; i < len; i++)
+            int i;
+            int len = mc_value_mapgetlength(obj);
+            for(i = 0; i < len; i++)
             {
-                mcvalue_t key = object_get_map_key_at(obj, i);
+                mcvalue_t key = mc_value_mapgetkeyat(obj, i);
                 if(object_is_allocated(key))
                 {
                     mcobjdata_t* keydata = object_get_allocated_data(key);
@@ -13132,7 +13870,7 @@ void gc_mark_object(mcvalue_t obj)
                         gc_mark_object(key);
                     }
                 }
-                mcvalue_t val = object_get_map_value_at(obj, i);
+                mcvalue_t val = mc_value_mapgetvalueat(obj, i);
                 if(object_is_allocated(val))
                 {
                     mcobjdata_t* valdata = object_get_allocated_data(val);
@@ -13144,12 +13882,13 @@ void gc_mark_object(mcvalue_t obj)
             }
             break;
         }
-        case ARCANE_OBJECT_ARRAY:
+        case MC_OBJ_ARRAY:
         {
-            int len = object_get_array_length(obj);
-            for(int i = 0; i < len; i++)
+            int i;
+            int len = mv_value_arraygetlength(obj);
+            for(i = 0; i < len; i++)
             {
-                mcvalue_t val = object_get_array_value_at(obj, i);
+                mcvalue_t val = mc_value_arraygetvalueat(obj, i);
                 if(object_is_allocated(val))
                 {
                     mcobjdata_t* valdata = object_get_allocated_data(val);
@@ -13161,12 +13900,13 @@ void gc_mark_object(mcvalue_t obj)
             }
             break;
         }
-        case ARCANE_OBJECT_FUNCTION:
+        case MC_OBJ_FUNCTION:
         {
-            mcobjfuncscript_t* function = object_get_function(obj);
-            for(int i = 0; i < function->free_vals_count; i++)
+            int i;
+            mcobjfuncscript_t* function = mc_value_functiongetscriptfunction(obj);
+            for(i = 0; i < function->free_vals_count; i++)
             {
-                mcvalue_t freeval = object_get_function_free_val(obj, i);
+                mcvalue_t freeval = mc_value_functiongetfreevalat(obj, i);
                 gc_mark_object(freeval);
                 if(object_is_allocated(freeval))
                 {
@@ -13186,17 +13926,18 @@ void gc_mark_object(mcvalue_t obj)
     }
 }
 
-void gc_sweep(mcgcmemory_t* mem)
+TMPSTATIC void gc_sweep(mcgcmemory_t* mem)
 {
     bool ok;
-    gc_mark_objects(array_data(mem->gcobjlistremains), array_count(mem->gcobjlistremains));
+    int i;
+    gc_mark_objects((mcvalue_t*)array_data(mem->gcobjlistremains), array_count(mem->gcobjlistremains));
 
-    ARCANE_ASSERT(ptrarray_count(mem->gcobjlistback) >= ptrarray_count(mem->gcobjlist));
+    MC_ASSERT(ptrarray_count(mem->gcobjlistback) >= ptrarray_count(mem->gcobjlist));
 
     ptrarray_clear(mem->gcobjlistback);
-    for(int i = 0; i < ptrarray_count(mem->gcobjlist); i++)
+    for(i = 0; i < ptrarray_count(mem->gcobjlist); i++)
     {
-        mcobjdata_t* data = ptrarray_get(mem->gcobjlist, i);
+        mcobjdata_t* data = (mcobjdata_t*)ptrarray_get(mem->gcobjlist, i);
         if(data->gcmark)
         {
             /*
@@ -13204,7 +13945,7 @@ void gc_sweep(mcgcmemory_t* mem)
             */
             ok = ptrarray_push(mem->gcobjlistback, data);
             (void)ok;
-            ARCANE_ASSERT(ok);
+            MC_ASSERT(ok);
         }
         else
         {
@@ -13224,7 +13965,7 @@ void gc_sweep(mcgcmemory_t* mem)
                 }
                 else
                 {
-                    allocator_free(mem->pstate, data);
+                    mc_allocator_free(mem->pstate, data);
                 }
             }
         }
@@ -13235,7 +13976,7 @@ void gc_sweep(mcgcmemory_t* mem)
     mem->allocssincesweep = 0;
 }
 
-bool gc_disable_on_object(mcvalue_t obj)
+TMPUNUSED bool gc_disable_on_object(mcvalue_t obj)
 {
     bool ok;
     if(!object_is_allocated(obj))
@@ -13251,7 +13992,7 @@ bool gc_disable_on_object(mcvalue_t obj)
     return ok;
 }
 
-void gc_enable_on_object(mcvalue_t obj)
+TMPUNUSED void gc_enable_on_object(mcvalue_t obj)
 {
     if(!object_is_allocated(obj))
     {
@@ -13261,7 +14002,7 @@ void gc_enable_on_object(mcvalue_t obj)
     array_remove_item(data->mem->gcobjlistremains, &obj);
 }
 
-int gc_should_sweep(mcgcmemory_t* mem)
+TMPSTATIC int gc_should_sweep(mcgcmemory_t* mem)
 {
     return mem->allocssincesweep > GCMEM_SWEEP_INTERVAL;
 }
@@ -13270,11 +14011,11 @@ TMPSTATIC mcgcobjdatapool_t* get_pool_for_type(mcgcmemory_t* mem, mcobjtype_t ty
 {
     switch(type)
     {
-        case ARCANE_OBJECT_ARRAY:
+        case MC_OBJ_ARRAY:
             return &mem->mempools[0];
-        case ARCANE_OBJECT_MAP:
+        case MC_OBJ_MAP:
             return &mem->mempools[1];
-        case ARCANE_OBJECT_STRING:
+        case MC_OBJ_STRING:
             return &mem->mempools[2];
         default:
             return NULL;
@@ -13289,25 +14030,25 @@ TMPSTATIC bool can_data_be_put_in_pool(mcgcmemory_t* mem, mcobjdata_t* data)
     */
     switch(data->type)
     {
-        case ARCANE_OBJECT_ARRAY:
+        case MC_OBJ_ARRAY:
         {
-            if(object_get_array_length(obj) > 1024)
+            if(mv_value_arraygetlength(obj) > 1024)
             {
                 return false;
             }
             break;
         }
-        case ARCANE_OBJECT_MAP:
+        case MC_OBJ_MAP:
         {
-            if(object_get_map_length(obj) > 1024)
+            if(mc_value_mapgetlength(obj) > 1024)
             {
                 return false;
             }
             break;
         }
-        case ARCANE_OBJECT_STRING:
+        case MC_OBJ_STRING:
         {
-            if(!data->string.is_allocated || data->string.capacity > 4096)
+            if(!data->valstring.is_allocated || data->valstring.capacity > 4096)
             {
                 return false;
             }
@@ -13325,18 +14066,18 @@ TMPSTATIC bool can_data_be_put_in_pool(mcgcmemory_t* mem, mcobjdata_t* data)
     return true;
 }
 
-mcglobalstore_t* global_store_make(mcstate_t* state)
+TMPSTATIC mcglobalstore_t* global_store_make(mcstate_t* state)
 {
     bool ok;
-    
-    mcglobalstore_t* store = (mcglobalstore_t*)allocator_malloc(state, sizeof(mcglobalstore_t));
+    int i;
+    mcglobalstore_t* store = (mcglobalstore_t*)mc_allocator_alloc(state, sizeof(mcglobalstore_t));
     if(!store)
     {
         return NULL;
     }
     memset(store, 0, sizeof(mcglobalstore_t));
     store->pstate = state;
-    store->symbols = dict_make_(state, (dictitemcopyfn)symbol_copy, (dictitemdestroyfn)symbol_destroy);
+    store->symbols = dict_make_(state, (mcdictitemcopyfn_t)symbol_copy, (mcdictitemdestroyfn_t)symbol_destroy);
     if(!store->symbols)
     {
         goto err;
@@ -13349,7 +14090,7 @@ mcglobalstore_t* global_store_make(mcstate_t* state)
 
     if(state->mem)
     {
-        for(int i = 0; i < builtins_count(); i++)
+        for(i = 0; i < builtins_count(); i++)
         {
             const char* name = builtins_get_name(i);
             mcvalue_t builtin = object_make_native_function(state, name, builtins_get_fn(i), NULL, 0);
@@ -13371,7 +14112,7 @@ err:
     return NULL;
 }
 
-void global_store_destroy(mcglobalstore_t* store)
+TMPSTATIC void global_store_destroy(mcglobalstore_t* store)
 {
     if(!store)
     {
@@ -13379,16 +14120,16 @@ void global_store_destroy(mcglobalstore_t* store)
     }
     dict_destroy_with_items(store->symbols);
     array_destroy(store->objects);
-    allocator_free(store->pstate, store);
+    mc_allocator_free(store->pstate, store);
 }
 
-mcastsymbol_t* global_store_get_symbol(mcglobalstore_t* store, const char* name)
+TMPSTATIC mcastsymbol_t* global_store_get_symbol(mcglobalstore_t* store, const char* name)
 {
-    return dict_get(store->symbols, name);
+    return (mcastsymbol_t*)dict_get(store->symbols, name);
 }
 
 
-bool global_store_set(mcglobalstore_t* store, const char* name, mcvalue_t object)
+TMPSTATIC bool global_store_set(mcglobalstore_t* store, const char* name, mcvalue_t object)
 {
     bool ok;
     mcastsymbol_t* existingsymbol = global_store_get_symbol(store, name);
@@ -13403,7 +14144,7 @@ bool global_store_set(mcglobalstore_t* store, const char* name, mcvalue_t object
     {
         return false;
     }
-    mcastsymbol_t* symbol = symbol_make(store->pstate, name, SYMBOL_ARCANE_GLOBAL, ix, false);
+    mcastsymbol_t* symbol = symbol_make(store->pstate, name, SYMBOL_GLOBALBUILTIN, ix, false);
     if(!symbol)
     {
         goto err;
@@ -13420,9 +14161,9 @@ err:
     return false;
 }
 
-mcvalue_t global_store_get_object_at(mcglobalstore_t* store, int ix, bool* outok)
+TMPSTATIC mcvalue_t global_store_get_object_at(mcglobalstore_t* store, int ix, bool* outok)
 {
-    mcvalue_t* res = array_get(store->objects, ix);
+    mcvalue_t* res = (mcvalue_t*)array_get(store->objects, ix);
     if(!res)
     {
         *outok = false;
@@ -13432,190 +14173,195 @@ mcvalue_t global_store_get_object_at(mcglobalstore_t* store, int ix, bool* outok
     return *res;
 }
 
-mcvalue_t* global_store_get_object_data(mcglobalstore_t* store)
+TMPSTATIC mcvalue_t* global_store_get_object_data(mcglobalstore_t* store)
 {
-    return array_data(store->objects);
+    return (mcvalue_t*)array_data(store->objects);
 }
 
-int global_store_get_object_count(mcglobalstore_t* store)
+TMPSTATIC int global_store_get_object_count(mcglobalstore_t* store)
 {
     return array_count(store->objects);
 }
 
-bool object_is_hashable(mcvalue_t obj)
+TMPSTATIC bool object_is_hashable(mcvalue_t obj)
 {
     mcobjtype_t type = object_get_type(obj);
     switch(type)
     {
-        case ARCANE_OBJECT_STRING:
+        case MC_OBJ_STRING:
             return true;
-        case ARCANE_OBJECT_NUMBER:
+        case MC_OBJ_NUMBER:
             return true;
-        case ARCANE_OBJECT_BOOL:
+        case MC_OBJ_BOOL:
             return true;
         default:
             return false;
     }
 }
 
-void mc_printer_printobject(mcvalue_t obj, mcprintstate_t* pr, bool quotestr)
+TMPSTATIC void mc_printer_printobject(mcvalue_t obj, mcprintstate_t* pr, bool quotestr)
 {
     mcobjtype_t type = object_get_type(obj);
     switch(type)
     {
-        case ARCANE_OBJECT_FREED:
+        case MC_OBJ_FREED:
         {
-            mc_printer_append(pr, "FREED");
+            mc_printer_puts(pr, "FREED");
             break;
         }
-        case ARCANE_OBJECT_NONE:
+        case MC_OBJ_NONE:
         {
-            mc_printer_append(pr, "NONE");
+            mc_printer_puts(pr, "NONE");
             break;
         }
-        case ARCANE_OBJECT_NUMBER:
+        case MC_OBJ_NUMBER:
         {
             double number = object_get_number(obj);
-            mc_printer_appendf(pr, "%1.10g", number);
+            mc_printer_printf(pr, "%1.10g", number);
             break;
         }
-        case ARCANE_OBJECT_BOOL:
+        case MC_OBJ_BOOL:
         {
-            mc_printer_append(pr, object_get_bool(obj) ? "true" : "false");
+            mc_printer_puts(pr, object_get_bool(obj) ? "true" : "false");
             break;
         }
-        case ARCANE_OBJECT_STRING:
+        case MC_OBJ_STRING:
         {
-            const char* string = object_get_string(obj);
+            const char* string;
+            #if 0
+                string = mc_value_stringgetdata(obj);
+            #else
+                string = obj.objdatahandle->valstring.data;
+            #endif
             if(quotestr)
             {
-                mc_printer_appendf(pr, "\"%s\"", string);
+                mc_printer_printf(pr, "\"%s\"", string);
             }
             else
             {
-                mc_printer_append(pr, string);
+                mc_printer_puts(pr, string);
             }
             break;
         }
-        case ARCANE_OBJECT_NULL:
+        case MC_OBJ_NULL:
         {
-            mc_printer_append(pr, "null");
+            mc_printer_puts(pr, "null");
             break;
         }
-        case ARCANE_OBJECT_FUNCTION:
+        case MC_OBJ_FUNCTION:
         {
-            mcobjfuncscript_t* function = object_get_function(obj);
-            mc_printer_appendf(pr, "CompiledFunction: %s\n", object_get_function_name(obj));
+            mcobjfuncscript_t* function = mc_value_functiongetscriptfunction(obj);
+            mc_printer_printf(pr, "CompiledFunction: %s\n", mc_value_functiongetname(obj));
             code_to_string(function->comp_result->bytecode, function->comp_result->src_positions, function->comp_result->count, pr);
             break;
         }
-        case ARCANE_OBJECT_ARRAY:
+        case MC_OBJ_ARRAY:
         {
             size_t i;
             size_t alen;
-            alen = object_get_array_length(obj);
-            mc_printer_append(pr, "[");
+            alen = mv_value_arraygetlength(obj);
+            mc_printer_puts(pr, "[");
             for(i = 0; i < alen; i++)
             {
-                mcvalue_t iobj = object_get_array_value_at(obj, i);
+                mcvalue_t iobj = mc_value_arraygetvalueat(obj, i);
                 mc_printer_printobject(iobj, pr, true);
                 if(i < (alen - 1))
                 {
-                    mc_printer_append(pr, ", ");
+                    mc_printer_puts(pr, ", ");
                 }
             }
-            mc_printer_append(pr, "]");
+            mc_printer_puts(pr, "]");
             break;
         }
-        case ARCANE_OBJECT_MAP:
+        case MC_OBJ_MAP:
         {
             size_t i;
             size_t alen;
-            alen = object_get_map_length(obj);
-            mc_printer_append(pr, "{");
+            alen = mc_value_mapgetlength(obj);
+            mc_printer_puts(pr, "{");
             for(i = 0; i < alen; i++)
             {
-                mcvalue_t key = object_get_map_key_at(obj, i);
-                mcvalue_t val = object_get_map_value_at(obj, i);
+                mcvalue_t key = mc_value_mapgetkeyat(obj, i);
+                mcvalue_t val = mc_value_mapgetvalueat(obj, i);
                 mc_printer_printobject(key, pr, true);
-                mc_printer_append(pr, ": ");
+                mc_printer_puts(pr, ": ");
                 mc_printer_printobject(val, pr, true);
                 if(i < (alen - 1))
                 {
-                    mc_printer_append(pr, ", ");
+                    mc_printer_puts(pr, ", ");
                 }
             }
-            mc_printer_append(pr, "}");
+            mc_printer_puts(pr, "}");
             break;
         }
-        case ARCANE_OBJECT_NATIVE_FUNCTION:
+        case MC_OBJ_NATIVE_FUNCTION:
         {
-            mc_printer_append(pr, "NATIVE_FUNCTION");
+            mc_printer_puts(pr, "NATIVE_FUNCTION");
             break;
         }
-        case ARCANE_OBJECT_EXTERNAL:
+        case MC_OBJ_EXTERNAL:
         {
-            mc_printer_append(pr, "EXTERNAL");
+            mc_printer_puts(pr, "EXTERNAL");
             break;
         }
-        case ARCANE_OBJECT_ERROR:
+        case MC_OBJ_ERROR:
         {
-            mc_printer_appendf(pr, "ERROR: %s\n", object_get_error_message(obj));
-            mctraceback_t* traceback = object_get_error_traceback(obj);
-            ARCANE_ASSERT(traceback);
+            mc_printer_printf(pr, "ERROR: %s\n", mc_value_errorgetmessage(obj));
+            mctraceback_t* traceback = mc_value_errorgettraceback(obj);
+            MC_ASSERT(traceback);
             if(traceback)
             {
-                mc_printer_append(pr, "Traceback:\n");
+                mc_printer_puts(pr, "Traceback:\n");
                 traceback_to_string(traceback, pr);
             }
             break;
         }
-        case ARCANE_OBJECT_ANY:
+        case MC_OBJ_ANY:
         {
-            ARCANE_ASSERT(false);
+            MC_ASSERT(false);
         }
     }
 }
 
-const char* object_get_type_name(mcobjtype_t type)
+TMPSTATIC const char* object_get_type_name(mcobjtype_t type)
 {
     switch(type)
     {
-        case ARCANE_OBJECT_NONE:
+        case MC_OBJ_NONE:
             return "NONE";
-        case ARCANE_OBJECT_FREED:
+        case MC_OBJ_FREED:
             return "NONE";
-        case ARCANE_OBJECT_NUMBER:
+        case MC_OBJ_NUMBER:
             return "NUMBER";
-        case ARCANE_OBJECT_BOOL:
+        case MC_OBJ_BOOL:
             return "BOOL";
-        case ARCANE_OBJECT_STRING:
+        case MC_OBJ_STRING:
             return "STRING";
-        case ARCANE_OBJECT_NULL:
+        case MC_OBJ_NULL:
             return "NULL";
-        case ARCANE_OBJECT_NATIVE_FUNCTION:
+        case MC_OBJ_NATIVE_FUNCTION:
             return "NATIVE_FUNCTION";
-        case ARCANE_OBJECT_ARRAY:
+        case MC_OBJ_ARRAY:
             return "ARRAY";
-        case ARCANE_OBJECT_MAP:
+        case MC_OBJ_MAP:
             return "MAP";
-        case ARCANE_OBJECT_FUNCTION:
+        case MC_OBJ_FUNCTION:
             return "FUNCTION";
-        case ARCANE_OBJECT_EXTERNAL:
+        case MC_OBJ_EXTERNAL:
             return "EXTERNAL";
-        case ARCANE_OBJECT_ERROR:
+        case MC_OBJ_ERROR:
             return "ERROR";
-        case ARCANE_OBJECT_ANY:
+        case MC_OBJ_ANY:
             return "ANY";
     }
     return "NONE";
 }
 
-char* object_get_type_union_name(mcstate_t* state, mcobjtype_t type)
+TMPSTATIC char* object_get_type_union_name(mcstate_t* state, mcobjtype_t type)
 {
-    if(type == ARCANE_OBJECT_ANY || type == ARCANE_OBJECT_NONE || type == ARCANE_OBJECT_FREED)
+    if(type == MC_OBJ_ANY || type == MC_OBJ_NONE || type == MC_OBJ_FREED)
     {
-        return arcane_strdup(state, object_get_type_name(type));
+        return mc_util_strdup(state, object_get_type_name(type));
     }
     mcprintstate_t* res = mc_printer_make(state, NULL);
     if(!res)
@@ -13630,28 +14376,28 @@ char* object_get_type_union_name(mcstate_t* state, mcobjtype_t type)
         {                                                \
             if(inbetween)                               \
             {                                            \
-                mc_printer_append(res, "|");                 \
+                mc_printer_puts(res, "|");                 \
             }                                            \
-            mc_printer_append(res, object_get_type_name(t)); \
+            mc_printer_puts(res, object_get_type_name(t)); \
             inbetween = true;                           \
         }                                                \
     } while(0)
 
-    CHECK_TYPE(ARCANE_OBJECT_NUMBER);
-    CHECK_TYPE(ARCANE_OBJECT_BOOL);
-    CHECK_TYPE(ARCANE_OBJECT_STRING);
-    CHECK_TYPE(ARCANE_OBJECT_NULL);
-    CHECK_TYPE(ARCANE_OBJECT_NATIVE_FUNCTION);
-    CHECK_TYPE(ARCANE_OBJECT_ARRAY);
-    CHECK_TYPE(ARCANE_OBJECT_MAP);
-    CHECK_TYPE(ARCANE_OBJECT_FUNCTION);
-    CHECK_TYPE(ARCANE_OBJECT_EXTERNAL);
-    CHECK_TYPE(ARCANE_OBJECT_ERROR);
+    CHECK_TYPE(MC_OBJ_NUMBER);
+    CHECK_TYPE(MC_OBJ_BOOL);
+    CHECK_TYPE(MC_OBJ_STRING);
+    CHECK_TYPE(MC_OBJ_NULL);
+    CHECK_TYPE(MC_OBJ_NATIVE_FUNCTION);
+    CHECK_TYPE(MC_OBJ_ARRAY);
+    CHECK_TYPE(MC_OBJ_MAP);
+    CHECK_TYPE(MC_OBJ_FUNCTION);
+    CHECK_TYPE(MC_OBJ_EXTERNAL);
+    CHECK_TYPE(MC_OBJ_ERROR);
 
     return mc_printer_get_string_and_destroy(res);
 }
 
-char* object_serialize(mcstate_t* state, mcvalue_t object)
+TMPUNUSED char* object_serialize(mcstate_t* state, mcvalue_t object)
 {
     mcprintstate_t* buf = mc_printer_make(state, NULL);
     if(!buf)
@@ -13663,61 +14409,62 @@ char* object_serialize(mcstate_t* state, mcvalue_t object)
     return string;
 }
 
-mcvalue_t object_deep_copy(mcstate_t* vm, mcgcmemory_t* mem, mcvalue_t obj)
+TMPSTATIC mcvalue_t mc_value_copydeep(mcstate_t* state, mcvalue_t obj)
 {
-    mcvaldict_t* copies = valdict_make_(vm, sizeof(mcvalue_t), sizeof(mcvalue_t));
+    mcvaldict_t* copies = valdict_make_(state, sizeof(mcvalue_t), sizeof(mcvalue_t));
     if(!copies)
     {
         return mc_value_makenull();
     }
-    mcvalue_t res = object_deep_copy_internal(vm, mem, obj, copies);
+    mcvalue_t res = mc_value_copydeepintern(state, obj, copies);
     valdict_destroy(copies);
     return res;
 }
 
-mcvalue_t object_copy(mcstate_t* vm, mcvalue_t obj)
+TMPSTATIC mcvalue_t mc_value_copyflat(mcstate_t* state, mcvalue_t obj)
 {
     bool ok;
     mcvalue_t copy = mc_value_makenull();
     mcobjtype_t type = object_get_type(obj);
     switch(type)
     {
-        case ARCANE_OBJECT_ANY:
-        case ARCANE_OBJECT_FREED:
-        case ARCANE_OBJECT_NONE:
+        case MC_OBJ_ANY:
+        case MC_OBJ_FREED:
+        case MC_OBJ_NONE:
         {
-            ARCANE_ASSERT(false);
+            MC_ASSERT(false);
             copy = mc_value_makenull();
             break;
         }
-        case ARCANE_OBJECT_NUMBER:
-        case ARCANE_OBJECT_BOOL:
-        case ARCANE_OBJECT_NULL:
-        case ARCANE_OBJECT_FUNCTION:
-        case ARCANE_OBJECT_NATIVE_FUNCTION:
-        case ARCANE_OBJECT_ERROR:
+        case MC_OBJ_NUMBER:
+        case MC_OBJ_BOOL:
+        case MC_OBJ_NULL:
+        case MC_OBJ_FUNCTION:
+        case MC_OBJ_NATIVE_FUNCTION:
+        case MC_OBJ_ERROR:
         {
             copy = obj;
             break;
         }
-        case ARCANE_OBJECT_STRING:
+        case MC_OBJ_STRING:
         {
-            const char* str = object_get_string(obj);
-            copy = mc_value_makestring(vm, str);
+            const char* str = mc_value_stringgetdata(obj);
+            copy = mc_value_makestring(state, str);
             break;
         }
-        case ARCANE_OBJECT_ARRAY:
+        case MC_OBJ_ARRAY:
         {
-            int len = object_get_array_length(obj);
-            copy = object_make_array_with_capacity(vm, len);
+            int i;
+            int len = mv_value_arraygetlength(obj);
+            copy = object_make_array_with_capacity(state, len);
             if(object_is_null(copy))
             {
                 return mc_value_makenull();
             }
-            for(int i = 0; i < len; i++)
+            for(i = 0; i < len; i++)
             {
-                mcvalue_t item = object_get_array_value_at(obj, i);
-                ok = object_add_array_value(copy, item);
+                mcvalue_t item = mc_value_arraygetvalueat(obj, i);
+                ok = mc_value_arraypush(copy, item);
                 if(!ok)
                 {
                     return mc_value_makenull();
@@ -13725,14 +14472,15 @@ mcvalue_t object_copy(mcstate_t* vm, mcvalue_t obj)
             }
             break;
         }
-        case ARCANE_OBJECT_MAP:
+        case MC_OBJ_MAP:
         {
-            copy = object_make_map(vm);
-            for(int i = 0; i < object_get_map_length(obj); i++)
+            int i;
+            copy = object_make_map(state);
+            for(i = 0; i < mc_value_mapgetlength(obj); i++)
             {
-                mcvalue_t key = object_get_map_key_at(obj, i);
-                mcvalue_t val = object_get_map_value_at(obj, i);
-                ok = object_set_map_value(copy, key, val);
+                mcvalue_t key = mc_value_mapgetkeyat(obj, i);
+                mcvalue_t val = mc_value_mapgetvalueat(obj, i);
+                ok = mc_value_mapsetvalue(copy, key, val);
                 if(!ok)
                 {
                     return mc_value_makenull();
@@ -13740,9 +14488,9 @@ mcvalue_t object_copy(mcstate_t* vm, mcvalue_t obj)
             }
             break;
         }
-        case ARCANE_OBJECT_EXTERNAL:
+        case MC_OBJ_EXTERNAL:
         {
-            copy = object_make_external(vm, NULL);
+            copy = object_make_external(state, NULL);
             if(object_is_null(copy))
             {
                 return mc_value_makenull();
@@ -13757,16 +14505,16 @@ mcvalue_t object_copy(mcstate_t* vm, mcvalue_t obj)
             {
                 datacopy = external->data;
             }
-            object_set_external_data(copy, datacopy);
+            mc_value_setexternaldata(copy, datacopy);
             object_set_external_destroy_function(copy, external->data_destroy_fn);
-            object_set_external_copy_function(copy, external->data_copy_fn);
+            mc_value_setexternalcopyfunction(copy, external->data_copy_fn);
             break;
         }
     }
     return copy;
 }
 
-double object_compare(mcvalue_t a, mcvalue_t b, bool* outok)
+TMPSTATIC double mc_value_compare(mcvalue_t a, mcvalue_t b, bool* outok)
 {
     /*
     if(a.objdatahandle == b.objdatahandle)
@@ -13780,28 +14528,28 @@ double object_compare(mcvalue_t a, mcvalue_t b, bool* outok)
     mcobjtype_t atype = object_get_type(a);
     mcobjtype_t btype = object_get_type(b);
 
-    if((atype == ARCANE_OBJECT_NUMBER || atype == ARCANE_OBJECT_BOOL || atype == ARCANE_OBJECT_NULL) && (btype == ARCANE_OBJECT_NUMBER || btype == ARCANE_OBJECT_BOOL || btype == ARCANE_OBJECT_NULL))
+    if((atype == MC_OBJ_NUMBER || atype == MC_OBJ_BOOL || atype == MC_OBJ_NULL) && (btype == MC_OBJ_NUMBER || btype == MC_OBJ_BOOL || btype == MC_OBJ_NULL))
     {
         double leftval = object_get_number(a);
         double rightval = object_get_number(b);
         return leftval - rightval;
     }
-    if(atype == btype && atype == ARCANE_OBJECT_STRING)
+    if(atype == btype && atype == MC_OBJ_STRING)
     {
-        int alen = object_get_string_length(a);
-        int blen = object_get_string_length(b);
+        int alen = mc_value_stringgetlength(a);
+        int blen = mc_value_stringgetlength(b);
         if(alen != blen)
         {
             return alen - blen;
         }
-        unsigned long ahash = object_get_string_hash(a);
-        unsigned long bhash = object_get_string_hash(b);
+        unsigned long ahash = mc_value_stringgethash(a);
+        unsigned long bhash = mc_value_stringgethash(b);
         if(ahash != bhash)
         {
             return ahash - bhash;
         }
-        const char* astring = object_get_string(a);
-        const char* bstring = object_get_string(b);
+        const char* astring = mc_value_stringgetdata(a);
+        const char* bstring = mc_value_stringgetdata(b);
         return strcmp(astring, bstring);
     }
     if((object_is_allocated(a) || object_is_null(a)) && (object_is_allocated(b) || object_is_null(b)))
@@ -13814,7 +14562,7 @@ double object_compare(mcvalue_t a, mcvalue_t b, bool* outok)
     return 1;
 }
 
-bool object_equals(mcvalue_t a, mcvalue_t b)
+TMPSTATIC bool object_equals(mcvalue_t a, mcvalue_t b)
 {
     bool ok;
     mcobjtype_t atype = object_get_type(a);
@@ -13825,20 +14573,20 @@ bool object_equals(mcvalue_t a, mcvalue_t b)
         return false;
     }
     ok = false;
-    double res = object_compare(a, b, &ok);
-    return ARCANE_DBLEQ(res, 0);
+    double res = mc_value_compare(a, b, &ok);
+    return MC_UTIL_CMPFLOAT(res, 0);
 }
 
-mcobjexternal_t* object_get_external_data(mcvalue_t object)
+TMPSTATIC mcobjexternal_t* object_get_external_data(mcvalue_t object)
 {
-    ARCANE_ASSERT(object_get_type(object) == ARCANE_OBJECT_EXTERNAL);
+    MC_ASSERT(object_get_type(object) == MC_OBJ_EXTERNAL);
     mcobjdata_t* data = object_get_allocated_data(object);
     return &data->external;
 }
 
-bool object_set_external_destroy_function(mcvalue_t object, externaldatadestroyfn destroy_fn)
+TMPSTATIC bool object_set_external_destroy_function(mcvalue_t object, mcextdatadestroyfn_t destroy_fn)
 {
-    ARCANE_ASSERT(object_get_type(object) == ARCANE_OBJECT_EXTERNAL);
+    MC_ASSERT(object_get_type(object) == MC_OBJ_EXTERNAL);
     mcobjexternal_t* data = object_get_external_data(object);
     if(!data)
     {
@@ -13848,13 +14596,13 @@ bool object_set_external_destroy_function(mcvalue_t object, externaldatadestroyf
     return true;
 }
 
-mcobjdata_t* object_get_allocated_data(mcvalue_t object)
+TMPSTATIC mcobjdata_t* object_get_allocated_data(mcvalue_t object)
 {
-    ARCANE_ASSERT(object_is_allocated(object) || object_get_type(object) == ARCANE_OBJECT_NULL);
+    MC_ASSERT(object_is_allocated(object) || object_get_type(object) == MC_OBJ_NULL);
     return object.objdatahandle;
 }
 
-bool object_get_bool(mcvalue_t obj)
+TMPSTATIC bool object_get_bool(mcvalue_t obj)
 {
     if(object_is_number(obj))
     {
@@ -13863,11 +14611,11 @@ bool object_get_bool(mcvalue_t obj)
     return obj.valbool;
 }
 
-double object_get_number(mcvalue_t obj)
+TMPSTATIC double object_get_number(mcvalue_t obj)
 {
     if(object_is_number(obj))
     {
-        if(obj.type == ARCANE_OBJECT_BOOL)
+        if(obj.type == MC_OBJ_BOOL)
         {
             return obj.valbool;
         }
@@ -13876,52 +14624,62 @@ double object_get_number(mcvalue_t obj)
     return obj.valnumber;
 }
 
-const char* object_get_string(mcvalue_t object)
+TMPSTATIC const char* mc_value_stringgetdata(mcvalue_t object)
 {
-    ARCANE_ASSERT(object_get_type(object) == ARCANE_OBJECT_STRING);
-    mcobjdata_t* data = object_get_allocated_data(object);
-    return object_data_get_string(data);
+    mcobjdata_t* data;
+    MC_ASSERT(object_get_type(object) == MC_OBJ_STRING);
+    data = object_get_allocated_data(object);
+    return mc_value_stringgetdataintern(data);
 }
 
-int object_get_string_length(mcvalue_t object)
+TMPSTATIC int mc_value_stringgetlength(mcvalue_t object)
 {
-    ARCANE_ASSERT(object_get_type(object) == ARCANE_OBJECT_STRING);
-    mcobjdata_t* data = object_get_allocated_data(object);
-    return data->string.length;
+    mcobjdata_t* data;
+    MC_ASSERT(object_get_type(object) == MC_OBJ_STRING);
+    data = object_get_allocated_data(object);
+    return data->valstring.length;
 }
 
-void object_set_string_length(mcvalue_t object, int len)
+TMPSTATIC void object_set_string_length(mcvalue_t object, int len)
 {
-    ARCANE_ASSERT(object_get_type(object) == ARCANE_OBJECT_STRING);
-    mcobjdata_t* data = object_get_allocated_data(object);
-    data->string.length = len;
+    mcobjdata_t* data;
+    MC_ASSERT(object_get_type(object) == MC_OBJ_STRING);
+    data = object_get_allocated_data(object);
+    data->valstring.length = len;
 }
 
-int object_get_string_capacity(mcvalue_t object)
+TMPUNUSED int mc_value_stringgetcapacity(mcvalue_t object)
 {
-    ARCANE_ASSERT(object_get_type(object) == ARCANE_OBJECT_STRING);
-    mcobjdata_t* data = object_get_allocated_data(object);
-    return data->string.capacity;
+    mcobjdata_t* data;
+    MC_ASSERT(object_get_type(object) == MC_OBJ_STRING);
+    data = object_get_allocated_data(object);
+    return data->valstring.capacity;
 }
 
-char* object_get_mutable_string(mcvalue_t object)
+TMPSTATIC char* mc_value_stringgetmutabledata(mcvalue_t object)
 {
-    ARCANE_ASSERT(object_get_type(object) == ARCANE_OBJECT_STRING);
-    mcobjdata_t* data = object_get_allocated_data(object);
-    return object_data_get_string(data);
+    mcobjdata_t* data;
+    MC_ASSERT(object_get_type(object) == MC_OBJ_STRING);
+    data = object_get_allocated_data(object);
+    return mc_value_stringgetdataintern(data);
 }
 
-bool mc_value_strappend(mcvalue_t obj, const char* src, int len)
+TMPSTATIC bool mc_value_stringappend(mcvalue_t obj, const char* src, int len)
 {
-    ARCANE_ASSERT(object_get_type(obj) == ARCANE_OBJECT_STRING);
-    mcobjdata_t* data = object_get_allocated_data(obj);
-    mcobjstring_t* string = &data->string;
-    char* strbuf = object_get_mutable_string(obj);
-    int currentlen = string->length;
-    int capacity = string->capacity;
+    int capacity;
+    int currentlen;
+    char* strbuf;
+    mcobjdata_t* data;
+    mcobjstring_t* string;
+    MC_ASSERT(object_get_type(obj) == MC_OBJ_STRING);
+    data = object_get_allocated_data(obj);
+    string = &data->valstring;
+    strbuf = mc_value_stringgetmutabledata(obj);
+    currentlen = string->length;
+    capacity = string->capacity;
     if((len + currentlen) > capacity)
     {
-        ARCANE_ASSERT(false);
+        MC_ASSERT(false);
         return false;
     }
     memcpy(strbuf + currentlen, src, len);
@@ -13930,45 +14688,46 @@ bool mc_value_strappend(mcvalue_t obj, const char* src, int len)
     return true;
 }
 
-unsigned long object_get_string_hash(mcvalue_t obj)
+TMPSTATIC unsigned long mc_value_stringgethash(mcvalue_t obj)
 {
-    ARCANE_ASSERT(object_get_type(obj) == ARCANE_OBJECT_STRING);
-    mcobjdata_t* data = object_get_allocated_data(obj);
-    if(data->string.hash == 0)
+    mcobjdata_t* data;
+    MC_ASSERT(object_get_type(obj) == MC_OBJ_STRING);
+    data = object_get_allocated_data(obj);
+    if(data->valstring.hash == 0)
     {
-        data->string.hash = object_hash_string(object_get_string(obj));
-        if(data->string.hash == 0)
+        data->valstring.hash = object_hash_string(mc_value_stringgetdata(obj));
+        if(data->valstring.hash == 0)
         {
-            data->string.hash = 1;
+            data->valstring.hash = 1;
         }
     }
-    return data->string.hash;
+    return data->valstring.hash;
 }
 
-mcobjfuncscript_t* object_get_function(mcvalue_t object)
+TMPSTATIC mcobjfuncscript_t* mc_value_functiongetscriptfunction(mcvalue_t object)
 {
-    ARCANE_ASSERT(object_get_type(object) == ARCANE_OBJECT_FUNCTION);
-    mcobjdata_t* data = object_get_allocated_data(object);
+    mcobjdata_t* data;
+    MC_ASSERT(object_get_type(object) == MC_OBJ_FUNCTION);
+    data = object_get_allocated_data(object);
     return &data->function;
 }
 
-mcobjfuncnative_t* object_get_native_function(mcvalue_t obj)
+TMPSTATIC mcobjfuncnative_t* mc_value_functiongetnativefunction(mcvalue_t obj)
 {
     mcobjdata_t* data = object_get_allocated_data(obj);
     return &data->native_function;
 }
 
-
-const char* object_get_function_name(mcvalue_t obj)
+TMPSTATIC const char* mc_value_functiongetname(mcvalue_t obj)
 {
-    ARCANE_ASSERT(object_get_type(obj) == ARCANE_OBJECT_FUNCTION);
-    mcobjdata_t* data = object_get_allocated_data(obj);
-    ARCANE_ASSERT(data);
+    mcobjdata_t* data;
+    MC_ASSERT(object_get_type(obj) == MC_OBJ_FUNCTION);
+    data = object_get_allocated_data(obj);
+    MC_ASSERT(data);
     if(!data)
     {
         return NULL;
     }
-
     if(data->function.owns_data)
     {
         return data->function.name;
@@ -13976,17 +14735,19 @@ const char* object_get_function_name(mcvalue_t obj)
     return data->function.const_name;
 }
 
-mcvalue_t object_get_function_free_val(mcvalue_t obj, int ix)
+TMPSTATIC mcvalue_t mc_value_functiongetfreevalat(mcvalue_t obj, int ix)
 {
-    ARCANE_ASSERT(object_get_type(obj) == ARCANE_OBJECT_FUNCTION);
-    mcobjdata_t* data = object_get_allocated_data(obj);
-    ARCANE_ASSERT(data);
+    mcobjdata_t* data;
+    mcobjfuncscript_t* fun;
+    MC_ASSERT(object_get_type(obj) == MC_OBJ_FUNCTION);
+    data = object_get_allocated_data(obj);
+    MC_ASSERT(data);
     if(!data)
     {
         return mc_value_makenull();
     }
-    mcobjfuncscript_t* fun = &data->function;
-    ARCANE_ASSERT(ix >= 0 && ix < fun->free_vals_count);
+    fun = &data->function;
+    MC_ASSERT(ix >= 0 && ix < fun->free_vals_count);
     if(ix < 0 || ix >= fun->free_vals_count)
     {
         return mc_value_makenull();
@@ -13998,17 +14759,19 @@ mcvalue_t object_get_function_free_val(mcvalue_t obj, int ix)
     return fun->free_vals_buf[ix];
 }
 
-void object_set_function_free_val(mcvalue_t obj, int ix, mcvalue_t val)
+TMPSTATIC void mc_value_functionsetfreevalat(mcvalue_t obj, int ix, mcvalue_t val)
 {
-    ARCANE_ASSERT(object_get_type(obj) == ARCANE_OBJECT_FUNCTION);
-    mcobjdata_t* data = object_get_allocated_data(obj);
-    ARCANE_ASSERT(data);
+    mcobjdata_t* data;
+    mcobjfuncscript_t* fun;
+    MC_ASSERT(object_get_type(obj) == MC_OBJ_FUNCTION);
+    data = object_get_allocated_data(obj);
+    MC_ASSERT(data);
     if(!data)
     {
         return;
     }
-    mcobjfuncscript_t* fun = &data->function;
-    ARCANE_ASSERT(ix >= 0 && ix < fun->free_vals_count);
+    fun = &data->function;
+    MC_ASSERT(ix >= 0 && ix < fun->free_vals_count);
     if(ix < 0 || ix >= fun->free_vals_count)
     {
         return;
@@ -14023,16 +14786,18 @@ void object_set_function_free_val(mcvalue_t obj, int ix, mcvalue_t val)
     }
 }
 
-mcvalue_t* object_get_function_free_vals(mcvalue_t obj)
+TMPUNUSED mcvalue_t* mc_value_functiongetfreevals(mcvalue_t obj)
 {
-    ARCANE_ASSERT(object_get_type(obj) == ARCANE_OBJECT_FUNCTION);
-    mcobjdata_t* data = object_get_allocated_data(obj);
-    ARCANE_ASSERT(data);
+    mcobjdata_t* data;
+    mcobjfuncscript_t* fun;
+    MC_ASSERT(object_get_type(obj) == MC_OBJ_FUNCTION);
+    data = object_get_allocated_data(obj);
+    MC_ASSERT(data);
     if(!data)
     {
         return NULL;
     }
-    mcobjfuncscript_t* fun = &data->function;
+    fun = &data->function;
     if(freevals_are_allocated(fun))
     {
         return fun->free_vals_allocated;
@@ -14040,36 +14805,40 @@ mcvalue_t* object_get_function_free_vals(mcvalue_t obj)
     return fun->free_vals_buf;
 }
 
-const char* object_get_error_message(mcvalue_t object)
+TMPSTATIC const char* mc_value_errorgetmessage(mcvalue_t object)
 {
-    ARCANE_ASSERT(object_get_type(object) == ARCANE_OBJECT_ERROR);
-    mcobjdata_t* data = object_get_allocated_data(object);
+    mcobjdata_t* data;
+    MC_ASSERT(object_get_type(object) == MC_OBJ_ERROR);
+    data = object_get_allocated_data(object);
     return data->error.message;
 }
 
-void object_set_error_traceback(mcvalue_t object, mctraceback_t* traceback)
+TMPSTATIC void mc_value_errorsettraceback(mcvalue_t object, mctraceback_t* traceback)
 {
-    ARCANE_ASSERT(object_get_type(object) == ARCANE_OBJECT_ERROR);
-    if(object_get_type(object) != ARCANE_OBJECT_ERROR)
+    mcobjdata_t* data;
+    MC_ASSERT(object_get_type(object) == MC_OBJ_ERROR);
+    if(object_get_type(object) != MC_OBJ_ERROR)
     {
         return;
     }
-    mcobjdata_t* data = object_get_allocated_data(object);
-    ARCANE_ASSERT(data->error.traceback == NULL);
+    data = object_get_allocated_data(object);
+    MC_ASSERT(data->error.traceback == NULL);
     data->error.traceback = traceback;
 }
 
-mctraceback_t* object_get_error_traceback(mcvalue_t object)
+TMPSTATIC mctraceback_t* mc_value_errorgettraceback(mcvalue_t object)
 {
-    ARCANE_ASSERT(object_get_type(object) == ARCANE_OBJECT_ERROR);
-    mcobjdata_t* data = object_get_allocated_data(object);
+    mcobjdata_t* data;
+    MC_ASSERT(object_get_type(object) == MC_OBJ_ERROR);
+    data = object_get_allocated_data(object);
     return data->error.traceback;
 }
 
-bool object_set_external_data(mcvalue_t object, void* extdata)
+TMPSTATIC bool mc_value_setexternaldata(mcvalue_t object, void* extdata)
 {
-    ARCANE_ASSERT(object_get_type(object) == ARCANE_OBJECT_EXTERNAL);
-    mcobjexternal_t* data = object_get_external_data(object);
+    mcobjexternal_t* data;
+    MC_ASSERT(object_get_type(object) == MC_OBJ_EXTERNAL);
+    data = object_get_external_data(object);
     if(!data)
     {
         return false;
@@ -14078,10 +14847,11 @@ bool object_set_external_data(mcvalue_t object, void* extdata)
     return true;
 }
 
-bool object_set_external_copy_function(mcvalue_t object, externaldatacopyfn copy_fn)
+TMPSTATIC bool mc_value_setexternalcopyfunction(mcvalue_t object, mcextdatacopyfn_t copy_fn)
 {
-    ARCANE_ASSERT(object_get_type(object) == ARCANE_OBJECT_EXTERNAL);
-    mcobjexternal_t* data = object_get_external_data(object);
+    mcobjexternal_t* data;
+    MC_ASSERT(object_get_type(object) == MC_OBJ_EXTERNAL);
+    data = object_get_external_data(object);
     if(!data)
     {
         return false;
@@ -14090,15 +14860,17 @@ bool object_set_external_copy_function(mcvalue_t object, externaldatacopyfn copy
     return true;
 }
 
-mcvalue_t object_get_array_value_at(mcvalue_t object, int ix)
+TMPSTATIC mcvalue_t mc_value_arraygetvalueat(mcvalue_t object, int ix)
 {
-    ARCANE_ASSERT(object_get_type(object) == ARCANE_OBJECT_ARRAY);
-    mcbasicarray_t* array = object_get_allocated_array(object);
+    mcvalue_t* res;
+    mcbasicarray_t* array;
+    MC_ASSERT(object_get_type(object) == MC_OBJ_ARRAY);
+    array = object_get_allocated_array(object);
     if(ix < 0 || ix >= array_count(array))
     {
         return mc_value_makenull();
     }
-    mcvalue_t* res = array_get(array, ix);
+    res = (mcvalue_t*)array_get(array, ix);
     if(!res)
     {
         return mc_value_makenull();
@@ -14106,49 +14878,65 @@ mcvalue_t object_get_array_value_at(mcvalue_t object, int ix)
     return *res;
 }
 
-bool object_set_array_value_at(mcvalue_t object, int ix, mcvalue_t val)
+TMPSTATIC bool mc_value_arraysetvalueat(mcvalue_t object, int ix, mcvalue_t val)
 {
-    ARCANE_ASSERT(object_get_type(object) == ARCANE_OBJECT_ARRAY);
-    mcbasicarray_t* array = object_get_allocated_array(object);
-    if(ix < 0 || ix >= array_count(array))
+    int len;
+    int toadd;
+    mcbasicarray_t* array;
+    MC_ASSERT(object_get_type(object) == MC_OBJ_ARRAY);
+    array = object_get_allocated_array(object);
+    len = array_count(array);
+    if(((ix < 0) || (ix >= len)) || (len == 0))
     {
-        return false;
+        toadd = len+1;
+        //fprintf(stderr, "ix=%d toadd=%d len=%d\n", ix, toadd, len);
+        while(toadd != (ix+2))
+        {
+            mc_value_arraypush(object, mc_value_makenull());
+            toadd++;
+        }
     }
     return array_set(array, ix, &val);
 }
 
-bool object_add_array_value(mcvalue_t object, mcvalue_t val)
+TMPSTATIC bool mc_value_arraypush(mcvalue_t object, mcvalue_t val)
 {
-    ARCANE_ASSERT(object_get_type(object) == ARCANE_OBJECT_ARRAY);
-    mcbasicarray_t* array = object_get_allocated_array(object);
+    mcbasicarray_t* array;
+    MC_ASSERT(object_get_type(object) == MC_OBJ_ARRAY);
+    array = object_get_allocated_array(object);
     return array_add(array, &val);
 }
 
-int object_get_array_length(mcvalue_t object)
+TMPSTATIC int mv_value_arraygetlength(mcvalue_t object)
 {
-    ARCANE_ASSERT(object_get_type(object) == ARCANE_OBJECT_ARRAY);
-    mcbasicarray_t* array = object_get_allocated_array(object);
+    mcbasicarray_t* array;
+    MC_ASSERT(object_get_type(object) == MC_OBJ_ARRAY);
+    array = object_get_allocated_array(object);
     return array_count(array);
 }
 
-bool object_remove_array_value_at(mcvalue_t object, int ix)
+TMPSTATIC bool mc_value_arrayremovevalueat(mcvalue_t object, int ix)
 {
-    mcbasicarray_t* array = object_get_allocated_array(object);
+    mcbasicarray_t* array;
+    array = object_get_allocated_array(object);
     return array_remove_at(array, ix);
 }
 
-int object_get_map_length(mcvalue_t object)
+TMPSTATIC int mc_value_mapgetlength(mcvalue_t object)
 {
-    ARCANE_ASSERT(object_get_type(object) == ARCANE_OBJECT_MAP);
-    mcobjdata_t* data = object_get_allocated_data(object);
+    mcobjdata_t* data;
+    MC_ASSERT(object_get_type(object) == MC_OBJ_MAP);
+    data = object_get_allocated_data(object);
     return valdict_count(data->map);
 }
 
-mcvalue_t object_get_map_key_at(mcvalue_t object, int ix)
+TMPSTATIC mcvalue_t mc_value_mapgetkeyat(mcvalue_t object, int ix)
 {
-    ARCANE_ASSERT(object_get_type(object) == ARCANE_OBJECT_MAP);
-    mcobjdata_t* data = object_get_allocated_data(object);
-    mcvalue_t* res = valdict_get_key_at(data->map, ix);
+    mcvalue_t* res;
+    mcobjdata_t* data;
+    MC_ASSERT(object_get_type(object) == MC_OBJ_MAP);
+    data = object_get_allocated_data(object);
+    res = (mcvalue_t*)valdict_get_key_at(data->map, ix);
     if(!res)
     {
         return mc_value_makenull();
@@ -14156,11 +14944,13 @@ mcvalue_t object_get_map_key_at(mcvalue_t object, int ix)
     return *res;
 }
 
-mcvalue_t object_get_map_value_at(mcvalue_t object, int ix)
+TMPSTATIC mcvalue_t mc_value_mapgetvalueat(mcvalue_t object, int ix)
 {
-    ARCANE_ASSERT(object_get_type(object) == ARCANE_OBJECT_MAP);
-    mcobjdata_t* data = object_get_allocated_data(object);
-    mcvalue_t* res = valdict_get_value_at(data->map, ix);
+    mcvalue_t* res;
+    mcobjdata_t* data;
+    MC_ASSERT(object_get_type(object) == MC_OBJ_MAP);
+    data = object_get_allocated_data(object);
+    res = (mcvalue_t*)valdict_get_value_at(data->map, ix);
     if(!res)
     {
         return mc_value_makenull();
@@ -14168,62 +14958,69 @@ mcvalue_t object_get_map_value_at(mcvalue_t object, int ix)
     return *res;
 }
 
-bool object_set_map_value_at(mcvalue_t object, int ix, mcvalue_t val)
+TMPUNUSED bool mc_value_mapsetvalueat(mcvalue_t object, int ix, mcvalue_t val)
 {
-    ARCANE_ASSERT(object_get_type(object) == ARCANE_OBJECT_MAP);
-    if(ix >= object_get_map_length(object))
+    mcobjdata_t* data;
+    MC_ASSERT(object_get_type(object) == MC_OBJ_MAP);
+    if(ix >= mc_value_mapgetlength(object))
     {
         return false;
     }
-    mcobjdata_t* data = object_get_allocated_data(object);
+    data = object_get_allocated_data(object);
     return valdict_set_value_at(data->map, ix, &val);
 }
 
-mcvalue_t object_get_kv_pair_at(mcstate_t* vm, mcvalue_t object, int ix)
+TMPSTATIC mcvalue_t mc_value_mapgetkvpairat(mcstate_t* state, mcvalue_t object, int ix)
 {
-    ARCANE_ASSERT(object_get_type(object) == ARCANE_OBJECT_MAP);
-    mcobjdata_t* data = object_get_allocated_data(object);
+    mcvalue_t key;
+    mcvalue_t val;
+    mcvalue_t res;
+    mcvalue_t valobj;
+    mcvalue_t keyobj;
+    mcobjdata_t* data;
+    MC_ASSERT(object_get_type(object) == MC_OBJ_MAP);
+    data = object_get_allocated_data(object);
     if(ix >= valdict_count(data->map))
     {
         return mc_value_makenull();
     }
-    mcvalue_t key = object_get_map_key_at(object, ix);
-    mcvalue_t val = object_get_map_value_at(object, ix);
-    mcvalue_t res = object_make_map(vm);
+    key = mc_value_mapgetkeyat(object, ix);
+    val = mc_value_mapgetvalueat(object, ix);
+    res = object_make_map(state);
     if(object_is_null(res))
     {
         return mc_value_makenull();
     }
-
-    mcvalue_t keyobj = mc_value_makestring(vm, "key");
+    keyobj = mc_value_makestring(state, "key");
     if(object_is_null(keyobj))
     {
         return mc_value_makenull();
     }
-    object_set_map_value(res, keyobj, key);
-
-    mcvalue_t valobj = mc_value_makestring(vm, "value");
+    mc_value_mapsetvalue(res, keyobj, key);
+    valobj = mc_value_makestring(state, "value");
     if(object_is_null(valobj))
     {
         return mc_value_makenull();
     }
-    object_set_map_value(res, valobj, val);
-
+    mc_value_mapsetvalue(res, valobj, val);
     return res;
 }
 
-bool object_set_map_value(mcvalue_t object, mcvalue_t key, mcvalue_t val)
+TMPSTATIC bool mc_value_mapsetvalue(mcvalue_t object, mcvalue_t key, mcvalue_t val)
 {
-    ARCANE_ASSERT(object_get_type(object) == ARCANE_OBJECT_MAP);
-    mcobjdata_t* data = object_get_allocated_data(object);
+    mcobjdata_t* data;
+    MC_ASSERT(object_get_type(object) == MC_OBJ_MAP);
+    data = object_get_allocated_data(object);
     return valdict_set(data->map, &key, &val);
 }
 
-mcvalue_t object_get_map_value(mcvalue_t object, mcvalue_t key)
+TMPSTATIC mcvalue_t mc_value_mapgetvalue(mcvalue_t object, mcvalue_t key)
 {
-    ARCANE_ASSERT(object_get_type(object) == ARCANE_OBJECT_MAP);
-    mcobjdata_t* data = object_get_allocated_data(object);
-    mcvalue_t* res = valdict_get(data->map, &key);
+    mcvalue_t* res;
+    mcobjdata_t* data;
+    MC_ASSERT(object_get_type(object) == MC_OBJ_MAP);
+    data = object_get_allocated_data(object);
+    res = (mcvalue_t*)valdict_get(data->map, &key);
     if(!res)
     {
         return mc_value_makenull();
@@ -14231,239 +15028,287 @@ mcvalue_t object_get_map_value(mcvalue_t object, mcvalue_t key)
     return *res;
 }
 
-bool object_map_has_key(mcvalue_t object, mcvalue_t key)
+TMPUNUSED bool mc_value_maphaskey(mcvalue_t object, mcvalue_t key)
 {
-    ARCANE_ASSERT(object_get_type(object) == ARCANE_OBJECT_MAP);
-    mcobjdata_t* data = object_get_allocated_data(object);
-    mcvalue_t* res = valdict_get(data->map, &key);
+    mcvalue_t* res;
+    mcobjdata_t* data;
+    MC_ASSERT(object_get_type(object) == MC_OBJ_MAP);
+    data = object_get_allocated_data(object);
+    res = (mcvalue_t*)valdict_get(data->map, &key);
     return res != NULL;
 }
 
-TMPSEMISTATIC mcvalue_t object_deep_copy_internal(mcstate_t* vm, mcgcmemory_t* mem, mcvalue_t obj, mcvaldict_t* copies)
+TMPSEMISTATIC mcvalue_t mc_value_copydeepfuncscript(mcstate_t* state, mcvalue_t obj, mcvaldict_t* copies)
 {
     bool ok;
-    mcvalue_t* copyptr = valdict_get(copies, &obj);
+    int i;
+    uint8_t* bytecodecopy;
+    mcobjfuncscript_t* functioncopy;
+    mcvalue_t copy;
+    mcvalue_t freeval;
+    mcvalue_t freevalcopy;
+    mcobjfuncscript_t* function;
+    mcastlocation_t* srcpositionscopy;
+    compilation_result_t* comprescopy;
+    function = mc_value_functiongetscriptfunction(obj);
+    bytecodecopy = NULL;
+    srcpositionscopy = NULL;
+    comprescopy = NULL;
+    bytecodecopy = (uint8_t*)mc_allocator_alloc(state, sizeof(uint8_t) * function->comp_result->count);
+    if(!bytecodecopy)
+    {
+        return mc_value_makenull();
+    }
+    memcpy(bytecodecopy, function->comp_result->bytecode, sizeof(uint8_t) * function->comp_result->count);
+    srcpositionscopy = (mcastlocation_t*)mc_allocator_alloc(state, sizeof(mcastlocation_t) * function->comp_result->count);
+    if(!srcpositionscopy)
+    {
+        mc_allocator_free(state, bytecodecopy);
+        return mc_value_makenull();
+    }
+    memcpy(srcpositionscopy, function->comp_result->src_positions, sizeof(mcastlocation_t) * function->comp_result->count);
+    comprescopy = compilation_result_make(state, bytecodecopy, srcpositionscopy, function->comp_result->count);
+    /*
+    * todo: add compilation result copy function
+    */
+    if(!comprescopy)
+    {
+        mc_allocator_free(state, srcpositionscopy);
+        mc_allocator_free(state, bytecodecopy);
+        return mc_value_makenull();
+    }
+    copy = object_make_function(state, mc_value_functiongetname(obj), comprescopy, true, function->num_locals, function->num_args, 0);
+    if(object_is_null(copy))
+    {
+        compilation_result_destroy(comprescopy);
+        return mc_value_makenull();
+    }
+    ok = valdict_set(copies, &obj, &copy);
+    if(!ok)
+    {
+        return mc_value_makenull();
+    }
+    functioncopy = mc_value_functiongetscriptfunction(copy);
+    if(freevals_are_allocated(function))
+    {
+        functioncopy->free_vals_allocated = (mcvalue_t*)mc_allocator_alloc(state, sizeof(mcvalue_t) * function->free_vals_count);
+        if(!functioncopy->free_vals_allocated)
+        {
+            return mc_value_makenull();
+        }
+    }
+    functioncopy->free_vals_count = function->free_vals_count;
+    for(i = 0; i < function->free_vals_count; i++)
+    {
+        freeval = mc_value_functiongetfreevalat(obj, i);
+        freevalcopy = mc_value_copydeepintern(state, freeval, copies);
+        if(!object_is_null(freeval) && object_is_null(freevalcopy))
+        {
+            return mc_value_makenull();
+        }
+        mc_value_functionsetfreevalat(copy, i, freevalcopy);
+    }
+    return copy;
+}
+
+TMPSEMISTATIC mcvalue_t mc_value_copydeeparray(mcstate_t* state, mcvalue_t obj, mcvaldict_t* copies)
+{
+    bool ok;
+    int i;
+    int len;
+    mcvalue_t copy;
+    mcvalue_t item;
+    mcvalue_t itemcopy;
+    len = mv_value_arraygetlength(obj);
+    copy = object_make_array_with_capacity(state, len);
+    if(object_is_null(copy))
+    {
+        return mc_value_makenull();
+    }
+    ok = valdict_set(copies, &obj, &copy);
+    if(!ok)
+    {
+        return mc_value_makenull();
+    }
+    for(i = 0; i < len; i++)
+    {
+        item = mc_value_arraygetvalueat(obj, i);
+        itemcopy = mc_value_copydeepintern(state, item, copies);
+        if(!object_is_null(item) && object_is_null(itemcopy))
+        {
+            return mc_value_makenull();
+        }
+        ok = mc_value_arraypush(copy, itemcopy);
+        if(!ok)
+        {
+            return mc_value_makenull();
+        }
+    }
+    return copy;
+}
+
+TMPSEMISTATIC mcvalue_t mc_value_copydeepmap(mcstate_t* state, mcvalue_t obj, mcvaldict_t* copies)
+{
+    bool ok;
+    int i;
+    mcvalue_t key;
+    mcvalue_t val;
+    mcvalue_t copy;
+    mcvalue_t keycopy;
+    mcvalue_t valcopy;
+    copy = object_make_map(state);
+    if(object_is_null(copy))
+    {
+        return mc_value_makenull();
+    }
+    ok = valdict_set(copies, &obj, &copy);
+    if(!ok)
+    {
+        return mc_value_makenull();
+    }
+    for(i = 0; i < mc_value_mapgetlength(obj); i++)
+    {
+        key = mc_value_mapgetkeyat(obj, i);
+        val = mc_value_mapgetvalueat(obj, i);
+        keycopy = mc_value_copydeepintern(state, key, copies);
+        if(!object_is_null(key) && object_is_null(keycopy))
+        {
+            return mc_value_makenull();
+        }
+        valcopy = mc_value_copydeepintern(state, val, copies);
+        if(!object_is_null(val) && object_is_null(valcopy))
+        {
+            return mc_value_makenull();
+        }
+        ok = mc_value_mapsetvalue(copy, keycopy, valcopy);
+        if(!ok)
+        {
+            return mc_value_makenull();
+        }
+    }
+    return copy;
+}
+
+TMPSEMISTATIC mcvalue_t mc_value_copydeepintern(mcstate_t* state, mcvalue_t obj, mcvaldict_t* copies)
+{
+    bool ok;
+    mcobjtype_t type;
+    mcvalue_t copy;
+    mcvalue_t* copyptr;
+    copyptr = (mcvalue_t*)valdict_get(copies, &obj);
     if(copyptr)
     {
         return *copyptr;
     }
-
-    mcvalue_t copy = mc_value_makenull();
-
-    mcobjtype_t type = object_get_type(obj);
+    copy = mc_value_makenull();
+    type = object_get_type(obj);
     switch(type)
     {
-        case ARCANE_OBJECT_FREED:
-        case ARCANE_OBJECT_ANY:
-        case ARCANE_OBJECT_NONE:
+        case MC_OBJ_FREED:
+        case MC_OBJ_ANY:
+        case MC_OBJ_NONE:
         {
-            ARCANE_ASSERT(false);
+            MC_ASSERT(false);
             copy = mc_value_makenull();
             break;
         }
-        case ARCANE_OBJECT_NUMBER:
-        case ARCANE_OBJECT_BOOL:
-        case ARCANE_OBJECT_NULL:
-        case ARCANE_OBJECT_NATIVE_FUNCTION:
-        {
-            copy = obj;
-            break;
-        }
-        case ARCANE_OBJECT_STRING:
-        {
-            const char* str = object_get_string(obj);
-            copy = mc_value_makestring(vm, str);
-            break;
-        }
-        case ARCANE_OBJECT_FUNCTION:
-        {
-            mcobjfuncscript_t* function = object_get_function(obj);
-            uint8_t* bytecodecopy = NULL;
-            mcastlocation_t* srcpositionscopy = NULL;
-            compilation_result_t* comprescopy = NULL;
-
-            bytecodecopy = (uint8_t*)allocator_malloc(vm, sizeof(uint8_t) * function->comp_result->count);
-            if(!bytecodecopy)
+        case MC_OBJ_NUMBER:
+        case MC_OBJ_BOOL:
+        case MC_OBJ_NULL:
+        case MC_OBJ_NATIVE_FUNCTION:
             {
-                return mc_value_makenull();
-            }
-            memcpy(bytecodecopy, function->comp_result->bytecode, sizeof(uint8_t) * function->comp_result->count);
-
-            srcpositionscopy = (mcastlocation_t*)allocator_malloc(vm, sizeof(mcastlocation_t) * function->comp_result->count);
-            if(!srcpositionscopy)
-            {
-                allocator_free(vm, bytecodecopy);
-                return mc_value_makenull();
-            }
-            memcpy(srcpositionscopy, function->comp_result->src_positions, sizeof(mcastlocation_t) * function->comp_result->count);
-
-            comprescopy = compilation_result_make(vm, bytecodecopy, srcpositionscopy, function->comp_result->count);
-            /*
-            * todo: add compilation result copy function
-            */
-            if(!comprescopy)
-            {
-                allocator_free(vm, srcpositionscopy);
-                allocator_free(vm, bytecodecopy);
-                return mc_value_makenull();
-            }
-
-            copy = object_make_function(vm, object_get_function_name(obj), comprescopy, true, function->num_locals, function->num_args, 0);
-            if(object_is_null(copy))
-            {
-                compilation_result_destroy(comprescopy);
-                return mc_value_makenull();
-            }
-
-            ok = valdict_set(copies, &obj, &copy);
-            if(!ok)
-            {
-                return mc_value_makenull();
-            }
-
-            mcobjfuncscript_t* functioncopy = object_get_function(copy);
-            if(freevals_are_allocated(function))
-            {
-                functioncopy->free_vals_allocated = (mcvalue_t*)allocator_malloc(vm, sizeof(mcvalue_t) * function->free_vals_count);
-                if(!functioncopy->free_vals_allocated)
-                {
-                    return mc_value_makenull();
-                }
-            }
-
-            functioncopy->free_vals_count = function->free_vals_count;
-            for(int i = 0; i < function->free_vals_count; i++)
-            {
-                mcvalue_t freeval = object_get_function_free_val(obj, i);
-                mcvalue_t freevalcopy = object_deep_copy_internal(vm, mem, freeval, copies);
-                if(!object_is_null(freeval) && object_is_null(freevalcopy))
-                {
-                    return mc_value_makenull();
-                }
-                object_set_function_free_val(copy, i, freevalcopy);
+                copy = obj;
             }
             break;
-        }
-        case ARCANE_OBJECT_ARRAY:
-        {
-            int len = object_get_array_length(obj);
-            copy = object_make_array_with_capacity(vm, len);
-            if(object_is_null(copy))
+        case MC_OBJ_STRING:
             {
-                return mc_value_makenull();
-            }
-            ok = valdict_set(copies, &obj, &copy);
-            if(!ok)
-            {
-                return mc_value_makenull();
-            }
-            for(int i = 0; i < len; i++)
-            {
-                mcvalue_t item = object_get_array_value_at(obj, i);
-                mcvalue_t itemcopy = object_deep_copy_internal(vm, mem, item, copies);
-                if(!object_is_null(item) && object_is_null(itemcopy))
-                {
-                    return mc_value_makenull();
-                }
-                ok = object_add_array_value(copy, itemcopy);
-                if(!ok)
-                {
-                    return mc_value_makenull();
-                }
+                int len;
+                const char* str;
+                str = mc_value_stringgetdata(obj);
+                len = mc_value_stringgetlength(obj);
+                copy = mc_value_makestringlen(state, str, len);
+                return copy;
             }
             break;
-        }
-        case ARCANE_OBJECT_MAP:
-        {
-            copy = object_make_map(vm);
-            if(object_is_null(copy))
+        case MC_OBJ_FUNCTION:
             {
-                return mc_value_makenull();
-            }
-            ok = valdict_set(copies, &obj, &copy);
-            if(!ok)
-            {
-                return mc_value_makenull();
-            }
-            for(int i = 0; i < object_get_map_length(obj); i++)
-            {
-                mcvalue_t key = object_get_map_key_at(obj, i);
-                mcvalue_t val = object_get_map_value_at(obj, i);
-
-                mcvalue_t keycopy = object_deep_copy_internal(vm, mem, key, copies);
-                if(!object_is_null(key) && object_is_null(keycopy))
-                {
-                    return mc_value_makenull();
-                }
-
-                mcvalue_t valcopy = object_deep_copy_internal(vm, mem, val, copies);
-                if(!object_is_null(val) && object_is_null(valcopy))
-                {
-                    return mc_value_makenull();
-                }
-
-                ok = object_set_map_value(copy, keycopy, valcopy);
-                if(!ok)
-                {
-                    return mc_value_makenull();
-                }
+                return mc_value_copydeepfuncscript(state, obj, copies);
             }
             break;
-        }
-        case ARCANE_OBJECT_EXTERNAL:
-        {
-            copy = object_copy(vm, obj);
+        case MC_OBJ_ARRAY:
+            {
+                return mc_value_copydeeparray(state, obj, copies);
+            }
             break;
-        }
-        case ARCANE_OBJECT_ERROR:
-        {
-            copy = obj;
+        case MC_OBJ_MAP:
+            {
+                return mc_value_copydeepmap(state, obj, copies);
+            }
             break;
-        }
+        case MC_OBJ_EXTERNAL:
+            {
+                copy = mc_value_copyflat(state, obj);
+            }
+            break;
+        case MC_OBJ_ERROR:
+            {
+                copy = obj;
+            }
+            break;
     }
     return copy;
 }
 
 TMPSTATIC bool object_equals_wrapped(mcvalue_t* aptr, mcvalue_t* bptr)
 {
-    mcvalue_t a = *aptr;
-    mcvalue_t b = *bptr;
+    mcvalue_t a;
+    mcvalue_t b;
+    a = *aptr;
+    b = *bptr;
     return object_equals(a, b);
 }
 
 TMPSTATIC unsigned long object_hash(mcvalue_t* objptr)
 {
-    mcvalue_t obj = *objptr;
-    mcobjtype_t type = object_get_type(obj);
-
+    bool bval;
+    double dval;
+    mcvalue_t obj;
+    mcobjtype_t type;
+    obj = *objptr;
+    type = object_get_type(obj);
     switch(type)
     {
-        case ARCANE_OBJECT_NUMBER:
-        {
-            double val = object_get_number(obj);
-            return object_hash_double(val);
-        }
-        case ARCANE_OBJECT_BOOL:
-        {
-            bool val = object_get_bool(obj);
-            return val;
-        }
-        case ARCANE_OBJECT_STRING:
-        {
-            return object_get_string_hash(obj);
-        }
+        case MC_OBJ_NUMBER:
+            {
+                dval = object_get_number(obj);
+                return object_hash_double(dval);
+            }
+            break;
+        case MC_OBJ_BOOL:
+            {
+                bval = object_get_bool(obj);
+                return bval;
+            }
+            break;
+        case MC_OBJ_STRING:
+            {
+                return mc_value_stringgethash(obj);
+            }
+            break;
         default:
-        {
-            return 0;
-        }
+            {
+            }
+            break;
     }
+    return 0;
 }
 
 TMPSTATIC unsigned long object_hash_string(const char* str)
 {
     /* djb2 */
-    unsigned long hash = 5381;
     int c;
+    unsigned long hash;
+    hash = 5381;
     while((c = *str++))
     {
         hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
@@ -14474,66 +15319,48 @@ TMPSTATIC unsigned long object_hash_string(const char* str)
 TMPSTATIC unsigned long object_hash_double(double val)
 {
     /* djb2 */
-    uint32_t* valptr = (uint32_t*)&val;
-    unsigned long hash = 5381;
+    unsigned long hash;
+    uint32_t* valptr;
+    valptr = (uint32_t*)&val;
+    hash = 5381;
     hash = ((hash << 5) + hash) + valptr[0];
     hash = ((hash << 5) + hash) + valptr[1];
     return hash;
 }
 
-mcbasicarray_t* object_get_allocated_array(mcvalue_t object)
+TMPSTATIC mcbasicarray_t* object_get_allocated_array(mcvalue_t object)
 {
-    ARCANE_ASSERT(object_get_type(object) == ARCANE_OBJECT_ARRAY);
+    MC_ASSERT(object_get_type(object) == MC_OBJ_ARRAY);
     mcobjdata_t* data = object_get_allocated_data(object);
     return data->array;
 }
 
 TMPSTATIC bool object_is_number(mcvalue_t o)
 {
-    /*
-    return (o.objdatahandle & MC_CONF_OBJECT_PATTERN) != MC_CONF_OBJECT_PATTERN;
-    */
-    return (o.type == ARCANE_OBJECT_NUMBER || o.type == ARCANE_OBJECT_BOOL);
+    return (o.type == MC_OBJ_NUMBER || o.type == MC_OBJ_BOOL);
 }
-
-/*
-TMPSTATIC uint64_t get_type_tag(mcobjtype_t type)
-{
-    switch(type)
-    {
-        case ARCANE_OBJECT_NONE:
-            return 0;
-        case ARCANE_OBJECT_BOOL:
-            return 1;
-        case ARCANE_OBJECT_NULL:
-            return 2;
-        default:
-            return 4;
-    }
-}
-*/
 
 TMPSTATIC bool freevals_are_allocated(mcobjfuncscript_t* fun)
 {
-    return fun->free_vals_count >= ARCANE_ARRAY_LEN(fun->free_vals_buf);
+    return fun->free_vals_count >= MC_UTIL_STATICARRAYSIZE(fun->free_vals_buf);
 }
 
-TMPSTATIC char* object_data_get_string(mcobjdata_t* data)
+TMPSTATIC char* mc_value_stringgetdataintern(mcobjdata_t* data)
 {
-    ARCANE_ASSERT(data->type == ARCANE_OBJECT_STRING);
-    if(data->string.is_allocated)
+    MC_ASSERT(data->type == MC_OBJ_STRING);
+    if(data->valstring.is_allocated)
     {
-        return data->string.actualallocated;
+        return data->valstring.actualallocated;
     }
-    return data->string.actualonstack;
+    return data->valstring.actualonstack;
 }
 
-TMPSTATIC bool object_data_string_reserve_capacity(mcobjdata_t* data, int capacity)
+TMPSTATIC bool mc_value_stringreservecapacity(mcobjdata_t* data, int capacity)
 {
     char* newvalue;
     mcobjstring_t* string;
-    ARCANE_ASSERT(capacity >= 0);
-    string = &data->string;
+    MC_ASSERT(capacity >= 0);
+    string = &data->valstring;
     string->length = 0;
     string->hash = 0;
     string->data = NULL;
@@ -14546,23 +15373,23 @@ TMPSTATIC bool object_data_string_reserve_capacity(mcobjdata_t* data, int capaci
         if(string->is_allocated)
         {
             /* should never happen */
-            ARCANE_ASSERT(false);
+            MC_ASSERT(false);
             /* just in case */
-            allocator_free(data->pstate, string->actualallocated);
+            mc_allocator_free(data->pstate, string->actualallocated);
         }
         string->capacity = MC_CONF_OBJECT_STRING_BUF_SIZE - 1;
         string->is_allocated = false;
         string->data = string->actualonstack;
         return true;
     }
-    newvalue = (char*)allocator_malloc(data->pstate, capacity + 1);
+    newvalue = (char*)mc_allocator_alloc(data->pstate, capacity + 1);
     if(!newvalue)
     {
         return false;
     }
     if(string->is_allocated)
     {
-        allocator_free(data->pstate, string->actualallocated);
+        mc_allocator_free(data->pstate, string->actualallocated);
     }
     string->actualallocated = newvalue;
     string->is_allocated = true;
@@ -14571,19 +15398,20 @@ TMPSTATIC bool object_data_string_reserve_capacity(mcobjdata_t* data, int capaci
     return true;
 }
 
-mcastsymbol_t* symbol_make(mcstate_t* state, const char* name, mcastsymtype_t type, int index, bool assignable)
+TMPSTATIC mcastsymbol_t* symbol_make(mcstate_t* state, const char* name, mcastsymtype_t type, int index, bool assignable)
 {
-    mcastsymbol_t* symbol = (mcastsymbol_t*)allocator_malloc(state, sizeof(mcastsymbol_t));
+    mcastsymbol_t* symbol;
+    symbol = (mcastsymbol_t*)mc_allocator_alloc(state, sizeof(mcastsymbol_t));
     if(!symbol)
     {
         return NULL;
     }
     memset(symbol, 0, sizeof(mcastsymbol_t));
     symbol->pstate = state;
-    symbol->name = arcane_strdup(state, name);
+    symbol->name = mc_util_strdup(state, name);
     if(!symbol->name)
     {
-        allocator_free(state, symbol);
+        mc_allocator_free(state, symbol);
         return NULL;
     }
     symbol->type = type;
@@ -14592,25 +15420,26 @@ mcastsymbol_t* symbol_make(mcstate_t* state, const char* name, mcastsymtype_t ty
     return symbol;
 }
 
-void symbol_destroy(mcastsymbol_t* symbol)
+TMPSTATIC void symbol_destroy(mcastsymbol_t* symbol)
 {
     if(!symbol)
     {
         return;
     }
-    allocator_free(symbol->pstate, symbol->name);
-    allocator_free(symbol->pstate, symbol);
+    mc_allocator_free(symbol->pstate, symbol->name);
+    mc_allocator_free(symbol->pstate, symbol);
 }
 
-mcastsymbol_t* symbol_copy(mcastsymbol_t* symbol)
+TMPSTATIC mcastsymbol_t* symbol_copy(mcastsymbol_t* symbol)
 {
     return symbol_make(symbol->pstate, symbol->name, symbol->type, symbol->index, symbol->assignable);
 }
 
-mcastsymtable_t* symbol_table_make(mcstate_t* state, mcastsymtable_t* outer, mcglobalstore_t* global_store, int module_global_offset)
+TMPSTATIC mcastsymtable_t* mc_symtable_make(mcstate_t* state, mcastsymtable_t* outer, mcglobalstore_t* global_store, int module_global_offset)
 {
     bool ok;
-    mcastsymtable_t* table = (mcastsymtable_t*)allocator_malloc(state, sizeof(mcastsymtable_t));
+    mcastsymtable_t* table;
+    table = (mcastsymtable_t*)mc_allocator_alloc(state, sizeof(mcastsymtable_t));
     if(!table)
     {
         return NULL;
@@ -14621,60 +15450,55 @@ mcastsymtable_t* symbol_table_make(mcstate_t* state, mcastsymtable_t* outer, mcg
     table->outer = outer;
     table->global_store = global_store;
     table->module_global_offset = module_global_offset;
-
     table->block_scopes = ptrarray_make(state);
     if(!table->block_scopes)
     {
         goto err;
     }
-
     table->free_symbols = ptrarray_make(state);
     if(!table->free_symbols)
     {
         goto err;
     }
-
     table->module_global_symbols = ptrarray_make(state);
     if(!table->module_global_symbols)
     {
         goto err;
     }
-
     ok = symbol_table_push_block_scope(table);
     if(!ok)
     {
         goto err;
     }
-
     return table;
 err:
-    symbol_table_destroy(table);
+    mc_symtable_destroy(table);
     return NULL;
 }
 
-void symbol_table_destroy(mcastsymtable_t* table)
+TMPSTATIC void mc_symtable_destroy(mcastsymtable_t* table)
 {
     mcstate_t* state;
     if(!table)
     {
         return;
     }
-
     while(ptrarray_count(table->block_scopes) > 0)
     {
         symbol_table_pop_block_scope(table);
     }
     ptrarray_destroy(table->block_scopes);
-    ptrarray_destroy_with_items_(table->module_global_symbols, (ptrarrayitemdestroyfn)symbol_destroy);
-    ptrarray_destroy_with_items_(table->free_symbols, (ptrarrayitemdestroyfn)symbol_destroy);
+    ptrarray_destroy_with_items_(table->module_global_symbols, (mcptrarrayitemdestroyfn_t)symbol_destroy);
+    ptrarray_destroy_with_items_(table->free_symbols, (mcptrarrayitemdestroyfn_t)symbol_destroy);
     state = table->pstate;
     memset(table, 0, sizeof(mcastsymtable_t));
-    allocator_free(state, table);
+    mc_allocator_free(state, table);
 }
 
-mcastsymtable_t* symbol_table_copy(mcastsymtable_t* table)
+TMPSTATIC mcastsymtable_t* symbol_table_copy(mcastsymtable_t* table)
 {
-    mcastsymtable_t* copy = (mcastsymtable_t*)allocator_malloc(table->pstate, sizeof(mcastsymtable_t));
+    mcastsymtable_t* copy;
+    copy = (mcastsymtable_t*)mc_allocator_alloc(table->pstate, sizeof(mcastsymtable_t));
     if(!copy)
     {
         return NULL;
@@ -14683,17 +15507,17 @@ mcastsymtable_t* symbol_table_copy(mcastsymtable_t* table)
     copy->pstate = table->pstate;
     copy->outer = table->outer;
     copy->global_store = table->global_store;
-    copy->block_scopes = ptrarray_copy_with_items_(table->block_scopes, (ptrarrayitemcopyfn)block_scope_copy, (ptrarrayitemdestroyfn)block_scope_destroy);
+    copy->block_scopes = ptrarray_copy_with_items_(table->block_scopes, (mcptrarrayitemcopyfn_t)block_scope_copy, (mcptrarrayitemdestroyfn_t)block_scope_destroy);
     if(!copy->block_scopes)
     {
         goto err;
     }
-    copy->free_symbols = ptrarray_copy_with_items_(table->free_symbols, (ptrarrayitemcopyfn)symbol_copy, (ptrarrayitemdestroyfn)symbol_destroy);
+    copy->free_symbols = ptrarray_copy_with_items_(table->free_symbols, (mcptrarrayitemcopyfn_t)symbol_copy, (mcptrarrayitemdestroyfn_t)symbol_destroy);
     if(!copy->free_symbols)
     {
         goto err;
     }
-    copy->module_global_symbols = ptrarray_copy_with_items_(table->module_global_symbols, (ptrarrayitemcopyfn)symbol_copy, (ptrarrayitemdestroyfn)symbol_destroy);
+    copy->module_global_symbols = ptrarray_copy_with_items_(table->module_global_symbols, (mcptrarrayitemcopyfn_t)symbol_copy, (mcptrarrayitemdestroyfn_t)symbol_destroy);
     if(!copy->module_global_symbols)
     {
         goto err;
@@ -14702,16 +15526,17 @@ mcastsymtable_t* symbol_table_copy(mcastsymtable_t* table)
     copy->module_global_offset = table->module_global_offset;
     return copy;
 err:
-    symbol_table_destroy(copy);
+    mc_symtable_destroy(copy);
     return NULL;
 }
 
-bool symbol_table_add_module_symbol(mcastsymtable_t* st, mcastsymbol_t* symbol)
+TMPSTATIC bool symbol_table_add_module_symbol(mcastsymtable_t* st, mcastsymbol_t* symbol)
 {
     bool ok;
+    mcastsymbol_t* copy;
     if(symbol->type != SYMBOL_MODULE_GLOBAL)
     {
-        ARCANE_ASSERT(false);
+        MC_ASSERT(false);
         return false;
     }
     if(symbol_table_symbol_is_defined(st, symbol->name))
@@ -14719,7 +15544,7 @@ bool symbol_table_add_module_symbol(mcastsymtable_t* st, mcastsymbol_t* symbol)
         /* todo: make sure it should be true in this case */
         return true;
     }
-    mcastsymbol_t* copy = symbol_copy(symbol);
+    copy = symbol_copy(symbol);
     if(!copy)
     {
         return false;
@@ -14733,10 +15558,18 @@ bool symbol_table_add_module_symbol(mcastsymtable_t* st, mcastsymbol_t* symbol)
     return true;
 }
 
-mcastsymbol_t* symbol_table_define(mcastsymtable_t* table, const char* name, bool assignable)
+TMPSTATIC mcastsymbol_t* symbol_table_define(mcastsymtable_t* table, const char* name, bool assignable)
 {
     bool ok;
-    mcastsymbol_t* globalsymbol = global_store_get_symbol(table->global_store, name);
+    bool globalsymboladded;
+    int ix;
+    int definitionscount;
+    mcastsymtype_t symboltype;
+    mcastsymbol_t* symbol;
+    mcastscopeblock_t* topscope;
+    mcastsymbol_t* globalsymbol;
+    mcastsymbol_t* globalsymbolcopy;
+    globalsymbol = global_store_get_symbol(table->global_store, name);
     if(globalsymbol)
     {
         return NULL;
@@ -14747,24 +15580,22 @@ mcastsymbol_t* symbol_table_define(mcastsymtable_t* table, const char* name, boo
         return NULL;
     }
     /* "this" is reserved */
-    if(ARCANE_STREQ(name, "this"))
+    if(MC_UTIL_STREQ(name, "this"))
     {
         return NULL;
     }
-    mcastsymtype_t symboltype = table->outer == NULL ? SYMBOL_MODULE_GLOBAL : SYMBOL_LOCAL;
-    int ix = next_symbol_index(table);
-    mcastsymbol_t* symbol = symbol_make(table->pstate, name, symboltype, ix, assignable);
+    symboltype = table->outer == NULL ? SYMBOL_MODULE_GLOBAL : SYMBOL_LOCAL;
+    ix = next_symbol_index(table);
+    symbol = symbol_make(table->pstate, name, symboltype, ix, assignable);
     if(!symbol)
     {
         return NULL;
     }
-
-    bool globalsymboladded = false;
+    globalsymboladded = false;
     ok = false;
-
     if(symboltype == SYMBOL_MODULE_GLOBAL && ptrarray_count(table->block_scopes) == 1)
     {
-        mcastsymbol_t* globalsymbolcopy = symbol_copy(symbol);
+        globalsymbolcopy = symbol_copy(symbol);
         if(!globalsymbolcopy)
         {
             symbol_destroy(symbol);
@@ -14779,34 +15610,33 @@ mcastsymbol_t* symbol_table_define(mcastsymtable_t* table, const char* name, boo
         }
         globalsymboladded = true;
     }
-
     ok = set_symbol(table, symbol);
     if(!ok)
     {
         if(globalsymboladded)
         {
-            mcastsymbol_t* globalsymbolcopy = ptrarray_pop(table->module_global_symbols);
+            globalsymbolcopy = (mcastsymbol_t*)ptrarray_pop(table->module_global_symbols);
             symbol_destroy(globalsymbolcopy);
         }
         symbol_destroy(symbol);
         return NULL;
     }
-
-    mcastscopeblock_t* topscope = ptrarray_top(table->block_scopes);
+    topscope = (mcastscopeblock_t*)ptrarray_top(table->block_scopes);
     topscope->num_definitions++;
-    int definitionscount = count_num_definitions(table);
+    definitionscount = count_num_definitions(table);
     if(definitionscount > table->max_num_definitions)
     {
         table->max_num_definitions = definitionscount;
     }
-
     return symbol;
 }
 
-mcastsymbol_t* symbol_table_define_free(mcastsymtable_t* st, mcastsymbol_t* original)
+TMPSTATIC mcastsymbol_t* symbol_table_define_free(mcastsymtable_t* st, mcastsymbol_t* original)
 {
     bool ok;
-    mcastsymbol_t* copy = symbol_make(st->pstate, original->name, original->type, original->index, original->assignable);
+    mcastsymbol_t* copy;
+    mcastsymbol_t* symbol;
+    copy = symbol_make(st->pstate, original->name, original->type, original->index, original->assignable);
     if(!copy)
     {
         return NULL;
@@ -14817,92 +15647,87 @@ mcastsymbol_t* symbol_table_define_free(mcastsymtable_t* st, mcastsymbol_t* orig
         symbol_destroy(copy);
         return NULL;
     }
-
-    mcastsymbol_t* symbol = symbol_make(st->pstate, original->name, SYMBOL_FREE, ptrarray_count(st->free_symbols) - 1, original->assignable);
+    symbol = symbol_make(st->pstate, original->name, SYMBOL_FREE, ptrarray_count(st->free_symbols) - 1, original->assignable);
     if(!symbol)
     {
         return NULL;
     }
-
     ok = set_symbol(st, symbol);
     if(!ok)
     {
         symbol_destroy(symbol);
         return NULL;
     }
-
     return symbol;
 }
 
-mcastsymbol_t* symbol_table_define_function_name(mcastsymtable_t* st, const char* name, bool assignable)
+TMPSTATIC mcastsymbol_t* symbol_table_define_function_name(mcastsymtable_t* st, const char* name, bool assignable)
 {
     bool ok;
+    mcastsymbol_t* symbol;
     /* module symbol */
     if(strchr(name, ':'))
     {
         return NULL;
     }
-    mcastsymbol_t* symbol = symbol_make(st->pstate, name, SYMBOL_FUNCTION, 0, assignable);
+    symbol = symbol_make(st->pstate, name, SYMBOL_FUNCTION, 0, assignable);
     if(!symbol)
     {
         return NULL;
     }
-
     ok = set_symbol(st, symbol);
     if(!ok)
     {
         symbol_destroy(symbol);
         return NULL;
     }
-
     return symbol;
 }
 
-mcastsymbol_t* symbol_table_define_this(mcastsymtable_t* st)
+TMPSTATIC mcastsymbol_t* symbol_table_define_this(mcastsymtable_t* st)
 {
     bool ok;
-    mcastsymbol_t* symbol = symbol_make(st->pstate, "this", SYMBOL_THIS, 0, false);
+    mcastsymbol_t* symbol;
+    symbol = symbol_make(st->pstate, "this", SYMBOL_THIS, 0, false);
     if(!symbol)
     {
         return NULL;
     }
-
     ok = set_symbol(st, symbol);
     if(!ok)
     {
         symbol_destroy(symbol);
         return NULL;
     }
-
     return symbol;
 }
 
-mcastsymbol_t* symbol_table_resolve(mcastsymtable_t* table, const char* name)
+TMPSTATIC mcastsymbol_t* symbol_table_resolve(mcastsymtable_t* table, const char* name)
 {
-    mcastsymbol_t* symbol = NULL;
-    mcastscopeblock_t* scope = NULL;
-
+    int i;
+    mcastsymbol_t* symbol;
+    mcastscopeblock_t* scope;
+    symbol = NULL;
+    scope = NULL;
     symbol = global_store_get_symbol(table->global_store, name);
     if(symbol)
     {
         return symbol;
     }
 
-    for(int i = ptrarray_count(table->block_scopes) - 1; i >= 0; i--)
+    for(i = ptrarray_count(table->block_scopes) - 1; i >= 0; i--)
     {
-        scope = ptrarray_get(table->block_scopes, i);
-        symbol = dict_get(scope->store, name);
+        scope = (mcastscopeblock_t*)ptrarray_get(table->block_scopes, i);
+        symbol = (mcastsymbol_t*)dict_get(scope->store, name);
         if(symbol)
         {
             break;
         }
     }
-
     if(symbol && symbol->type == SYMBOL_THIS)
     {
         symbol = symbol_table_define_free(table, symbol);
     }
-
     if(!symbol && table->outer)
     {
         symbol = symbol_table_resolve(table->outer, name);
@@ -14910,7 +15735,7 @@ mcastsymbol_t* symbol_table_resolve(mcastsymtable_t* table, const char* name)
         {
             return NULL;
         }
-        if(symbol->type == SYMBOL_MODULE_GLOBAL || symbol->type == SYMBOL_ARCANE_GLOBAL)
+        if(symbol->type == SYMBOL_MODULE_GLOBAL || symbol->type == SYMBOL_GLOBALBUILTIN)
         {
             return symbol;
         }
@@ -14919,17 +15744,18 @@ mcastsymbol_t* symbol_table_resolve(mcastsymtable_t* table, const char* name)
     return symbol;
 }
 
-bool symbol_table_symbol_is_defined(mcastsymtable_t* table, const char* name)
+TMPSTATIC bool symbol_table_symbol_is_defined(mcastsymtable_t* table, const char* name)
 {
     /* todo: rename to something more obvious */
-    mcastsymbol_t* symbol = global_store_get_symbol(table->global_store, name);
+    mcastsymbol_t* symbol;
+    mcastscopeblock_t* topscope;
+    symbol = global_store_get_symbol(table->global_store, name);
     if(symbol)
     {
         return true;
     }
-
-    mcastscopeblock_t* topscope = ptrarray_top(table->block_scopes);
-    symbol = dict_get(topscope->store, name);
+    topscope = (mcastscopeblock_t*)ptrarray_top(table->block_scopes);
+    symbol = (mcastsymbol_t*)dict_get(topscope->store, name);
     if(symbol)
     {
         return true;
@@ -14937,11 +15763,13 @@ bool symbol_table_symbol_is_defined(mcastsymtable_t* table, const char* name)
     return false;
 }
 
-bool symbol_table_push_block_scope(mcastsymtable_t* table)
+TMPSTATIC bool symbol_table_push_block_scope(mcastsymtable_t* table)
 {
     bool ok;
-    int blockscopeoffset = 0;
-    mcastscopeblock_t* prevblockscope = ptrarray_top(table->block_scopes);
+    int blockscopeoffset;
+    mcastscopeblock_t* newscope;
+    blockscopeoffset = 0;
+    mcastscopeblock_t* prevblockscope = (mcastscopeblock_t*)ptrarray_top(table->block_scopes);
     if(prevblockscope)
     {
         blockscopeoffset = table->module_global_offset + prevblockscope->offset + prevblockscope->num_definitions;
@@ -14950,8 +15778,7 @@ bool symbol_table_push_block_scope(mcastsymtable_t* table)
     {
         blockscopeoffset = table->module_global_offset;
     }
-
-    mcastscopeblock_t* newscope = block_scope_make(table->pstate, blockscopeoffset);
+    newscope = block_scope_make(table->pstate, blockscopeoffset);
     if(!newscope)
     {
         return false;
@@ -14965,54 +15792,57 @@ bool symbol_table_push_block_scope(mcastsymtable_t* table)
     return true;
 }
 
-void symbol_table_pop_block_scope(mcastsymtable_t* table)
+TMPSTATIC void symbol_table_pop_block_scope(mcastsymtable_t* table)
 {
-    mcastscopeblock_t* topscope = ptrarray_top(table->block_scopes);
+    mcastscopeblock_t* topscope;
+    topscope = (mcastscopeblock_t*)ptrarray_top(table->block_scopes);
     ptrarray_pop(table->block_scopes);
     block_scope_destroy(topscope);
 }
 
-mcastscopeblock_t* symbol_table_get_block_scope(mcastsymtable_t* table)
+TMPSTATIC mcastscopeblock_t* symbol_table_get_block_scope(mcastsymtable_t* table)
 {
-    mcastscopeblock_t* topscope = ptrarray_top(table->block_scopes);
+    mcastscopeblock_t* topscope;
+    topscope = (mcastscopeblock_t*)ptrarray_top(table->block_scopes);
     return topscope;
 }
 
-bool symbol_table_is_module_global_scope(mcastsymtable_t* table)
+TMPSTATIC bool symbol_table_is_module_global_scope(mcastsymtable_t* table)
 {
     return table->outer == NULL;
 }
 
-bool symbol_table_is_top_block_scope(mcastsymtable_t* table)
+TMPSTATIC bool symbol_table_is_top_block_scope(mcastsymtable_t* table)
 {
     return ptrarray_count(table->block_scopes) == 1;
 }
 
-bool symbol_table_is_top_global_scope(mcastsymtable_t* table)
+TMPSTATIC bool symbol_table_is_top_global_scope(mcastsymtable_t* table)
 {
     return symbol_table_is_module_global_scope(table) && symbol_table_is_top_block_scope(table);
 }
 
-int symbol_table_get_module_global_symbol_count(mcastsymtable_t* table)
+TMPSTATIC int symbol_table_get_module_global_symbol_count(mcastsymtable_t* table)
 {
     return ptrarray_count(table->module_global_symbols);
 }
 
-mcastsymbol_t* symbol_table_get_module_global_symbol_at(mcastsymtable_t* table, int ix)
+TMPSTATIC mcastsymbol_t* symbol_table_get_module_global_symbol_at(mcastsymtable_t* table, int ix)
 {
-    return ptrarray_get(table->module_global_symbols, ix);
+    return (mcastsymbol_t*)ptrarray_get(table->module_global_symbols, ix);
 }
 
 TMPSTATIC mcastscopeblock_t* block_scope_make(mcstate_t* state, int offset)
 {
-    mcastscopeblock_t* newscope = (mcastscopeblock_t*)allocator_malloc(state, sizeof(mcastscopeblock_t));
+    mcastscopeblock_t* newscope;
+    newscope = (mcastscopeblock_t*)mc_allocator_alloc(state, sizeof(mcastscopeblock_t));
     if(!newscope)
     {
         return NULL;
     }
     memset(newscope, 0, sizeof(mcastscopeblock_t));
     newscope->pstate = state;
-    newscope->store = dict_make_(state, (dictitemcopyfn)symbol_copy, (dictitemdestroyfn)symbol_destroy);
+    newscope->store = dict_make_(state, (mcdictitemcopyfn_t)symbol_copy, (mcdictitemdestroyfn_t)symbol_destroy);
     if(!newscope->store)
     {
         block_scope_destroy(newscope);
@@ -15026,12 +15856,13 @@ TMPSTATIC mcastscopeblock_t* block_scope_make(mcstate_t* state, int offset)
 TMPSTATIC void block_scope_destroy(mcastscopeblock_t* scope)
 {
     dict_destroy_with_items(scope->store);
-    allocator_free(scope->pstate, scope);
+    mc_allocator_free(scope->pstate, scope);
 }
 
 TMPSTATIC mcastscopeblock_t* block_scope_copy(mcastscopeblock_t* scope)
 {
-    mcastscopeblock_t* copy = (mcastscopeblock_t*)allocator_malloc(scope->pstate, sizeof(mcastscopeblock_t));
+    mcastscopeblock_t* copy;
+    copy = (mcastscopeblock_t*)mc_allocator_alloc(scope->pstate, sizeof(mcastscopeblock_t));
     if(!copy)
     {
         return NULL;
@@ -15051,8 +15882,10 @@ TMPSTATIC mcastscopeblock_t* block_scope_copy(mcastscopeblock_t* scope)
 
 TMPSTATIC bool set_symbol(mcastsymtable_t* table, mcastsymbol_t* symbol)
 {
-    mcastscopeblock_t* topscope = ptrarray_top(table->block_scopes);
-    mcastsymbol_t* existing = dict_get(topscope->store, symbol->name);
+    mcastscopeblock_t* topscope;
+    topscope = (mcastscopeblock_t*)ptrarray_top(table->block_scopes);
+    mcastsymbol_t* existing;
+    existing = (mcastsymbol_t*)dict_get(topscope->store, symbol->name);
     if(existing)
     {
         symbol_destroy(existing);
@@ -15062,17 +15895,21 @@ TMPSTATIC bool set_symbol(mcastsymtable_t* table, mcastsymbol_t* symbol)
 
 TMPSTATIC int next_symbol_index(mcastsymtable_t* table)
 {
-    mcastscopeblock_t* topscope = ptrarray_top(table->block_scopes);
-    int ix = topscope->offset + topscope->num_definitions;
+    int ix;
+    mcastscopeblock_t* topscope;
+    topscope = (mcastscopeblock_t*)ptrarray_top(table->block_scopes);
+    ix = topscope->offset + topscope->num_definitions;
     return ix;
 }
 
 TMPSTATIC int count_num_definitions(mcastsymtable_t* table)
 {
+    int i;
     int count = 0;
-    for(int i = ptrarray_count(table->block_scopes) - 1; i >= 0; i--)
+    mcastscopeblock_t* scope;
+    for(i = ptrarray_count(table->block_scopes) - 1; i >= 0; i--)
     {
-        mcastscopeblock_t* scope = ptrarray_get(table->block_scopes, i);
+        scope = (mcastscopeblock_t*)ptrarray_get(table->block_scopes, i);
         count += scope->num_definitions;
     }
     return count;
@@ -15087,26 +15924,27 @@ static const char* gtypenames[] = {
     "RETURN",  "WHILE", "BREAK", "FOR", "IN", "CONTINUE", "NULL",     "IMPORT", "RECOVER", "IDENT", "NUMBER", "STRING", "TEMPLATE_STRING",
 };
 
-void token_init(mcasttoken_t* tok, mcasttoktype_t type, const char* literal, int len)
+TMPSTATIC void token_init(mcasttoken_t* tok, mcasttoktype_t type, const char* literal, int len)
 {
     tok->type = type;
     tok->literal = literal;
     tok->len = len;
 }
 
-char* token_duplicate_literal(mcstate_t* state, mcasttoken_t* tok)
+TMPSTATIC char* token_duplicate_literal(mcstate_t* state, mcasttoken_t* tok)
 {
-    return arcane_strndup(state, tok->literal, tok->len);
+    return mc_util_strndup(state, tok->literal, tok->len);
 }
 
-const char* token_type_to_string(mcasttoktype_t type)
+TMPSTATIC const char* token_type_to_string(mcasttoktype_t type)
 {
     return gtypenames[type];
 }
 
-mctraceback_t* traceback_make(mcstate_t* state)
+TMPSTATIC mctraceback_t* traceback_make(mcstate_t* state)
 {
-    mctraceback_t* traceback = (mctraceback_t*)allocator_malloc(state, sizeof(mctraceback_t));
+    mctraceback_t* traceback;
+    traceback = (mctraceback_t*)mc_allocator_alloc(state, sizeof(mctraceback_t));
     if(!traceback)
     {
         return NULL;
@@ -15122,26 +15960,28 @@ mctraceback_t* traceback_make(mcstate_t* state)
     return traceback;
 }
 
-void traceback_destroy(mctraceback_t* traceback)
+TMPSTATIC void traceback_destroy(mctraceback_t* traceback)
 {
+    int i;
+    mctraceitem_t* item;
     if(!traceback)
     {
         return;
     }
-    for(int i = 0; i < array_count(traceback->items); i++)
+    for(i = 0; i < array_count(traceback->items); i++)
     {
-        mctraceitem_t* item = array_get(traceback->items, i);
-        allocator_free(traceback->pstate, item->function_name);
+        item = (mctraceitem_t*)array_get(traceback->items, i);
+        mc_allocator_free(traceback->pstate, item->function_name);
     }
     array_destroy(traceback->items);
-    allocator_free(traceback->pstate, traceback);
+    mc_allocator_free(traceback->pstate, traceback);
 }
 
-bool traceback_append(mctraceback_t* traceback, const char* function_name, mcastlocation_t pos)
+TMPSTATIC bool traceback_append(mctraceback_t* traceback, const char* function_name, mcastlocation_t pos)
 {
     bool ok;
     mctraceitem_t item;
-    item.function_name = arcane_strdup(traceback->pstate, function_name);
+    item.function_name = mc_util_strdup(traceback->pstate, function_name);
     if(!item.function_name)
     {
         return false;
@@ -15150,19 +15990,21 @@ bool traceback_append(mctraceback_t* traceback, const char* function_name, mcast
     ok = array_add(traceback->items, &item);
     if(!ok)
     {
-        allocator_free(traceback->pstate, item.function_name);
+        mc_allocator_free(traceback->pstate, item.function_name);
         return false;
     }
     return true;
 }
 
-bool traceback_append_from_vm(mctraceback_t* traceback, mcstate_t* vm)
+TMPSTATIC bool traceback_append_from_vm(mctraceback_t* traceback, mcstate_t* state)
 {
     bool ok;
-    for(int i = vm->frames_count - 1; i >= 0; i--)
+    int i;
+    mcvmframe_t* frame;
+    for(i = state->frames_count - 1; i >= 0; i--)
     {
-        mcvmframe_t* frame = &vm->frames[i];
-        ok = traceback_append(traceback, object_get_function_name(frame->function), frame_src_position(frame));
+        frame = &state->frames[i];
+        ok = traceback_append(traceback, mc_value_functiongetname(frame->function), frame_src_position(frame));
         if(!ok)
         {
             return false;
@@ -15171,41 +16013,47 @@ bool traceback_append_from_vm(mctraceback_t* traceback, mcstate_t* vm)
     return true;
 }
 
-bool traceback_to_string(mctraceback_t* traceback, mcprintstate_t* buf)
+TMPSTATIC bool traceback_to_string(mctraceback_t* traceback, mcprintstate_t* buf)
 {
-    int depth = array_count(traceback->items);
-    for(int i = 0; i < depth; i++)
+    int i;
+    int depth;
+    const char* filename;
+    mctraceitem_t* item;
+    depth = array_count(traceback->items);
+    for(i = 0; i < depth; i++)
     {
-        mctraceitem_t* item = array_get(traceback->items, i);
-        const char* filename = traceback_item_get_filepath(item);
+        item = (mctraceitem_t*)array_get(traceback->items, i);
+        filename = traceback_item_get_filepath(item);
         if(item->pos.line >= 0 && item->pos.column >= 0)
         {
-            mc_printer_appendf(buf, "%s in %s on %d:%d\n", item->function_name, filename, item->pos.line, item->pos.column);
+            mc_printer_printf(buf, "%s in %s on %d:%d\n", item->function_name, filename, item->pos.line, item->pos.column);
         }
         else
         {
-            mc_printer_appendf(buf, "%s\n", item->function_name);
+            mc_printer_printf(buf, "%s\n", item->function_name);
         }
     }
     return !mc_printer_failed(buf);
 }
 
-const char* traceback_item_get_line(mctraceitem_t* item)
+TMPSTATIC const char* traceback_item_get_line(mctraceitem_t* item)
 {
+    const char* line;
+    mcptrarray_t* lines;
     if(!item->pos.file)
     {
         return NULL;
     }
-    mcptrarray_t* lines = item->pos.file->lines;
+    lines = item->pos.file->lines;
     if(item->pos.line >= ptrarray_count(lines))
     {
         return NULL;
     }
-    const char* line = ptrarray_get(lines, item->pos.line);
+    line = (const char*)ptrarray_get(lines, item->pos.line);
     return line;
 }
 
-const char* traceback_item_get_filepath(mctraceitem_t* item)
+TMPSTATIC const char* traceback_item_get_filepath(mctraceitem_t* item)
 {
     if(!item->pos.file)
     {
@@ -15214,16 +16062,16 @@ const char* traceback_item_get_filepath(mctraceitem_t* item)
     return item->pos.file->path;
 }
 
-bool vm_make(mcstate_t* state)
+TMPSTATIC bool vm_make(mcstate_t* state)
 {
+    int i;
     state->globals_count = 0;
     state->sp = 0;
     state->this_sp = 0;
     state->frames_count = 0;
     state->last_popped = mc_value_makenull();
     state->running = false;
-
-    for(int i = 0; i < OPCODE_MAX; i++)
+    for(i = 0; i < OPCODE_MAX; i++)
     {
         state->operator_oveload_keys[i] = mc_value_makenull();
     }
@@ -15256,85 +16104,86 @@ bool vm_make(mcstate_t* state)
         return false;
 }
 
-void vm_destroy(mcstate_t* vm)
+TMPSTATIC void vm_destroy(mcstate_t* state)
 {
-    if(!vm)
+    if(!state)
     {
         return;
     }
 }
 
-void vm_reset(mcstate_t* vm)
+TMPSTATIC void vm_reset(mcstate_t* state)
 {
-    vm->sp = 0;
-    vm->this_sp = 0;
-    while(vm->frames_count > 0)
+    state->sp = 0;
+    state->this_sp = 0;
+    while(state->frames_count > 0)
     {
-        pop_frame(vm);
+        pop_frame(state);
     }
 }
 
-bool vm_run(mcstate_t* vm, compilation_result_t* comp_res, mcbasicarray_t* constants)
+TMPSTATIC bool mc_vm_runexecfunc(mcstate_t* state, compilation_result_t* comp_res, mcbasicarray_t* constants)
 {
-#ifdef ARCANE_DEBUG
-    int oldsp = vm->sp;
+#if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
+    int oldsp = state->sp;
 #endif
-    int oldthissp = vm->this_sp;
-    int oldframescount = vm->frames_count;
-    mcvalue_t mainfn = object_make_function(vm, "main", comp_res, false, 0, 0, 0);
+    int oldthissp = state->this_sp;
+    int oldframescount = state->frames_count;
+    mcvalue_t mainfn = object_make_function(state, "main", comp_res, false, 0, 0, 0);
     if(object_is_null(mainfn))
     {
         return false;
     }
-    stack_push(vm, mainfn);
-    bool res = vm_execute_function(vm, mainfn, constants);
-    while(vm->frames_count > oldframescount)
+    stack_push(state, mainfn);
+    bool res = mc_function_execfunction(state, mainfn, constants);
+    while(state->frames_count > oldframescount)
     {
-        pop_frame(vm);
+        pop_frame(state);
     }
-    ARCANE_ASSERT(vm->sp == oldsp);
-    vm->this_sp = oldthissp;
+    MC_ASSERT(state->sp == oldsp);
+    state->this_sp = oldthissp;
     return res;
 }
 
-mcvalue_t vm_call(mcstate_t* vm, mcbasicarray_t* constants, mcvalue_t callee, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t vm_call(mcstate_t* state, mcbasicarray_t* constants, mcvalue_t callee, int argc, mcvalue_t* args)
 {
     bool ok;
+    int i;
     mcobjtype_t type = object_get_type(callee);
-    if(type == ARCANE_OBJECT_FUNCTION)
+    if(type == MC_OBJ_FUNCTION)
     {
-#ifdef ARCANE_DEBUG
-        int oldsp = vm->sp;
+#if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
+        int oldsp = state->sp;
 #endif
-        int oldthissp = vm->this_sp;
-        int oldframescount = vm->frames_count;
-        stack_push(vm, callee);
-        for(int i = 0; i < argc; i++)
+        int oldthissp = state->this_sp;
+        int oldframescount = state->frames_count;
+        stack_push(state, callee);
+        for(i = 0; i < argc; i++)
         {
-            stack_push(vm, args[i]);
+            stack_push(state, args[i]);
         }
-        ok = vm_execute_function(vm, callee, constants);
+        ok = mc_function_execfunction(state, callee, constants);
         if(!ok)
         {
             return mc_value_makenull();
         }
-        while(vm->frames_count > oldframescount)
+        while(state->frames_count > oldframescount)
         {
-            pop_frame(vm);
+            pop_frame(state);
         }
-        ARCANE_ASSERT(vm->sp == oldsp);
-        vm->this_sp = oldthissp;
-        return vm_get_last_popped(vm);
+        MC_ASSERT(state->sp == oldsp);
+        state->this_sp = oldthissp;
+        return vm_get_last_popped(state);
     }
-    if(type == ARCANE_OBJECT_NATIVE_FUNCTION)
+    if(type == MC_OBJ_NATIVE_FUNCTION)
     {
-        return call_native_function(vm, callee, srcposinvalid, argc, args);
+        return mc_vm_callnativefunction(state, callee, srcposinvalid, argc, args);
     }
-    errors_add_error(&vm->errors, ARCANE_ERROR_USER, srcposinvalid, "Object is not callable");
+    errors_add_error(&state->errors, MC_ERROR_USER, srcposinvalid, "Object is not callable");
     return mc_value_makenull();
 }
 
-bool mc_vmdo_math(mcstate_t* vm, mcopcode_t opcode)
+TMPSTATIC bool mc_vmdo_math(mcstate_t* state, mcopcode_t opcode)
 {
     bool ok;
     double res;
@@ -15342,103 +16191,99 @@ bool mc_vmdo_math(mcstate_t* vm, mcopcode_t opcode)
     double dnleft;
     int leftlen;
     int rightlen;
-    int64_t ivleft;
-    int64_t ivright;
     mcvalue_t valright;
     mcvalue_t valleft;
     mcobjtype_t lefttype;
     mcobjtype_t righttype;
-    valright = stack_pop(vm);
-    valleft = stack_pop(vm);
+    valright = stack_pop(state);
+    valleft = stack_pop(state);
     lefttype = object_get_type(valleft);
     righttype = object_get_type(valright);
     if(object_is_numeric(valleft) && object_is_numeric(valright))
     {
         dnright = object_get_number(valright);
         dnleft = object_get_number(valleft);
-        ivleft = (int64_t)dnleft;
-        ivright = (int64_t)dnright;
         res = 0;
         switch(opcode)
         {
             case OPCODE_ADD:
-                res = dnleft + dnright;
+                res = mc_mathutil_add(dnleft, dnright);
                 break;
             case OPCODE_SUB:
-                res = dnleft - dnright;
+                res = mc_mathutil_sub(dnleft, dnright);
                 break;
             case OPCODE_MUL:
-                res = dnleft * dnright;
+                res = mc_mathutil_mult(dnleft, dnright);
                 break;
             case OPCODE_DIV:
-                res = dnleft / dnright;
+                res = mc_mathutil_div(dnleft, dnright);
                 break;
             case OPCODE_MOD:
-                res = fmod(dnleft, dnright);
+                res = mc_mathutil_mod(dnleft, dnright);
                 break;
             case OPCODE_OR:
-                res = (double)(ivleft | ivright);
+                res = mc_mathutil_binor(dnleft, dnright);
                 break;
             case OPCODE_XOR:
-                res = (double)(ivleft ^ ivright);
+                res = mc_mathutil_binxor(dnleft, dnright);
                 break;
             case OPCODE_AND:
-                res = (double)(ivleft & ivright);
+                res = mc_mathutil_binand(dnleft, dnright);
                 break;
             case OPCODE_LSHIFT:
-                res = (double)(ivleft << ivright);
+                res = mc_mathutil_binshiftleft(dnleft, dnright);
                 break;
             case OPCODE_RSHIFT:
-                res = (double)(ivleft >> ivright);
+                res = mc_mathutil_binshiftright(dnleft, dnright);
                 break;
             default:
-                ARCANE_ASSERT(false);
+                MC_ASSERT(false);
                 break;
         }
-        stack_push(vm, mc_value_makenumber(res));
+        stack_push(state, mc_value_makenumber(res));
     }
-    else if(lefttype == ARCANE_OBJECT_STRING && righttype == ARCANE_OBJECT_STRING && opcode == OPCODE_ADD)
+    else if(lefttype == MC_OBJ_STRING && righttype == MC_OBJ_STRING && opcode == OPCODE_ADD)
     {
-        leftlen = object_get_string_length(valleft);
-        rightlen = object_get_string_length(valright);
+        leftlen = mc_value_stringgetlength(valleft);
+        rightlen = mc_value_stringgetlength(valright);
 
         if(leftlen == 0)
         {
-            stack_push(vm, valright);
+            stack_push(state, valright);
         }
         else if(rightlen == 0)
         {
-            stack_push(vm, valleft);
+            stack_push(state, valleft);
         }
         else
         {
-            const char* strleft = object_get_string(valleft);
-            const char* strright = object_get_string(valright);
+            const char* strleft = mc_value_stringgetdata(valleft);
+            const char* strright = mc_value_stringgetdata(valright);
 
-            mcvalue_t nstring = mc_value_makestrcapacity(vm, leftlen + rightlen);
+            mcvalue_t nstring = mc_value_makestrcapacity(state, leftlen + rightlen);
             if(object_is_null(nstring))
             {
                 return false;
             }
 
-            ok = mc_value_strappend(nstring, strleft, leftlen);
+            ok = mc_value_stringappend(nstring, strleft, leftlen);
             if(!ok)
             {
                 return false;
             }
 
-            ok = mc_value_strappend(nstring, strright, rightlen);
+            ok = mc_value_stringappend(nstring, strright, rightlen);
             if(!ok)
             {
                 return false;
             }
-            stack_push(vm, nstring);
+            stack_push(state, nstring);
         }
     }
     else
     {
         bool overloadfound = false;
-        ok = try_overload_operator(vm, valleft, valright, opcode, &overloadfound);
+        ok = try_overload_operator(state, valleft, valright, opcode, &overloadfound);
         if(!ok)
         {
             return false;
@@ -15448,7 +16293,7 @@ bool mc_vmdo_math(mcstate_t* vm, mcopcode_t opcode)
             const char* opcodename = opcode_get_name(opcode);
             const char* lefttypename = object_get_type_name(lefttype);
             const char* righttypename = object_get_type_name(righttype);
-            errors_add_errorf(&vm->errors, ARCANE_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Invalid operand types for %s, got %s and %s",
+            errors_add_errorf(&state->errors, MC_ERROR_RUNTIME, frame_src_position(state->current_frame), "Invalid operand types for %s, got %s and %s",
                               opcodename, lefttypename, righttypename);
             return false;
         }
@@ -15456,45 +16301,57 @@ bool mc_vmdo_math(mcstate_t* vm, mcopcode_t opcode)
     return true;
 }
 
-bool vm_execute_function(mcstate_t* vm, mcvalue_t function, mcbasicarray_t* constants)
+TMPSTATIC bool mc_function_execfunction(mcstate_t* vm, mcvalue_t function, mcbasicarray_t* constants)
 {
     bool ok;
+    bool checktime;
+    int fri;
+    int elapsedms;
+    int recoverframeix;
+    unsigned timecheckinterval;
+    unsigned timecheckcounter;
+    double maxexectimems;
+    mcopcode_t opcode;
+    mctimer_t timer;
+    mcvmframe_t createdframe;
+    mcvalue_t errobj;
+    mcvmframe_t* frame;
+    mcerror_t* err;
+    mcobjfuncscript_t* functionfunction;
     if(vm->running)
     {
-        errors_add_error(&vm->errors, ARCANE_ERROR_USER, srcposinvalid, "VM is already executing code");
+        errors_add_error(&vm->errors, MC_ERROR_USER, srcposinvalid, "VM is already executing code");
         return false;
     }
     /* naming is hard */
-    mcobjfuncscript_t* functionfunction = object_get_function(function);
-    mcvmframe_t newframe;
+    functionfunction = mc_value_functiongetscriptfunction(function);
     ok = false;
-    ok = frame_init(&newframe, function, vm->sp - functionfunction->num_args);
+    ok = frame_init(&createdframe, function, vm->sp - functionfunction->num_args);
     if(!ok)
     {
+        fprintf(stderr, "failed to init frames!\n");
         return false;
     }
-    ok = push_frame(vm, newframe);
+    ok = push_frame(vm, createdframe);
     if(!ok)
     {
-        errors_add_error(&vm->errors, ARCANE_ERROR_USER, srcposinvalid, "Pushing frame failed");
+        errors_add_error(&vm->errors, MC_ERROR_USER, srcposinvalid, "Pushing frame failed");
         return false;
     }
-
+    fprintf(stderr, "**executing function**\n");
     vm->running = true;
     vm->last_popped = mc_value_makenull();
-
-    bool checktime = false;
-    double maxexectimems = 0;
+    checktime = false;
+    maxexectimems = 0;
     #if 0
     if(vm->config)
     #endif
     {
-        checktime = vm->config.max_execution_time_set;
-        maxexectimems = vm->config.max_execution_time_ms;
+        checktime = vm->config.havemaxexectime;
+        maxexectimems = vm->config.maxexecutiontime;
     }
-    unsigned timecheckinterval = 1000;
-    unsigned timecheckcounter = 0;
-    mctimer_t timer;
+    timecheckinterval = 1000;
+    timecheckcounter = 0;
     memset(&timer, 0, sizeof(mctimer_t));
     if(checktime)
     {
@@ -15503,21 +16360,26 @@ bool vm_execute_function(mcstate_t* vm, mcvalue_t function, mcbasicarray_t* cons
 
     while(vm->current_frame->ip < vm->current_frame->bytecode_size)
     {
-        mcopcode_t opcode = frame_read_opcode(vm->current_frame);
+        opcode = frame_read_opcode(vm->current_frame);
+        #if 0
+            fprintf(stderr, "opcode=%d (%s)\n", opcode, opcode_lookup(opcode)->name);
+        #endif
         switch(opcode)
         {
             case OPCODE_CONSTANT:
-            {
-                uint16_t constantix = frame_read_uint16(vm->current_frame);
-                mcvalue_t* constant = array_get(constants, constantix);
-                if(!constant)
                 {
-                    errors_add_errorf(&vm->errors, ARCANE_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Constant at %d not found", constantix);
-                    goto err;
+                    uint16_t constantix;
+                    mcvalue_t* constant;
+                    constantix = frame_read_uint16(vm->current_frame);
+                    constant = (mcvalue_t*)array_get(constants, constantix);
+                    if(!constant)
+                    {
+                        errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Constant at %d not found", constantix);
+                        goto err;
+                    }
+                    stack_push(vm, *constant);
                 }
-                stack_push(vm, *constant);
                 break;
-            }
             case OPCODE_ADD:
             case OPCODE_SUB:
             case OPCODE_MUL:
@@ -15528,34 +16390,41 @@ bool vm_execute_function(mcstate_t* vm, mcvalue_t function, mcbasicarray_t* cons
             case OPCODE_AND:
             case OPCODE_LSHIFT:
             case OPCODE_RSHIFT:
-            {
-                if(!mc_vmdo_math(vm, opcode))
                 {
-                    goto err;
+                    if(!mc_vmdo_math(vm, opcode))
+                    {
+                        goto err;
+                    }
                 }
                 break;
-            }
             case OPCODE_POP:
-            {
-                stack_pop(vm);
+                {
+                    stack_pop(vm);
+                }
                 break;
-            }
             case OPCODE_TRUE:
-            {
-                stack_push(vm, mc_value_makebool(true));
+                {
+                    stack_push(vm, mc_value_makebool(true));
+                }
                 break;
-            }
             case OPCODE_FALSE:
-            {
-                stack_push(vm, mc_value_makebool(false));
+                {
+                    stack_push(vm, mc_value_makebool(false));
+                }
                 break;
-            }
             case OPCODE_COMPARE:
             case OPCODE_COMPARE_EQ:
             {
-                mcvalue_t right = stack_pop(vm);
-                mcvalue_t left = stack_pop(vm);
-                bool isoverloaded = false;
+                bool isoverloaded;
+                double comparisonres;
+                const char* lefttypestring;
+                const char* righttypestring;
+                mcvalue_t res;
+                mcvalue_t left;
+                mcvalue_t right;
+                right = stack_pop(vm);
+                left = stack_pop(vm);
+                isoverloaded = false;
                 ok = try_overload_operator(vm, left, right, OPCODE_COMPARE, &isoverloaded);
                 if(!ok)
                 {
@@ -15563,17 +16432,17 @@ bool vm_execute_function(mcstate_t* vm, mcvalue_t function, mcbasicarray_t* cons
                 }
                 if(!isoverloaded)
                 {
-                    double comparisonres = object_compare(left, right, &ok);
+                    comparisonres = mc_value_compare(left, right, &ok);
                     if(ok || opcode == OPCODE_COMPARE_EQ)
                     {
-                        mcvalue_t res = mc_value_makenumber(comparisonres);
+                        res = mc_value_makenumber(comparisonres);
                         stack_push(vm, res);
                     }
                     else
                     {
-                        const char* righttypestring = object_get_type_name(object_get_type(right));
-                        const char* lefttypestring = object_get_type_name(object_get_type(left));
-                        errors_add_errorf(&vm->errors, ARCANE_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Cannot compare %s and %s", lefttypestring, righttypestring);
+                        righttypestring = object_get_type_name(object_get_type(right));
+                        lefttypestring = object_get_type_name(object_get_type(left));
+                        errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Cannot compare %s and %s", lefttypestring, righttypestring);
                         goto err;
                     }
                 }
@@ -15583,47 +16452,64 @@ bool vm_execute_function(mcstate_t* vm, mcvalue_t function, mcbasicarray_t* cons
             case OPCODE_NOT_EQUAL:
             case OPCODE_GREATER_THAN:
             case OPCODE_GREATER_THAN_EQUAL:
-            {
-                mcvalue_t value = stack_pop(vm);
-                double comparisonres = object_get_number(value);
-                bool resval = false;
-                switch(opcode)
                 {
-                    case OPCODE_EQUAL:
-                        resval = ARCANE_DBLEQ(comparisonres, 0);
-                        break;
-                    case OPCODE_NOT_EQUAL:
-                        resval = !ARCANE_DBLEQ(comparisonres, 0);
-                        break;
-                    case OPCODE_GREATER_THAN:
-                        resval = comparisonres > 0;
-                        break;
-                    case OPCODE_GREATER_THAN_EQUAL:
+                    bool resval;
+                    double comparisonres;
+                    mcvalue_t res;
+                    mcvalue_t value;
+                    value = stack_pop(vm);
+                    comparisonres = object_get_number(value);
+                    resval = false;
+                    switch(opcode)
                     {
-                        resval = comparisonres > 0 || ARCANE_DBLEQ(comparisonres, 0);
-                        break;
+                        case OPCODE_EQUAL:
+                            {
+                                resval = MC_UTIL_CMPFLOAT(comparisonres, 0);
+                            }
+                            break;
+                        case OPCODE_NOT_EQUAL:
+                            {
+                                resval = !MC_UTIL_CMPFLOAT(comparisonres, 0);
+                            }
+                            break;
+                        case OPCODE_GREATER_THAN:
+                            {
+                                resval = comparisonres > 0;
+                            }
+                            break;
+                        case OPCODE_GREATER_THAN_EQUAL:
+                            {
+                                resval = comparisonres > 0 || MC_UTIL_CMPFLOAT(comparisonres, 0);
+                            }
+                            break;
+
+                        default:
+                            {
+                                MC_ASSERT(false);
+                            }break;
                     }
-                    default:
-                        ARCANE_ASSERT(false);
-                        break;
+                    res = mc_value_makebool(resval);
+                    stack_push(vm, res);
                 }
-                mcvalue_t res = mc_value_makebool(resval);
-                stack_push(vm, res);
                 break;
-            }
             case OPCODE_MINUS:
             {
-                mcvalue_t operand = stack_pop(vm);
-                mcobjtype_t operandtype = object_get_type(operand);
-                if(operandtype == ARCANE_OBJECT_NUMBER)
+                bool overloadfound;
+                double val;
+                const char* operandtypestring;
+                mcobjtype_t operandtype;
+                mcvalue_t operand;
+                operand = stack_pop(vm);
+                operandtype = object_get_type(operand);
+                if(operandtype == MC_OBJ_NUMBER)
                 {
-                    double val = object_get_number(operand);
+                    val = object_get_number(operand);
                     mcvalue_t res = mc_value_makenumber(-val);
                     stack_push(vm, res);
                 }
                 else
                 {
-                    bool overloadfound = false;
+                    overloadfound = false;
                     ok = try_overload_operator(vm, operand, mc_value_makenull(), OPCODE_MINUS, &overloadfound);
                     if(!ok)
                     {
@@ -15631,8 +16517,8 @@ bool vm_execute_function(mcstate_t* vm, mcvalue_t function, mcbasicarray_t* cons
                     }
                     if(!overloadfound)
                     {
-                        const char* operandtypestring = object_get_type_name(operandtype);
-                        errors_add_errorf(&vm->errors, ARCANE_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Invalid operand type for MINUS, got %s", operandtypestring);
+                        operandtypestring = object_get_type_name(operandtype);
+                        errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Invalid operand type for MINUS, got %s", operandtypestring);
                         goto err;
                     }
                 }
@@ -15642,12 +16528,12 @@ bool vm_execute_function(mcstate_t* vm, mcvalue_t function, mcbasicarray_t* cons
             {
                 mcvalue_t operand = stack_pop(vm);
                 mcobjtype_t type = object_get_type(operand);
-                if(type == ARCANE_OBJECT_BOOL)
+                if(type == MC_OBJ_BOOL)
                 {
                     mcvalue_t res = mc_value_makebool(!object_get_bool(operand));
                     stack_push(vm, res);
                 }
-                else if(type == ARCANE_OBJECT_NULL)
+                else if(type == MC_OBJ_NULL)
                 {
                     mcvalue_t res = mc_value_makebool(true);
                     stack_push(vm, res);
@@ -15709,13 +16595,13 @@ bool vm_execute_function(mcstate_t* vm, mcvalue_t function, mcbasicarray_t* cons
             case OPCODE_SET_MODULE_GLOBAL:
             {
                 uint16_t ix = frame_read_uint16(vm->current_frame);
-                mcvalue_t newvalue = stack_pop(vm);
+                mcvalue_t nvalue = stack_pop(vm);
                 mcvalue_t oldvalue = vm_get_global(vm, ix);
-                if(!check_assign(vm, oldvalue, newvalue))
+                if(!check_assign(vm, oldvalue, nvalue))
                 {
                     goto err;
                 }
-                vm_set_global(vm, ix, newvalue);
+                vm_set_global(vm, ix, nvalue);
                 break;
             }
             case OPCODE_GET_MODULE_GLOBAL:
@@ -15727,6 +16613,7 @@ bool vm_execute_function(mcstate_t* vm, mcvalue_t function, mcbasicarray_t* cons
             }
             case OPCODE_ARRAY:
             {
+                int i;
                 uint16_t count = frame_read_uint16(vm->current_frame);
                 mcvalue_t arrayobj = object_make_array_with_capacity(vm, count);
                 if(object_is_null(arrayobj))
@@ -15734,10 +16621,10 @@ bool vm_execute_function(mcstate_t* vm, mcvalue_t function, mcbasicarray_t* cons
                     goto err;
                 }
                 mcvalue_t* items = vm->stack + vm->sp - count;
-                for(int i = 0; i < count; i++)
+                for(i = 0; i < count; i++)
                 {
                     mcvalue_t item = items[i];
-                    ok = object_add_array_value(arrayobj, item);
+                    ok = mc_value_arraypush(arrayobj, item);
                     if(!ok)
                     {
                         goto err;
@@ -15760,22 +16647,23 @@ bool vm_execute_function(mcstate_t* vm, mcvalue_t function, mcbasicarray_t* cons
             }
             case OPCODE_MAP_END:
             {
+                int i;
                 uint16_t kvpcount = frame_read_uint16(vm->current_frame);
                 uint16_t itemscount = kvpcount * 2;
                 mcvalue_t mapobj = this_stack_pop(vm);
                 mcvalue_t* kvpairs = vm->stack + vm->sp - itemscount;
-                for(int i = 0; i < itemscount; i += 2)
+                for(i = 0; i < itemscount; i += 2)
                 {
                     mcvalue_t key = kvpairs[i];
                     if(!object_is_hashable(key))
                     {
                         mcobjtype_t keytype = object_get_type(key);
                         const char* keytypename = object_get_type_name(keytype);
-                        errors_add_errorf(&vm->errors, ARCANE_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Key of type %s is not hashable", keytypename);
+                        errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Key of type %s is not hashable", keytypename);
                         goto err;
                     }
                     mcvalue_t val = kvpairs[i + 1];
-                    ok = object_set_map_value(mapobj, key, val);
+                    ok = mc_value_mapsetvalue(mapobj, key, val);
                     if(!ok)
                     {
                         goto err;
@@ -15800,39 +16688,39 @@ bool vm_execute_function(mcstate_t* vm, mcvalue_t function, mcbasicarray_t* cons
                 const char* lefttypename = object_get_type_name(lefttype);
                 const char* indextypename = object_get_type_name(indextype);
 
-                if(lefttype != ARCANE_OBJECT_ARRAY && lefttype != ARCANE_OBJECT_MAP && lefttype != ARCANE_OBJECT_STRING)
+                if(lefttype != MC_OBJ_ARRAY && lefttype != MC_OBJ_MAP && lefttype != MC_OBJ_STRING)
                 {
-                    errors_add_errorf(&vm->errors, ARCANE_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Type %s is not indexable", lefttypename);
+                    errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Type %s is not indexable", lefttypename);
                     goto err;
                 }
 
                 mcvalue_t res = mc_value_makenull();
 
-                if(lefttype == ARCANE_OBJECT_ARRAY)
+                if(lefttype == MC_OBJ_ARRAY)
                 {
-                    if(indextype != ARCANE_OBJECT_NUMBER)
+                    if(indextype != MC_OBJ_NUMBER)
                     {
-                        errors_add_errorf(&vm->errors, ARCANE_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Cannot index %s with %s", lefttypename, indextypename);
+                        errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Cannot index %s with %s", lefttypename, indextypename);
                         goto err;
                     }
                     int ix = (int)object_get_number(index);
                     if(ix < 0)
                     {
-                        ix = object_get_array_length(left) + ix;
+                        ix = mv_value_arraygetlength(left) + ix;
                     }
-                    if(ix >= 0 && ix < object_get_array_length(left))
+                    if(ix >= 0 && ix < mv_value_arraygetlength(left))
                     {
-                        res = object_get_array_value_at(left, ix);
+                        res = mc_value_arraygetvalueat(left, ix);
                     }
                 }
-                else if(lefttype == ARCANE_OBJECT_MAP)
+                else if(lefttype == MC_OBJ_MAP)
                 {
-                    res = object_get_map_value(left, index);
+                    res = mc_value_mapgetvalue(left, index);
                 }
-                else if(lefttype == ARCANE_OBJECT_STRING)
+                else if(lefttype == MC_OBJ_STRING)
                 {
-                    const char* str = object_get_string(left);
-                    int leftlen = object_get_string_length(left);
+                    const char* str = mc_value_stringgetdata(left);
+                    int leftlen = mc_value_stringgetlength(left);
                     int ix = (int)object_get_number(index);
                     if(ix >= 0 && ix < leftlen)
                     {
@@ -15853,32 +16741,32 @@ bool vm_execute_function(mcstate_t* vm, mcvalue_t function, mcbasicarray_t* cons
                 const char* lefttypename = object_get_type_name(lefttype);
                 const char* indextypename = object_get_type_name(indextype);
 
-                if(lefttype != ARCANE_OBJECT_ARRAY && lefttype != ARCANE_OBJECT_MAP && lefttype != ARCANE_OBJECT_STRING)
+                if(lefttype != MC_OBJ_ARRAY && lefttype != MC_OBJ_MAP && lefttype != MC_OBJ_STRING)
                 {
-                    errors_add_errorf(&vm->errors, ARCANE_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Type %s is not indexable", lefttypename);
+                    errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Type %s is not indexable", lefttypename);
                     goto err;
                 }
 
                 mcvalue_t res = mc_value_makenull();
-                if(indextype != ARCANE_OBJECT_NUMBER)
+                if(indextype != MC_OBJ_NUMBER)
                 {
-                    errors_add_errorf(&vm->errors, ARCANE_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Cannot index %s with %s", lefttypename, indextypename);
+                    errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Cannot index %s with %s", lefttypename, indextypename);
                     goto err;
                 }
                 ix = (int)object_get_number(index);
 
-                if(lefttype == ARCANE_OBJECT_ARRAY)
+                if(lefttype == MC_OBJ_ARRAY)
                 {
-                    res = object_get_array_value_at(left, ix);
+                    res = mc_value_arraygetvalueat(left, ix);
                 }
-                else if(lefttype == ARCANE_OBJECT_MAP)
+                else if(lefttype == MC_OBJ_MAP)
                 {
-                    res = object_get_kv_pair_at(vm, left, ix);
+                    res = mc_value_mapgetkvpairat(vm, left, ix);
                 }
-                else if(lefttype == ARCANE_OBJECT_STRING)
+                else if(lefttype == MC_OBJ_STRING)
                 {
-                    const char* str = object_get_string(left);
-                    int leftlen = object_get_string_length(left);
+                    const char* str = mc_value_stringgetdata(left);
+                    int leftlen = mc_value_stringgetlength(left);
                     ix = (int)object_get_number(index);
                     if(ix >= 0 && ix < leftlen)
                     {
@@ -15893,7 +16781,7 @@ bool vm_execute_function(mcstate_t* vm, mcvalue_t function, mcbasicarray_t* cons
             {
                 uint8_t num_args = frame_read_uint8(vm->current_frame);
                 mcvalue_t callee = stack_get(vm, num_args);
-                ok = call_object(vm, callee, num_args);
+                ok = mc_vm_callobject(vm, callee, num_args);
                 if(!ok)
                 {
                     goto err;
@@ -15931,13 +16819,13 @@ bool vm_execute_function(mcstate_t* vm, mcvalue_t function, mcbasicarray_t* cons
             case OPCODE_SET_LOCAL:
             {
                 uint8_t pos = frame_read_uint8(vm->current_frame);
-                mcvalue_t newvalue = stack_pop(vm);
+                mcvalue_t nvalue = stack_pop(vm);
                 mcvalue_t oldvalue = vm->stack[vm->current_frame->base_pointer + pos];
-                if(!check_assign(vm, oldvalue, newvalue))
+                if(!check_assign(vm, oldvalue, nvalue))
                 {
                     goto err;
                 }
-                vm->stack[vm->current_frame->base_pointer + pos] = newvalue;
+                vm->stack[vm->current_frame->base_pointer + pos] = nvalue;
                 break;
             }
             case OPCODE_GET_LOCAL:
@@ -15947,14 +16835,14 @@ bool vm_execute_function(mcstate_t* vm, mcvalue_t function, mcbasicarray_t* cons
                 stack_push(vm, val);
                 break;
             }
-            case OPCODE_GET_ARCANE_GLOBAL:
+            case OPCODE_GETGLOBALBUILTIN:
             {
                 uint16_t ix = frame_read_uint16(vm->current_frame);
                 ok = false;
                 mcvalue_t val = global_store_get_object_at(vm->global_store, ix, &ok);
                 if(!ok)
                 {
-                    errors_add_errorf(&vm->errors, ARCANE_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Global value %d not found", ix);
+                    errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Global value %d not found", ix);
                     goto err;
                 }
                 stack_push(vm, val);
@@ -15962,33 +16850,34 @@ bool vm_execute_function(mcstate_t* vm, mcvalue_t function, mcbasicarray_t* cons
             }
             case OPCODE_FUNCTION:
             {
+                int i;
                 uint16_t constantix = frame_read_uint16(vm->current_frame);
                 uint8_t numfree = frame_read_uint8(vm->current_frame);
-                mcvalue_t* constant = array_get(constants, constantix);
+                mcvalue_t* constant = (mcvalue_t*)array_get(constants, constantix);
                 if(!constant)
                 {
-                    errors_add_errorf(&vm->errors, ARCANE_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Constant %d not found", constantix);
+                    errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Constant %d not found", constantix);
                     goto err;
                 }
                 mcobjtype_t constanttype = object_get_type(*constant);
-                if(constanttype != ARCANE_OBJECT_FUNCTION)
+                if(constanttype != MC_OBJ_FUNCTION)
                 {
-                    const char* typename = object_get_type_name(constanttype);
-                    errors_add_errorf(&vm->errors, ARCANE_ERROR_RUNTIME, frame_src_position(vm->current_frame), "%s is not a function", typename);
+                    const char* tname = object_get_type_name(constanttype);
+                    errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "%s is not a function", tname);
                     goto err;
                 }
 
-                mcobjfuncscript_t* constantfunction = object_get_function(*constant);
-                mcvalue_t functionobj = object_make_function(vm, object_get_function_name(*constant), constantfunction->comp_result, false,
+                mcobjfuncscript_t* constantfunction = mc_value_functiongetscriptfunction(*constant);
+                mcvalue_t functionobj = object_make_function(vm, mc_value_functiongetname(*constant), constantfunction->comp_result, false,
                                                              constantfunction->num_locals, constantfunction->num_args, numfree);
                 if(object_is_null(functionobj))
                 {
                     goto err;
                 }
-                for(int i = 0; i < numfree; i++)
+                for(i = 0; i < numfree; i++)
                 {
                     mcvalue_t freeval = vm->stack[vm->sp - numfree + i];
-                    object_set_function_free_val(functionobj, i, freeval);
+                    mc_value_functionsetfreevalat(functionobj, i, freeval);
                 }
                 set_sp(vm, vm->sp - numfree);
                 stack_push(vm, functionobj);
@@ -15997,7 +16886,7 @@ bool vm_execute_function(mcstate_t* vm, mcvalue_t function, mcbasicarray_t* cons
             case OPCODE_GET_FREE:
             {
                 uint8_t freeix = frame_read_uint8(vm->current_frame);
-                mcvalue_t val = object_get_function_free_val(vm->current_frame->function, freeix);
+                mcvalue_t val = mc_value_functiongetfreevalat(vm->current_frame->function, freeix);
                 stack_push(vm, val);
                 break;
             }
@@ -16005,7 +16894,7 @@ bool vm_execute_function(mcstate_t* vm, mcvalue_t function, mcbasicarray_t* cons
             {
                 uint8_t freeix = frame_read_uint8(vm->current_frame);
                 mcvalue_t val = stack_pop(vm);
-                object_set_function_free_val(vm->current_frame->function, freeix, val);
+                mc_value_functionsetfreevalat(vm->current_frame->function, freeix, val);
                 break;
             }
             case OPCODE_CURRENT_FUNCTION:
@@ -16018,41 +16907,45 @@ bool vm_execute_function(mcstate_t* vm, mcvalue_t function, mcbasicarray_t* cons
             {
                 mcvalue_t index = stack_pop(vm);
                 mcvalue_t left = stack_pop(vm);
-                mcvalue_t newvalue = stack_pop(vm);
+                mcvalue_t nvalue = stack_pop(vm);
                 mcobjtype_t lefttype = object_get_type(left);
                 mcobjtype_t indextype = object_get_type(index);
                 const char* lefttypename = object_get_type_name(lefttype);
                 const char* indextypename = object_get_type_name(indextype);
 
-                if(lefttype != ARCANE_OBJECT_ARRAY && lefttype != ARCANE_OBJECT_MAP)
+                if(lefttype != MC_OBJ_ARRAY && lefttype != MC_OBJ_MAP)
                 {
-                    errors_add_errorf(&vm->errors, ARCANE_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Type %s is not indexable", lefttypename);
+                    errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Type %s is not indexable", lefttypename);
                     goto err;
                 }
 
-                if(lefttype == ARCANE_OBJECT_ARRAY)
+                if(lefttype == MC_OBJ_ARRAY)
                 {
-                    if(indextype != ARCANE_OBJECT_NUMBER)
+                    int alen;
+                    if(indextype != MC_OBJ_NUMBER)
                     {
-                        errors_add_errorf(&vm->errors, ARCANE_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Cannot index %s with %s", lefttypename, indextypename);
+                        errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Cannot index %s with %s", lefttypename, indextypename);
                         goto err;
                     }
                     int ix = (int)object_get_number(index);
-                    ok = object_set_array_value_at(left, ix, newvalue);
+                    
+                    ok = mc_value_arraysetvalueat(left, ix, nvalue);
+                    alen = mv_value_arraygetlength(left);
+
                     if(!ok)
                     {
-                        errors_add_error(&vm->errors, ARCANE_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Setting array item failed (out of bounds?)");
+                        errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "failed to set array index %d (of %d)", ix, alen);
                         goto err;
                     }
                 }
-                else if(lefttype == ARCANE_OBJECT_MAP)
+                else if(lefttype == MC_OBJ_MAP)
                 {
-                    mcvalue_t oldvalue = object_get_map_value(left, index);
-                    if(!check_assign(vm, oldvalue, newvalue))
+                    mcvalue_t oldvalue = mc_value_mapgetvalue(left, index);
+                    if(!check_assign(vm, oldvalue, nvalue))
                     {
                         goto err;
                     }
-                    ok = object_set_map_value(left, index, newvalue);
+                    ok = mc_value_mapsetvalue(left, index, nvalue);
                     if(!ok)
                     {
                         goto err;
@@ -16071,22 +16964,22 @@ bool vm_execute_function(mcstate_t* vm, mcvalue_t function, mcbasicarray_t* cons
                 mcvalue_t val = stack_pop(vm);
                 int len = 0;
                 mcobjtype_t type = object_get_type(val);
-                if(type == ARCANE_OBJECT_ARRAY)
+                if(type == MC_OBJ_ARRAY)
                 {
-                    len = object_get_array_length(val);
+                    len = mv_value_arraygetlength(val);
                 }
-                else if(type == ARCANE_OBJECT_MAP)
+                else if(type == MC_OBJ_MAP)
                 {
-                    len = object_get_map_length(val);
+                    len = mc_value_mapgetlength(val);
                 }
-                else if(type == ARCANE_OBJECT_STRING)
+                else if(type == MC_OBJ_STRING)
                 {
-                    len = object_get_string_length(val);
+                    len = mc_value_stringgetlength(val);
                 }
                 else
                 {
-                    const char* typename = object_get_type_name(type);
-                    errors_add_errorf(&vm->errors, ARCANE_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Cannot get length of %s", typename);
+                    const char* tname = object_get_type_name(type);
+                    errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Cannot get length of %s", tname);
                     goto err;
                 }
                 stack_push(vm, mc_value_makenumber(len));
@@ -16095,7 +16988,7 @@ bool vm_execute_function(mcstate_t* vm, mcvalue_t function, mcbasicarray_t* cons
             case OPCODE_NUMBER:
             {
                 uint64_t val = frame_read_uint64(vm->current_frame);
-                double val_double = arcane_uint64_to_double(val);
+                double val_double = mc_util_uint64todouble(val);
                 mcvalue_t obj = mc_value_makenumber(val_double);
                 stack_push(vm, obj);
                 break;
@@ -16108,21 +17001,20 @@ bool vm_execute_function(mcstate_t* vm, mcvalue_t function, mcbasicarray_t* cons
             }
             default:
             {
-                ARCANE_ASSERT(false);
-                errors_add_errorf(&vm->errors, ARCANE_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Unknown opcode: 0x%x", opcode);
+                MC_ASSERT(false);
+                errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Unknown opcode: 0x%x", opcode);
                 goto err;
             }
         }
-
         if(checktime)
         {
             timecheckcounter++;
             if(timecheckcounter > timecheckinterval)
             {
-                int elapsedms = (int)arcane_timer_get_elapsed_ms(&timer);
+                elapsedms = (int)arcane_timer_get_elapsed_ms(&timer);
                 if(elapsedms > maxexectimems)
                 {
-                    errors_add_errorf(&vm->errors, ARCANE_ERROR_TIMEOUT, frame_src_position(vm->current_frame), "Execution took more than %1.17g ms", maxexectimems);
+                    errors_add_errorf(&vm->errors, MC_ERROR_TIMEOUT, frame_src_position(vm->current_frame), "Execution took more than %1.17g ms", maxexectimems);
                     goto err;
                 }
                 timecheckcounter = 0;
@@ -16131,16 +17023,16 @@ bool vm_execute_function(mcstate_t* vm, mcvalue_t function, mcbasicarray_t* cons
     err:
         if(errors_get_count(&vm->errors) > 0)
         {
-            mcerror_t* err = errors_get_last_error(&vm->errors);
-            if(err->type == ARCANE_ERROR_RUNTIME && errors_get_count(&vm->errors) == 1)
+            err = errors_get_last_error(&vm->errors);
+            if(err->type == MC_ERROR_RUNTIME && errors_get_count(&vm->errors) == 1)
             {
-                int recoverframeix = -1;
-                for(int i = vm->frames_count - 1; i >= 0; i--)
+                recoverframeix = -1;
+                for(fri = vm->frames_count - 1; fri >= 0; fri--)
                 {
-                    mcvmframe_t* frame = &vm->frames[i];
+                    frame = &vm->frames[fri];
                     if(frame->recover_ip >= 0 && !frame->is_recovering)
                     {
-                        recoverframeix = i;
+                        recoverframeix = fri;
                         break;
                     }
                 }
@@ -16160,10 +17052,10 @@ bool vm_execute_function(mcstate_t* vm, mcvalue_t function, mcbasicarray_t* cons
                 {
                     pop_frame(vm);
                 }
-                mcvalue_t errobj = object_make_error(vm, err->message);
+                errobj = object_make_error(vm, err->message);
                 if(!object_is_null(errobj))
                 {
-                    object_set_error_traceback(errobj, err->traceback);
+                    mc_value_errorsettraceback(errobj, err->traceback);
                     err->traceback = NULL;
                 }
                 stack_push(vm, errobj);
@@ -16185,7 +17077,7 @@ bool vm_execute_function(mcstate_t* vm, mcvalue_t function, mcbasicarray_t* cons
 end:
     if(errors_get_count(&vm->errors) > 0)
     {
-        mcerror_t* err = errors_get_last_error(&vm->errors);
+        err = errors_get_last_error(&vm->errors);
         if(!err->traceback)
         {
             err->traceback = traceback_make(vm);
@@ -16195,29 +17087,27 @@ end:
             traceback_append_from_vm(err->traceback, vm);
         }
     }
-
     run_gc(vm, constants);
-
     vm->running = false;
     return errors_get_count(&vm->errors) == 0;
 }
 
-mcvalue_t vm_get_last_popped(mcstate_t* vm)
+TMPSTATIC mcvalue_t vm_get_last_popped(mcstate_t* vm)
 {
     return vm->last_popped;
 }
 
-bool vm_has_errors(mcstate_t* vm)
+TMPSTATIC bool vm_has_errors(mcstate_t* vm)
 {
     return errors_get_count(&vm->errors) > 0;
 }
 
-bool vm_set_global(mcstate_t* vm, int ix, mcvalue_t val)
+TMPSTATIC bool vm_set_global(mcstate_t* vm, int ix, mcvalue_t val)
 {
     if(ix >= VM_MAX_GLOBALS)
     {
-        ARCANE_ASSERT(false);
-        errors_add_error(&vm->errors, ARCANE_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Global write out of range");
+        MC_ASSERT(false);
+        errors_add_error(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Global write out of range");
         return false;
     }
     vm->globals[ix] = val;
@@ -16228,44 +17118,52 @@ bool vm_set_global(mcstate_t* vm, int ix, mcvalue_t val)
     return true;
 }
 
-mcvalue_t vm_get_global(mcstate_t* vm, int ix)
+TMPSTATIC mcvalue_t vm_get_global(mcstate_t* vm, int ix)
 {
     if(ix >= VM_MAX_GLOBALS)
     {
-        ARCANE_ASSERT(false);
-        errors_add_error(&vm->errors, ARCANE_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Global read out of range");
+        MC_ASSERT(false);
+        errors_add_error(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Global read out of range");
         return mc_value_makenull();
     }
     return vm->globals[ix];
 }
 
-TMPSTATIC void set_sp(mcstate_t* vm, int newsp)
+TMPSTATIC void set_sp(mcstate_t* vm, int nsp)
 {
-    if(newsp > vm->sp)
+    int count;
+    size_t bytescount;
+    if(nsp > vm->sp)
     {
         /* to avoid gcing freed objects */
-        int count = newsp - vm->sp;
-        size_t bytescount = count * sizeof(mcvalue_t);
+        count = nsp - vm->sp;
+        bytescount = count * sizeof(mcvalue_t);
         memset(vm->stack + vm->sp, 0, bytescount);
     }
-    vm->sp = newsp;
+    vm->sp = nsp;
 }
 
 TMPSTATIC void stack_push(mcstate_t* vm, mcvalue_t obj)
 {
-#ifdef ARCANE_DEBUG
+    int numlocals;
+    mcvmframe_t* frame;
+    mcobjfuncscript_t* currentfunction;
+    (void)numlocals;
+    (void)frame;
+    (void)currentfunction;
+#if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
     if(vm->sp >= VM_STACK_SIZE)
     {
-        ARCANE_ASSERT(false);
-        errors_add_error(&vm->errors, ARCANE_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Stack overflow");
+        MC_ASSERT(false);
+        errors_add_error(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Stack overflow");
         return;
     }
     if(vm->current_frame)
     {
-        mcvmframe_t* frame = vm->current_frame;
-        mcobjfuncscript_t* currentfunction = object_get_function(frame->function);
-        int num_locals = currentfunction->num_locals;
-        ARCANE_ASSERT(vm->sp >= (frame->base_pointer + num_locals));
+        frame = vm->current_frame;
+        currentfunction = mc_value_functiongetscriptfunction(frame->function);
+        numlocals = currentfunction->num_locals;
+        MC_ASSERT(vm->sp >= (frame->base_pointer + numlocals));
     }
 #endif
     vm->stack[vm->sp] = obj;
@@ -16274,19 +17172,25 @@ TMPSTATIC void stack_push(mcstate_t* vm, mcvalue_t obj)
 
 TMPSTATIC mcvalue_t stack_pop(mcstate_t* vm)
 {
-#ifdef ARCANE_DEBUG
+    int numlocals;
+    mcvmframe_t* frame;
+    mcobjfuncscript_t* currentfunction;
+    (void)numlocals;
+    (void)frame;
+    (void)currentfunction;
+#if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
     if(vm->sp == 0)
     {
-        errors_add_error(&vm->errors, ARCANE_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Stack underflow");
-        ARCANE_ASSERT(false);
+        errors_add_error(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Stack underflow");
+        MC_ASSERT(false);
         return mc_value_makenull();
     }
     if(vm->current_frame)
     {
-        mcvmframe_t* frame = vm->current_frame;
-        mcobjfuncscript_t* currentfunction = object_get_function(frame->function);
-        int num_locals = currentfunction->num_locals;
-        ARCANE_ASSERT((vm->sp - 1) >= (frame->base_pointer + num_locals));
+        frame = vm->current_frame;
+        currentfunction = mc_value_functiongetscriptfunction(frame->function);
+        numlocals = currentfunction->num_locals;
+        MC_ASSERT((vm->sp - 1) >= (frame->base_pointer + numlocals));
     }
 #endif
     vm->sp--;
@@ -16297,12 +17201,13 @@ TMPSTATIC mcvalue_t stack_pop(mcstate_t* vm)
 
 TMPSTATIC mcvalue_t stack_get(mcstate_t* vm, int nthitem)
 {
-    int ix = vm->sp - 1 - nthitem;
-#ifdef ARCANE_DEBUG
+    int ix;
+    ix = vm->sp - 1 - nthitem;
+#if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
     if(ix < 0 || ix >= VM_STACK_SIZE)
     {
-        errors_add_errorf(&vm->errors, ARCANE_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Invalid stack index: %d", nthitem);
-        ARCANE_ASSERT(false);
+        errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Invalid stack index: %d", nthitem);
+        MC_ASSERT(false);
         return mc_value_makenull();
     }
 #endif
@@ -16311,11 +17216,11 @@ TMPSTATIC mcvalue_t stack_get(mcstate_t* vm, int nthitem)
 
 TMPSTATIC void this_stack_push(mcstate_t* vm, mcvalue_t obj)
 {
-#ifdef ARCANE_DEBUG
+#if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
     if(vm->this_sp >= VM_THIS_STACK_SIZE)
     {
-        ARCANE_ASSERT(false);
-        errors_add_error(&vm->errors, ARCANE_ERROR_RUNTIME, frame_src_position(vm->current_frame), "this stack overflow");
+        MC_ASSERT(false);
+        errors_add_error(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "this stack overflow");
         return;
     }
 #endif
@@ -16325,11 +17230,11 @@ TMPSTATIC void this_stack_push(mcstate_t* vm, mcvalue_t obj)
 
 TMPSTATIC mcvalue_t this_stack_pop(mcstate_t* vm)
 {
-#ifdef ARCANE_DEBUG
+#if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
     if(vm->this_sp == 0)
     {
-        errors_add_error(&vm->errors, ARCANE_ERROR_RUNTIME, frame_src_position(vm->current_frame), "this stack underflow");
-        ARCANE_ASSERT(false);
+        errors_add_error(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "this stack underflow");
+        MC_ASSERT(false);
         return mc_value_makenull();
     }
 #endif
@@ -16339,12 +17244,13 @@ TMPSTATIC mcvalue_t this_stack_pop(mcstate_t* vm)
 
 TMPSTATIC mcvalue_t this_stack_get(mcstate_t* vm, int nthitem)
 {
-    int ix = vm->this_sp - 1 - nthitem;
-#ifdef ARCANE_DEBUG
+    int ix;
+    ix = vm->this_sp - 1 - nthitem;
+#if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
     if(ix < 0 || ix >= VM_THIS_STACK_SIZE)
     {
-        errors_add_errorf(&vm->errors, ARCANE_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Invalid this stack index: %d", nthitem);
-        ARCANE_ASSERT(false);
+        errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Invalid this stack index: %d", nthitem);
+        MC_ASSERT(false);
         return mc_value_makenull();
     }
 #endif
@@ -16353,15 +17259,16 @@ TMPSTATIC mcvalue_t this_stack_get(mcstate_t* vm, int nthitem)
 
 TMPSTATIC bool push_frame(mcstate_t* vm, mcvmframe_t frame)
 {
+    mcobjfuncscript_t* framefunction;
     if(vm->frames_count >= VM_MAX_FRAMES)
     {
-        ARCANE_ASSERT(false);
+        MC_ASSERT(false);
         return false;
     }
     vm->frames[vm->frames_count] = frame;
     vm->current_frame = &vm->frames[vm->frames_count];
     vm->frames_count++;
-    mcobjfuncscript_t* framefunction = object_get_function(frame.function);
+    framefunction = mc_value_functiongetscriptfunction(frame.function);
     set_sp(vm, frame.base_pointer + framefunction->num_locals);
     return true;
 }
@@ -16371,7 +17278,7 @@ TMPSTATIC bool pop_frame(mcstate_t* vm)
     set_sp(vm, vm->current_frame->base_pointer - 1);
     if(vm->frames_count <= 0)
     {
-        ARCANE_ASSERT(false);
+        MC_ASSERT(false);
         vm->current_frame = NULL;
         return false;
     }
@@ -16387,13 +17294,15 @@ TMPSTATIC bool pop_frame(mcstate_t* vm)
 
 TMPSTATIC void run_gc(mcstate_t* vm, mcbasicarray_t* constants)
 {
+    int i;
+    mcvmframe_t* frame;
     gc_unmark_all(vm->mem);
     gc_mark_objects(global_store_get_object_data(vm->global_store), global_store_get_object_count(vm->global_store));
-    gc_mark_objects(array_data(constants), array_count(constants));
+    gc_mark_objects((mcvalue_t*)array_data(constants), array_count(constants));
     gc_mark_objects(vm->globals, vm->globals_count);
-    for(int i = 0; i < vm->frames_count; i++)
+    for(i = 0; i < vm->frames_count; i++)
     {
-        mcvmframe_t* frame = &vm->frames[i];
+        frame = &vm->frames[i];
         gc_mark_object(frame->function);
     }
     gc_mark_objects(vm->stack, vm->sp);
@@ -16403,60 +17312,70 @@ TMPSTATIC void run_gc(mcstate_t* vm, mcbasicarray_t* constants)
     gc_sweep(vm->mem);
 }
 
-TMPSTATIC bool call_object(mcstate_t* vm, mcvalue_t callee, int num_args)
+TMPSTATIC bool mc_vm_callobject(mcstate_t* vm, mcvalue_t callee, int nargs)
 {
     bool ok;
-    mcobjtype_t calleetype = object_get_type(callee);
-    if(calleetype == ARCANE_OBJECT_FUNCTION)
+    const char* calleetypename;
+    mcobjtype_t calleetype;
+    mcvmframe_t calleeframe;
+    mcvalue_t res;
+    mcvalue_t* stackpos;
+    mcobjfuncscript_t* calleefunction;
+    calleetype = object_get_type(callee);
+    if(calleetype == MC_OBJ_FUNCTION)
     {
-        mcobjfuncscript_t* calleefunction = object_get_function(callee);
-        if(num_args != calleefunction->num_args)
+        calleefunction = mc_value_functiongetscriptfunction(callee);
+        if(nargs != calleefunction->num_args)
         {
-            errors_add_errorf(&vm->errors, ARCANE_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Invalid number of arguments to \"%s\", expected %d, got %d",
-                              object_get_function_name(callee), calleefunction->num_args, num_args);
+            errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Invalid number of arguments to \"%s\", expected %d, got %d",
+                              mc_value_functiongetname(callee), calleefunction->num_args, nargs);
             return false;
         }
-        mcvmframe_t calleeframe;
-        ok = frame_init(&calleeframe, callee, vm->sp - num_args);
+        ok = frame_init(&calleeframe, callee, vm->sp - nargs);
         if(!ok)
         {
-            errors_add_error(&vm->errors, ARCANE_ERROR_RUNTIME, srcposinvalid, "Frame init failed in call_object");
+            errors_add_error(&vm->errors, MC_ERROR_RUNTIME, srcposinvalid, "Frame init failed in mc_vm_callobject");
             return false;
         }
         ok = push_frame(vm, calleeframe);
         if(!ok)
         {
-            errors_add_error(&vm->errors, ARCANE_ERROR_RUNTIME, srcposinvalid, "Pushing frame failed in call_object");
+            errors_add_error(&vm->errors, MC_ERROR_RUNTIME, srcposinvalid, "Pushing frame failed in mc_vm_callobject");
             return false;
         }
     }
-    else if(calleetype == ARCANE_OBJECT_NATIVE_FUNCTION)
+    else if(calleetype == MC_OBJ_NATIVE_FUNCTION)
     {
-        mcvalue_t* stackpos = vm->stack + vm->sp - num_args;
-        mcvalue_t res = call_native_function(vm, callee, frame_src_position(vm->current_frame), num_args, stackpos);
+        stackpos = vm->stack + vm->sp - nargs;
+        res = mc_vm_callnativefunction(vm, callee, frame_src_position(vm->current_frame), nargs, stackpos);
         if(vm_has_errors(vm))
         {
             return false;
         }
-        set_sp(vm, vm->sp - num_args - 1);
+        set_sp(vm, vm->sp - nargs - 1);
         stack_push(vm, res);
     }
     else
     {
-        const char* calleetypename = object_get_type_name(calleetype);
-        errors_add_errorf(&vm->errors, ARCANE_ERROR_RUNTIME, frame_src_position(vm->current_frame), "%s object is not callable", calleetypename);
+        calleetypename = object_get_type_name(calleetype);
+        errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "%s object is not callable", calleetypename);
         return false;
     }
     return true;
 }
 
-TMPSTATIC mcvalue_t call_native_function(mcstate_t* vm, mcvalue_t callee, mcastlocation_t srcpos, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t mc_vm_callnativefunction(mcstate_t* vm, mcvalue_t callee, mcastlocation_t srcpos, int argc, mcvalue_t* args)
 {
-    mcobjfuncnative_t* nativefun = object_get_native_function(callee);
-    mcvalue_t res = nativefun->fn(vm, nativefun->data, argc, args);
-    if(errors_has_errors(&vm->errors) && !ARCANE_STREQ(nativefun->name, "crash"))
+    mcobjtype_t restype;
+    mcvalue_t res;
+    mcerror_t* err; 
+    mctraceback_t* traceback;
+    mcobjfuncnative_t* nativefun;
+    nativefun = mc_value_functiongetnativefunction(callee);
+    res = nativefun->fn(vm, nativefun->data, argc, args);
+    if(errors_has_errors(&vm->errors) && !MC_UTIL_STREQ(nativefun->name, "crash"))
     {
-        mcerror_t* err = errors_get_last_error(&vm->errors);
+        err = errors_get_last_error(&vm->errors);
         err->pos = srcpos;
         err->traceback = traceback_make(vm);
         if(err->traceback)
@@ -16465,69 +17384,74 @@ TMPSTATIC mcvalue_t call_native_function(mcstate_t* vm, mcvalue_t callee, mcastl
         }
         return mc_value_makenull();
     }
-    mcobjtype_t restype = object_get_type(res);
-    if(restype == ARCANE_OBJECT_ERROR)
+    restype = object_get_type(res);
+    if(restype == MC_OBJ_ERROR)
     {
-        mctraceback_t* traceback = traceback_make(vm);
+        traceback = traceback_make(vm);
         if(traceback)
         {
             /* error builtin is treated in a special way */
-            if(!ARCANE_STREQ(nativefun->name, "error"))
+            if(!MC_UTIL_STREQ(nativefun->name, "error"))
             {
                 traceback_append(traceback, nativefun->name, srcposinvalid);
             }
             traceback_append_from_vm(traceback, vm);
-            object_set_error_traceback(res, traceback);
+            mc_value_errorsettraceback(res, traceback);
         }
     }
     return res;
 }
 
-TMPSTATIC bool check_assign(mcstate_t* vm, mcvalue_t oldvalue, mcvalue_t newvalue)
+TMPSTATIC bool check_assign(mcstate_t* vm, mcvalue_t oldvalue, mcvalue_t nvalue)
 {
-    mcobjtype_t oldvaluetype = object_get_type(oldvalue);
-    mcobjtype_t newvaluetype = object_get_type(newvalue);
-    if(oldvaluetype == ARCANE_OBJECT_NULL || newvaluetype == ARCANE_OBJECT_NULL)
+    mcobjtype_t nvaluetype;
+    mcobjtype_t oldvaluetype;
+    oldvaluetype = object_get_type(oldvalue);
+    nvaluetype = object_get_type(nvalue);
+    if(oldvaluetype == MC_OBJ_NULL || nvaluetype == MC_OBJ_NULL)
     {
         return true;
     }
-    if(oldvaluetype != newvaluetype)
+    if(oldvaluetype != nvaluetype)
     {
-        errors_add_errorf(&vm->errors, ARCANE_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Trying to assign variable of type %s to %s",
-                          object_get_type_name(newvaluetype), object_get_type_name(oldvaluetype));
+        errors_add_errorf(&vm->errors, MC_ERROR_RUNTIME, frame_src_position(vm->current_frame), "Trying to assign variable of type %s to %s",
+                          object_get_type_name(nvaluetype), object_get_type_name(oldvaluetype));
         return false;
     }
     return true;
 }
 
-TMPSTATIC bool try_overload_operator(mcstate_t* vm, mcvalue_t left, mcvalue_t right, opcode_t op, bool* outoverloadfound)
+TMPSTATIC bool try_overload_operator(mcstate_t* vm, mcvalue_t left, mcvalue_t right, mcinternopcode_t op, bool* outoverloadfound)
 {
+    int numoper;
+    mcvalue_t key;
+    mcvalue_t callee;
+    mcobjtype_t lefttype;
+    mcobjtype_t righttype;
     *outoverloadfound = false;
-    mcobjtype_t lefttype = object_get_type(left);
-    mcobjtype_t righttype = object_get_type(right);
-    if(lefttype != ARCANE_OBJECT_MAP && righttype != ARCANE_OBJECT_MAP)
+    lefttype = object_get_type(left);
+    righttype = object_get_type(right);
+    if(lefttype != MC_OBJ_MAP && righttype != MC_OBJ_MAP)
     {
         *outoverloadfound = false;
         return true;
     }
-
-    int num_operands = 2;
+    numoper = 2;
     if(op == OPCODE_MINUS || op == OPCODE_BANG)
     {
-        num_operands = 1;
+        numoper = 1;
     }
-
-    mcvalue_t key = vm->operator_oveload_keys[op];
-    mcvalue_t callee = mc_value_makenull();
-    if(lefttype == ARCANE_OBJECT_MAP)
+    key = vm->operator_oveload_keys[op];
+    callee = mc_value_makenull();
+    if(lefttype == MC_OBJ_MAP)
     {
-        callee = object_get_map_value(left, key);
+        callee = mc_value_mapgetvalue(left, key);
     }
     if(!object_is_callable(callee))
     {
-        if(righttype == ARCANE_OBJECT_MAP)
+        if(righttype == MC_OBJ_MAP)
         {
-            callee = object_get_map_value(right, key);
+            callee = mc_value_mapgetvalue(right, key);
         }
 
         if(!object_is_callable(callee))
@@ -16536,31 +17460,34 @@ TMPSTATIC bool try_overload_operator(mcstate_t* vm, mcvalue_t left, mcvalue_t ri
             return true;
         }
     }
-
     *outoverloadfound = true;
-
     stack_push(vm, callee);
     stack_push(vm, left);
-    if(num_operands == 2)
+    if(numoper == 2)
     {
         stack_push(vm, right);
     }
-    return call_object(vm, callee, num_operands);
+    return mc_vm_callobject(vm, callee, numoper);
 }
 
-TMPSTATIC void print_ape_errors(mcstate_t* state)
+TMPSTATIC void mc_state_printerrors(mcstate_t* state)
 {
-    for(int i = 0; i < arcane_errors_count(state); i++)
+    int i;
+    int ecnt;
+    char* errstr;
+    mcerror_t* err;
+    ecnt = mc_state_errorcount(state);
+    for(i = 0; i < ecnt; i++)
     {
-        mcerror_t* err = arcane_get_error(state, i);
-        char* errstr = arcane_error_serialize(state, err);
+        err = mc_state_geterror(state, i);
+        errstr = mc_error_serializetostring(state, err);
         puts(errstr);
-        arcane_free_allocated(state, errstr);
+        mc_state_freeallocated(state, errstr);
     }
 }
 
 
-char* read_file(const char* filename)
+TMPSTATIC char* read_file(const char* filename)
 {
     FILE* file = fopen(filename, "rb");
     if(file == NULL)
@@ -16606,18 +17533,18 @@ int main(int argc, char** argv)
     code = read_file(argv[1]);
     mcstate_t* state = mc_state_make(NULL);
     arcane_set_global_constant(state, "test", mc_value_makenumber(42));
-    arcane_set_native_function(state, "external_fn_test", cfn_externalfn, &g_extfnvar);
-    arcane_set_native_function(state, "test_check_args", cfn_test_check_args, NULL);
-    arcane_set_native_function(state, "vec2_add", vec2_add_fun, NULL);
-    arcane_set_native_function(state, "vec2_sub", vec2_sub_fun, NULL);
+    mc_state_setnativefunction(state, "external_fn_test", cfn_externalfn, &g_extfnvar);
+    mc_state_setnativefunction(state, "test_check_args", cfn_test_check_args, NULL);
+    mc_state_setnativefunction(state, "vec2_add", cfn_vec2add, NULL);
+    mc_state_setnativefunction(state, "vec2_sub", cfn_vec2sub, NULL);
     mccompiledprogram_t* program = mc_state_compilesource(state, code);
-    arcane_execute_program(state, program);
-    if(arcane_has_errors(state))
+    mc_program_execute(state, program);
+    if(mc_state_haserrors(state))
     {
-        print_ape_errors(state);
+        mc_state_printerrors(state);
     }
-    arcane_program_destroy(program);
-    arcane_destroy(state);
+    mc_program_destroy(program);
+    mc_state_destroy(state);
     free(code);
     code = NULL;
 }

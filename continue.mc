@@ -1,6 +1,6 @@
 
 
-var t1 = fn()
+var t1 = function()
 {
     println("t1: really simple test ...");
     var a = 0;
@@ -17,7 +17,7 @@ var t1 = fn()
 }
 
 
-var t2 = fn()
+var t2 = function()
 {
     println("t2: simple test ...");
     var b = 5;
@@ -33,7 +33,7 @@ var t2 = fn()
     println("t2: done!");
 }
 
-var t3 = fn()
+var t3 = function()
 {
     println("t3: other test ...");
     var b = 5;
@@ -52,7 +52,7 @@ var t3 = fn()
     }
 }
 
-var t4 = fn()
+var t4 = function()
 {
     var b = 5;
     var g = "scopes ok";
@@ -68,7 +68,7 @@ var t4 = fn()
     println("t4: ", g);
 }
 
-var t5 = fn()
+var t5 = function()
 {
     for (var b = 0; b != 5; b = b + 1) {
         if (b == 0 || b == 1 || b == 2) {

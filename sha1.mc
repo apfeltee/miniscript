@@ -62,7 +62,7 @@ var sha1_ft = function(t, b, c, d)
 {
     if(t < 20)
     {
-        return (b & c) | ((~b) & d);
+        return (b & c) | (binnot(b) & d);
     }
     if(t < 40)
     {
@@ -94,10 +94,9 @@ var sha1_kt = function(t)
 
 var core_sha1 = function(x, l)
 {
-    var aidx;
+    var aidx = 0;
     aidx = (l >> 5);
     var xlen = len(x)
-
     var tmp = x[aidx]
     x[aidx] = (tmp | (128 << (24 - (l % 32))));
     aidx = (((l + 64) >> 9) << 4) + 15;
@@ -184,6 +183,10 @@ var str2binb = function(str)
     {
         var aidx = (i >> 5);
         var tmp = bin[aidx]
+        if(tmp == null)
+        {
+            tmp = 0; 
+        }
         var value = tmp | (ord(str[i / K_CHARSIZE]) & mask) << (24 - (i % 32));
 
         bin[aidx] = value
@@ -200,7 +203,7 @@ var binb2hex = function(binarray)
     var i = 0;
     var htlen = len(hex_tab);
     var balen = len(binarray);
-    printf("binb2hex: binarray=%v\n", binarray);
+    //printf("binb2hex: binarray=%v\n", binarray);
     while(i < (balen * 4))
     {
         var bidx = i>>2;
@@ -209,7 +212,7 @@ var binb2hex = function(binarray)
         var idxsecond = ((bop >> ((3 - (i % 4)) * 8  )) & 15)
         var c1 = hex_tab[idxfirst];
         var c2 = hex_tab[idxsecond];
-        printf("  htlen=%s, bop=%s, bidx=%s, idxfirst=%s, idxsecond=%s, c1=%v, c2=%v\n", htlen, bop, bidx, idxfirst, idxsecond, c1, c2)
+        //printf("  htlen=%s, bop=%s, bidx=%s, idxfirst=%s, idxsecond=%s, c1=%v, c2=%v\n", htlen, bop, bidx, idxfirst, idxsecond, c1, c2)
         arraypush(str, c1);
         arraypush(str, c2);
         i++;
@@ -223,7 +226,7 @@ var hex_sha1 = function(s)
     var stob = str2binb(s);
     var ca = core_sha1(stob, len(s) * K_CHARSIZE);
     var r = binb2hex(ca);
-    println("hex_sha1(", s, "): stob=", stob, ", ca=", ca, ", r=", r)
+    //println("hex_sha1(", s, "): stob=", stob, ", ca=", ca, ", r=", r)
     return r
 }
 
@@ -246,7 +249,7 @@ for(var idx=0; idx<len(demo); idx++)
     {
         okstr = "OK  ";
     }
-    print(okstr, ": \"",inputstr, "\" (expect: ", expected, ") => ", ma, "\n");
+    println(okstr, ": \"",inputstr, "\" (expect: ", expected, ") => ", ma);
 
 }
 

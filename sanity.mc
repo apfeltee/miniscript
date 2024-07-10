@@ -3,15 +3,15 @@ assert(squared[0] == 1)
 assert(squared[1] == 4)
 assert(squared[2] == 9)
 
-import "module_a"
+import "mtesta"
 
-assert(module_a::add(2, 2) == 4)
+assert(mtesta::add(2, 2) == 4)
 
-import "module_b"
-assert(module_a::inc() == 1)
-assert(module_a::inc() == 2)
-assert(module_b::inc() == 3)
-assert(module_b::inc() == 4)
+import "mtestb"
+assert(mtesta::inc() == 1)
+assert(mtesta::inc() == 2)
+assert(mtestb::inc() == 3)
+assert(mtestb::inc() == 4)
 
 const trailing_comma_array = [
     1,
@@ -31,7 +31,7 @@ assert(len(trailing_comma_dict) == 3)
 
 // tests a case where sp is incremented over already freed objects
 // and gc tries to mark them
-fn test_gc_fail(a, b, c) { const x = []; const y = []; const z = []; }
+function test_gc_fail(a, b, c) { const x = []; const y = []; const z = []; }
 test_gc_fail(1, 2, 3)
 test_gc_fail(1, 2, 3)
 
@@ -41,14 +41,14 @@ for (i in range(test_dict_count)) {
     assert(test_dict[tostring(i)] == i)
 }
 
-fn fun() {
+function fun() {
     const arr = [1, 2, 3]
     const dict = {"a": 1, "b": 2}
     const str = "lorem ipsum"
     dict["a"] = 1
 // comment 1 dict["a"] // test
 // comment 2
-    const res = fn(a, b, c) {
+    const res = function(a, b, c) {
         const res_str = tostring(a) + tostring(b) + tostring(c)
         return res_str; // comment
     }
@@ -57,13 +57,13 @@ fn fun() {
 
 println(fun())
 
-fn make_person(name) {
+function make_person(name) {
     return {
         name: name,
-        hello: fn() {
+        hello: function() {
             println(`hello ${this.name}`)
         },
-        make_hello: fn() {
+        make_hello: function() {
             return `hello ${this.name}`
         }
     }
@@ -88,7 +88,7 @@ for (name in popular_names) {
 }
 
 {
-    test_check_args(1, [1, 2, 3], {"a": 1}, "lorem", true, fn() {}, println)
+    test_check_args(1, [1, 2, 3], {"a": 1}, "lorem", true, function() {}, println)
     if (true) {}
     if (false) {}
     var i = 0
@@ -102,13 +102,15 @@ const val = 123
 assert("abc"[0] == "a")
 assert("abc"[0] != "b")
 
+
 const person1 = make_person("Krzysztof")
+//FIXME: issue in deepcopy
 const person2 = deepcopy(person1)
 person2.name = "Mati"
 assert(person1.make_hello() == "hello Krzysztof")
 assert(person2.make_hello() == "hello Mati")
 
-fn contains_item(to_find, items) {
+function contains_item(to_find, items) {
     for (item in items) {
         if (item == to_find) {
             return true
@@ -117,12 +119,13 @@ fn contains_item(to_find, items) {
     return false
 }
 
+
 const cities = ["Kraków", "Warsaw", "Gdańsk"]
 if (contains_item("Kraków", cities)) {
     println("found!")
 }
 
-fn block_test() {
+function block_test() {
     var x = 0
     {
         x = 1
@@ -135,19 +138,19 @@ assert(block_test() == 1)
 const big_array = array(1000)
 assert(len(big_array) == 1000)
 
-fn return_no_semicolon() { return }
+function return_no_semicolon() { return }
 
 // operator overloading test
-fn vec2(x, y) {
+function vec2(x, y) {
     return {
         x: x,
         y: y,
-        __operator_add__: fn(a, b) {
+        __operator_add__: function(a, b) {
             return vec2(a.x + b.x, a.y + b.y)
         },
         __operator_sub__: vec2_sub,
-        __operator_minus__: fn(a) { return vec2(-a.x, -a.y) },
-        __operator_mul__: fn(a, b) {
+        __operator_minus__: function(a) { return vec2(-a.x, -a.y) },
+        __operator_mul__: function(a, b) {
             if (isnumber(a)) {
                 return vec2(b.x * a, b.y * a)
             } else if (isnumber(b)) {
@@ -182,7 +185,7 @@ assert((-1 << 2) == -4)
 assert(( 8 >> 1) == 4)
 assert((-8 >> 1) == -4)
 
-fn recover_test_1() {
+function recover_test_1() {
     recover (e) {
         return 1
     }
@@ -191,7 +194,7 @@ fn recover_test_1() {
 
 assert(recover_test_1() == 2)
 
-fn recover_test_2() {
+function recover_test_2() {
     recover (e) {
         return 1
     }
@@ -200,7 +203,7 @@ fn recover_test_2() {
 
 assert(recover_test_2() == 1)
 
-fn recover_test_3() {
+function recover_test_3() {
     recover (e) {
         return 1
     }
@@ -209,7 +212,7 @@ fn recover_test_3() {
         return 2
     }
 
-    fn recover_inner() {
+    function recover_inner() {
         return crash()
     }
 
@@ -218,12 +221,12 @@ fn recover_test_3() {
 
 assert(recover_test_3() == 2)
 
-fn recover_test_4() {
+function recover_test_4() {
     recover (e) {
         return 2
     }
     
-    fn recover_test_inner() {
+    function recover_test_inner() {
         recover (e) {
             return crash()
         }
@@ -238,18 +241,18 @@ assert(recover_test_4() == 2)
 var this_test = {
     inner: {
         name: "lorem",
-        get_name: fn() {
+        get_name: function() {
             return this.name
         }
     },
-    get_inner_name: fn() {
+    get_inner_name: function() {
         return this.inner.get_name()
     }
 }
 
 assert(this_test.get_inner_name() == "lorem")
 
-fn add(x, y) { return x + y }
+function add(x, y) { return x + y }
 var templ_var = 3
 assert(`foo${templ_var}bar` == "foo3bar")
 assert(`lorem${add(`${add(`x`, "y")}`, `z`)}ipsum` == "loremxyzipsum")
@@ -258,7 +261,7 @@ assert(`${{}}` == "{}")
 assert(`foo\${x}bar` == "foo${x}bar")
 assert(`${1} ${2}` == "1 2")
 
-fn test_ternary(x) {
+function test_ternary(x) {
     var res = x == 1 ? 1 : 2;
     return res;
 }
@@ -271,18 +274,18 @@ assert(add(true ? 1 : 2, 3) == 4)
 assert(add(1, true ? 2 : 3) == 3)
 
 var test_obj = {
-    fun: fn() { return 2}
+    fun: function() { return 2}
 }
 
 assert(test_obj.fun() == 2)
 assert(test_obj["fun"] != 2)
 assert(test_obj["fun"]() == 2)
 
-fn get_test_arr() {
+function get_test_arr() {
     var test_arr = [
-        fn() { return 0 },
-        fn() { return 1 },
-        fn() { return 2 },
+        function() { return 0 },
+        function() { return 1 },
+        function() { return 2 },
     ]
     return test_arr
 }

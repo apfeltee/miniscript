@@ -1,33 +1,33 @@
 
 
-fn do_add(x, y)
+function do_add(x, y)
 {
     return x + y
 }
 
-fn do_sub(x, y)
+function do_sub(x, y)
 {
     return x - y
 }
 
-fn do_mul(x, y)
+function do_mul(x, y)
 {
     var t = x * y
     return (t + 8192 / 2) / 8192
 }
 
-fn do_div(x, y)
+function do_div(x, y)
 {
     var t = x * 8192
     return (t + y / 2) / y
 }
 
-fn of_int(x)
+function of_int(x)
 {
     return x * 8192
 }
 
-fn doiter(n, a, b, xn, yn)
+function doiter(n, a, b, xn, yn)
 {
     if(n == 100)
     {
@@ -42,12 +42,12 @@ fn doiter(n, a, b, xn, yn)
     return doiter(n + 1, a, b, do_add(do_sub(xn2, yn2), a), do_add(do_mul(of_int(2), do_mul(xn, yn)), b))
 }
 
-fn inside(x, y)
+function inside(x, y)
 {
     return doiter(0, x, y, of_int(0), of_int(0))
 }
 
-fn main()
+function main()
 {
     var steps = 30;
     var xmin = of_int(-2);

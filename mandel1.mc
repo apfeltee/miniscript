@@ -1,5 +1,5 @@
 
-fn main()
+function main()
 {
     var left_edge   = -420
     var right_edge  =  300

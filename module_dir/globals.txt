@@ -1,6 +1,6 @@
 var counter = 0
 
-fn inc() {
+function inc() {
     counter += 1
     return counter
 }

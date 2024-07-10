@@ -1,5 +1,5 @@
 
-var calc_point = fn(cx, cy, max_iter)
+var calc_point = function(cx, cy, max_iter)
 {
     var i = 0;
     var x = 0;
@@ -18,7 +18,7 @@ var calc_point = fn(cx, cy, max_iter)
     return i;
 }
 
-var mandelbrot = fn(x1,y1, x2,y2, size_x,size_y, max_iter)
+var mandelbrot = function(x1,y1, x2,y2, size_x,size_y, max_iter)
 {
     var step_x = (x2-x1)/(size_x-1);
     var step_y = (y2-y1)/(size_y-1);
