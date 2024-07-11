@@ -80,6 +80,7 @@ struct optlongflags_t
     const char* helptext;
 };
 
+
 /* optparse.h */
 int optprs_makeerror(optcontext_t* ox, const char* msg, const char* data);
 bool optbits_isdashdash(const char* arg);

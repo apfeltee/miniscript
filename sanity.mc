@@ -345,6 +345,6 @@ assert(reverse("abcd") == "dcba")
 assert(slice("abc", 1) == "bc")
 assert(slice("abc", -1) == "c")
 
-assert(concat("abc", "def") == "abcdef")
+assert(("abc" + "def") == "abcdef")
 
 println("all good!")

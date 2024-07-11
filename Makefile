@@ -1,5 +1,5 @@
 
-INCFLAGS = -I.
+INCFLAGS =
 
 unflags = \
 	-Wunused \
@@ -19,8 +19,8 @@ unflags = \
 
 WFLAGS = -Wall -Wextra -Wshadow -Wpointer-arith -Wstrict-prototypes -Wmissing-prototypes $(unflags)
 #WFLAGS = -Wall -Wextra -Wshadow
+WFLAGS += -ansi -pedantic
 #WFLAGS = -w
-
 
 CC = gcc  $(WFLAGS)
 #CFLAGS = $(INCFLAGS) -Ofast -march=native -flto -ffast-math -funroll-loops
