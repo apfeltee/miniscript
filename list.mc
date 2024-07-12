@@ -1,34 +1,25 @@
 
-function oprinter(str)
-{
-    print(str)
-}
 
 function Node(element)
 {
-    // constructor
     let self = {}
     self.element = element;
     self.next = null
     return self
 }
 
-// linkedlist class
 function LinkedList()
 {
     let self = {}
     self.head = null;
     self.size = 0;
-    // adds an element at the end
-    // of list
+    // adds an element at the end of list
     self.add = function(element)
     {
-        // creates a new node
         let node = Node(element);
         // to store current node
         let current;
-        // if list is Empty add the
-        // element and make it head
+        // if list is Empty add the element and make it head
         if (self.head == null)
         {
             self.head = node;
@@ -36,8 +27,7 @@ function LinkedList()
         else
         {
             current = self.head;
-            // iterate to the end of the
-            // list
+            // iterate to the end of the list
             while (current.next)
             {
                 current = current.next;
@@ -48,8 +38,7 @@ function LinkedList()
         self.size++;
     }
 
-    // insert element at the position index
-    // of the list
+    // insert element at the position index of the list
     self.insertAt = function(element, index)
     {
         if (index < 0 || index > self.size)
@@ -58,13 +47,11 @@ function LinkedList()
         }
         else
         {
-            // creates a new node
             let node = Node(element);
             let curr;
             let prev;
             curr = self.head;
-            // add the element to the
-            // first index
+            // add the element to the first index
             if (index == 0)
             {
                 node.next = self.head;
@@ -200,64 +187,36 @@ function LinkedList()
     {
         let curr = self.head;
         let str = "";
-        oprinter("");
+        print("");
         while (curr)
         {
-            oprinter(curr.element)
-            oprinter(" ");
+            print(curr.element)
+            print(" ");
             curr = curr.next;
         }
-        oprinter("\n")
+        print("\n")
     }
     return self
 }
 
-// creating an object for the
-// Linkedlist class
 let ll = LinkedList();
-
-// testing isEmpty on an empty list
-// returns true
+// should be true
 println(ll.isEmpty());
-
-// adding element to the list
 ll.add(10);
-
-// prints 10
 ll.printList();
-
-// returns 1
 println(ll.size_of_list());
-
-// adding more elements to the list
 ll.add(20);
 ll.add(30);
 ll.add(40);
 ll.add(50);
-
-// returns 10 20 30 40 50
+println("ll=", JSON.stringify(ll))
 ll.printList();
-
-// prints 50 from the list
 println("is element removed? ", ll.removeElement(50));
-
-// prints 10 20 30 40
 ll.printList();
-
-// returns 3
 println("Index of 40 ", ll.indexOf(40));
-
-// insert 60 at second position
-// ll contains 10 20 60 30 40
 ll.insertAt(60, 2);
 
 ll.printList();
-
-// returns false
 println("is List Empty? ", ll.isEmpty());
-
-// remove 3rd element from the list
 println(ll.removeFrom(3));
-
-// prints 10 20 60 40
 ll.printList();

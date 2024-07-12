@@ -1,4 +1,5 @@
 
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
@@ -24,82 +25,12 @@
 */
 #if 0
 {
-
 collections_strndup
 collections_strdup
 hash_string
 src_pos_make
 opcode_lookup
 opcode_get_name
-parser_make
-parser_destroy
-parser_parse_all
-parse_statement
-mc_parser_parsevarletstmt
-parse_if_statement
-parse_return_statement
-parse_expression_statement
-parse_while_loop_statement
-parse_break_statement
-parse_continue_statement
-parse_block_statement
-parse_import_statement
-parse_recover_statement
-parse_for_loop_statement
-parse_foreach
-parse_classic_for_loop
-parse_function_statement
-parse_code_block
-parse_expression
-parse_function_parameters
-parse_call_expression
-parse_expression_list
-parse_logical_expression
-parse_ternary_expression
-parse_incdec_postfix_expression
-parse_dot_expression
-get_precedence
-token_to_operator
-escape_char
-process_and_copy_string
-wrap_expression_in_function_call
-read_file_default
-write_file_default
-stdout_write_default
-expression_make_ident
-expression_make_number_literal
-expression_make_bool_literal
-expression_make_string_literal
-expression_make_null_literal
-expression_make_array_literal
-expression_make_map_literal
-expression_make_prefix
-expression_make_infix
-expression_make_fn_literal
-expression_make_call
-expression_make_index
-expression_make_assign
-expression_make_logical
-expression_make_ternary
-expression_destroy
-expression_copy
-statement_make_define
-statement_make_if
-statement_make_return
-statement_make_expression
-statement_make_while_loop
-statement_make_break
-statement_make_foreach
-statement_make_for_loop
-statement_make_continue
-statement_make_block
-statement_make_import
-statement_make_recover
-statement_destroy
-statement_copy
-mc_astcodeblock_make
-mc_astcodeblock_destroy
-mc_astcodeblock_copy
 operator_to_string
 expression_type_to_string
 builtins_count
@@ -124,21 +55,6 @@ global_store_set
 global_store_get_object_at
 global_store_get_object_data
 global_store_get_object_count
-object_is_hashable
-object_get_type_name
-object_get_type_union_name
-object_serialize
-object_equals
-object_get_external_data
-object_set_external_destroy_function
-object_get_allocated_data
-object_get_bool
-object_equals_wrapped
-object_hash
-object_hash_string
-object_hash_double
-object_get_allocated_array
-object_is_number
 freevals_are_allocated
 block_scope_make
 block_scope_destroy
@@ -230,25 +146,20 @@ THE SOFTWARE.
 #endif
 
 
-#define VM_STACK_SIZE 2048
-#define VM_MAX_GLOBALS 2048
-#define VM_MAX_FRAMES 2048
-#define VM_THIS_STACK_SIZE 2048
-#define NATIVE_FN_MAX_DATA_LEN 24
-
-#define MC_CONF_OBJECT_STRING_BUF_SIZE 24
-
-#define GCMEM_POOL_SIZE 2048
-#define GCMEM_POOLS_NUM 3
-#define GCMEM_SWEEP_INTERVAL 128
-
+#define MC_CONF_VMVALSTACKSIZE 2048
+#define MC_CONF_VMMAXGLOBALS 2048
+#define MC_CONF_VMMAXFRAMES 2048
+#define MC_CONF_VMTHISSTACKSIZE 2048
+#define MC_CONF_NATIVEFUNCMAXDATA 24
+#define MC_CONF_STRINGMAXSTACKSIZE 24
+#define MC_CONF_GCMEMPOOLSIZE 2048
+#define MC_CONF_GCMEMPOOLCOUNT 3
+#define MC_CONF_GCMEMSWEEPINTERVAL 128
 #define MC_CONF_ERROR_MAXERRORCOUNT 16
 #define MC_CONF_ERROR_MSGMAXLENGTH 255
-#define DICT_INVALID_IX UINT_MAX
-#define DICT_INITIAL_SIZE 32
-
-#define VALDICT_INVALID_IX UINT_MAX
-
+#define MC_CONF_GENERICDICTINVALIDIX UINT_MAX
+#define MC_CONF_VALDICTINVALIDIX UINT_MAX
+#define MC_CONF_GENERICDICTINITSIZE 32
 
 enum mcerrtype_t
 {
@@ -258,7 +169,7 @@ enum mcerrtype_t
     MC_ERROR_RUNTIME,
     MC_ERROR_TIMEOUT,
     MC_ERROR_MEMORY,
-    MC_ERROR_USER,
+    MC_ERROR_USER
 };
 
 enum mcobjtype_t
@@ -269,24 +180,22 @@ enum mcobjtype_t
     MC_OBJ_BOOL = 1 << 2,
     MC_OBJ_STRING = 1 << 3,
     MC_OBJ_NULL = 1 << 4,
-    MC_OBJ_NATIVE_FUNCTION = 1 << 5,
+    MC_OBJ_FUNCNATIVE = 1 << 5,
     MC_OBJ_ARRAY = 1 << 6,
     MC_OBJ_MAP = 1 << 7,
-    MC_OBJ_FUNCTION = 1 << 8,
+    MC_OBJ_FUNCSCRIPT = 1 << 8,
     MC_OBJ_EXTERNAL = 1 << 9,
     MC_OBJ_FREED = 1 << 10,
     /* for checking types with & */
-    MC_OBJ_ANY = 0xffff,
+    MC_OBJ_ANY = 0xffff
 };
 
 enum mcasttoktype_t
 {
     MC_TOK_INVALID = 0,
     MC_TOK_EOF,
-
     /* Operators */
     MC_TOK_ASSIGN,
-
     MC_TOK_PLUSASSIGN,
     MC_TOK_MINUSASSIGN,
     MC_TOK_ASTERISKASSIGN,
@@ -297,9 +206,7 @@ enum mcasttoktype_t
     MC_TOK_BITXORASSIGN,
     MC_TOK_LSHIFTASSIGN,
     MC_TOK_RSHIFTASSIGN,
-
     MC_TOK_QUESTION,
-
     MC_TOK_PLUS,
     MC_TOK_PLUSPLUS,
     MC_TOK_MINUS,
@@ -307,24 +214,19 @@ enum mcasttoktype_t
     MC_TOK_BANG,
     MC_TOK_ASTERISK,
     MC_TOK_SLASH,
-
     MC_TOK_LT,
     MC_TOK_LTE,
     MC_TOK_GT,
     MC_TOK_GTE,
-
     MC_TOK_EQ,
     MC_TOK_NOTEQ,
-
     MC_TOK_AND,
     MC_TOK_OR,
-
     MC_TOK_BITAND,
     MC_TOK_BITOR,
     MC_TOK_BITXOR,
     MC_TOK_LSHIFT,
     MC_TOK_RSHIFT,
-
     /* Delimiters */
     MC_TOK_COMMA,
     MC_TOK_SEMICOLON,
@@ -337,7 +239,6 @@ enum mcasttoktype_t
     MC_TOK_RBRACKET,
     MC_TOK_DOT,
     MC_TOK_PERCENT,
-
     /* Keywords */
     MC_TOK_FUNCTION,
     MC_TOK_CONST,
@@ -355,41 +256,39 @@ enum mcasttoktype_t
     MC_TOK_NULL,
     MC_TOK_IMPORT,
     MC_TOK_RECOVER,
-
     /* Identifiers and literals */
     MC_TOK_IDENT,
     MC_TOK_NUMBER,
     MC_TOK_STRING,
     MC_TOK_TEMPLATESTRING,
-
+    /* MUST be last. */
     MC_TOK_TYPEMAX
 };
 
 enum mcastmathoptype_t
 {
-    OPERATOR_NONE,
-    OPERATOR_ASSIGN,
-    OPERATOR_PLUS,
-    OPERATOR_MINUS,
-    OPERATOR_BANG,
-    OPERATOR_ASTERISK,
-    OPERATOR_SLASH,
-    OPERATOR_LT,
-    OPERATOR_LTE,
-    OPERATOR_GT,
-    OPERATOR_GTE,
-    OPERATOR_EQ,
-    OPERATOR_NOT_EQ,
-    OPERATOR_MODULUS,
-    OPERATOR_LOGICAL_AND,
-    OPERATOR_LOGICAL_OR,
-    OPERATOR_BIT_AND,
-    OPERATOR_BIT_OR,
-    OPERATOR_BIT_XOR,
-    OPERATOR_LSHIFT,
-    OPERATOR_RSHIFT,
+    MC_MATHOP_NONE,
+    MC_MATHOP_ASSIGN,
+    MC_MATHOP_PLUS,
+    MC_MATHOP_MINUS,
+    MC_MATHOP_BANG,
+    MC_MATHOP_ASTERISK,
+    MC_MATHOP_SLASH,
+    MC_MATHOP_LT,
+    MC_MATHOP_LTE,
+    MC_MATHOP_GT,
+    MC_MATHOP_GTE,
+    MC_MATHOP_EQ,
+    MC_MATHOP_NOTEQ,
+    MC_MATHOP_MODULUS,
+    MC_MATHOP_LOGICALAND,
+    MC_MATHOP_LOGICALOR,
+    MC_MATHOP_BITAND,
+    MC_MATHOP_BITOR,
+    MC_MATHOP_BITXOR,
+    MC_MATHOP_LSHIFT,
+    MC_MATHOP_RSHIFT
 };
-
 
 enum mcastexprtype_t
 {
@@ -409,7 +308,6 @@ enum mcastexprtype_t
     MC_EXPR_ASSIGN,
     MC_EXPR_LOGICAL,
     MC_EXPR_TERNARY,
-
     MC_EXPR_STMTDEFINE,
     MC_EXPR_STMTIF,
     MC_EXPR_STMTRETURN,
@@ -421,116 +319,114 @@ enum mcastexprtype_t
     MC_EXPR_STMTLOOPFORCLASSIC,
     MC_EXPR_STMTBLOCK,
     MC_EXPR_STMTIMPORT,
-    MC_EXPR_STMTRECOVER,
+    MC_EXPR_STMTRECOVER
 };
 
 enum mcopcode_t
 {
-    OPCODE_NONE = 0,
-    OPCODE_CONSTANT,
-    OPCODE_ADD,
-    OPCODE_POP,
-    OPCODE_SUB,
-    OPCODE_MUL,
-    OPCODE_DIV,
-    OPCODE_MOD,
-    OPCODE_TRUE,
-    OPCODE_FALSE,
-    OPCODE_COMPARE,
-    OPCODE_COMPARE_EQ,
-    OPCODE_EQUAL,
-    OPCODE_NOT_EQUAL,
-    OPCODE_GREATER_THAN,
-    OPCODE_GREATER_THAN_EQUAL,
-    OPCODE_MINUS,
-    OPCODE_BANG,
-    OPCODE_JUMP,
-    OPCODE_JUMP_IF_FALSE,
-    OPCODE_JUMP_IF_TRUE,
-    OPCODE_NULL,
-    OPCODE_GET_MODULE_GLOBAL,
-    OPCODE_SET_MODULE_GLOBAL,
-    OPCODE_DEFINE_MODULE_GLOBAL,
-    OPCODE_ARRAY,
-    OPCODE_MAP_START,
-    OPCODE_MAP_END,
-    OPCODE_GET_THIS,
-    OPCODE_GET_INDEX,
-    OPCODE_SET_INDEX,
-    OPCODE_GET_VALUE_AT,
-    OPCODE_CALL,
-    OPCODE_RETURN_VALUE,
-    OPCODE_RETURN,
-    OPCODE_GET_LOCAL,
-    OPCODE_DEFINE_LOCAL,
-    OPCODE_SET_LOCAL,
-    OPCODE_GETGLOBALBUILTIN,
-    OPCODE_FUNCTION,
-    OPCODE_GET_FREE,
-    OPCODE_SET_FREE,
-    OPCODE_CURRENT_FUNCTION,
-    OPCODE_DUP,
-    OPCODE_NUMBER,
-    OPCODE_LEN,
-    OPCODE_SET_RECOVER,
-    OPCODE_OR,
-    OPCODE_XOR,
-    OPCODE_AND,
-    OPCODE_LSHIFT,
-    OPCODE_RSHIFT,
-    OPCODE_MAX,
+    MC_OPCODE_NONE = 0,
+    MC_OPCODE_CONSTANT,
+    MC_OPCODE_ADD,
+    MC_OPCODE_POP,
+    MC_OPCODE_SUB,
+    MC_OPCODE_MUL,
+    MC_OPCODE_DIV,
+    MC_OPCODE_MOD,
+    MC_OPCODE_TRUE,
+    MC_OPCODE_FALSE,
+    MC_OPCODE_COMPARE,
+    MC_OPCODE_COMPAREEQ,
+    MC_OPCODE_EQUAL,
+    MC_OPCODE_NOTEQUAL,
+    MC_OPCODE_GREATERTHAN,
+    MC_OPCODE_GREATERTHANEQUAL,
+    MC_OPCODE_MINUS,
+    MC_OPCODE_BANG,
+    MC_OPCODE_JUMP,
+    MC_OPCODE_JUMPIFFALSE,
+    MC_OPCODE_JUMPIFTRUE,
+    MC_OPCODE_NULL,
+    MC_OPCODE_GETMODULEGLOBAL,
+    MC_OPCODE_SETMODULEGLOBAL,
+    MC_OPCODE_DEFINEMODULEGLOBAL,
+    MC_OPCODE_ARRAY,
+    MC_OPCODE_MAPSTART,
+    MC_OPCODE_MAPEND,
+    MC_OPCODE_GETTHIS,
+    MC_OPCODE_GETINDEX,
+    MC_OPCODE_SETINDEX,
+    MC_OPCODE_GETVALUEAT,
+    MC_OPCODE_CALL,
+    MC_OPCODE_RETURNVALUE,
+    MC_OPCODE_RETURN,
+    MC_OPCODE_GETLOCAL,
+    MC_OPCODE_DEFINELOCAL,
+    MC_OPCODE_SETLOCAL,
+    MC_OPCODE_GETGLOBALBUILTIN,
+    MC_OPCODE_FUNCTION,
+    MC_OPCODE_GETFREE,
+    MC_OPCODE_SETFREE,
+    MC_OPCODE_CURRENTFUNCTION,
+    MC_OPCODE_DUP,
+    MC_OPCODE_NUMBER,
+    MC_OPCODE_LEN,
+    MC_OPCODE_SETRECOVER,
+    MC_OPCODE_OR,
+    MC_OPCODE_XOR,
+    MC_OPCODE_AND,
+    MC_OPCODE_LSHIFT,
+    MC_OPCODE_RSHIFT,
+    MC_OPCODE_MAX
 };
-
 
 enum mcastsymtype_t
 {
-    SYMBOL_NONE = 0,
-    SYMBOL_MODULE_GLOBAL,
-    SYMBOL_LOCAL,
-    SYMBOL_GLOBALBUILTIN,
-    SYMBOL_FREE,
-    SYMBOL_FUNCTION,
-    SYMBOL_THIS,
+    MC_SYM_NONE = 0,
+    MC_SYM_MODULEGLOBAL,
+    MC_SYM_LOCAL,
+    MC_SYM_GLOBALBUILTIN,
+    MC_SYM_FREE,
+    MC_SYM_FUNCTION,
+    MC_SYM_THIS
 };
 
 enum mcastprecedence_t
 {
-    PRECEDENCE_LOWEST = 0,
-    PRECEDENCE_ASSIGN,
+    MC_ASTPREC_LOWEST = 0,
+    MC_ASTPREC_ASSIGN,
     /* a = b */
-    PRECEDENCE_TERNARY,
+    MC_ASTPREC_TERNARY,
     /* a ? b : c */
-    PRECEDENCE_LOGICAL_OR,
+    MC_ASTPREC_LOGICALOR,
     /* || */
-    PRECEDENCE_LOGICAL_AND,
+    MC_ASTPREC_LOGICALAND,
     /* && */
-    PRECEDENCE_BIT_OR,
+    MC_ASTPREC_BITOR,
     /* | */
-    PRECEDENCE_BIT_XOR,
+    MC_ASTPREC_BITXOR,
     /* ^ */
-    PRECEDENCE_BIT_AND,
+    MC_ASTPREC_BITAND,
     /* & */
-    PRECEDENCE_EQUALS,
+    MC_ASTPREC_EQUALS,
     /* == != */
-    PRECEDENCE_LESSGREATER,
+    MC_ASTPREC_LESSGREATER,
     /* >, >=, <, <= */
-    PRECEDENCE_SHIFT,
+    MC_ASTPREC_SHIFT,
     /* << >> */
-    PRECEDENCE_SUM,
+    MC_ASTPREC_SUM,
     /* + - */
-    PRECEDENCE_PRODUCT,
+    MC_ASTPREC_PRODUCT,
     /* * / % */
-    PRECEDENCE_PREFIX,
+    MC_ASTPREC_PREFIX,
     /* -x !x ++x --x */
-    PRECEDENCE_INCDEC,
+    MC_ASTPREC_INCDEC,
     /* x++ x-- */
-    PRECEDENCE_POSTFIX,
+    MC_ASTPREC_POSTFIX,
     /* myFunction(x) x["foo"] x.foo */
-    PRECEDENCE_HIGHEST
+    MC_ASTPREC_HIGHEST
 };
 
 typedef uint8_t mcinternopcode_t;
-
 
 typedef enum mcerrtype_t mcerrtype_t;
 typedef enum mcobjtype_t mcobjtype_t;
@@ -545,12 +441,11 @@ typedef struct mcgenericdict_t mcgenericdict_t;
 typedef struct mcvaldict_t mcvaldict_t;
 typedef struct mcbasicarray_t mcbasicarray_t;
 typedef struct mcptrarray_t mcptrarray_t;
+typedef struct mcprintconfig_t mcprintconfig_t;
 typedef struct mcprintstate_t mcprintstate_t;
-
 typedef struct mcerror_t mcerror_t;
 typedef struct mctraceback_t mctraceback_t;
 typedef struct mcastcompiledfile_t mcastcompiledfile_t;
-
 typedef struct mcastexpression_t mcastexpression_t;
 typedef struct mccompiledprogram_t mccompiledprogram_t;
 typedef struct mcstate_t mcstate_t;
@@ -566,7 +461,6 @@ typedef struct mcastsymbol_t mcastsymbol_t;
 typedef struct mcvalue_t mcvalue_t;
 typedef struct mcastlocation_t mcastlocation_t;
 typedef struct mctimer_t mctimer_t;
-
 typedef struct mcasttoken_t mcasttoken_t;
 typedef struct mcastcodeblock_t mcastcodeblock_t;
 typedef struct mcastliteralmap_t mcastliteralmap_t;
@@ -610,6 +504,8 @@ typedef struct mcastlexer_t mcastlexer_t;
 typedef struct mcvmframe_t mcvmframe_t;
 typedef struct mctraceitem_t mctraceitem_t;
 typedef struct module_t module_t;
+typedef struct mcconffileio_t mcconffileio_t;
+typedef union mcvalunion_t mcvalunion_t;
 
 typedef mcvalue_t (*mcnativefn_t)(mcstate_t* state, void* data, int argc, mcvalue_t* args);
 
@@ -630,18 +526,19 @@ typedef mcastexpression_t* (*mcleftassocparsefn_t)(mcastparser_t* p, mcastexpres
  * \brief The execution environment for an instance of the script engine.
  */
 
+union mcvalunion_t
+{
+    mcobjdata_t* odata;
+    double valnumber;
+    bool valbool;
+};
+
 struct mcvalue_t
 {
     mcobjtype_t type;
     bool isallocated;
-    union
-    {
-        mcobjdata_t* objdatahandle;
-        double valnumber;
-        bool valbool;
-    };
+    mcvalunion_t uval;
 };
-
 
 struct mcastlocation_t
 {
@@ -650,14 +547,16 @@ struct mcastlocation_t
     int column;
 };
 
+struct mcconffileio_t
+{
+    mcreadfilefn_t fnreadfile;
+    mcwritefilefn_t fnwritefile;
+    void* context;
+};
+
 struct mcconfig_t
 {
-    struct
-    {
-        mcreadfilefn_t fnreadfile;
-        mcwritefilefn_t fnwritefile;
-        void* context;
-    } fileio;
+    mcconffileio_t fileio;
     /* allows redefinition of symbols */
     bool replmode;
     double maxexecutiontime;
@@ -851,36 +750,35 @@ struct mcobjfuncscript_t
 {
     union
     {
-        mcvalue_t* free_vals_allocated;
-        mcvalue_t free_vals_buf[2];
+        mcvalue_t* freevalsallocated;
+        mcvalue_t freevalsstack[2];
     };
-
     union
     {
-        char* name;
-        const char* const_name;
+        char* fallocname;
+        const char* fconstname;
     };
+    mccompiledprogram_t* compiledprogcode;
+    int numlocals;
+    int numargs;
+    int freevalscount;
+    bool ownsdata;
 
-    mccompiledprogram_t* comp_result;
-    int num_locals;
-    int num_args;
-    int free_vals_count;
-    bool owns_data;
 };
 
 struct mcobjfuncnative_t
 {
     char* name;
-    mcnativefn_t fn;
-    uint8_t data[NATIVE_FN_MAX_DATA_LEN];
-    int data_len;
+    mcnativefn_t natptrfn;
+    uint8_t userdata[MC_CONF_NATIVEFUNCMAXDATA];
+    int userdlen;
 };
 
 struct mcobjexternal_t
 {
     void* data;
-    mcitemdestroyfn_t data_destroy_fn;
-    mcitemcopyfn_t data_copy_fn;
+    mcitemdestroyfn_t datadestroyfn;
+    mcitemcopyfn_t datacopyfn;
 };
 
 struct mcobjerror_t
@@ -894,13 +792,12 @@ struct mcobjstring_t
     union
     {
         char* actualallocated;
-        char actualonstack[MC_CONF_OBJECT_STRING_BUF_SIZE];
+        char actualonstack[MC_CONF_STRINGMAXSTACKSIZE];
     };
     unsigned long hash;
-    bool is_allocated;
+    bool isallocated;
     int capacity;
     int length;
-    const char* data;
 };
 
 struct mcobjdata_t
@@ -911,12 +808,12 @@ struct mcobjdata_t
     union
     {
         mcobjstring_t valstring;
-        mcobjerror_t error;
-        mcbasicarray_t* array;
-        mcvaldict_t* map;
-        mcobjfuncscript_t function;
-        mcobjfuncnative_t native_function;
-        mcobjexternal_t external;
+        mcobjerror_t valerror;
+        mcbasicarray_t* valarray;
+        mcvaldict_t* valmap;
+        mcobjfuncscript_t valscriptfunc;
+        mcobjfuncnative_t valnativefunc;
+        mcobjexternal_t valexternal;
     };
     bool gcmark;
 };
@@ -924,8 +821,8 @@ struct mcobjdata_t
 struct mcopdefinition_t
 {
     const char* name;
-    int num_operands;
-    int operand_widths[2];
+    int numoperands;
+    int operandwidths[2];
 };
 
 struct mcastsymbol_t
@@ -942,25 +839,24 @@ struct mcastscopeblock_t
     mcstate_t* pstate;
     mcgenericdict_t* store;
     int offset;
-    int num_definitions;
+    int numdefinitions;
 };
 
 struct mcastsymtable_t
 {
     mcstate_t* pstate;
     mcastsymtable_t* outer;
-    mcglobalstore_t* global_store;
-    mcptrarray_t* block_scopes;
-    mcptrarray_t* free_symbols;
-    mcptrarray_t* module_global_symbols;
-    int max_num_definitions;
-    int module_global_offset;
+    mcglobalstore_t* symglobalstore;
+    mcptrarray_t* blockscopes;
+    mcptrarray_t* freesymbols;
+    mcptrarray_t* modglobalsymbols;
+    int maxnumdefinitions;
+    int modglobaloffset;
 };
-
 
 struct mcgcobjdatapool_t
 {
-    mcobjdata_t* data[GCMEM_POOL_SIZE];
+    mcobjdata_t* data[MC_CONF_GCMEMPOOLSIZE];
     int count;
 };
 
@@ -972,14 +868,14 @@ struct mcgcmemory_t
     mcptrarray_t* gcobjlistback;
     mcbasicarray_t* gcobjlistremains;
     mcgcobjdatapool_t onlydatapool;
-    mcgcobjdatapool_t mempools[GCMEM_POOLS_NUM];
+    mcgcobjdatapool_t mempools[MC_CONF_GCMEMPOOLCOUNT];
 };
 
 struct mccompiledprogram_t
 {
     mcstate_t* pstate;
     uint8_t* bytecode;
-    mcastlocation_t* src_positions;
+    mcastlocation_t* progsrcposlist;
     int count;
 };
 
@@ -988,12 +884,11 @@ struct mcastscopecomp_t
     mcstate_t* pstate;
     mcastscopecomp_t* outer;
     mcbasicarray_t* bytecode;
-    mcbasicarray_t* src_positions;
-    mcbasicarray_t* break_ip_stack;
-    mcbasicarray_t* continue_ip_stack;
-    mcinternopcode_t last_opcode;
+    mcbasicarray_t* scopesrcposlist;
+    mcbasicarray_t* ipstackbreak;
+    mcbasicarray_t* ipstackcontinue;
+    mcinternopcode_t lastopcode;
 };
-
 
 struct mcastcompiledfile_t
 {
@@ -1060,19 +955,19 @@ struct mcastparser_t
 struct mcvmframe_t
 {
     mcvalue_t function;
-    int ip;
-    int base_pointer;
-    mcastlocation_t* src_positions;
+    int bcposition;
+    int basepointer;
+    mcastlocation_t* framesrcposlist;
     uint8_t* bytecode;
-    int src_ip;
-    int bytecode_size;
-    int recover_ip;
-    bool is_recovering;
+    int sourcebcpos;
+    int bcsize;
+    int recoverip;
+    bool isrecovering;
 };
 
 struct mctraceitem_t
 {
-    char* function_name;
+    char* trfuncname;
     mcastlocation_t pos;
 };
 
@@ -1087,19 +982,19 @@ struct mcstate_t
     mcconfig_t config;
     mcerrlist_t errors;
     mcgcmemory_t* mem;
-    mcglobalstore_t* global_store;
-    mcvalue_t globals[VM_MAX_GLOBALS];
+    mcglobalstore_t* vmglobalstore;
+    mcvalue_t globals[MC_CONF_VMMAXGLOBALS];
     int globals_count;
-    mcvalue_t stack[VM_STACK_SIZE];
-    int sp;
-    mcvalue_t this_stack[VM_THIS_STACK_SIZE];
-    int this_sp;
-    mcvmframe_t frames[VM_MAX_FRAMES];
-    int frames_count;
-    mcvalue_t last_popped;
+    mcvalue_t valuestack[MC_CONF_VMVALSTACKSIZE];
+    int vsposition;
+    mcvalue_t valthisstack[MC_CONF_VMTHISSTACKSIZE];
+    int thisstpos;
+    mcvmframe_t framestack[MC_CONF_VMMAXFRAMES];
+    int framecount;
+    mcvalue_t lastpopped;
     mcvmframe_t* currframe;
     bool running;
-    mcvalue_t operator_oveload_keys[OPCODE_MAX];
+    mcvalue_t operoverloadkeys[MC_OPCODE_MAX];
     mcptrarray_t* files;
     mcastcompiler_t* compiler;
 };
@@ -1111,9 +1006,16 @@ struct mcglobalstore_t
     mcbasicarray_t* objects;
 };
 
+struct mcprintconfig_t
+{
+    bool verbosefunc;
+    bool quotstring;
+};
+
 struct mcprintstate_t
 {
     mcstate_t* pstate;
+    mcprintconfig_t config;
     bool failed;
     bool onstack;
     FILE* destfile;
@@ -1168,7 +1070,7 @@ struct mcgenericdict_t
     unsigned int itemcapacity;
     unsigned int cellcapacity;
     mcitemcopyfn_t funccopyfn;
-    mcitemdestroyfn_t destroy_fn;
+    mcitemdestroyfn_t funcdestroyfn;
 };
 
 
@@ -1183,9 +1085,9 @@ struct mcastscopefile_t
 {
     mcstate_t* pstate;
     mcastparser_t* parser;
-    mcastsymtable_t* symbol_table;
+    mcastsymtable_t* filesymtab;
     mcastcompiledfile_t* file;
-    mcptrarray_t* loaded_module_names;
+    mcptrarray_t* loadedmodnames;
 };
 
 struct mcastcompiler_t
@@ -1195,36 +1097,52 @@ struct mcastcompiler_t
     mcgcmemory_t* mem;
     mcerrlist_t* errors;
     mcptrarray_t* files;
-    mcglobalstore_t* global_store;
+    mcglobalstore_t* compglobalstore;
     mcbasicarray_t* constants;
-    mcastscopecomp_t* compilation_scope;
-    mcptrarray_t* file_scopes;
-    mcbasicarray_t* src_positions_stack;
+    mcastscopecomp_t* compilationscope;
+    mcptrarray_t* filescopelist;
+    mcbasicarray_t* srcposstack;
     mcgenericdict_t* modules;
-    mcgenericdict_t* string_constants_positions;
+    mcgenericdict_t* stringconstposdict;
 };
 
 #include "prot.inc"
+
+#if defined(__STRICT_ANSI__)
+extern int vsnprintf (char* destb, size_t maxlen, const char* fmt, va_list va);
+#endif
 
 /* endheader */
 
 
 static mcastlocation_t srcposinvalid = { NULL, -1, -1 };
 
-TMPSTATIC unsigned long mc_util_hashdata(void* ptr, size_t len)
+TMPSTATIC unsigned long mc_util_hashdata(const void* ptr, size_t len)
 {
     /* djb2 */
     size_t i;
     unsigned long hash;
     uint8_t val;
-    uint8_t* up;
-    up = (uint8_t*)ptr;
+    const uint8_t* up;
+    up = (const uint8_t*)ptr;
     hash = 5381;
     for(i = 0; i < len; i++)
     {
         val = up[i];
         hash = ((hash << 5) + hash) + val;
     }
+    return hash;
+}
+
+TMPSTATIC unsigned long mc_util_hashdouble(double val)
+{
+    /* djb2 */
+    unsigned long hash;
+    uint32_t* valptr;
+    valptr = (uint32_t*)&val;
+    hash = 5381;
+    hash = ((hash << 5) + hash) + valptr[0];
+    hash = ((hash << 5) + hash) + valptr[1];
     return hash;
 }
 
@@ -1344,7 +1262,8 @@ TMPSTATIC double mc_mathutil_mod(double dnleft, double dnright)
 
 TMPSTATIC char* collections_strndup(mcstate_t* state, const char* string, size_t n)
 {
-    char* outputstring = (char*)mc_allocator_alloc(state, n + 1);
+    char* outputstring;
+    outputstring = (char*)mc_allocator_alloc(state, n + 1);
     if(!outputstring)
     {
         return NULL;
@@ -1363,17 +1282,16 @@ TMPSTATIC char* collections_strdup(mcstate_t* state, const char* string)
     return collections_strndup(state, string, strlen(string));
 }
 
-
-
-TMPSTATIC mcgenericdict_t* mc_genericdict_make(mcstate_t* state, mcitemcopyfn_t copyfn, mcitemdestroyfn_t destroy_fn)
+TMPSTATIC mcgenericdict_t* mc_genericdict_make(mcstate_t* state, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
 {
     bool ok;
-    mcgenericdict_t* dict = (mcgenericdict_t*)mc_allocator_alloc(state, sizeof(mcgenericdict_t));
+    mcgenericdict_t* dict;
+    dict = (mcgenericdict_t*)mc_allocator_alloc(state, sizeof(mcgenericdict_t));
     if(dict == NULL)
     {
         return NULL;
     }
-    ok = mc_genericdict_init(dict, state, DICT_INITIAL_SIZE, copyfn, destroy_fn);
+    ok = mc_genericdict_init(dict, state, MC_CONF_GENERICDICTINITSIZE, copyfn, dfn);
     if(!ok)
     {
         mc_allocator_free(state, dict);
@@ -1402,11 +1320,11 @@ TMPSTATIC void mc_genericdict_destroyitemsanddict(mcgenericdict_t* dict)
     {
         return;
     }
-    if(dict->destroy_fn)
+    if(dict->funcdestroyfn)
     {
         for(i = 0; i < dict->count; i++)
         {
-            dict->destroy_fn(dict->values[i]);
+            dict->funcdestroyfn(dict->values[i]);
         }
     }
     mc_genericdict_destroy(dict);
@@ -1416,12 +1334,15 @@ TMPSTATIC mcgenericdict_t* mc_genericdict_copy(mcgenericdict_t* dict)
 {
     bool ok;
     int i;
-    if(!dict->funccopyfn || !dict->destroy_fn)
+    void* item;
+    void* itemcopy;
+    const char* key;
+    mcgenericdict_t* dictcopy;
+    if(!dict->funccopyfn || !dict->funcdestroyfn)
     {
         return NULL;
     }
-
-    mcgenericdict_t* dictcopy = mc_genericdict_make(dict->pstate, dict->funccopyfn, dict->destroy_fn);
+    dictcopy = mc_genericdict_make(dict->pstate, dict->funccopyfn, dict->funcdestroyfn);
     if(!dictcopy)
     {
         return NULL;
@@ -1429,9 +1350,9 @@ TMPSTATIC mcgenericdict_t* mc_genericdict_copy(mcgenericdict_t* dict)
     dictcopy->pstate = dict->pstate;
     for(i = 0; i < mc_genericdict_count(dict); i++)
     {
-        const char* key = mc_genericdict_getkeyat(dict, i);
-        void* item = mc_genericdict_getvalueat(dict, i);
-        void* itemcopy = dictcopy->funccopyfn(item);
+        key = mc_genericdict_getkeyat(dict, i);
+        item = mc_genericdict_getvalueat(dict, i);
+        itemcopy = dictcopy->funccopyfn(item);
         if(item && !itemcopy)
         {
             mc_genericdict_destroyitemsanddict(dictcopy);
@@ -1440,7 +1361,7 @@ TMPSTATIC mcgenericdict_t* mc_genericdict_copy(mcgenericdict_t* dict)
         ok = mc_genericdict_set(dictcopy, key, itemcopy);
         if(!ok)
         {
-            dictcopy->destroy_fn(itemcopy);
+            dictcopy->funcdestroyfn(itemcopy);
             mc_genericdict_destroyitemsanddict(dictcopy);
             return NULL;
         }
@@ -1455,14 +1376,18 @@ TMPSTATIC bool mc_genericdict_set(mcgenericdict_t* dict, const char* key, void* 
 
 TMPSTATIC void* mc_genericdict_get(mcgenericdict_t* dict, const char* key)
 {
-    unsigned long hash = hash_string(key);
-    bool found = false;
-    unsigned long cellix = mc_genericdict_getcellindex(dict, key, hash, &found);
+    bool found;
+    unsigned int itemix;
+    unsigned long hash;
+    unsigned long cellix;
+    hash = hash_string(key);
+    found = false;
+    cellix = mc_genericdict_getcellindex(dict, key, hash, &found);
     if(found == false)
     {
         return NULL;
     }
-    unsigned int itemix = dict->cells[cellix];
+    itemix = dict->cells[cellix];
     return dict->values[itemix];
 }
 
@@ -1495,18 +1420,25 @@ TMPSTATIC int mc_genericdict_count(mcgenericdict_t* dict)
 
 TMPUNUSED bool mc_genericdict_remove(mcgenericdict_t* dict, const char* key)
 {
+    bool found;
     unsigned int x;
-    unsigned long hash = hash_string(key);
-    bool found = false;
-    unsigned int cell = mc_genericdict_getcellindex(dict, key, hash, &found);
+    unsigned int k;
+    unsigned int i;
+    unsigned int j;
+    unsigned int cell;
+    unsigned int itemix;
+    unsigned int lastitemix;
+    unsigned long hash;
+    hash = hash_string(key);
+    found = false;
+    cell = mc_genericdict_getcellindex(dict, key, hash, &found);
     if(!found)
     {
         return false;
     }
-
-    unsigned int itemix = dict->cells[cell];
+    itemix = dict->cells[cell];
     mc_allocator_free(dict->pstate, dict->keys[itemix]);
-    unsigned int lastitemix = dict->count - 1;
+    lastitemix = dict->count - 1;
     if(itemix < lastitemix)
     {
         dict->keys[itemix] = dict->keys[lastitemix];
@@ -1516,17 +1448,16 @@ TMPUNUSED bool mc_genericdict_remove(mcgenericdict_t* dict, const char* key)
         dict->cells[dict->cellindices[itemix]] = itemix;
     }
     dict->count--;
-
-    unsigned int i = cell;
-    unsigned int j = i;
+    i = cell;
+    j = i;
     for(x = 0; x < (dict->cellcapacity - 1); x++)
     {
         j = (j + 1) & (dict->cellcapacity - 1);
-        if(dict->cells[j] == DICT_INVALID_IX)
+        if(dict->cells[j] == MC_CONF_GENERICDICTINVALIDIX)
         {
             break;
         }
-        unsigned int k = (unsigned int)(dict->hashes[dict->cells[j]]) & (dict->cellcapacity - 1);
+        k = (unsigned int)(dict->hashes[dict->cells[j]]) & (dict->cellcapacity - 1);
         if((j > i && (k <= i || k > j)) || (j < i && (k <= i && k > j)))
         {
             dict->cellindices[dict->cells[j]] = i;
@@ -1534,11 +1465,11 @@ TMPUNUSED bool mc_genericdict_remove(mcgenericdict_t* dict, const char* key)
             i = j;
         }
     }
-    dict->cells[i] = DICT_INVALID_IX;
+    dict->cells[i] = MC_CONF_GENERICDICTINVALIDIX;
     return true;
 }
 
-TMPSTATIC bool mc_genericdict_init(mcgenericdict_t* dict, mcstate_t* state, unsigned int initialcapacity, mcitemcopyfn_t copyfn, mcitemdestroyfn_t destroy_fn)
+TMPSTATIC bool mc_genericdict_init(mcgenericdict_t* dict, mcstate_t* state, unsigned int initialcapacity, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
 {
     unsigned int i;
     dict->pstate = state;
@@ -1551,7 +1482,7 @@ TMPSTATIC bool mc_genericdict_init(mcgenericdict_t* dict, mcstate_t* state, unsi
     dict->cellcapacity = initialcapacity;
     dict->itemcapacity = (unsigned int)(initialcapacity * 0.7f);
     dict->funccopyfn = copyfn;
-    dict->destroy_fn = destroy_fn;
+    dict->funcdestroyfn = dfn;
     dict->cells = (unsigned int*)mc_allocator_alloc(dict->pstate, dict->cellcapacity * sizeof(*dict->cells));
     dict->keys = (char**)mc_allocator_alloc(dict->pstate, dict->itemcapacity * sizeof(*dict->keys));
     dict->values = (void**)mc_allocator_alloc(dict->pstate, dict->itemcapacity * sizeof(*dict->values));
@@ -1563,7 +1494,7 @@ TMPSTATIC bool mc_genericdict_init(mcgenericdict_t* dict, mcstate_t* state, unsi
     }
     for(i = 0; i < dict->cellcapacity; i++)
     {
-        dict->cells[i] = DICT_INVALID_IX;
+        dict->cells[i] = MC_CONF_GENERICDICTINVALIDIX;
     }
     return true;
 error:
@@ -1603,36 +1534,42 @@ TMPSTATIC void mc_genericdict_deinit(mcgenericdict_t* dict, bool freekeys)
 TMPSTATIC unsigned int mc_genericdict_getcellindex(mcgenericdict_t* dict, const char* key, unsigned long hash, bool* outfound)
 {
     unsigned int i;
+    unsigned int ix;
+    unsigned int cell;
+    unsigned int cellix;
+    unsigned long hashtocheck;
+    const char* keytocheck;
     *outfound = false;
-    unsigned int cellix = (unsigned int)hash & (dict->cellcapacity - 1);
+    cellix = (unsigned int)hash & (dict->cellcapacity - 1);
     for(i = 0; i < dict->cellcapacity; i++)
     {
-        unsigned int ix = (cellix + i) & (dict->cellcapacity - 1);
-        unsigned int cell = dict->cells[ix];
-        if(cell == DICT_INVALID_IX)
+        ix = (cellix + i) & (dict->cellcapacity - 1);
+        cell = dict->cells[ix];
+        if(cell == MC_CONF_GENERICDICTINVALIDIX)
         {
             return ix;
         }
-        unsigned long hashtocheck = dict->hashes[cell];
+        hashtocheck = dict->hashes[cell];
         if(hash != hashtocheck)
         {
             continue;
         }
-        const char* keytocheck = dict->keys[cell];
+        keytocheck = dict->keys[cell];
         if(strcmp(key, keytocheck) == 0)
         {
             *outfound = true;
             return ix;
         }
     }
-    return DICT_INVALID_IX;
+    return MC_CONF_GENERICDICTINVALIDIX;
 }
 
 TMPSTATIC unsigned long hash_string(const char* str)
 {
     /* djb2 */
-    unsigned long hash = 5381;
     uint8_t c;
+    unsigned long hash;
+    hash = 5381;
     while((c = *str++))
     {
         hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
@@ -1644,16 +1581,18 @@ TMPSEMISTATIC bool mc_genericdict_growandrehash(mcgenericdict_t* dict)
 {
     bool ok;
     unsigned int i;
+    char* key;
+    void* value;
     mcgenericdict_t newdict;
-    ok = mc_genericdict_init(&newdict, dict->pstate, dict->cellcapacity * 2, dict->funccopyfn, dict->destroy_fn);
+    ok = mc_genericdict_init(&newdict, dict->pstate, dict->cellcapacity * 2, dict->funccopyfn, dict->funcdestroyfn);
     if(!ok)
     {
         return false;
     }
     for(i = 0; i < dict->count; i++)
     {
-        char* key = dict->keys[i];
-        void* value = dict->values[i];
+        key = dict->keys[i];
+        value = dict->values[i];
         ok = mc_genericdict_setinternal(&newdict, key, key, value);
         if(!ok)
         {
@@ -1669,12 +1608,16 @@ TMPSEMISTATIC bool mc_genericdict_growandrehash(mcgenericdict_t* dict)
 TMPSTATIC bool mc_genericdict_setinternal(mcgenericdict_t* dict, const char* ckey, char* mkey, void* value)
 {
     bool ok;
-    unsigned long hash = hash_string(ckey);
-    bool found = false;
-    unsigned int cellix = mc_genericdict_getcellindex(dict, ckey, hash, &found);
+    bool found;
+    unsigned int cellix;
+    unsigned int itemix;
+    unsigned long hash;
+    hash = hash_string(ckey);
+    found = false;
+    cellix = mc_genericdict_getcellindex(dict, ckey, hash, &found);
     if(found)
     {
-        unsigned int itemix = dict->cells[cellix];
+        itemix = dict->cells[cellix];
         dict->values[itemix] = value;
         return true;
     }
@@ -1709,7 +1652,6 @@ TMPSTATIC bool mc_genericdict_setinternal(mcgenericdict_t* dict, const char* cke
     return true;
 }
 
-
 TMPSTATIC bool mc_valdict_init(mcvaldict_t* dict, mcstate_t* state, size_t ktsz, size_t vtsz, unsigned int initialcapacity)
 {
     unsigned int i;
@@ -1724,10 +1666,8 @@ TMPSTATIC bool mc_valdict_init(mcvaldict_t* dict, mcstate_t* state, size_t ktsz,
     dict->count = 0;
     dict->cellcapacity = initialcapacity;
     dict->itemcapacity = (unsigned int)(initialcapacity * 0.7f);
-
     dict->funckeyequalsfn = NULL;
     dict->funchashfn = NULL;
-
     dict->cells = (unsigned int*)mc_allocator_alloc(dict->pstate, dict->cellcapacity * sizeof(*dict->cells));
     dict->keys = (void*)mc_allocator_alloc(dict->pstate, dict->itemcapacity * ktsz);
     dict->values = (void*)mc_allocator_alloc(dict->pstate, dict->itemcapacity * vtsz);
@@ -1739,7 +1679,7 @@ TMPSTATIC bool mc_valdict_init(mcvaldict_t* dict, mcstate_t* state, size_t ktsz,
     }
     for(i = 0; i < dict->cellcapacity; i++)
     {
-        dict->cells[i] = VALDICT_INVALID_IX;
+        dict->cells[i] = MC_CONF_VALDICTINVALIDIX;
     }
     return true;
 error:
@@ -1758,13 +1698,11 @@ TMPSTATIC void mc_valdict_deinit(mcvaldict_t* dict)
     dict->count = 0;
     dict->itemcapacity = 0;
     dict->cellcapacity = 0;
-
     mc_allocator_free(dict->pstate, dict->cells);
     mc_allocator_free(dict->pstate, dict->keys);
     mc_allocator_free(dict->pstate, dict->values);
     mc_allocator_free(dict->pstate, dict->cellindices);
     mc_allocator_free(dict->pstate, dict->hashes);
-
     dict->cells = NULL;
     dict->keys = NULL;
     dict->values = NULL;
@@ -1774,14 +1712,16 @@ TMPSTATIC void mc_valdict_deinit(mcvaldict_t* dict)
 
 TMPSTATIC mcvaldict_t* mc_valdict_make(mcstate_t* state, size_t ktsz, size_t vtsz)
 {
-    return mc_valdict_makecapacity(state, DICT_INITIAL_SIZE, ktsz, vtsz);
+    return mc_valdict_makecapacity(state, MC_CONF_GENERICDICTINITSIZE, ktsz, vtsz);
 }
 
 TMPSTATIC mcvaldict_t* mc_valdict_makecapacity(mcstate_t* state, unsigned int mincapacity, size_t ktsz, size_t vtsz)
 {
     bool ok;
-    unsigned int capacity = mc_util_upperpowoftwo(mincapacity * 2);
-    mcvaldict_t* dict = (mcvaldict_t*)mc_allocator_alloc(state, sizeof(mcvaldict_t));
+    unsigned int capacity;
+    mcvaldict_t* dict;
+    capacity = mc_util_upperpowoftwo(mincapacity * 2);
+    dict = (mcvaldict_t*)mc_allocator_alloc(state, sizeof(mcvaldict_t));
     if(!dict)
     {
         return NULL;
@@ -1821,12 +1761,17 @@ TMPSTATIC void mc_valdict_setequalsfunction(mcvaldict_t* dict, mcitemcomparefn_t
 TMPSTATIC bool mc_valdict_setkv(mcvaldict_t* dict, void* key, void* value)
 {
     bool ok;
-    unsigned long hash = mc_valdict_hashkey(dict, key);
-    bool found = false;
-    unsigned int cellix = mc_valdict_getcellindex(dict, key, hash, &found);
+    bool found;
+    unsigned long hash;
+    unsigned int lastix;
+    unsigned int cellix;
+    unsigned int itemix;
+    hash = mc_valdict_hashkey(dict, key);
+    found = false;
+    cellix = mc_valdict_getcellindex(dict, key, hash, &found);
     if(found)
     {
-        unsigned int itemix = dict->cells[cellix];
+        itemix = dict->cells[cellix];
         mc_valdict_setvalueat(dict, itemix, value);
         return true;
     }
@@ -1839,7 +1784,7 @@ TMPSTATIC bool mc_valdict_setkv(mcvaldict_t* dict, void* key, void* value)
         }
         cellix = mc_valdict_getcellindex(dict, key, hash, &found);
     }
-    unsigned int lastix = dict->count;
+    lastix = dict->count;
     dict->count++;
     dict->cells[cellix] = lastix;
     mc_valdict_setkeyat(dict, lastix, key);
@@ -1851,18 +1796,22 @@ TMPSTATIC bool mc_valdict_setkv(mcvaldict_t* dict, void* key, void* value)
 
 TMPSTATIC void* mc_valdict_get(mcvaldict_t* dict, void* key)
 {
+    bool found;
+    unsigned int itemix;
+    unsigned long hash;
+    unsigned long cellix;
     if(dict->count == 0)
     {
         return NULL;
     }
-    unsigned long hash = mc_valdict_hashkey(dict, key);
-    bool found = false;
-    unsigned long cellix = mc_valdict_getcellindex(dict, key, hash, &found);
+    hash = mc_valdict_hashkey(dict, key);
+    found = false;
+    cellix = mc_valdict_getcellindex(dict, key, hash, &found);
     if(!found)
     {
         return NULL;
     }
-    unsigned int itemix = dict->cells[cellix];
+    itemix = dict->cells[cellix];
     return mc_valdict_getvalueat(dict, itemix);
 }
 
@@ -1891,11 +1840,12 @@ TMPUNUSED unsigned int mc_valdict_getcapacity(mcvaldict_t* dict)
 
 TMPSTATIC bool mc_valdict_setvalueat(mcvaldict_t* dict, unsigned int ix, void* value)
 {
+    size_t offset;
     if(ix >= dict->count)
     {
         return false;
     }
-    size_t offset = ix * dict->valtypesize;
+    offset = ix * dict->valtypesize;
     memcpy((char*)dict->values + offset, value, dict->valtypesize);
     return true;
 }
@@ -1911,39 +1861,47 @@ TMPSTATIC int mc_valdict_count(mcvaldict_t* dict)
 
 TMPUNUSED bool mc_valdict_removebykey(mcvaldict_t* dict, void* key)
 {
+    bool found;
     unsigned int x;
-    unsigned long hash = mc_valdict_hashkey(dict, key);
-    bool found = false;
-    unsigned int cell = mc_valdict_getcellindex(dict, key, hash, &found);
+    unsigned int k;
+    unsigned int i;
+    unsigned int j;
+    unsigned int cell;
+    unsigned int itemix;
+    unsigned int lastitemix;
+    unsigned long hash;
+    void* lastkey;
+    void* lastvalue;
+    hash = mc_valdict_hashkey(dict, key);
+    found = false;
+    cell = mc_valdict_getcellindex(dict, key, hash, &found);
     if(!found)
     {
         return false;
     }
-
-    unsigned int itemix = dict->cells[cell];
-    unsigned int lastitemix = dict->count - 1;
+    itemix = dict->cells[cell];
+    lastitemix = dict->count - 1;
     if(itemix < lastitemix)
     {
-        void* lastkey = mc_valdict_getkeyat(dict, lastitemix);
+        lastkey = mc_valdict_getkeyat(dict, lastitemix);
         mc_valdict_setkeyat(dict, itemix, lastkey);
-        void* lastvalue = mc_valdict_getkeyat(dict, lastitemix);
+        lastvalue = mc_valdict_getkeyat(dict, lastitemix);
         mc_valdict_setvalueat(dict, itemix, lastvalue);
         dict->cellindices[itemix] = dict->cellindices[lastitemix];
         dict->hashes[itemix] = dict->hashes[lastitemix];
         dict->cells[dict->cellindices[itemix]] = itemix;
     }
     dict->count--;
-
-    unsigned int i = cell;
-    unsigned int j = i;
+    i = cell;
+    j = i;
     for(x = 0; x < (dict->cellcapacity - 1); x++)
     {
         j = (j + 1) & (dict->cellcapacity - 1);
-        if(dict->cells[j] == VALDICT_INVALID_IX)
+        if(dict->cells[j] == MC_CONF_VALDICTINVALIDIX)
         {
             break;
         }
-        unsigned int k = (unsigned int)(dict->hashes[dict->cells[j]]) & (dict->cellcapacity - 1);
+        k = (unsigned int)(dict->hashes[dict->cells[j]]) & (dict->cellcapacity - 1);
         if((j > i && (k <= i || k > j)) || (j < i && (k <= i && k > j)))
         {
             dict->cellindices[dict->cells[j]] = i;
@@ -1951,7 +1909,7 @@ TMPUNUSED bool mc_valdict_removebykey(mcvaldict_t* dict, void* key)
             i = j;
         }
     }
-    dict->cells[i] = VALDICT_INVALID_IX;
+    dict->cells[i] = MC_CONF_VALDICTINVALIDIX;
     return true;
 }
 
@@ -1961,7 +1919,7 @@ TMPSTATIC void mc_valdict_clear(mcvaldict_t* dict)
     dict->count = 0;
     for(i = 0; i < dict->cellcapacity; i++)
     {
-        dict->cells[i] = VALDICT_INVALID_IX;
+        dict->cells[i] = MC_CONF_VALDICTINVALIDIX;
     }
 }
 
@@ -1980,7 +1938,7 @@ TMPSTATIC unsigned int mc_valdict_getcellindex(mcvaldict_t* dict, void* key, uns
     {
         ix = (cellix + i) & (dict->cellcapacity - 1);
         cell = dict->cells[ix];
-        if(cell == VALDICT_INVALID_IX)
+        if(cell == MC_CONF_VALDICTINVALIDIX)
         {
             return ix;
         }
@@ -1997,7 +1955,7 @@ TMPSTATIC unsigned int mc_valdict_getcellindex(mcvaldict_t* dict, void* key, uns
             return ix;
         }
     }
-    return VALDICT_INVALID_IX;
+    return MC_CONF_VALDICTINVALIDIX;
 }
 
 TMPSEMISTATIC bool mc_valdict_growandrehash(mcvaldict_t* dict)
@@ -2005,7 +1963,10 @@ TMPSEMISTATIC bool mc_valdict_growandrehash(mcvaldict_t* dict)
     bool ok;
     mcvaldict_t newdict;
     unsigned int i;
-    unsigned newcapacity = dict->cellcapacity == 0 ? DICT_INITIAL_SIZE : dict->cellcapacity * 2;
+    unsigned newcapacity;
+    char* key;
+    void* value;
+    newcapacity = dict->cellcapacity == 0 ? MC_CONF_GENERICDICTINITSIZE : dict->cellcapacity * 2;
     ok = mc_valdict_init(&newdict, dict->pstate, dict->keytypesize, dict->valtypesize, newcapacity);
     if(!ok)
     {
@@ -2015,8 +1976,8 @@ TMPSEMISTATIC bool mc_valdict_growandrehash(mcvaldict_t* dict)
     newdict.funchashfn = dict->funchashfn;
     for(i = 0; i < dict->count; i++)
     {
-        char* key = (char*)mc_valdict_getkeyat(dict, i);
-        void* value = mc_valdict_getvalueat(dict, i);
+        key = (char*)mc_valdict_getkeyat(dict, i);
+        value = mc_valdict_getvalueat(dict, i);
         ok = mc_valdict_setkv(&newdict, key, value);
         if(!ok)
         {
@@ -2031,11 +1992,12 @@ TMPSEMISTATIC bool mc_valdict_growandrehash(mcvaldict_t* dict)
 
 TMPSTATIC bool mc_valdict_setkeyat(mcvaldict_t* dict, unsigned int ix, void* key)
 {
+    size_t offset;
     if(ix >= dict->count)
     {
         return false;
     }
-    size_t offset = ix * dict->keytypesize;
+    offset = ix * dict->keytypesize;
     memcpy((char*)dict->keys + offset, key, dict->keytypesize);
     return true;
 }
@@ -2066,7 +2028,8 @@ TMPSTATIC mcbasicarray_t* mc_basicarray_make(mcstate_t* state, size_t tsz)
 TMPSTATIC mcbasicarray_t* mc_basicarray_makecapacity(mcstate_t* state, unsigned int capacity, size_t tsz)
 {
     bool ok;
-    mcbasicarray_t* arr = (mcbasicarray_t*)mc_allocator_alloc(state, sizeof(mcbasicarray_t));
+    mcbasicarray_t* arr;
+    arr = (mcbasicarray_t*)mc_allocator_alloc(state, sizeof(mcbasicarray_t));
     if(!arr)
     {
         return NULL;
@@ -2096,7 +2059,8 @@ TMPSTATIC void mc_basicarray_destroy(mcbasicarray_t* arr)
 
 TMPSTATIC mcbasicarray_t* mc_basicarray_copy(mcbasicarray_t* arr)
 {
-    mcbasicarray_t* copy = (mcbasicarray_t*)mc_allocator_alloc(arr->pstate, sizeof(mcbasicarray_t));
+    mcbasicarray_t* copy;
+    copy = (mcbasicarray_t*)mc_allocator_alloc(arr->pstate, sizeof(mcbasicarray_t));
     if(!copy)
     {
         return NULL;
@@ -2122,12 +2086,13 @@ TMPSTATIC mcbasicarray_t* mc_basicarray_copy(mcbasicarray_t* arr)
         copy->allocdata = NULL;
         copy->data = NULL;
     }
-
     return copy;
 }
 
 TMPSTATIC bool mc_basicarray_push(mcbasicarray_t* arr, void* value)
 {
+    unsigned int newcapacity;
+    unsigned char* newdata;
     if(arr->count >= arr->capacity)
     {
         COLLECTIONS_ASSERT(!arr->caplocked);
@@ -2135,8 +2100,8 @@ TMPSTATIC bool mc_basicarray_push(mcbasicarray_t* arr, void* value)
         {
             return false;
         }
-        unsigned int newcapacity = arr->capacity > 0 ? arr->capacity * 2 : 1;
-        unsigned char* newdata = (unsigned char*)mc_allocator_alloc(arr->pstate, newcapacity * arr->typesize);
+        newcapacity = arr->capacity > 0 ? arr->capacity * 2 : 1;
+        newdata = (unsigned char*)mc_allocator_alloc(arr->pstate, newcapacity * arr->typesize);
         if(!newdata)
         {
             return false;
@@ -2159,9 +2124,10 @@ TMPUNUSED bool mc_basicarray_addn(mcbasicarray_t* arr, void* values, int n)
 {
     bool ok;
     int i;
+    uint8_t* value;
     for(i = 0; i < n; i++)
     {
-        uint8_t* value = NULL;
+        value = NULL;
         if(values)
         {
             value = (uint8_t*)values + (i * arr->typesize);
@@ -2179,15 +2145,17 @@ TMPUNUSED bool mc_basicarray_addarray(mcbasicarray_t* dest, mcbasicarray_t* sour
 {
     bool ok;
     int i;
+    int destbeforecount;
+    void* item;
     COLLECTIONS_ASSERT(dest->typesize == source->typesize);
     if(dest->typesize != source->typesize)
     {
         return false;
     }
-    int destbeforecount = mc_basicarray_count(dest);
+    destbeforecount = mc_basicarray_count(dest);
     for(i = 0; i < mc_basicarray_count(source); i++)
     {
-        void* item = mc_basicarray_get(source, i);
+        item = mc_basicarray_get(source, i);
         ok = mc_basicarray_push(dest, item);
         if(!ok)
         {
@@ -2200,13 +2168,14 @@ TMPUNUSED bool mc_basicarray_addarray(mcbasicarray_t* dest, mcbasicarray_t* sour
 
 TMPSTATIC bool mc_basicarray_pop(mcbasicarray_t* arr, void* outvalue)
 {
+    void* res;
     if(arr->count <= 0)
     {
         return false;
     }
     if(outvalue)
     {
-        void* res = mc_basicarray_get(arr, arr->count - 1);
+        res = mc_basicarray_get(arr, arr->count - 1);
         memcpy(outvalue, res, arr->typesize);
     }
     mc_basicarray_removeat(arr, arr->count - 1);
@@ -2224,12 +2193,13 @@ TMPSTATIC void* mc_basicarray_top(mcbasicarray_t* arr)
 
 TMPSTATIC bool mc_basicarray_set(mcbasicarray_t* arr, unsigned int ix, void* value)
 {
+    size_t offset;
     if(ix >= arr->count)
     {
         COLLECTIONS_ASSERT(false);
         return false;
     }
-    size_t offset = ix * arr->typesize;
+    offset = ix * arr->typesize;
     memmove(arr->data + offset, value, arr->typesize);
     return true;
 }
@@ -2238,10 +2208,12 @@ TMPUNUSED bool mc_basicarray_setn(mcbasicarray_t* arr, unsigned int ix, void* va
 {
     bool ok;
     int i;
+    int destix;
+    unsigned char* value;
     for(i = 0; i < n; i++)
     {
-        int destix = ix + i;
-        unsigned char* value = (unsigned char*)values + (i * arr->typesize);
+        destix = ix + i;
+        value = (unsigned char*)values + (i * arr->typesize);
         if(destix < mc_basicarray_count(arr))
         {
             ok = mc_basicarray_set(arr, destix, value);
@@ -2264,23 +2236,25 @@ TMPUNUSED bool mc_basicarray_setn(mcbasicarray_t* arr, unsigned int ix, void* va
 
 TMPSTATIC void* mc_basicarray_get(mcbasicarray_t* arr, unsigned int ix)
 {
+    size_t offset;
     if(ix >= arr->count)
     {
         COLLECTIONS_ASSERT(false);
         return NULL;
     }
-    size_t offset = ix * arr->typesize;
+    offset = ix * arr->typesize;
     return arr->data + offset;
 }
 
 TMPSTATIC void* mc_basicarray_getconst(mcbasicarray_t* arr, unsigned int ix)
 {
+    size_t offset;
     if(ix >= arr->count)
     {
         COLLECTIONS_ASSERT(false);
         return NULL;
     }
-    size_t offset = ix * arr->typesize;
+    offset = ix * arr->typesize;
     return arr->data + offset;
 }
 
@@ -2309,6 +2283,9 @@ TMPUNUSED unsigned int mc_basicarray_getcapacity(mcbasicarray_t* arr)
 
 TMPSTATIC bool mc_basicarray_removeat(mcbasicarray_t* arr, unsigned int ix)
 {
+    size_t tomovebytes;
+    void* dest;
+    void* src;
     if(ix >= arr->count)
     {
         return false;
@@ -2325,9 +2302,9 @@ TMPSTATIC bool mc_basicarray_removeat(mcbasicarray_t* arr, unsigned int ix)
         arr->count--;
         return true;
     }
-    size_t tomovebytes = (arr->count - 1 - ix) * arr->typesize;
-    void* dest = arr->data + (ix * arr->typesize);
-    void* src = arr->data + ((ix + 1) * arr->typesize);
+    tomovebytes = (arr->count - 1 - ix) * arr->typesize;
+    dest = arr->data + (ix * arr->typesize);
+    src = arr->data + ((ix + 1) * arr->typesize);
     memmove(dest, src, tomovebytes);
     arr->count--;
     return true;
@@ -2335,7 +2312,8 @@ TMPSTATIC bool mc_basicarray_removeat(mcbasicarray_t* arr, unsigned int ix)
 
 TMPSTATIC bool mc_basicarray_removeitem(mcbasicarray_t* arr, void* ptr)
 {
-    int ix = mc_basicarray_getindex(arr, ptr);
+    int ix;
+    ix = mc_basicarray_getindex(arr, ptr);
     if(ix < 0)
     {
         return false;
@@ -2351,9 +2329,10 @@ TMPSTATIC void mc_basicarray_clear(mcbasicarray_t* arr)
 TMPUNUSED void mc_basicarray_clearanddeinititems(mcbasicarray_t* arr, mcitemdeinitfn_t deinit_fn)
 {
     int i;
+    void* item;
     for(i = 0; i < mc_basicarray_count(arr); i++)
     {
-        void* item = mc_basicarray_get(arr, i);
+        item = mc_basicarray_get(arr, i);
         deinit_fn(item);
     }
     arr->count = 0;
@@ -2400,21 +2379,26 @@ TMPSTATIC void mc_basicarray_orphandata(mcbasicarray_t* arr)
 TMPSTATIC bool mc_basicarray_reverse(mcbasicarray_t* arr)
 {
     int aix;
-    int count = mc_basicarray_count(arr);
+    int count;
+    int bix;
+    void* a;
+    void* b;
+    void* temp;
+    count = mc_basicarray_count(arr);
     if(count < 2)
     {
         return true;
     }
-    void* temp = (void*)mc_allocator_alloc(arr->pstate, arr->typesize);
+    temp = (void*)mc_allocator_alloc(arr->pstate, arr->typesize);
     if(!temp)
     {
         return false;
     }
     for(aix = 0; aix < (count / 2); aix++)
     {
-        int bix = count - aix - 1;
-        void* a = mc_basicarray_get(arr, aix);
-        void* b = mc_basicarray_get(arr, bix);
+        bix = count - aix - 1;
+        a = mc_basicarray_get(arr, aix);
+        b = mc_basicarray_get(arr, bix);
         memcpy(temp, a, arr->typesize);
         /* no need for check because it will be within range */
         mc_basicarray_set(arr, aix, b);
@@ -2461,7 +2445,8 @@ TMPSTATIC mcptrarray_t* mc_ptrarray_make(mcstate_t* state)
 TMPSTATIC mcptrarray_t* mc_ptrarray_makecapacity(mcstate_t* state, unsigned int capacity)
 {
     bool ok;
-    mcptrarray_t* ptrarr = (mcptrarray_t*)mc_allocator_alloc(state, sizeof(mcptrarray_t));
+    mcptrarray_t* ptrarr;
+    ptrarr = (mcptrarray_t*)mc_allocator_alloc(state, sizeof(mcptrarray_t));
     if(!ptrarr)
     {
         return NULL;
@@ -2476,27 +2461,25 @@ TMPSTATIC mcptrarray_t* mc_ptrarray_makecapacity(mcstate_t* state, unsigned int 
     return ptrarr;
 }
 
-
-TMPSTATIC void mc_ptrarray_destroy(mcptrarray_t* arr, mcitemdestroyfn_t destroy_fn)
+TMPSTATIC void mc_ptrarray_destroy(mcptrarray_t* arr, mcitemdestroyfn_t dfn)
 {
     /* todo: destroy and copy in make fn */
     if(arr == NULL)
     {
         return;
     }
-    if(destroy_fn)
+    if(dfn)
     {
-        mc_ptrarray_clearanddestroy(arr, destroy_fn);
+        mc_ptrarray_clearanddestroy(arr, dfn);
     }
     else
     {
     }
     mc_basicarray_deinit(&arr->innerbarray);
     mc_allocator_free(arr->pstate, arr);
-
 }
 
-TMPSTATIC mcptrarray_t* mc_ptrarray_copy(mcptrarray_t* arr, mcitemcopyfn_t copyfn, mcitemdestroyfn_t destroy_fn)
+TMPSTATIC mcptrarray_t* mc_ptrarray_copy(mcptrarray_t* arr, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
 {
     bool ok;
     int i;
@@ -2528,7 +2511,7 @@ TMPSTATIC mcptrarray_t* mc_ptrarray_copy(mcptrarray_t* arr, mcitemcopyfn_t copyf
     }
     return arrcopy;
 err:
-    mc_ptrarray_destroy(arrcopy, destroy_fn);
+    mc_ptrarray_destroy(arrcopy, dfn);
     return NULL;
 }
 
@@ -2539,7 +2522,8 @@ TMPSTATIC bool mc_ptrarray_push(mcptrarray_t* arr, void* ptr)
 
 TMPSTATIC void* mc_ptrarray_get(mcptrarray_t* arr, unsigned int ix)
 {
-    void* res = mc_basicarray_get(&arr->innerbarray, ix);
+    void* res;
+    res = mc_basicarray_get(&arr->innerbarray, ix);
     if(!res)
     {
         return NULL;
@@ -2549,15 +2533,18 @@ TMPSTATIC void* mc_ptrarray_get(mcptrarray_t* arr, unsigned int ix)
 
 TMPSTATIC void* mc_ptrarray_pop(mcptrarray_t* arr)
 {
-    int ix = mc_ptrarray_count(arr) - 1;
-    void* res = mc_ptrarray_get(arr, ix);
+    int ix;
+    void* res;
+    ix = mc_ptrarray_count(arr) - 1;
+    res = mc_ptrarray_get(arr, ix);
     mc_ptrarray_removeat(arr, ix);
     return res;
 }
 
 TMPSTATIC void* mc_ptrarray_top(mcptrarray_t* arr)
 {
-    int count = mc_ptrarray_count(arr);
+    int count;
+    count = mc_ptrarray_count(arr);
     if(count == 0)
     {
         return NULL;
@@ -2584,13 +2571,14 @@ TMPSTATIC void mc_ptrarray_clear(mcptrarray_t* arr)
     mc_basicarray_clear(&arr->innerbarray);
 }
 
-TMPSTATIC void mc_ptrarray_clearanddestroy(mcptrarray_t* arr, mcitemdestroyfn_t destroy_fn)
+TMPSTATIC void mc_ptrarray_clearanddestroy(mcptrarray_t* arr, mcitemdestroyfn_t dfn)
 {
     int i;
+    void* item;
     for(i = 0; i < mc_ptrarray_count(arr); i++)
     {
-        void* item = mc_ptrarray_get(arr, i);
-        destroy_fn(item);
+        item = mc_ptrarray_get(arr, i);
+        dfn(item);
     }
     mc_ptrarray_clear(arr);
 }
@@ -2620,7 +2608,8 @@ TMPUNUSED bool mc_ptrarray_contains(mcptrarray_t* arr, void* item)
 
 TMPUNUSED void* mc_ptrarray_getaddr(mcptrarray_t* arr, unsigned int ix)
 {
-    void* res = mc_basicarray_get(&arr->innerbarray, ix);
+    void* res;
+    res = mc_basicarray_get(&arr->innerbarray, ix);
     if(res == NULL)
     {
         return NULL;
@@ -2643,6 +2632,7 @@ TMPSTATIC mcprintstate_t* mc_printer_make(mcstate_t* state, FILE* ofh)
     return mc_printer_make_with_capacity(state, 1, ofh);
 }
 
+
 TMPSTATIC bool mc_printer_init(mcprintstate_t* pr, mcstate_t* state, size_t capacity, FILE* ofh, bool onstack)
 {
     memset(pr, 0, sizeof(mcprintstate_t));
@@ -2653,6 +2643,8 @@ TMPSTATIC bool mc_printer_init(mcprintstate_t* pr, mcstate_t* state, size_t capa
     pr->capacity = 0;
     pr->len = 0;
     pr->onstack = onstack;
+    pr->config.verbosefunc = true;
+    pr->config.quotstring = false;
     if(ofh != NULL)
     {
         return true;
@@ -2973,6 +2965,7 @@ TMPSEMISTATIC char* mc_util_stringallocfmt(mcstate_t* state, const char* format,
     int written;
     char* res;
     va_list args;
+    (void)written;
     va_start(args, format);
     towrite = vsnprintf(NULL, 0, format, args);
     va_end(args);
@@ -2984,7 +2977,6 @@ TMPSEMISTATIC char* mc_util_stringallocfmt(mcstate_t* state, const char* format,
     }
     written = vsprintf(res, format, args);
     va_end(args);
-    (void)written;
     MC_ASSERT(written == towrite);
     return res;
 }
@@ -3034,18 +3026,20 @@ TMPSTATIC double mc_util_uint64todouble(uint64_t val)
     return temp.val_double;
 }
 
-TMPSTATIC bool mc_util_istimerplatformsupported()
+TMPSTATIC bool mc_util_istimerplatformsupported(void)
 {
     return true;
 }
 
-TMPSTATIC mctimer_t mc_timer_start()
+TMPSTATIC mctimer_t mc_timer_start(void)
 {
     mctimer_t timer;
+    #if defined(__unix__)
+    struct timeval starttime;
+    #endif
     memset(&timer, 0, sizeof(mctimer_t));
     #if defined(__unix__)
         /* At some point it should be replaced with more accurate per-platform timers */
-        struct timeval starttime;
         gettimeofday(&starttime, NULL);
         timer.startoffset = starttime.tv_sec;
         timer.starttimems = starttime.tv_usec / 1000.0;
@@ -3056,10 +3050,12 @@ TMPSTATIC mctimer_t mc_timer_start()
 TMPSTATIC double mc_timer_getelapsedms(mctimer_t* timer)
 {
     #if defined(__unix__)
+        int times;
+        double currenttimems;
         struct timeval currenttime;
         gettimeofday(&currenttime, NULL);
-        int times = (int)((int64_t)currenttime.tv_sec - timer->startoffset);
-        double currenttimems = (times * 1000) + (currenttime.tv_usec / 1000.0);
+        times = (int)((int64_t)currenttime.tv_sec - timer->startoffset);
+        currenttimems = (times * 1000) + (currenttime.tv_usec / 1000.0);
         return currenttimems - timer->starttimems;
     #else
         return 0;
@@ -3079,15 +3075,17 @@ TMPSTATIC void mc_errlist_deinit(mcerrlist_t* errors)
 
 TMPSTATIC void mc_errlist_push(mcerrlist_t* errors, mcerrtype_t type, mcastlocation_t pos, const char* message)
 {
+    int len;
+    int tocopy;
+    mcerror_t err;
     if(errors->count >= MC_CONF_ERROR_MAXERRORCOUNT)
     {
         return;
     }
-    mcerror_t err;
     memset(&err, 0, sizeof(mcerror_t));
     err.type = type;
-    int len = strlen(message);
-    int tocopy = len;
+    len = strlen(message);
+    tocopy = len;
     if(tocopy >= (MC_CONF_ERROR_MSGMAXLENGTH - 1))
     {
         tocopy = MC_CONF_ERROR_MSGMAXLENGTH - 1;
@@ -3115,7 +3113,6 @@ TMPSEMISTATIC void mc_errlist_addfv(mcerrlist_t* errors, mcerrtype_t type, mcast
     mc_errlist_push(errors, type, pos, res);
 }
 
-
 TMPSEMISTATIC void mc_errlist_addf(mcerrlist_t* errors, mcerrtype_t type, mcastlocation_t pos, const char* format, ...)
 {
     va_list va;
@@ -3127,9 +3124,10 @@ TMPSEMISTATIC void mc_errlist_addf(mcerrlist_t* errors, mcerrtype_t type, mcastl
 TMPSTATIC void mc_errlist_clear(mcerrlist_t* errors)
 {
     int i;
+    mcerror_t* error;
     for(i = 0; i < mc_errlist_size(errors); i++)
     {
-        mcerror_t* error = mc_errlist_get(errors, i);
+        error = mc_errlist_get(errors, i);
         if(error->traceback)
         {
             traceback_destroy(error->traceback);
@@ -3191,7 +3189,407 @@ TMPSTATIC bool mc_errlist_haserrors(mcerrlist_t* errors)
 
 /* containerend utilsend */
 
-TMPSTATIC const char* object_get_type_name(mcobjtype_t type)
+TMPSTATIC mcvalue_t mc_object_makedatafrom(mcobjtype_t type, mcobjdata_t* data)
+{
+    mcvalue_t object;
+    object.type = type;
+    data->type = type;
+    object.isallocated = true;
+    object.uval.odata = data;
+    return object;
+}
+
+TMPSTATIC mcvalue_t mc_value_makeempty(mcobjtype_t t)
+{
+    mcvalue_t o;
+    memset(&o, 0, sizeof(mcvalue_t));
+    o.type = t;
+    o.isallocated = false;
+    return o;
+}
+
+TMPSTATIC mcvalue_t mc_value_makenumber(double val)
+{
+    mcvalue_t o;
+    o = mc_value_makeempty(MC_OBJ_NUMBER);
+    o.uval.valnumber = val;
+    return o;
+}
+
+TMPSTATIC mcvalue_t mc_value_makebool(bool val)
+{
+    mcvalue_t o;
+    o = mc_value_makeempty(MC_OBJ_BOOL);
+    o.uval.valbool = val;
+    return o;
+}
+
+TMPSTATIC mcvalue_t mc_value_makenull(void)
+{
+    mcvalue_t o;
+    o = mc_value_makeempty(MC_OBJ_NULL);
+    return o;
+}
+
+TMPSTATIC mcvalue_t mc_value_makestrcapacity(mcstate_t* state, int capacity)
+{
+    bool ok;
+    mcobjdata_t* data;
+    data = mc_gcmemory_getdatafrompool(state, MC_OBJ_STRING);
+    if(!data)
+    {
+        data = mc_gcmemory_allocobjectdata(state);
+        if(!data)
+        {
+            return mc_value_makenull();
+        }
+        data->valstring.capacity = MC_CONF_STRINGMAXSTACKSIZE - 1;
+        data->valstring.isallocated = false;
+    }
+    data->valstring.length = 0;
+    data->valstring.hash = 0;
+    if(capacity > data->valstring.capacity)
+    {
+        ok = mc_valstring_reservecapacity(data, capacity);
+        if(!ok)
+        {
+            return mc_value_makenull();
+        }
+    }
+    return mc_object_makedatafrom(MC_OBJ_STRING, data);
+}
+
+TMPUNUSED mcvalue_t mc_value_makestrformat(mcstate_t* state, const char* fmt, ...)
+{
+    int towrite;
+    int written;
+    char* resbuf;
+    va_list args;
+    mcvalue_t res;
+    (void)written;
+    va_start(args, fmt);
+    towrite = vsnprintf(NULL, 0, fmt, args);
+    va_end(args);
+    va_start(args, fmt);
+    res = mc_value_makestrcapacity(state, towrite);
+    if(mc_value_isnull(res))
+    {
+        return mc_value_makenull();
+    }
+    resbuf = mc_valstring_getmutabledata(res);
+    written = vsprintf(resbuf, fmt, args);
+    MC_ASSERT(written == towrite);
+    va_end(args);
+    mc_string_setlength(res, towrite);
+    return res;
+}
+
+TMPSTATIC mcvalue_t mc_value_makestringlen(mcstate_t* state, const char* string, size_t len)
+{
+    bool ok;
+    mcvalue_t res;
+    res = mc_value_makestrcapacity(state, len);
+    if(mc_value_isnull(res))
+    {
+        return res;
+    }
+    ok = mc_valstring_append(res, string, len);
+    if(!ok)
+    {
+        return mc_value_makenull();
+    }
+    return res;
+}
+
+TMPSTATIC mcvalue_t mc_value_makestring(mcstate_t* state, const char* string)
+{
+    return mc_value_makestringlen(state, string, strlen(string));
+}
+
+TMPSTATIC mcvalue_t mc_value_makefuncnative(mcstate_t* state, const char* name, mcnativefn_t fn, void* data, int dlen)
+{
+    mcobjdata_t* obj;
+    if(dlen > MC_CONF_NATIVEFUNCMAXDATA)
+    {
+        return mc_value_makenull();
+    }
+    obj = mc_gcmemory_allocobjectdata(state);
+    if(!obj)
+    {
+        return mc_value_makenull();
+    }
+    obj->valnativefunc.name = mc_util_strdup(state, name);
+    if(!obj->valnativefunc.name)
+    {
+        return mc_value_makenull();
+    }
+    obj->valnativefunc.natptrfn = fn;
+    if(data)
+    {
+        memcpy(obj->valnativefunc.userdata, data, dlen);
+    }
+    obj->valnativefunc.userdlen = dlen;
+    return mc_object_makedatafrom(MC_OBJ_FUNCNATIVE, obj);
+}
+
+TMPSTATIC mcvalue_t mc_value_makearray(mcstate_t* state)
+{
+    return mc_value_makearraycapacity(state, 8);
+}
+
+TMPSTATIC mcvalue_t mc_value_makearraycapacity(mcstate_t* state, unsigned capacity)
+{
+    mcobjdata_t* data;
+    data = mc_gcmemory_getdatafrompool(state, MC_OBJ_ARRAY);
+    if(data)
+    {
+        mc_basicarray_clear(data->valarray);
+        return mc_object_makedatafrom(MC_OBJ_ARRAY, data);
+    }
+    data = mc_gcmemory_allocobjectdata(state);
+    if(!data)
+    {
+        return mc_value_makenull();
+    }
+    data->valarray = mc_basicarray_makecapacity(state, capacity, sizeof(mcvalue_t));
+    if(!data->valarray)
+    {
+        return mc_value_makenull();
+    }
+    return mc_object_makedatafrom(MC_OBJ_ARRAY, data);
+}
+
+TMPSTATIC mcvalue_t mc_value_makemap(mcstate_t* state)
+{
+    return mc_value_makemapcapacity(state, 32);
+}
+
+TMPSTATIC mcvalue_t mc_value_makemapcapacity(mcstate_t* state, unsigned capacity)
+{
+    mcobjdata_t* data;
+    data = mc_gcmemory_getdatafrompool(state, MC_OBJ_MAP);
+    if(data)
+    {
+        mc_valdict_clear(data->valmap);
+        return mc_object_makedatafrom(MC_OBJ_MAP, data);
+    }
+    data = mc_gcmemory_allocobjectdata(state);
+    if(!data)
+    {
+        return mc_value_makenull();
+    }
+    data->valmap = mc_valdict_makecapacity(state, capacity, sizeof(mcvalue_t), sizeof(mcvalue_t));
+    if(!data->valmap)
+    {
+        return mc_value_makenull();
+    }
+    mc_valdict_sethashfunction(data->valmap, (mcitemhashfn_t)mc_value_hash);
+    mc_valdict_setequalsfunction(data->valmap, (mcitemcomparefn_t)mc_value_equalswrapped);
+    return mc_object_makedatafrom(MC_OBJ_MAP, data);
+}
+
+TMPSTATIC mcvalue_t mc_value_makeerror(mcstate_t* state, const char* error)
+{
+    char* errorstr;
+    mcvalue_t res;
+    errorstr = mc_util_strdup(state, error);
+    if(!errorstr)
+    {
+        return mc_value_makenull();
+    }
+    res = mc_value_makeerrornocopy(state, errorstr);
+    if(mc_value_isnull(res))
+    {
+        mc_allocator_free(state, errorstr);
+        return mc_value_makenull();
+    }
+    return res;
+}
+
+TMPSTATIC mcvalue_t mc_value_makeerrornocopy(mcstate_t* state, char* error)
+{
+    mcobjdata_t* data;
+    data = mc_gcmemory_allocobjectdata(state);
+    if(!data)
+    {
+        return mc_value_makenull();
+    }
+    data->valerror.message = error;
+    data->valerror.traceback = NULL;
+    return mc_object_makedatafrom(MC_OBJ_ERROR, data);
+}
+
+TMPUNUSED mcvalue_t mc_value_makeerrorf(mcstate_t* state, const char* fmt, ...)
+{
+    int towrite;
+    int written;
+    char* res;
+    va_list args;
+    mcvalue_t resobj;
+    (void)written;
+    va_start(args, fmt);
+    towrite = vsnprintf(NULL, 0, fmt, args);
+    va_end(args);
+    va_start(args, fmt);
+    res = (char*)mc_allocator_alloc(state, towrite + 1);
+    if(!res)
+    {
+        return mc_value_makenull();
+    }
+    written = vsprintf(res, fmt, args);
+    MC_ASSERT(written == towrite);
+    va_end(args);
+    resobj = mc_value_makeerrornocopy(state, res);
+    if(mc_value_isnull(resobj))
+    {
+        mc_allocator_free(state, res);
+        return mc_value_makenull();
+    }
+    return resobj;
+}
+
+TMPSTATIC mcvalue_t mc_value_makefuncscript(mcstate_t* state, const char* name, mccompiledprogram_t* cres, bool ownsdt, int nlocals, int nargs, int fvc)
+{
+    mcobjdata_t* data;
+    data = mc_gcmemory_allocobjectdata(state);
+    if(!data)
+    {
+        return mc_value_makenull();
+    }
+    if(ownsdt)
+    {
+        data->valscriptfunc.fallocname = name ? mc_util_strdup(state, name) : mc_util_strdup(state, "anonymous");
+        if(!data->valscriptfunc.fallocname)
+        {
+            return mc_value_makenull();
+        }
+    }
+    else
+    {
+        data->valscriptfunc.fconstname = name ? name : "anonymous";
+    }
+    data->valscriptfunc.compiledprogcode = cres;
+    data->valscriptfunc.ownsdata = ownsdt;
+    data->valscriptfunc.numlocals = nlocals;
+    data->valscriptfunc.numargs = nargs;
+    if(fvc >= MC_UTIL_STATICARRAYSIZE(data->valscriptfunc.freevalsstack))
+    {
+        data->valscriptfunc.freevalsallocated = (mcvalue_t*)mc_allocator_alloc(state, sizeof(mcvalue_t) * fvc);
+        if(!data->valscriptfunc.freevalsallocated)
+        {
+            return mc_value_makenull();
+        }
+    }
+    data->valscriptfunc.freevalscount = fvc;
+    return mc_object_makedatafrom(MC_OBJ_FUNCSCRIPT, data);
+}
+
+TMPSTATIC mcvalue_t mc_value_makeexternal(mcstate_t* state, void* data)
+{
+    mcobjdata_t* obj;
+    obj = mc_gcmemory_allocobjectdata(state);
+    if(!obj)
+    {
+        return mc_value_makenull();
+    }
+    obj->valexternal.data = data;
+    obj->valexternal.datadestroyfn = NULL;
+    obj->valexternal.datacopyfn = NULL;
+    return mc_object_makedatafrom(MC_OBJ_EXTERNAL, obj);
+}
+
+TMPUNUSED void mc_value_deinit(mcvalue_t obj)
+{
+    mcobjdata_t* data;
+    if(mc_value_isallocated(obj))
+    {
+        data = mc_value_getallocateddata(obj);
+        mc_objectdata_deinit(data);
+    }
+}
+
+TMPSTATIC void mc_objectdata_deinit(mcobjdata_t* data)
+{
+    switch(data->type)
+    {
+        case MC_OBJ_FREED:
+            {
+                MC_ASSERT(false);
+                return;
+            }
+            break;
+        case MC_OBJ_STRING:
+            {
+                if(data->valstring.isallocated)
+                {
+                    mc_allocator_free(data->pstate, data->valstring.actualallocated);
+                }
+            }
+            break;
+
+        case MC_OBJ_FUNCSCRIPT:
+            {
+                if(data->valscriptfunc.ownsdata)
+                {
+                    mc_allocator_free(data->pstate, data->valscriptfunc.fallocname);
+                    mc_astcompresult_destroy(data->valscriptfunc.compiledprogcode);
+                }
+                if(freevals_are_allocated(&data->valscriptfunc))
+                {
+                    mc_allocator_free(data->pstate, data->valscriptfunc.freevalsallocated);
+                }
+            }
+            break;
+        case MC_OBJ_ARRAY:
+            {
+                mc_basicarray_destroy(data->valarray);
+            }
+            break;
+        case MC_OBJ_MAP:
+            {
+                mc_valdict_destroy(data->valmap);
+            }
+            break;
+        case MC_OBJ_FUNCNATIVE:
+            {
+                mc_allocator_free(data->pstate, data->valnativefunc.name);
+            }
+            break;
+        case MC_OBJ_EXTERNAL:
+            {
+                if(data->valexternal.datadestroyfn)
+                {
+                    data->valexternal.datadestroyfn(data->valexternal.data);
+                }
+            }
+            break;
+        case MC_OBJ_ERROR:
+            {
+                mc_allocator_free(data->pstate, data->valerror.message);
+                traceback_destroy(data->valerror.traceback);
+            }
+            break;
+        default:
+            {
+            }
+            break;
+    }
+    data->type = MC_OBJ_FREED;
+}
+
+TMPSTATIC bool mc_value_isallocated(mcvalue_t object)
+{
+    return object.isallocated;
+}
+
+TMPUNUSED mcgcmemory_t* mc_value_getmem(mcvalue_t obj)
+{
+    mcobjdata_t* data;
+    data = mc_value_getallocateddata(obj);
+    return data->mem;
+}
+
+TMPSTATIC const char* mc_valtype_getname(mcobjtype_t type)
 {
     switch(type)
     {
@@ -3207,13 +3605,13 @@ TMPSTATIC const char* object_get_type_name(mcobjtype_t type)
             return "STRING";
         case MC_OBJ_NULL:
             return "NULL";
-        case MC_OBJ_NATIVE_FUNCTION:
+        case MC_OBJ_FUNCNATIVE:
             return "NATIVE_FUNCTION";
         case MC_OBJ_ARRAY:
             return "ARRAY";
         case MC_OBJ_MAP:
             return "MAP";
-        case MC_OBJ_FUNCTION:
+        case MC_OBJ_FUNCSCRIPT:
             return "FUNCTION";
         case MC_OBJ_EXTERNAL:
             return "EXTERNAL";
@@ -3225,18 +3623,20 @@ TMPSTATIC const char* object_get_type_name(mcobjtype_t type)
     return "NONE";
 }
 
-TMPSTATIC char* object_get_type_union_name(mcstate_t* state, mcobjtype_t type)
+TMPSTATIC char* mc_valtype_getunionname(mcstate_t* state, mcobjtype_t type)
 {
+    bool inbetween;
+    mcprintstate_t* res;
     if(type == MC_OBJ_ANY || type == MC_OBJ_NONE || type == MC_OBJ_FREED)
     {
-        return mc_util_strdup(state, object_get_type_name(type));
+        return mc_util_strdup(state, mc_valtype_getname(type));
     }
-    mcprintstate_t* res = mc_printer_make(state, NULL);
+    res = mc_printer_make(state, NULL);
     if(!res)
     {
         return NULL;
     }
-    bool inbetween = false;
+    inbetween = false;
 #define CHECK_TYPE(t)                                    \
     do                                                   \
     {                                                    \
@@ -3246,7 +3646,7 @@ TMPSTATIC char* object_get_type_union_name(mcstate_t* state, mcobjtype_t type)
             {                                            \
                 mc_printer_puts(res, "|");                 \
             }                                            \
-            mc_printer_puts(res, object_get_type_name(t)); \
+            mc_printer_puts(res, mc_valtype_getname(t)); \
             inbetween = true;                           \
         }                                                \
     } while(0)
@@ -3255,36 +3655,25 @@ TMPSTATIC char* object_get_type_union_name(mcstate_t* state, mcobjtype_t type)
     CHECK_TYPE(MC_OBJ_BOOL);
     CHECK_TYPE(MC_OBJ_STRING);
     CHECK_TYPE(MC_OBJ_NULL);
-    CHECK_TYPE(MC_OBJ_NATIVE_FUNCTION);
+    CHECK_TYPE(MC_OBJ_FUNCNATIVE);
     CHECK_TYPE(MC_OBJ_ARRAY);
     CHECK_TYPE(MC_OBJ_MAP);
-    CHECK_TYPE(MC_OBJ_FUNCTION);
+    CHECK_TYPE(MC_OBJ_FUNCSCRIPT);
     CHECK_TYPE(MC_OBJ_EXTERNAL);
     CHECK_TYPE(MC_OBJ_ERROR);
-
     return mc_printer_getstringanddestroy(res, NULL);
-}
-
-TMPUNUSED char* object_serialize(mcstate_t* state, mcvalue_t object)
-{
-    mcprintstate_t* buf = mc_printer_make(state, NULL);
-    if(!buf)
-    {
-        return NULL;
-    }
-    mc_printer_printobject(object, buf, true);
-    char* string = mc_printer_getstringanddestroy(buf, NULL);
-    return string;
 }
 
 TMPSTATIC mcvalue_t mc_value_copydeep(mcstate_t* state, mcvalue_t obj)
 {
-    mcvaldict_t* copies = mc_valdict_make(state, sizeof(mcvalue_t), sizeof(mcvalue_t));
+    mcvalue_t res;
+    mcvaldict_t* copies;
+    copies = mc_valdict_make(state, sizeof(mcvalue_t), sizeof(mcvalue_t));
     if(!copies)
     {
         return mc_value_makenull();
     }
-    mcvalue_t res = mc_value_copydeepintern(state, obj, copies);
+    res = mc_value_copydeepintern(state, obj, copies);
     mc_valdict_destroy(copies);
     return res;
 }
@@ -3292,92 +3681,97 @@ TMPSTATIC mcvalue_t mc_value_copydeep(mcstate_t* state, mcvalue_t obj)
 TMPSTATIC mcvalue_t mc_value_copyflat(mcstate_t* state, mcvalue_t obj)
 {
     bool ok;
-    mcvalue_t copy = mc_value_makenull();
-    mcobjtype_t type = mc_value_gettype(obj);
+    mcvalue_t copy;
+    mcobjtype_t type;
+    copy = mc_value_makenull();
+    type = mc_value_gettype(obj);
     switch(type)
     {
         case MC_OBJ_ANY:
         case MC_OBJ_FREED:
         case MC_OBJ_NONE:
-        {
-            MC_ASSERT(false);
-            copy = mc_value_makenull();
+            {
+                MC_ASSERT(false);
+                copy = mc_value_makenull();
+            }
             break;
-        }
         case MC_OBJ_NUMBER:
         case MC_OBJ_BOOL:
         case MC_OBJ_NULL:
-        case MC_OBJ_FUNCTION:
-        case MC_OBJ_NATIVE_FUNCTION:
+        case MC_OBJ_FUNCSCRIPT:
+        case MC_OBJ_FUNCNATIVE:
         case MC_OBJ_ERROR:
-        {
-            copy = obj;
+            {
+                copy = obj;
+            }
             break;
-        }
         case MC_OBJ_STRING:
-        {
-            const char* str = mc_valstring_getdata(obj);
-            copy = mc_value_makestring(state, str);
+            {
+                const char* str;
+                str = mc_valstring_getdata(obj);
+                copy = mc_value_makestring(state, str);
+            }
             break;
-        }
         case MC_OBJ_ARRAY:
-        {
-            int i;
-            int len = mc_valarray_getlength(obj);
-            copy = mc_value_makearraycapacity(state, len);
-            if(mc_value_isnull(copy))
             {
-                return mc_value_makenull();
-            }
-            for(i = 0; i < len; i++)
-            {
-                mcvalue_t item = mc_valarray_getvalueat(obj, i);
-                ok = mc_valarray_push(copy, item);
-                if(!ok)
+                int i;
+                int len = mc_valarray_getlength(obj);
+                copy = mc_value_makearraycapacity(state, len);
+                if(mc_value_isnull(copy))
                 {
                     return mc_value_makenull();
                 }
+                for(i = 0; i < len; i++)
+                {
+                    mcvalue_t item = mc_valarray_getvalueat(obj, i);
+                    ok = mc_valarray_push(copy, item);
+                    if(!ok)
+                    {
+                        return mc_value_makenull();
+                    }
+                }
             }
             break;
-        }
         case MC_OBJ_MAP:
-        {
-            int i;
-            copy = mc_value_makemap(state);
-            for(i = 0; i < mc_valmap_getlength(obj); i++)
             {
-                mcvalue_t key = mc_valmap_getkeyat(obj, i);
-                mcvalue_t val = mc_valmap_getvalueat(obj, i);
-                ok = mc_valmap_setvalue(copy, key, val);
-                if(!ok)
+                int i;
+                copy = mc_value_makemap(state);
+                for(i = 0; i < mc_valmap_getlength(obj); i++)
                 {
-                    return mc_value_makenull();
+                    mcvalue_t key = mc_valmap_getkeyat(obj, i);
+                    mcvalue_t val = mc_valmap_getvalueat(obj, i);
+                    ok = mc_valmap_setvalue(copy, key, val);
+                    if(!ok)
+                    {
+                        return mc_value_makenull();
+                    }
                 }
             }
             break;
-        }
         case MC_OBJ_EXTERNAL:
-        {
-            copy = mc_value_makeexternal(state, NULL);
-            if(mc_value_isnull(copy))
             {
-                return mc_value_makenull();
+                void* datacopy;
+                mcobjexternal_t* objext;
+                copy = mc_value_makeexternal(state, NULL);
+                if(mc_value_isnull(copy))
+                {
+                    return mc_value_makenull();
+                }
+                objext = mc_valexternal_getdata(obj);
+                datacopy = NULL;
+                if(objext->datacopyfn)
+                {
+                    datacopy = objext->datacopyfn(objext->data);
+                }
+                else
+                {
+                    datacopy = objext->data;
+                }
+                mc_valexternal_setdata(copy, datacopy);
+                mc_valexternal_setdestroyfunction(copy, objext->datadestroyfn);
+                mc_valexternal_setcopyfunction(copy, objext->datacopyfn);
             }
-            mcobjexternal_t* external = object_get_external_data(obj);
-            void* datacopy = NULL;
-            if(external->data_copy_fn)
-            {
-                datacopy = external->data_copy_fn(external->data);
-            }
-            else
-            {
-                datacopy = external->data;
-            }
-            mc_value_setexternaldata(copy, datacopy);
-            object_set_external_destroy_function(copy, external->data_destroy_fn);
-            mc_value_setexternalcopyfunction(copy, external->data_copy_fn);
             break;
-        }
     }
     return copy;
 }
@@ -3397,7 +3791,7 @@ TMPSTATIC double mc_value_compare(mcvalue_t a, mcvalue_t b, bool* outok)
     mcobjtype_t atype;
     mcobjtype_t btype;
     /*
-    if(a.objdatahandle == b.objdatahandle)
+    if(a.odata == b.odata)
     {
         return 0;
     }
@@ -3431,15 +3825,15 @@ TMPSTATIC double mc_value_compare(mcvalue_t a, mcvalue_t b, bool* outok)
     }
     if((mc_value_isallocated(a) || mc_value_isnull(a)) && (mc_value_isallocated(b) || mc_value_isnull(b)))
     {
-        adataval = (intptr_t)object_get_allocated_data(a);
-        bdataval = (intptr_t)object_get_allocated_data(b);
+        adataval = (intptr_t)mc_value_getallocateddata(a);
+        bdataval = (intptr_t)mc_value_getallocateddata(b);
         return (double)(adataval - bdataval);
     }
     *outok = false;
     return 1;
 }
 
-TMPSTATIC bool object_equals(mcvalue_t a, mcvalue_t b)
+TMPSTATIC bool mc_value_equals(mcvalue_t a, mcvalue_t b)
 {
     bool ok;
     double res;
@@ -3456,60 +3850,60 @@ TMPSTATIC bool object_equals(mcvalue_t a, mcvalue_t b)
     return MC_UTIL_CMPFLOAT(res, 0);
 }
 
-TMPSTATIC mcobjexternal_t* object_get_external_data(mcvalue_t object)
+TMPSTATIC mcobjexternal_t* mc_valexternal_getdata(mcvalue_t object)
 {
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_OBJ_EXTERNAL);
-    data = object_get_allocated_data(object);
-    return &data->external;
+    data = mc_value_getallocateddata(object);
+    return &data->valexternal;
 }
 
-TMPSTATIC bool object_set_external_destroy_function(mcvalue_t object, mcitemdestroyfn_t destroy_fn)
+TMPSTATIC bool mc_valexternal_setdestroyfunction(mcvalue_t object, mcitemdestroyfn_t dfn)
 {
     mcobjexternal_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_OBJ_EXTERNAL);
-    data = object_get_external_data(object);
+    data = mc_valexternal_getdata(object);
     if(!data)
     {
         return false;
     }
-    data->data_destroy_fn = destroy_fn;
+    data->datadestroyfn = dfn;
     return true;
 }
 
-TMPSTATIC mcobjdata_t* object_get_allocated_data(mcvalue_t object)
+TMPSTATIC mcobjdata_t* mc_value_getallocateddata(mcvalue_t object)
 {
     MC_ASSERT(mc_value_isallocated(object) || mc_value_gettype(object) == MC_OBJ_NULL);
-    return object.objdatahandle;
+    return object.uval.odata;
 }
 
-TMPSTATIC bool object_get_bool(mcvalue_t obj)
+TMPSTATIC bool mc_value_getbool(mcvalue_t obj)
 {
-    if(object_is_number(obj))
+    if(mc_value_isnumber(obj))
     {
-        return obj.valnumber;
+        return obj.uval.valnumber;
     }
-    return obj.valbool;
+    return obj.uval.valbool;
 }
 
 TMPSTATIC double mc_value_getnumber(mcvalue_t obj)
 {
-    if(object_is_number(obj))
+    if(mc_value_isnumber(obj))
     {
         if(obj.type == MC_OBJ_BOOL)
         {
-            return obj.valbool;
+            return obj.uval.valbool;
         }
-        return obj.valnumber;
+        return obj.uval.valnumber;
     }
-    return obj.valnumber;
+    return obj.uval.valnumber;
 }
 
 TMPSTATIC const char* mc_valstring_getdata(mcvalue_t object)
 {
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_OBJ_STRING);
-    data = object_get_allocated_data(object);
+    data = mc_value_getallocateddata(object);
     return mc_valstring_getdataintern(data);
 }
 
@@ -3517,7 +3911,7 @@ TMPSTATIC int mc_valstring_getlength(mcvalue_t object)
 {
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_OBJ_STRING);
-    data = object_get_allocated_data(object);
+    data = mc_value_getallocateddata(object);
     return data->valstring.length;
 }
 
@@ -3525,7 +3919,7 @@ TMPSTATIC void mc_string_setlength(mcvalue_t object, int len)
 {
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_OBJ_STRING);
-    data = object_get_allocated_data(object);
+    data = mc_value_getallocateddata(object);
     data->valstring.length = len;
 }
 
@@ -3533,7 +3927,7 @@ TMPUNUSED int mc_valstring_getcapacity(mcvalue_t object)
 {
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_OBJ_STRING);
-    data = object_get_allocated_data(object);
+    data = mc_value_getallocateddata(object);
     return data->valstring.capacity;
 }
 
@@ -3541,7 +3935,7 @@ TMPSTATIC char* mc_valstring_getmutabledata(mcvalue_t object)
 {
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_OBJ_STRING);
-    data = object_get_allocated_data(object);
+    data = mc_value_getallocateddata(object);
     return mc_valstring_getdataintern(data);
 }
 
@@ -3553,7 +3947,7 @@ TMPSTATIC bool mc_valstring_append(mcvalue_t obj, const char* src, int len)
     mcobjdata_t* data;
     mcobjstring_t* string;
     MC_ASSERT(mc_value_gettype(obj) == MC_OBJ_STRING);
-    data = object_get_allocated_data(obj);
+    data = mc_value_getallocateddata(obj);
     string = &data->valstring;
     strbuf = mc_valstring_getmutabledata(obj);
     currentlen = string->length;
@@ -3571,12 +3965,16 @@ TMPSTATIC bool mc_valstring_append(mcvalue_t obj, const char* src, int len)
 
 TMPSTATIC unsigned long mc_valstring_gethash(mcvalue_t obj)
 {
+    size_t len;
+    const char* str;
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(obj) == MC_OBJ_STRING);
-    data = object_get_allocated_data(obj);
+    data = mc_value_getallocateddata(obj);
     if(data->valstring.hash == 0)
     {
-        data->valstring.hash = object_hash_string(mc_valstring_getdata(obj));
+        len = mc_valstring_getlength(obj);
+        str = mc_valstring_getdata(obj);
+        data->valstring.hash = mc_util_hashdata(str, len);
         if(data->valstring.hash == 0)
         {
             data->valstring.hash = 1;
@@ -3588,82 +3986,82 @@ TMPSTATIC unsigned long mc_valstring_gethash(mcvalue_t obj)
 TMPSTATIC mcobjfuncscript_t* mc_value_functiongetscriptfunction(mcvalue_t object)
 {
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_OBJ_FUNCTION);
-    data = object_get_allocated_data(object);
-    return &data->function;
+    MC_ASSERT(mc_value_gettype(object) == MC_OBJ_FUNCSCRIPT);
+    data = mc_value_getallocateddata(object);
+    return &data->valscriptfunc;
 }
 
 TMPSTATIC mcobjfuncnative_t* mc_value_functiongetnativefunction(mcvalue_t obj)
 {
-    mcobjdata_t* data = object_get_allocated_data(obj);
-    return &data->native_function;
+    mcobjdata_t* data = mc_value_getallocateddata(obj);
+    return &data->valnativefunc;
 }
 
 TMPSTATIC const char* mc_value_functiongetname(mcvalue_t obj)
 {
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(obj) == MC_OBJ_FUNCTION);
-    data = object_get_allocated_data(obj);
+    MC_ASSERT(mc_value_gettype(obj) == MC_OBJ_FUNCSCRIPT);
+    data = mc_value_getallocateddata(obj);
     MC_ASSERT(data);
     if(!data)
     {
         return NULL;
     }
-    if(data->function.owns_data)
+    if(data->valscriptfunc.ownsdata)
     {
-        return data->function.name;
+        return data->valscriptfunc.fallocname;
     }
-    return data->function.const_name;
+    return data->valscriptfunc.fconstname;
 }
 
 TMPSTATIC mcvalue_t mc_value_functiongetfreevalat(mcvalue_t obj, int ix)
 {
     mcobjdata_t* data;
     mcobjfuncscript_t* fun;
-    MC_ASSERT(mc_value_gettype(obj) == MC_OBJ_FUNCTION);
-    data = object_get_allocated_data(obj);
+    MC_ASSERT(mc_value_gettype(obj) == MC_OBJ_FUNCSCRIPT);
+    data = mc_value_getallocateddata(obj);
     MC_ASSERT(data);
     if(!data)
     {
         return mc_value_makenull();
     }
-    fun = &data->function;
-    MC_ASSERT(ix >= 0 && ix < fun->free_vals_count);
-    if(ix < 0 || ix >= fun->free_vals_count)
+    fun = &data->valscriptfunc;
+    MC_ASSERT(ix >= 0 && ix < fun->freevalscount);
+    if(ix < 0 || ix >= fun->freevalscount)
     {
         return mc_value_makenull();
     }
     if(freevals_are_allocated(fun))
     {
-        return fun->free_vals_allocated[ix];
+        return fun->freevalsallocated[ix];
     }
-    return fun->free_vals_buf[ix];
+    return fun->freevalsstack[ix];
 }
 
 TMPSTATIC void mc_value_functionsetfreevalat(mcvalue_t obj, int ix, mcvalue_t val)
 {
     mcobjdata_t* data;
     mcobjfuncscript_t* fun;
-    MC_ASSERT(mc_value_gettype(obj) == MC_OBJ_FUNCTION);
-    data = object_get_allocated_data(obj);
+    MC_ASSERT(mc_value_gettype(obj) == MC_OBJ_FUNCSCRIPT);
+    data = mc_value_getallocateddata(obj);
     MC_ASSERT(data);
     if(!data)
     {
         return;
     }
-    fun = &data->function;
-    MC_ASSERT(ix >= 0 && ix < fun->free_vals_count);
-    if(ix < 0 || ix >= fun->free_vals_count)
+    fun = &data->valscriptfunc;
+    MC_ASSERT(ix >= 0 && ix < fun->freevalscount);
+    if(ix < 0 || ix >= fun->freevalscount)
     {
         return;
     }
     if(freevals_are_allocated(fun))
     {
-        fun->free_vals_allocated[ix] = val;
+        fun->freevalsallocated[ix] = val;
     }
     else
     {
-        fun->free_vals_buf[ix] = val;
+        fun->freevalsstack[ix] = val;
     }
 }
 
@@ -3671,27 +4069,27 @@ TMPUNUSED mcvalue_t* mc_value_functiongetfreevals(mcvalue_t obj)
 {
     mcobjdata_t* data;
     mcobjfuncscript_t* fun;
-    MC_ASSERT(mc_value_gettype(obj) == MC_OBJ_FUNCTION);
-    data = object_get_allocated_data(obj);
+    MC_ASSERT(mc_value_gettype(obj) == MC_OBJ_FUNCSCRIPT);
+    data = mc_value_getallocateddata(obj);
     MC_ASSERT(data);
     if(!data)
     {
         return NULL;
     }
-    fun = &data->function;
+    fun = &data->valscriptfunc;
     if(freevals_are_allocated(fun))
     {
-        return fun->free_vals_allocated;
+        return fun->freevalsallocated;
     }
-    return fun->free_vals_buf;
+    return fun->freevalsstack;
 }
 
 TMPSTATIC const char* mc_value_errorgetmessage(mcvalue_t object)
 {
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_OBJ_ERROR);
-    data = object_get_allocated_data(object);
-    return data->error.message;
+    data = mc_value_getallocateddata(object);
+    return data->valerror.message;
 }
 
 TMPSTATIC void mc_value_errorsettraceback(mcvalue_t object, mctraceback_t* traceback)
@@ -3702,24 +4100,24 @@ TMPSTATIC void mc_value_errorsettraceback(mcvalue_t object, mctraceback_t* trace
     {
         return;
     }
-    data = object_get_allocated_data(object);
-    MC_ASSERT(data->error.traceback == NULL);
-    data->error.traceback = traceback;
+    data = mc_value_getallocateddata(object);
+    MC_ASSERT(data->valerror.traceback == NULL);
+    data->valerror.traceback = traceback;
 }
 
 TMPSTATIC mctraceback_t* mc_value_errorgettraceback(mcvalue_t object)
 {
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_OBJ_ERROR);
-    data = object_get_allocated_data(object);
-    return data->error.traceback;
+    data = mc_value_getallocateddata(object);
+    return data->valerror.traceback;
 }
 
-TMPSTATIC bool mc_value_setexternaldata(mcvalue_t object, void* extdata)
+TMPSTATIC bool mc_valexternal_setdata(mcvalue_t object, void* extdata)
 {
     mcobjexternal_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_OBJ_EXTERNAL);
-    data = object_get_external_data(object);
+    data = mc_valexternal_getdata(object);
     if(!data)
     {
         return false;
@@ -3728,16 +4126,16 @@ TMPSTATIC bool mc_value_setexternaldata(mcvalue_t object, void* extdata)
     return true;
 }
 
-TMPSTATIC bool mc_value_setexternalcopyfunction(mcvalue_t object, mcitemcopyfn_t copyfn)
+TMPSTATIC bool mc_valexternal_setcopyfunction(mcvalue_t object, mcitemcopyfn_t copyfn)
 {
     mcobjexternal_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_OBJ_EXTERNAL);
-    data = object_get_external_data(object);
+    data = mc_valexternal_getdata(object);
     if(!data)
     {
         return false;
     }
-    data->data_copy_fn = copyfn;
+    data->datacopyfn = copyfn;
     return true;
 }
 
@@ -3746,7 +4144,7 @@ TMPSTATIC mcvalue_t mc_valarray_getvalueat(mcvalue_t object, int ix)
     mcvalue_t* res;
     mcbasicarray_t* array;
     MC_ASSERT(mc_value_gettype(object) == MC_OBJ_ARRAY);
-    array = object_get_allocated_array(object);
+    array = mc_valarray_getinternalarray(object);
     if(ix < 0 || ix >= mc_basicarray_count(array))
     {
         return mc_value_makenull();
@@ -3765,7 +4163,7 @@ TMPSTATIC bool mc_valarray_setvalueat(mcvalue_t object, int ix, mcvalue_t val)
     int toadd;
     mcbasicarray_t* array;
     MC_ASSERT(mc_value_gettype(object) == MC_OBJ_ARRAY);
-    array = object_get_allocated_array(object);
+    array = mc_valarray_getinternalarray(object);
     len = mc_basicarray_count(array);
     if(((ix < 0) || (ix >= len)) || (len == 0))
     {
@@ -3786,7 +4184,7 @@ TMPSTATIC bool mc_valarray_push(mcvalue_t object, mcvalue_t val)
 {
     mcbasicarray_t* array;
     MC_ASSERT(mc_value_gettype(object) == MC_OBJ_ARRAY);
-    array = object_get_allocated_array(object);
+    array = mc_valarray_getinternalarray(object);
     return mc_basicarray_push(array, &val);
 }
 
@@ -3794,14 +4192,14 @@ TMPSTATIC int mc_valarray_getlength(mcvalue_t object)
 {
     mcbasicarray_t* array;
     MC_ASSERT(mc_value_gettype(object) == MC_OBJ_ARRAY);
-    array = object_get_allocated_array(object);
+    array = mc_valarray_getinternalarray(object);
     return mc_basicarray_count(array);
 }
 
 TMPSTATIC bool mc_valarray_removevalueat(mcvalue_t object, int ix)
 {
     mcbasicarray_t* array;
-    array = object_get_allocated_array(object);
+    array = mc_valarray_getinternalarray(object);
     return mc_basicarray_removeat(array, ix);
 }
 
@@ -3809,8 +4207,8 @@ TMPSTATIC int mc_valmap_getlength(mcvalue_t object)
 {
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_OBJ_MAP);
-    data = object_get_allocated_data(object);
-    return mc_valdict_count(data->map);
+    data = mc_value_getallocateddata(object);
+    return mc_valdict_count(data->valmap);
 }
 
 TMPSTATIC mcvalue_t mc_valmap_getkeyat(mcvalue_t object, int ix)
@@ -3818,8 +4216,8 @@ TMPSTATIC mcvalue_t mc_valmap_getkeyat(mcvalue_t object, int ix)
     mcvalue_t* res;
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_OBJ_MAP);
-    data = object_get_allocated_data(object);
-    res = (mcvalue_t*)mc_valdict_getkeyat(data->map, ix);
+    data = mc_value_getallocateddata(object);
+    res = (mcvalue_t*)mc_valdict_getkeyat(data->valmap, ix);
     if(!res)
     {
         return mc_value_makenull();
@@ -3832,8 +4230,8 @@ TMPSTATIC mcvalue_t mc_valmap_getvalueat(mcvalue_t object, int ix)
     mcvalue_t* res;
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_OBJ_MAP);
-    data = object_get_allocated_data(object);
-    res = (mcvalue_t*)mc_valdict_getvalueat(data->map, ix);
+    data = mc_value_getallocateddata(object);
+    res = (mcvalue_t*)mc_valdict_getvalueat(data->valmap, ix);
     if(!res)
     {
         return mc_value_makenull();
@@ -3849,8 +4247,8 @@ TMPUNUSED bool mc_valmap_setvalueat(mcvalue_t object, int ix, mcvalue_t val)
     {
         return false;
     }
-    data = object_get_allocated_data(object);
-    return mc_valdict_setvalueat(data->map, ix, &val);
+    data = mc_value_getallocateddata(object);
+    return mc_valdict_setvalueat(data->valmap, ix, &val);
 }
 
 TMPSTATIC mcvalue_t mc_valmap_getkvpairat(mcstate_t* state, mcvalue_t object, int ix)
@@ -3862,8 +4260,8 @@ TMPSTATIC mcvalue_t mc_valmap_getkvpairat(mcstate_t* state, mcvalue_t object, in
     mcvalue_t keyobj;
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_OBJ_MAP);
-    data = object_get_allocated_data(object);
-    if(ix >= mc_valdict_count(data->map))
+    data = mc_value_getallocateddata(object);
+    if(ix >= mc_valdict_count(data->valmap))
     {
         return mc_value_makenull();
     }
@@ -3893,8 +4291,17 @@ TMPSTATIC bool mc_valmap_setvalue(mcvalue_t object, mcvalue_t key, mcvalue_t val
 {
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_OBJ_MAP);
-    data = object_get_allocated_data(object);
-    return mc_valdict_setkv(data->map, &key, &val);
+    data = mc_value_getallocateddata(object);
+    return mc_valdict_setkv(data->valmap, &key, &val);
+}
+
+TMPSTATIC bool mc_valmap_setvalstring(mcvalue_t object, const char* strkey, mcvalue_t val)
+{
+    mcstate_t* state;
+    mcvalue_t vkey;
+    state = mc_value_getallocateddata(object)->pstate;
+    vkey = mc_value_makestring(state, strkey);
+    return mc_valmap_setvalue(object, vkey, val);
 }
 
 TMPSTATIC mcvalue_t mc_valmap_getvalue(mcvalue_t object, mcvalue_t key)
@@ -3902,8 +4309,8 @@ TMPSTATIC mcvalue_t mc_valmap_getvalue(mcvalue_t object, mcvalue_t key)
     mcvalue_t* res;
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_OBJ_MAP);
-    data = object_get_allocated_data(object);
-    res = (mcvalue_t*)mc_valdict_get(data->map, &key);
+    data = mc_value_getallocateddata(object);
+    res = (mcvalue_t*)mc_valdict_get(data->valmap, &key);
     if(!res)
     {
         return mc_value_makenull();
@@ -3916,8 +4323,8 @@ TMPUNUSED bool mc_valmap_haskey(mcvalue_t object, mcvalue_t key)
     mcvalue_t* res;
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_OBJ_MAP);
-    data = object_get_allocated_data(object);
-    res = (mcvalue_t*)mc_valdict_get(data->map, &key);
+    data = mc_value_getallocateddata(object);
+    res = (mcvalue_t*)mc_valdict_get(data->valmap, &key);
     return res != NULL;
 }
 
@@ -3937,20 +4344,20 @@ TMPSEMISTATIC mcvalue_t mc_value_copydeepfuncscript(mcstate_t* state, mcvalue_t 
     bytecodecopy = NULL;
     srcpositionscopy = NULL;
     comprescopy = NULL;
-    bytecodecopy = (uint8_t*)mc_allocator_alloc(state, sizeof(uint8_t) * function->comp_result->count);
+    bytecodecopy = (uint8_t*)mc_allocator_alloc(state, sizeof(uint8_t) * function->compiledprogcode->count);
     if(!bytecodecopy)
     {
         return mc_value_makenull();
     }
-    memcpy(bytecodecopy, function->comp_result->bytecode, sizeof(uint8_t) * function->comp_result->count);
-    srcpositionscopy = (mcastlocation_t*)mc_allocator_alloc(state, sizeof(mcastlocation_t) * function->comp_result->count);
+    memcpy(bytecodecopy, function->compiledprogcode->bytecode, sizeof(uint8_t) * function->compiledprogcode->count);
+    srcpositionscopy = (mcastlocation_t*)mc_allocator_alloc(state, sizeof(mcastlocation_t) * function->compiledprogcode->count);
     if(!srcpositionscopy)
     {
         mc_allocator_free(state, bytecodecopy);
         return mc_value_makenull();
     }
-    memcpy(srcpositionscopy, function->comp_result->src_positions, sizeof(mcastlocation_t) * function->comp_result->count);
-    comprescopy = mc_astcompresult_make(state, bytecodecopy, srcpositionscopy, function->comp_result->count);
+    memcpy(srcpositionscopy, function->compiledprogcode->progsrcposlist, sizeof(mcastlocation_t) * function->compiledprogcode->count);
+    comprescopy = mc_astcompresult_make(state, bytecodecopy, srcpositionscopy, function->compiledprogcode->count);
     /*
     * todo: add compilation result copy function
     */
@@ -3960,7 +4367,7 @@ TMPSEMISTATIC mcvalue_t mc_value_copydeepfuncscript(mcstate_t* state, mcvalue_t 
         mc_allocator_free(state, bytecodecopy);
         return mc_value_makenull();
     }
-    copy = mc_value_makefuncscript(state, mc_value_functiongetname(obj), comprescopy, true, function->num_locals, function->num_args, 0);
+    copy = mc_value_makefuncscript(state, mc_value_functiongetname(obj), comprescopy, true, function->numlocals, function->numargs, 0);
     if(mc_value_isnull(copy))
     {
         mc_astcompresult_destroy(comprescopy);
@@ -3974,14 +4381,14 @@ TMPSEMISTATIC mcvalue_t mc_value_copydeepfuncscript(mcstate_t* state, mcvalue_t 
     functioncopy = mc_value_functiongetscriptfunction(copy);
     if(freevals_are_allocated(function))
     {
-        functioncopy->free_vals_allocated = (mcvalue_t*)mc_allocator_alloc(state, sizeof(mcvalue_t) * function->free_vals_count);
-        if(!functioncopy->free_vals_allocated)
+        functioncopy->freevalsallocated = (mcvalue_t*)mc_allocator_alloc(state, sizeof(mcvalue_t) * function->freevalscount);
+        if(!functioncopy->freevalsallocated)
         {
             return mc_value_makenull();
         }
     }
-    functioncopy->free_vals_count = function->free_vals_count;
-    for(i = 0; i < function->free_vals_count; i++)
+    functioncopy->freevalscount = function->freevalscount;
+    for(i = 0; i < function->freevalscount; i++)
     {
         freeval = mc_value_functiongetfreevalat(obj, i);
         freevalcopy = mc_value_copydeepintern(state, freeval, copies);
@@ -4089,15 +4496,15 @@ TMPSEMISTATIC mcvalue_t mc_value_copydeepintern(mcstate_t* state, mcvalue_t obj,
         case MC_OBJ_FREED:
         case MC_OBJ_ANY:
         case MC_OBJ_NONE:
-        {
-            MC_ASSERT(false);
-            copy = mc_value_makenull();
+            {
+                MC_ASSERT(false);
+                copy = mc_value_makenull();
+            }
             break;
-        }
         case MC_OBJ_NUMBER:
         case MC_OBJ_BOOL:
         case MC_OBJ_NULL:
-        case MC_OBJ_NATIVE_FUNCTION:
+        case MC_OBJ_FUNCNATIVE:
             {
                 copy = obj;
             }
@@ -4112,7 +4519,7 @@ TMPSEMISTATIC mcvalue_t mc_value_copydeepintern(mcstate_t* state, mcvalue_t obj,
                 return copy;
             }
             break;
-        case MC_OBJ_FUNCTION:
+        case MC_OBJ_FUNCSCRIPT:
             {
                 return mc_value_copydeepfuncscript(state, obj, copies);
             }
@@ -4141,16 +4548,16 @@ TMPSEMISTATIC mcvalue_t mc_value_copydeepintern(mcstate_t* state, mcvalue_t obj,
     return copy;
 }
 
-TMPSTATIC bool object_equals_wrapped(mcvalue_t* aptr, mcvalue_t* bptr)
+TMPSTATIC bool mc_value_equalswrapped(mcvalue_t* aptr, mcvalue_t* bptr)
 {
     mcvalue_t a;
     mcvalue_t b;
     a = *aptr;
     b = *bptr;
-    return object_equals(a, b);
+    return mc_value_equals(a, b);
 }
 
-TMPSTATIC unsigned long object_hash(mcvalue_t* objptr)
+TMPSTATIC unsigned long mc_value_hash(mcvalue_t* objptr)
 {
     bool bval;
     double dval;
@@ -4163,12 +4570,12 @@ TMPSTATIC unsigned long object_hash(mcvalue_t* objptr)
         case MC_OBJ_NUMBER:
             {
                 dval = mc_value_getnumber(obj);
-                return object_hash_double(dval);
+                return mc_util_hashdouble(dval);
             }
             break;
         case MC_OBJ_BOOL:
             {
-                bval = object_get_bool(obj);
+                bval = mc_value_getbool(obj);
                 return bval;
             }
             break;
@@ -4185,52 +4592,28 @@ TMPSTATIC unsigned long object_hash(mcvalue_t* objptr)
     return 0;
 }
 
-TMPSTATIC unsigned long object_hash_string(const char* str)
+TMPSTATIC mcbasicarray_t* mc_valarray_getinternalarray(mcvalue_t object)
 {
-    /* djb2 */
-    int c;
-    unsigned long hash;
-    hash = 5381;
-    while((c = *str++))
-    {
-        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
-    }
-    return hash;
-}
-
-TMPSTATIC unsigned long object_hash_double(double val)
-{
-    /* djb2 */
-    unsigned long hash;
-    uint32_t* valptr;
-    valptr = (uint32_t*)&val;
-    hash = 5381;
-    hash = ((hash << 5) + hash) + valptr[0];
-    hash = ((hash << 5) + hash) + valptr[1];
-    return hash;
-}
-
-TMPSTATIC mcbasicarray_t* object_get_allocated_array(mcvalue_t object)
-{
+    mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_OBJ_ARRAY);
-    mcobjdata_t* data = object_get_allocated_data(object);
-    return data->array;
+    data = mc_value_getallocateddata(object);
+    return data->valarray;
 }
 
-TMPSTATIC bool object_is_number(mcvalue_t o)
+TMPSTATIC bool mc_value_isnumber(mcvalue_t o)
 {
     return (o.type == MC_OBJ_NUMBER || o.type == MC_OBJ_BOOL);
 }
 
 TMPSTATIC bool freevals_are_allocated(mcobjfuncscript_t* fun)
 {
-    return fun->free_vals_count >= MC_UTIL_STATICARRAYSIZE(fun->free_vals_buf);
+    return fun->freevalscount >= MC_UTIL_STATICARRAYSIZE(fun->freevalsstack);
 }
 
 TMPSTATIC char* mc_valstring_getdataintern(mcobjdata_t* data)
 {
     MC_ASSERT(data->type == MC_OBJ_STRING);
-    if(data->valstring.is_allocated)
+    if(data->valstring.isallocated)
     {
         return data->valstring.actualallocated;
     }
@@ -4245,23 +4628,21 @@ TMPSTATIC bool mc_valstring_reservecapacity(mcobjdata_t* data, int capacity)
     string = &data->valstring;
     string->length = 0;
     string->hash = 0;
-    string->data = NULL;
     if(capacity <= string->capacity)
     {
         return true;
     }
-    if(capacity <= (MC_CONF_OBJECT_STRING_BUF_SIZE - 1))
+    if(capacity <= (MC_CONF_STRINGMAXSTACKSIZE - 1))
     {
-        if(string->is_allocated)
+        if(string->isallocated)
         {
             /* should never happen */
             MC_ASSERT(false);
             /* just in case */
             mc_allocator_free(data->pstate, string->actualallocated);
         }
-        string->capacity = MC_CONF_OBJECT_STRING_BUF_SIZE - 1;
-        string->is_allocated = false;
-        string->data = string->actualonstack;
+        string->capacity = MC_CONF_STRINGMAXSTACKSIZE - 1;
+        string->isallocated = false;
         return true;
     }
     newvalue = (char*)mc_allocator_alloc(data->pstate, capacity + 1);
@@ -4269,17 +4650,15 @@ TMPSTATIC bool mc_valstring_reservecapacity(mcobjdata_t* data, int capacity)
     {
         return false;
     }
-    if(string->is_allocated)
+    if(string->isallocated)
     {
         mc_allocator_free(data->pstate, string->actualallocated);
     }
     string->actualallocated = newvalue;
-    string->is_allocated = true;
+    string->isallocated = true;
     string->capacity = capacity;
-    string->data = string->actualallocated;
     return true;
 }
-
 
 TMPSTATIC mcastscopecomp_t* mc_astcompscope_make(mcstate_t* state, mcastscopecomp_t* outer)
 {
@@ -4297,18 +4676,18 @@ TMPSTATIC mcastscopecomp_t* mc_astcompscope_make(mcstate_t* state, mcastscopecom
     {
         goto err;
     }
-    scope->src_positions = mc_basicarray_make(state, sizeof(mcastlocation_t));
-    if(!scope->src_positions)
+    scope->scopesrcposlist = mc_basicarray_make(state, sizeof(mcastlocation_t));
+    if(!scope->scopesrcposlist)
     {
         goto err;
     }
-    scope->break_ip_stack = mc_basicarray_make(state, sizeof(int));
-    if(!scope->break_ip_stack)
+    scope->ipstackbreak = mc_basicarray_make(state, sizeof(int));
+    if(!scope->ipstackbreak)
     {
         goto err;
     }
-    scope->continue_ip_stack = mc_basicarray_make(state, sizeof(int));
-    if(!scope->continue_ip_stack)
+    scope->ipstackcontinue = mc_basicarray_make(state, sizeof(int));
+    if(!scope->ipstackcontinue)
     {
         goto err;
     }
@@ -4322,28 +4701,30 @@ TMPSTATIC void mc_astcompscope_destroy(mcastscopecomp_t* scope)
 {
     mcstate_t* state;
     state = scope->pstate;
-    mc_basicarray_destroy(scope->continue_ip_stack);
-    mc_basicarray_destroy(scope->break_ip_stack);
+    mc_basicarray_destroy(scope->ipstackcontinue);
+    mc_basicarray_destroy(scope->ipstackbreak);
     mc_basicarray_destroy(scope->bytecode);
-    mc_basicarray_destroy(scope->src_positions);
+    mc_basicarray_destroy(scope->scopesrcposlist);
     mc_allocator_free(state, scope);
 }
 
 TMPSTATIC mccompiledprogram_t* mc_astcompscope_orphanresult(mcastscopecomp_t* scope)
 {
-    mccompiledprogram_t* res = mc_astcompresult_make(scope->pstate, (uint8_t*)mc_basicarray_data(scope->bytecode), (mcastlocation_t*)mc_basicarray_data(scope->src_positions), mc_basicarray_count(scope->bytecode));
+    mccompiledprogram_t* res;
+    res = mc_astcompresult_make(scope->pstate, (uint8_t*)mc_basicarray_data(scope->bytecode), (mcastlocation_t*)mc_basicarray_data(scope->scopesrcposlist), mc_basicarray_count(scope->bytecode));
     if(!res)
     {
         return NULL;
     }
     mc_basicarray_orphandata(scope->bytecode);
-    mc_basicarray_orphandata(scope->src_positions);
+    mc_basicarray_orphandata(scope->scopesrcposlist);
     return res;
 }
 
-TMPSTATIC mccompiledprogram_t* mc_astcompresult_make(mcstate_t* state, uint8_t* bytecode, mcastlocation_t* src_positions, int count)
+TMPSTATIC mccompiledprogram_t* mc_astcompresult_make(mcstate_t* state, uint8_t* bytecode, mcastlocation_t* srcposlist, int count)
 {
-    mccompiledprogram_t* res = (mccompiledprogram_t*)mc_allocator_alloc(state, sizeof(mccompiledprogram_t));
+    mccompiledprogram_t* res;
+    res = (mccompiledprogram_t*)mc_allocator_alloc(state, sizeof(mccompiledprogram_t));
     if(!res)
     {
         return NULL;
@@ -4351,7 +4732,7 @@ TMPSTATIC mccompiledprogram_t* mc_astcompresult_make(mcstate_t* state, uint8_t* 
     memset(res, 0, sizeof(mccompiledprogram_t));
     res->pstate = state;
     res->bytecode = bytecode;
-    res->src_positions = src_positions;
+    res->progsrcposlist = srcposlist;
     res->count = count;
     return res;
 }
@@ -4365,7 +4746,7 @@ TMPSTATIC void mc_astcompresult_destroy(mccompiledprogram_t* res)
     }
     state = res->pstate;
     mc_allocator_free(state, res->bytecode);
-    mc_allocator_free(state, res->src_positions);
+    mc_allocator_free(state, res->progsrcposlist);
     mc_allocator_free(state, res);
 }
 
@@ -4858,7 +5239,6 @@ TMPSTATIC bool mc_lexer_expectcurrent(mcastlexer_t* lex, mcasttoktype_t type)
     {
         return false;
     }
-
     if(!mc_lexer_currtokenis(lex, type))
     {
         expectedtypestr = token_type_to_string(type);
@@ -5059,26 +5439,28 @@ TMPSTATIC void mc_lexer_skipspace(mcastlexer_t* lex)
 TMPSTATIC bool mc_lexer_addline(mcastlexer_t* lex, int offset)
 {
     bool ok;
+    size_t linelen;
+    char* line;
+    const char* linestart;
+    const char* newlineptr;
     if(!lex->file)
     {
         return true;
     }
-
     if(lex->line < mc_ptrarray_count(lex->file->lines))
     {
         return true;
     }
-
-    const char* linestart = lex->inputsource + offset;
-    const char* newlineptr = strchr(linestart, '\n');
-    char* line = NULL;
+    linestart = lex->inputsource + offset;
+    newlineptr = strchr(linestart, '\n');
+    line = NULL;
     if(!newlineptr)
     {
         line = mc_util_strdup(lex->pstate, linestart);
     }
     else
     {
-        size_t linelen = newlineptr - linestart;
+        linelen = newlineptr - linestart;
         line = mc_util_strndup(lex->pstate, linestart, linelen);
     }
     if(!line)
@@ -5159,7 +5541,7 @@ TMPSTATIC void mc_compiledfile_destroy(mcastcompiledfile_t* file)
     mc_allocator_free(state, file);
 }
 
-TMPSTATIC mcastcompiler_t* mc_compiler_make(mcstate_t* state, mcconfig_t* config, mcgcmemory_t* mem, mcerrlist_t* errors, mcptrarray_t* files, mcglobalstore_t* global_store)
+TMPSTATIC mcastcompiler_t* mc_compiler_make(mcstate_t* state, mcconfig_t* config, mcgcmemory_t* mem, mcerrlist_t* errors, mcptrarray_t* files, mcglobalstore_t* gstore)
 {
     bool ok;
     mcastcompiler_t* comp = (mcastcompiler_t*)mc_allocator_alloc(state, sizeof(mcastcompiler_t));
@@ -5167,7 +5549,7 @@ TMPSTATIC mcastcompiler_t* mc_compiler_make(mcstate_t* state, mcconfig_t* config
     {
         return NULL;
     }
-    ok = mc_compiler_init(comp, state, config, mem, errors, files, global_store);
+    ok = mc_compiler_init(comp, state, config, mem, errors, files, gstore);
     if(!ok)
     {
         mc_allocator_free(state, comp);
@@ -5197,16 +5579,16 @@ TMPSTATIC mccompiledprogram_t* mc_compiler_compilesource(mcastcompiler_t* comp, 
     mccompiledprogram_t* res;
     compscope = mc_compiler_getcompilationscope(comp);
 
-    MC_ASSERT(mc_basicarray_count(comp->src_positions_stack) == 0);
+    MC_ASSERT(mc_basicarray_count(comp->srcposstack) == 0);
     MC_ASSERT(mc_basicarray_count(compscope->bytecode) == 0);
-    MC_ASSERT(mc_basicarray_count(compscope->break_ip_stack) == 0);
-    MC_ASSERT(mc_basicarray_count(compscope->continue_ip_stack) == 0);
+    MC_ASSERT(mc_basicarray_count(compscope->ipstackbreak) == 0);
+    MC_ASSERT(mc_basicarray_count(compscope->ipstackcontinue) == 0);
 
-    mc_basicarray_clear(comp->src_positions_stack);
+    mc_basicarray_clear(comp->srcposstack);
     mc_basicarray_clear(compscope->bytecode);
-    mc_basicarray_clear(compscope->src_positions);
-    mc_basicarray_clear(compscope->break_ip_stack);
-    mc_basicarray_clear(compscope->continue_ip_stack);
+    mc_basicarray_clear(compscope->scopesrcposlist);
+    mc_basicarray_clear(compscope->ipstackbreak);
+    mc_basicarray_clear(compscope->ipstackcontinue);
     ok = mc_compiler_initshallowcopy(&compshallowcopy, comp);
     if(!ok)
     {
@@ -5237,24 +5619,24 @@ err:
 
 TMPSTATIC mcastsymtable_t* mc_compiler_getsymtable(mcastcompiler_t* comp)
 {
-    mcastscopefile_t* filescope = (mcastscopefile_t*)mc_ptrarray_top(comp->file_scopes);
+    mcastscopefile_t* filescope = (mcastscopefile_t*)mc_ptrarray_top(comp->filescopelist);
     if(!filescope)
     {
         MC_ASSERT(false);
         return NULL;
     }
-    return filescope->symbol_table;
+    return filescope->filesymtab;
 }
 
 TMPSTATIC void mc_compiler_setsymtable(mcastcompiler_t* comp, mcastsymtable_t* table)
 {
-    mcastscopefile_t* filescope = (mcastscopefile_t*)mc_ptrarray_top(comp->file_scopes);
+    mcastscopefile_t* filescope = (mcastscopefile_t*)mc_ptrarray_top(comp->filescopelist);
     if(!filescope)
     {
         MC_ASSERT(false);
         return;
     }
-    filescope->symbol_table = table;
+    filescope->filesymtab = table;
 }
 
 TMPSTATIC mcbasicarray_t* mc_compiler_getconstants(mcastcompiler_t* comp)
@@ -5271,9 +5653,9 @@ TMPSTATIC bool mc_compiler_init(mcastcompiler_t* comp, mcstate_t* state, mcconfi
     comp->mem = mem;
     comp->errors = errors;
     comp->files = files;
-    comp->global_store = gstor;
-    comp->file_scopes = mc_ptrarray_make(state);
-    if(!comp->file_scopes)
+    comp->compglobalstore = gstor;
+    comp->filescopelist = mc_ptrarray_make(state);
+    if(!comp->filescopelist)
     {
         goto err;
     }
@@ -5282,8 +5664,8 @@ TMPSTATIC bool mc_compiler_init(mcastcompiler_t* comp, mcstate_t* state, mcconfi
     {
         goto err;
     }
-    comp->src_positions_stack = mc_basicarray_make(state, sizeof(mcastlocation_t));
-    if(!comp->src_positions_stack)
+    comp->srcposstack = mc_basicarray_make(state, sizeof(mcastlocation_t));
+    if(!comp->srcposstack)
     {
         goto err;
     }
@@ -5302,8 +5684,8 @@ TMPSTATIC bool mc_compiler_init(mcastcompiler_t* comp, mcstate_t* state, mcconfi
     {
         goto err;
     }
-    comp->string_constants_positions = mc_genericdict_make(comp->pstate, NULL, NULL);
-    if(!comp->string_constants_positions)
+    comp->stringconstposdict = mc_genericdict_make(comp->pstate, NULL, NULL);
+    if(!comp->stringconstposdict)
     {
         goto err;
     }
@@ -5322,13 +5704,13 @@ TMPSTATIC void mc_compiler_deinit(mcastcompiler_t* comp)
     {
         return;
     }
-    for(i = 0; i < mc_genericdict_count(comp->string_constants_positions); i++)
+    for(i = 0; i < mc_genericdict_count(comp->stringconstposdict); i++)
     {
-        val = (int*)mc_genericdict_getvalueat(comp->string_constants_positions, i);
+        val = (int*)mc_genericdict_getvalueat(comp->stringconstposdict, i);
         mc_allocator_free(comp->pstate, val);
     }
-    mc_genericdict_destroy(comp->string_constants_positions);
-    while(mc_ptrarray_count(comp->file_scopes) > 0)
+    mc_genericdict_destroy(comp->stringconstposdict);
+    while(mc_ptrarray_count(comp->filescopelist) > 0)
     {
         mc_compiler_filescopepop(comp);
     }
@@ -5337,9 +5719,9 @@ TMPSTATIC void mc_compiler_deinit(mcastcompiler_t* comp)
         mc_compiler_popcompilationscope(comp);
     }
     mc_genericdict_destroyitemsanddict(comp->modules);
-    mc_basicarray_destroy(comp->src_positions_stack);
+    mc_basicarray_destroy(comp->srcposstack);
     mc_basicarray_destroy(comp->constants);
-    mc_ptrarray_destroy(comp->file_scopes, NULL);
+    mc_ptrarray_destroy(comp->filescopelist, NULL);
     memset(comp, 0, sizeof(mcastcompiler_t));
 }
 
@@ -5361,13 +5743,13 @@ TMPSTATIC bool mc_compiler_initshallowcopy(mcastcompiler_t* copy, mcastcompiler_
     mcastsymtable_t* copyst;
     mcastscopefile_t* srcfilescope;
     mcastscopefile_t* copyfilescope;
-    ok = mc_compiler_init(copy, src->pstate, src->config, src->mem, src->errors, src->files, src->global_store);
+    ok = mc_compiler_init(copy, src->pstate, src->config, src->mem, src->errors, src->files, src->compglobalstore);
     if(!ok)
     {
         return false;
     }
     srcst = mc_compiler_getsymtable(src);
-    MC_ASSERT(mc_ptrarray_count(src->file_scopes) == 1);
+    MC_ASSERT(mc_ptrarray_count(src->filescopelist) == 1);
     MC_ASSERT(srcst->outer == NULL);
     srcstocopy = mc_symtable_copy(srcst);
     if(!srcstocopy)
@@ -5392,27 +5774,27 @@ TMPSTATIC bool mc_compiler_initshallowcopy(mcastcompiler_t* copy, mcastcompiler_
     }
     mc_basicarray_destroy(copy->constants);
     copy->constants = constantscopy;
-    for(i = 0; i < mc_genericdict_count(src->string_constants_positions); i++)
+    for(i = 0; i < mc_genericdict_count(src->stringconstposdict); i++)
     {
-        key = mc_genericdict_getkeyat(src->string_constants_positions, i);
-        val = (int*)mc_genericdict_getvalueat(src->string_constants_positions, i);
+        key = mc_genericdict_getkeyat(src->stringconstposdict, i);
+        val = (int*)mc_genericdict_getvalueat(src->stringconstposdict, i);
         valcopy = (int*)mc_allocator_alloc(src->pstate, sizeof(int));
         if(!valcopy)
         {
             goto err;
         }
         *valcopy = *val;
-        ok = mc_genericdict_set(copy->string_constants_positions, key, valcopy);
+        ok = mc_genericdict_set(copy->stringconstposdict, key, valcopy);
         if(!ok)
         {
             mc_allocator_free(src->pstate, valcopy);
             goto err;
         }
     }
-    srcfilescope = (mcastscopefile_t*)mc_ptrarray_top(src->file_scopes);
-    copyfilescope = (mcastscopefile_t*)mc_ptrarray_top(copy->file_scopes);
-    srcloadedmodulenames = srcfilescope->loaded_module_names;
-    copyloadedmodulenames = copyfilescope->loaded_module_names;
+    srcfilescope = (mcastscopefile_t*)mc_ptrarray_top(src->filescopelist);
+    copyfilescope = (mcastscopefile_t*)mc_ptrarray_top(copy->filescopelist);
+    srcloadedmodulenames = srcfilescope->loadedmodnames;
+    copyloadedmodulenames = copyfilescope->loadedmodnames;
     for(i = 0; i < mc_ptrarray_count(srcloadedmodulenames); i++)
     {
 
@@ -5436,7 +5818,7 @@ err:
 }
 
 
-static mcopdefinition_t g_definitions[OPCODE_MAX + 1] = {
+static mcopdefinition_t g_definitions[MC_OPCODE_MAX + 1] = {
     { "NONE", 0, { 0 } },
     { "CONSTANT", 1, { 2 } },
     { "ADD", 0, { 0 } },
@@ -5494,7 +5876,7 @@ static mcopdefinition_t g_definitions[OPCODE_MAX + 1] = {
 
 TMPSTATIC mcopdefinition_t* opcode_lookup(mcinternopcode_t op)
 {
-    if(op <= OPCODE_NONE || op >= OPCODE_MAX)
+    if(op <= MC_OPCODE_NONE || op >= MC_OPCODE_MAX)
     {
         return NULL;
     }
@@ -5503,11 +5885,2114 @@ TMPSTATIC mcopdefinition_t* opcode_lookup(mcinternopcode_t op)
 
 TMPSTATIC const char* opcode_get_name(mcinternopcode_t op)
 {
-    if(op <= OPCODE_NONE || op >= OPCODE_MAX)
+    if(op <= MC_OPCODE_NONE || op >= MC_OPCODE_MAX)
     {
         return NULL;
     }
     return g_definitions[op].name;
+}
+
+TMPSTATIC mcastparser_t* mc_astparser_make(mcstate_t* state, mcconfig_t* config, mcerrlist_t* errors)
+{
+    mcastparser_t* parser;
+    parser = (mcastparser_t*)mc_allocator_alloc(state, sizeof(mcastparser_t));
+    if(!parser)
+    {
+        return NULL;
+    }
+    memset(parser, 0, sizeof(mcastparser_t));
+    parser->pstate = state;
+    parser->config = config;
+    parser->errors = errors;
+    {
+        parser->rightassocfuncs[MC_TOK_IDENT] = mc_parser_parseident;
+        parser->rightassocfuncs[MC_TOK_NUMBER] = mc_parser_parseliteralnumber;
+        parser->rightassocfuncs[MC_TOK_TRUE] = mc_parser_parseliteralbool;
+        parser->rightassocfuncs[MC_TOK_FALSE] = mc_parser_parseliteralbool;
+        parser->rightassocfuncs[MC_TOK_STRING] = mc_parser_parseliteralstring;
+        parser->rightassocfuncs[MC_TOK_TEMPLATESTRING] = mc_parser_parseliteraltemplatestring;
+        parser->rightassocfuncs[MC_TOK_NULL] = mc_parser_parseliteralnull;
+        parser->rightassocfuncs[MC_TOK_BANG] = mc_parser_parseprefixexpr;
+        parser->rightassocfuncs[MC_TOK_MINUS] = mc_parser_parseprefixexpr;
+        parser->rightassocfuncs[MC_TOK_LPAREN] = mc_parser_parsegroupedexpr;
+        parser->rightassocfuncs[MC_TOK_FUNCTION] = mc_parser_parseliteralfunction;
+        parser->rightassocfuncs[MC_TOK_LBRACKET] = mc_parser_parseliteralarray;
+        parser->rightassocfuncs[MC_TOK_LBRACE] = mc_parser_parseliteralmap;
+        parser->rightassocfuncs[MC_TOK_PLUSPLUS] = mc_parser_parseincdecprefixexpr;
+        parser->rightassocfuncs[MC_TOK_MINUSMINUS] = mc_parser_parseincdecprefixexpr;
+    }
+    {
+        parser->leftassocfuncs[MC_TOK_PLUS] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_MINUS] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_SLASH] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_ASTERISK] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_PERCENT] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_EQ] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_NOTEQ] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_LT] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_LTE] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_GT] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_GTE] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_LPAREN] = mc_parser_parsecallexpr;
+        parser->leftassocfuncs[MC_TOK_LBRACKET] = mc_parser_parseindexexpr;
+        parser->leftassocfuncs[MC_TOK_ASSIGN] = mc_parser_parseassignexpr;
+        parser->leftassocfuncs[MC_TOK_PLUSASSIGN] = mc_parser_parseassignexpr;
+        parser->leftassocfuncs[MC_TOK_MINUSASSIGN] = mc_parser_parseassignexpr;
+        parser->leftassocfuncs[MC_TOK_SLASHASSIGN] = mc_parser_parseassignexpr;
+        parser->leftassocfuncs[MC_TOK_ASTERISKASSIGN] = mc_parser_parseassignexpr;
+        parser->leftassocfuncs[MC_TOK_PERCENTASSIGN] = mc_parser_parseassignexpr;
+        parser->leftassocfuncs[MC_TOK_BITANDASSIGN] = mc_parser_parseassignexpr;
+        parser->leftassocfuncs[MC_TOK_BITORASSIGN] = mc_parser_parseassignexpr;
+        parser->leftassocfuncs[MC_TOK_BITXORASSIGN] = mc_parser_parseassignexpr;
+        parser->leftassocfuncs[MC_TOK_LSHIFTASSIGN] = mc_parser_parseassignexpr;
+        parser->leftassocfuncs[MC_TOK_RSHIFTASSIGN] = mc_parser_parseassignexpr;
+        parser->leftassocfuncs[MC_TOK_DOT] = mc_parser_parsedotexpression;
+        parser->leftassocfuncs[MC_TOK_AND] = mc_parser_parselogicalexpr;
+        parser->leftassocfuncs[MC_TOK_OR] = mc_parser_parselogicalexpr;
+        parser->leftassocfuncs[MC_TOK_BITAND] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_BITOR] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_BITXOR] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_LSHIFT] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_RSHIFT] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_QUESTION] = mc_parser_parseternaryexpr;
+        parser->leftassocfuncs[MC_TOK_PLUSPLUS] = mc_parser_parseincdecpostfixexpr;
+        parser->leftassocfuncs[MC_TOK_MINUSMINUS] = mc_parser_parseincdecpostfixexpr;
+    }
+    parser->depth = 0;
+    return parser;
+}
+
+TMPSTATIC void mc_astparser_destroy(mcastparser_t* parser)
+{
+    if(!parser)
+    {
+        return;
+    }
+    mc_allocator_free(parser->pstate, parser);
+}
+
+TMPSTATIC mcptrarray_t* mc_astparser_parseall(mcastparser_t* parser, const char* input, mcastcompiledfile_t* file)
+{
+    bool ok;
+    mcastexpression_t* expr;
+    mcptrarray_t* statements;
+    parser->depth = 0;
+    ok = mc_lexer_init(&parser->lexer, parser->pstate, parser->errors, input, file);
+    if(!ok)
+    {
+        return NULL;
+    }
+    mc_lexer_nexttoken(&parser->lexer);
+    mc_lexer_nexttoken(&parser->lexer);
+    statements = mc_ptrarray_make(parser->pstate);
+    if(!statements)
+    {
+        return NULL;
+    }
+    while(!mc_lexer_currtokenis(&parser->lexer, MC_TOK_EOF))
+    {
+        if(mc_lexer_currtokenis(&parser->lexer, MC_TOK_SEMICOLON))
+        {
+            mc_lexer_nexttoken(&parser->lexer);
+            continue;
+        }
+        expr = mc_astparser_parsestatement(parser);
+        if(!expr)
+        {
+            goto err;
+        }
+        ok = mc_ptrarray_push(statements, expr);
+        if(!ok)
+        {
+            mc_astexpr_destroy(expr);
+            goto err;
+        }
+    }
+    if(mc_errlist_size(parser->errors) > 0)
+    {
+        goto err;
+    }
+    return statements;
+err:
+    mc_ptrarray_destroy(statements, (mcitemdestroyfn_t)mc_astexpr_destroy);
+    return NULL;
+}
+
+TMPSTATIC mcastexpression_t* mc_astparser_parsestatement(mcastparser_t* p)
+{
+    mcastlocation_t pos;
+    mcastexpression_t* res;
+    pos = p->lexer.currtoken.pos;
+    res = NULL;
+    switch(p->lexer.currtoken.type)
+    {
+        case MC_TOK_VAR:
+        case MC_TOK_CONST:
+            {
+                res = mc_parser_parsevarletstmt(p);
+            }
+            break;
+        case MC_TOK_IF:
+            {
+                res = mc_parser_parseifstmt(p);
+            }
+            break;
+        case MC_TOK_RETURN:
+            {
+                res = mc_parser_parsereturnstmt(p);
+            }
+            break;
+        case MC_TOK_WHILE:
+            {
+                res = mc_parser_parseloopwhilestmt(p);
+            }
+            break;
+        case MC_TOK_BREAK:
+            {
+                res = mc_parser_parsebreakstmt(p);
+            }
+            break;
+        case MC_TOK_FOR:
+            {
+                res = mc_parser_parseloopforstmt(p);
+            }
+            break;
+        case MC_TOK_FUNCTION:
+            {
+                if(mc_lexer_peektokenis(&p->lexer, MC_TOK_IDENT))
+                {
+                    res = mc_parser_parsefunctionstmt(p);
+                }
+                else
+                {
+                    res = mc_parser_parseexprstmt(p);
+                }
+            }
+            break;
+        case MC_TOK_LBRACE:
+            {
+                if(p->config->replmode && p->depth == 0)
+                {
+                    res = mc_parser_parseexprstmt(p);
+                }
+                else
+                {
+                    res = mc_parser_parseblockstmt(p);
+                }
+            }
+            break;
+        case MC_TOK_CONTINUE:
+            {
+                res = mc_parser_parsecontinuestmt(p);
+            }
+            break;
+        case MC_TOK_IMPORT:
+            {
+                res = mc_parser_parseimportstmt(p);
+            }
+            break;
+        case MC_TOK_RECOVER:
+            {
+                res = mc_parser_parserecoverstmt(p);
+            }
+            break;
+        default:
+            {
+                res = mc_parser_parseexprstmt(p);
+            }
+            break;
+    }
+    if(res)
+    {
+        res->pos = pos;
+    }
+    return res;
+}
+
+TMPSEMISTATIC mcastexpression_t* mc_parser_parsevarletstmt(mcastparser_t* p)
+{
+    bool assignable;
+    mcastident_t* nameident;
+    mcastexpression_t* value;
+    mcastexpression_t* res;
+    nameident = NULL;
+    value = NULL;
+    assignable = mc_lexer_currtokenis(&p->lexer, MC_TOK_VAR);
+    mc_lexer_nexttoken(&p->lexer);
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_IDENT))
+    {
+        goto err;
+    }
+    nameident = mc_astident_make(p->pstate, p->lexer.currtoken);
+    if(!nameident)
+    {
+        goto err;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    #if 0
+        if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_ASSIGN))
+    #else
+        if(!mc_lexer_currtokenis(&p->lexer, MC_TOK_ASSIGN))
+    #endif
+    {
+        value = mc_astexpr_makeliteralnull(p->pstate);
+        goto finish;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    value = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
+    if(!value)
+    {
+        goto err;
+    }
+    if(value->type == MC_EXPR_FUNCTIONLITERAL)
+    {
+        value->exprlitfunction.name = mc_util_strdup(p->pstate, nameident->value);
+        if(!value->exprlitfunction.name)
+        {
+            goto err;
+        }
+    }
+    finish:
+    res = mc_astexpr_makedefineexpr(p->pstate, nameident, value, assignable);
+    if(!res)
+    {
+        goto err;
+    }
+    return res;
+err:
+    mc_astexpr_destroy(value);
+    mc_astident_destroy(nameident);
+    return NULL;
+}
+
+TMPSEMISTATIC mcastexpression_t* mc_parser_parseifstmt(mcastparser_t* p)
+{
+    bool ok;
+    mcptrarray_t* cases;
+    mcastifcase_t* cond;
+    mcastifcase_t* elif;
+    mcastcodeblock_t* alternative;
+    mcastexpression_t* res;
+    cases = NULL;
+    alternative = NULL;
+    cases = mc_ptrarray_make(p->pstate);
+    if(!cases)
+    {
+        goto err;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LPAREN))
+    {
+        goto err;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    cond = mc_astifcase_make(p->pstate, NULL, NULL);
+    if(!cond)
+    {
+        goto err;
+    }
+    ok = mc_ptrarray_push(cases, cond);
+    if(!ok)
+    {
+        mc_astifcase_destroy(cond);
+        goto err;
+    }
+    cond->ifcond = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
+    if(!cond->ifcond)
+    {
+        goto err;
+    }
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
+    {
+        goto err;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    cond->consequence = mc_parser_parsecodeblock(p);
+    if(!cond->consequence)
+    {
+        goto err;
+    }
+    while(mc_lexer_currtokenis(&p->lexer, MC_TOK_ELSE))
+    {
+        mc_lexer_nexttoken(&p->lexer);
+        if(mc_lexer_currtokenis(&p->lexer, MC_TOK_IF))
+        {
+            mc_lexer_nexttoken(&p->lexer);
+            if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LPAREN))
+            {
+                goto err;
+            }
+            mc_lexer_nexttoken(&p->lexer);
+            elif = mc_astifcase_make(p->pstate, NULL, NULL);
+            if(!elif)
+            {
+                goto err;
+            }
+            ok = mc_ptrarray_push(cases, elif);
+            if(!ok)
+            {
+                mc_astifcase_destroy(elif);
+                goto err;
+            }
+            elif->ifcond = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
+            if(!elif->ifcond)
+            {
+                goto err;
+            }
+            if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
+            {
+                goto err;
+            }
+            mc_lexer_nexttoken(&p->lexer);
+            elif->consequence = mc_parser_parsecodeblock(p);
+            if(!elif->consequence)
+            {
+                goto err;
+            }
+        }
+        else
+        {
+            alternative = mc_parser_parsecodeblock(p);
+            if(!alternative)
+            {
+                goto err;
+            }
+        }
+    }
+    res = mc_astexpr_makeifexpr(p->pstate, cases, alternative);
+    if(!res)
+    {
+        goto err;
+    }
+    return res;
+err:
+    mc_ptrarray_destroy(cases, (mcitemdestroyfn_t)mc_astifcase_destroy);
+    mc_astcodeblock_destroy(alternative);
+    return NULL;
+}
+
+TMPSEMISTATIC mcastexpression_t* mc_parser_parsereturnstmt(mcastparser_t* p)
+{
+    mcastexpression_t* res;
+    mcastexpression_t* expr;
+    expr = NULL;
+    mc_lexer_nexttoken(&p->lexer);
+    if(!mc_lexer_currtokenis(&p->lexer, MC_TOK_SEMICOLON) && !mc_lexer_currtokenis(&p->lexer, MC_TOK_RBRACE) && !mc_lexer_currtokenis(&p->lexer, MC_TOK_EOF))
+    {
+        expr = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
+        if(!expr)
+        {
+            return NULL;
+        }
+    }
+    res = mc_astexpr_makereturnexpr(p->pstate, expr);
+    if(!res)
+    {
+        mc_astexpr_destroy(expr);
+        return NULL;
+    }
+    return res;
+}
+
+TMPSEMISTATIC mcastexpression_t* mc_parser_parseexprstmt(mcastparser_t* p)
+{
+    mcastexpression_t* res;
+    mcastexpression_t* expr;
+    expr = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
+    if(!expr)
+    {
+        return NULL;
+    }
+    if(expr && (!p->config->replmode || p->depth > 0))
+    {
+        if(expr->type != MC_EXPR_ASSIGN && expr->type != MC_EXPR_CALL)
+        {
+            mc_errlist_addf(p->errors, MC_ERROR_PARSING, expr->pos, "Only assignments and function calls can be expression statements");
+            mc_astexpr_destroy(expr);
+            return NULL;
+        }
+    }
+    res = mc_astexpr_makeexprstmt(p->pstate, expr);
+    if(!res)
+    {
+        mc_astexpr_destroy(expr);
+        return NULL;
+    }
+    return res;
+}
+
+TMPSEMISTATIC mcastexpression_t* mc_parser_parseloopwhilestmt(mcastparser_t* p)
+{
+    mcastexpression_t* res;
+    mcastexpression_t* test;
+    mcastcodeblock_t* body;
+    test = NULL;
+    body = NULL;
+    mc_lexer_nexttoken(&p->lexer);
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LPAREN))
+    {
+        goto err;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    test = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
+    if(!test)
+    {
+        goto err;
+    }
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
+    {
+        goto err;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    body = mc_parser_parsecodeblock(p);
+    if(!body)
+    {
+        goto err;
+    }
+    res = mc_astexpr_makewhileexpr(p->pstate, test, body);
+    if(!res)
+    {
+        goto err;
+    }
+    return res;
+err:
+    mc_astcodeblock_destroy(body);
+    mc_astexpr_destroy(test);
+    return NULL;
+}
+
+TMPSEMISTATIC mcastexpression_t* mc_parser_parsebreakstmt(mcastparser_t* p)
+{
+    mc_lexer_nexttoken(&p->lexer);
+    return mc_astexpr_makebreakexpr(p->pstate);
+}
+
+TMPSEMISTATIC mcastexpression_t* mc_parser_parsecontinuestmt(mcastparser_t* p)
+{
+    mc_lexer_nexttoken(&p->lexer);
+    return mc_astexpr_makecontinueexpr(p->pstate);
+}
+
+TMPSEMISTATIC mcastexpression_t* mc_parser_parseblockstmt(mcastparser_t* p)
+{
+    mcastcodeblock_t* block;
+    mcastexpression_t* res;
+    block = mc_parser_parsecodeblock(p);
+    if(!block)
+    {
+        return NULL;
+    }
+    res = mc_astexpr_makeblockexpr(p->pstate, block);
+    if(!res)
+    {
+        mc_astcodeblock_destroy(block);
+        return NULL;
+    }
+    return res;
+}
+
+TMPSEMISTATIC mcastexpression_t* mc_parser_parseimportstmt(mcastparser_t* p)
+{
+    char* processedname;
+    mcastexpression_t* res;
+    mc_lexer_nexttoken(&p->lexer);
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_STRING))
+    {
+        return NULL;
+    }
+    processedname = mc_parser_processandcopystring(p->pstate, p->lexer.currtoken.literal, p->lexer.currtoken.len);
+    if(!processedname)
+    {
+        mc_errlist_push(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "Error when parsing module name");
+        return NULL;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    res = mc_astexpr_makeimportexpr(p->pstate, processedname);
+    if(!res)
+    {
+        mc_allocator_free(p->pstate, processedname);
+        return NULL;
+    }
+    return res;
+}
+
+TMPSEMISTATIC mcastexpression_t* mc_parser_parserecoverstmt(mcastparser_t* p)
+{
+    mcastexpression_t* res;
+    mcastident_t* eid;
+    mcastcodeblock_t* body;
+    eid = NULL;
+    body = NULL;
+    mc_lexer_nexttoken(&p->lexer);
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LPAREN))
+    {
+        return NULL;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_IDENT))
+    {
+        return NULL;
+    }
+    eid = mc_astident_make(p->pstate, p->lexer.currtoken);
+    if(!eid)
+    {
+        return NULL;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
+    {
+        goto err;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    body = mc_parser_parsecodeblock(p);
+    if(!body)
+    {
+        goto err;
+    }
+    res = mc_astexpr_makerecoverexpr(p->pstate, eid, body);
+    if(!res)
+    {
+        goto err;
+    }
+    return res;
+err:
+    mc_astcodeblock_destroy(body);
+    mc_astident_destroy(eid);
+    return NULL;
+}
+
+TMPSEMISTATIC mcastexpression_t* mc_parser_parseloopforstmt(mcastparser_t* p)
+{
+    mc_lexer_nexttoken(&p->lexer);
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LPAREN))
+    {
+        return NULL;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    if(mc_lexer_currtokenis(&p->lexer, MC_TOK_IDENT) && mc_lexer_peektokenis(&p->lexer, MC_TOK_IN))
+    {
+        return mc_parser_parseloopforeachstmt(p);
+    }
+    return mc_parser_parseloopforclassicstmt(p);
+}
+
+TMPSTATIC mcastexpression_t* mc_parser_parseloopforeachstmt(mcastparser_t* p)
+{
+    mcastexpression_t* res;
+    mcastexpression_t* source;
+    mcastcodeblock_t* body;
+    mcastident_t* iteratorident;
+    source = NULL;
+    body = NULL;
+    iteratorident = NULL;
+    iteratorident = mc_astident_make(p->pstate, p->lexer.currtoken);
+    if(!iteratorident)
+    {
+        goto err;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_IN))
+    {
+        goto err;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    source = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
+    if(!source)
+    {
+        goto err;
+    }
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
+    {
+        goto err;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    body = mc_parser_parsecodeblock(p);
+    if(!body)
+    {
+        goto err;
+    }
+    res = mc_astexpr_makeforeachexpr(p->pstate, iteratorident, source, body);
+    if(!res)
+    {
+        goto err;
+    }
+    return res;
+err:
+    mc_astcodeblock_destroy(body);
+    mc_astident_destroy(iteratorident);
+    mc_astexpr_destroy(source);
+    return NULL;
+}
+
+TMPSTATIC mcastexpression_t* mc_parser_parseloopforclassicstmt(mcastparser_t* p)
+{
+    mcastexpression_t* res;
+    mcastexpression_t* init;
+    mcastexpression_t* test;
+    mcastexpression_t* update;
+    mcastcodeblock_t* body;
+    init = NULL;
+    test = NULL;
+    update = NULL;
+    body = NULL;
+    if(!mc_lexer_currtokenis(&p->lexer, MC_TOK_SEMICOLON))
+    {
+        init = mc_astparser_parsestatement(p);
+        if(!init)
+        {
+            goto err;
+        }
+        if(init->type != MC_EXPR_STMTDEFINE && init->type != MC_EXPR_STMTEXPRESSION)
+        {
+            mc_errlist_addf(p->errors, MC_ERROR_PARSING, init->pos, "for loop's init clause should be a define statement or an expression");
+            goto err;
+        }
+        if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_SEMICOLON))
+        {
+            goto err;
+        }
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    if(!mc_lexer_currtokenis(&p->lexer, MC_TOK_SEMICOLON))
+    {
+        test = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
+        if(!test)
+        {
+            goto err;
+        }
+        if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_SEMICOLON))
+        {
+            goto err;
+        }
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    if(!mc_lexer_currtokenis(&p->lexer, MC_TOK_RPAREN))
+    {
+        update = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
+        if(!update)
+        {
+            goto err;
+        }
+        if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
+        {
+            goto err;
+        }
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    body = mc_parser_parsecodeblock(p);
+    if(!body)
+    {
+        goto err;
+    }
+    res = mc_astexpr_makeforloopexpr(p->pstate, init, test, update, body);
+    if(!res)
+    {
+        goto err;
+    }
+    return res;
+err:
+    mc_astexpr_destroy(init);
+    mc_astexpr_destroy(test);
+    mc_astexpr_destroy(update);
+    mc_astcodeblock_destroy(body);
+    return NULL;
+}
+
+
+TMPSTATIC mcastcodeblock_t* mc_parser_parsecodeblock(mcastparser_t* p)
+{
+    bool ok;
+    mcastcodeblock_t* res;
+    mcastexpression_t* expr;
+    mcptrarray_t* statements;
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LBRACE))
+    {
+        return NULL;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    p->depth++;
+    statements = mc_ptrarray_make(p->pstate);
+    if(!statements)
+    {
+        goto err;
+    }
+    while(!mc_lexer_currtokenis(&p->lexer, MC_TOK_RBRACE))
+    {
+        if(mc_lexer_currtokenis(&p->lexer, MC_TOK_EOF))
+        {
+            mc_errlist_push(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "Unexpected EOF");
+            goto err;
+        }
+        if(mc_lexer_currtokenis(&p->lexer, MC_TOK_SEMICOLON))
+        {
+            mc_lexer_nexttoken(&p->lexer);
+            continue;
+        }
+        expr = mc_astparser_parsestatement(p);
+        if(!expr)
+        {
+            goto err;
+        }
+        ok = mc_ptrarray_push(statements, expr);
+        if(!ok)
+        {
+            mc_astexpr_destroy(expr);
+            goto err;
+        }
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    p->depth--;
+    res = mc_astcodeblock_make(p->pstate, statements);
+    if(!res)
+    {
+        goto err;
+    }
+    return res;
+err:
+    p->depth--;
+    mc_ptrarray_destroy(statements, (mcitemdestroyfn_t)mc_astexpr_destroy);
+    return NULL;
+}
+
+TMPSTATIC mcastexpression_t* mc_parser_parseexpression(mcastparser_t* p, mcastprecedence_t prec)
+{
+    char* literal;
+    mcastlocation_t pos;
+    mcleftassocparsefn_t parseleftassoc;
+    mcastrightassocparsefn_t parserightassoc;
+    mcastexpression_t* newleftexpr;
+    mcastexpression_t* leftexpr;
+    pos = p->lexer.currtoken.pos;
+    if(p->lexer.currtoken.type == MC_TOK_INVALID)
+    {
+        mc_errlist_push(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "Illegal token");
+        return NULL;
+    }
+    parserightassoc = p->rightassocfuncs[p->lexer.currtoken.type];
+    if(!parserightassoc)
+    {
+        literal = token_duplicate_literal(p->pstate, &p->lexer.currtoken);
+        mc_errlist_addf(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "No prefix parse function for \"%s\" found", literal);
+        mc_allocator_free(p->pstate, literal);
+        return NULL;
+    }
+    leftexpr = parserightassoc(p);
+    if(!leftexpr)
+    {
+        return NULL;
+    }
+    leftexpr->pos = pos;
+    while(!mc_lexer_currtokenis(&p->lexer, MC_TOK_SEMICOLON) && prec < mc_parser_getprecedence(p->lexer.currtoken.type))
+    {
+        parseleftassoc = p->leftassocfuncs[p->lexer.currtoken.type];
+        if(!parseleftassoc)
+        {
+            return leftexpr;
+        }
+        pos = p->lexer.currtoken.pos;
+        newleftexpr = parseleftassoc(p, leftexpr);
+        if(!newleftexpr)
+        {
+            mc_astexpr_destroy(leftexpr);
+            return NULL;
+        }
+        newleftexpr->pos = pos;
+        leftexpr = newleftexpr;
+    }
+    return leftexpr;
+}
+
+TMPSTATIC mcastexpression_t* mc_parser_parseident(mcastparser_t* p)
+{
+    mcastident_t* ident;
+    mcastexpression_t* res;
+    ident = mc_astident_make(p->pstate, p->lexer.currtoken);
+    if(!ident)
+    {
+        return NULL;
+    }
+    res = mc_astexpr_makeident(p->pstate, ident);
+    if(!res)
+    {
+        mc_astident_destroy(ident);
+        return NULL;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    return res;
+}
+
+TMPSTATIC mcastexpression_t* mc_parser_parseliteralnumber(mcastparser_t* p)
+{
+    double number;
+    long parsedlen;
+    char* end;
+    char* literal;
+    number = 0;
+    errno = 0;
+    number = strtod(p->lexer.currtoken.literal, &end);
+    parsedlen = end - p->lexer.currtoken.literal;
+    if(errno || parsedlen != p->lexer.currtoken.len)
+    {
+        literal = token_duplicate_literal(p->pstate, &p->lexer.currtoken);
+        mc_errlist_addf(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "Parsing number literal \"%s\" failed", literal);
+        mc_allocator_free(p->pstate, literal);
+        return NULL;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    return mc_astexpr_makeliteralnumber(p->pstate, number);
+}
+
+TMPSTATIC mcastexpression_t* mc_parser_parseliteralbool(mcastparser_t* p)
+{
+    mcastexpression_t* res;
+    res = mc_astexpr_makeliteralbool(p->pstate, p->lexer.currtoken.type == MC_TOK_TRUE);
+    mc_lexer_nexttoken(&p->lexer);
+    return res;
+}
+
+TMPSTATIC mcastexpression_t* mc_parser_parseliteralstring(mcastparser_t* p)
+{
+    size_t len;
+    char* processedliteral;
+    mcastexpression_t* res;
+    processedliteral = mc_parser_processandcopystring(p->pstate, p->lexer.currtoken.literal, p->lexer.currtoken.len);
+    if(!processedliteral)
+    {
+        mc_errlist_push(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "Error when parsing string literal");
+        return NULL;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    len = strlen(processedliteral);
+    res = mc_astexpr_makeliteralstring(p->pstate, processedliteral, len);
+    if(!res)
+    {
+        mc_allocator_free(p->pstate, processedliteral);
+        return NULL;
+    }
+    return res;
+}
+
+TMPSTATIC mcastexpression_t* mc_parser_parseliteraltemplatestring(mcastparser_t* p)
+{
+    size_t len;
+    char* processedliteral;
+    mcastlocation_t pos;
+    mcastexpression_t* leftstringexpr;
+    mcastexpression_t* templateexpr;
+    mcastexpression_t* tostrcallexpr;
+    mcastexpression_t* leftaddexpr;
+    mcastexpression_t* rightexpr;
+    mcastexpression_t* rightaddexpr;
+    processedliteral = NULL;
+    leftstringexpr = NULL;
+    templateexpr = NULL;
+    tostrcallexpr = NULL;
+    leftaddexpr = NULL;
+    rightexpr = NULL;
+    rightaddexpr = NULL;
+    processedliteral = mc_parser_processandcopystring(p->pstate, p->lexer.currtoken.literal, p->lexer.currtoken.len);
+    if(!processedliteral)
+    {
+        mc_errlist_push(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "Error when parsing string literal");
+        return NULL;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LBRACE))
+    {
+        goto err;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    pos = p->lexer.currtoken.pos;
+    len = strlen(processedliteral);
+    leftstringexpr = mc_astexpr_makeliteralstring(p->pstate, processedliteral, len);
+    if(!leftstringexpr)
+    {
+        goto err;
+    }
+    leftstringexpr->pos = pos;
+    processedliteral = NULL;
+    pos = p->lexer.currtoken.pos;
+    templateexpr = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
+    if(!templateexpr)
+    {
+        goto err;
+    }
+    tostrcallexpr = mc_parser_makefunccallexpr(p->pstate, templateexpr, "tostring");
+    if(!tostrcallexpr)
+    {
+        goto err;
+    }
+    tostrcallexpr->pos = pos;
+    templateexpr = NULL;
+    leftaddexpr = mc_astexpr_makeinfixexpr(p->pstate, MC_MATHOP_PLUS, leftstringexpr, tostrcallexpr);
+    if(!leftaddexpr)
+    {
+        goto err;
+    }
+    leftaddexpr->pos = pos;
+    leftstringexpr = NULL;
+    tostrcallexpr = NULL;
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RBRACE))
+    {
+        goto err;
+    }
+    mc_lexer_previoustoken(&p->lexer);
+    mc_lexer_conttplstring(&p->lexer);
+    mc_lexer_nexttoken(&p->lexer);
+    mc_lexer_nexttoken(&p->lexer);
+    pos = p->lexer.currtoken.pos;
+    rightexpr = mc_parser_parseexpression(p, MC_ASTPREC_HIGHEST);
+    if(!rightexpr)
+    {
+        goto err;
+    }
+    rightaddexpr = mc_astexpr_makeinfixexpr(p->pstate, MC_MATHOP_PLUS, leftaddexpr, rightexpr);
+    if(!rightaddexpr)
+    {
+        goto err;
+    }
+    rightaddexpr->pos = pos;
+    leftaddexpr = NULL;
+    rightexpr = NULL;
+    return rightaddexpr;
+err:
+    mc_astexpr_destroy(rightaddexpr);
+    mc_astexpr_destroy(rightexpr);
+    mc_astexpr_destroy(leftaddexpr);
+    mc_astexpr_destroy(tostrcallexpr);
+    mc_astexpr_destroy(templateexpr);
+    mc_astexpr_destroy(leftstringexpr);
+    mc_allocator_free(p->pstate, processedliteral);
+    return NULL;
+}
+
+TMPSTATIC mcastexpression_t* mc_parser_parseliteralnull(mcastparser_t* p)
+{
+    mc_lexer_nexttoken(&p->lexer);
+    return mc_astexpr_makeliteralnull(p->pstate);
+}
+
+TMPSTATIC mcastexpression_t* mc_parser_parseliteralarray(mcastparser_t* p)
+{
+    mcptrarray_t* array;
+    mcastexpression_t* res;
+    array = mc_parser_parseexprlist(p, MC_TOK_LBRACKET, MC_TOK_RBRACKET, true);
+    if(!array)
+    {
+        return NULL;
+    }
+    res = mc_astexpr_makeliteralarray(p->pstate, array);
+    if(!res)
+    {
+        mc_ptrarray_destroy(array, (mcitemdestroyfn_t)mc_astexpr_destroy);
+        return NULL;
+    }
+    return res;
+}
+
+TMPSTATIC mcastexpression_t* mc_parser_parseliteralmap(mcastparser_t* p)
+{
+    bool ok;
+    size_t len;
+    char* str;
+    mcptrarray_t* keys;
+    mcptrarray_t* values;
+    mcastexpression_t* res;
+    mcastexpression_t* key;
+    mcastexpression_t* value;
+    keys = mc_ptrarray_make(p->pstate);
+    values = mc_ptrarray_make(p->pstate);
+    if(!keys || !values)
+    {
+        goto err;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    while(!mc_lexer_currtokenis(&p->lexer, MC_TOK_RBRACE))
+    {
+        key = NULL;
+        if(mc_lexer_currtokenis(&p->lexer, MC_TOK_IDENT))
+        {
+            str = token_duplicate_literal(p->pstate, &p->lexer.currtoken);
+            len = strlen(str);
+            key = mc_astexpr_makeliteralstring(p->pstate, str, len);
+            if(!key)
+            {
+                mc_allocator_free(p->pstate, str);
+                goto err;
+            }
+            key->pos = p->lexer.currtoken.pos;
+            mc_lexer_nexttoken(&p->lexer);
+        }
+        else
+        {
+            key = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
+            if(!key)
+            {
+                goto err;
+            }
+            switch(key->type)
+            {
+                case MC_EXPR_STRINGLITERAL:
+                case MC_EXPR_NUMBERLITERAL:
+                case MC_EXPR_BOOLLITERAL:
+                {
+                    break;
+                }
+                default:
+                {
+                    mc_errlist_addf(p->errors, MC_ERROR_PARSING, key->pos, "Invalid map literal key type");
+                    mc_astexpr_destroy(key);
+                    goto err;
+                }
+            }
+        }
+        ok = mc_ptrarray_push(keys, key);
+        if(!ok)
+        {
+            mc_astexpr_destroy(key);
+            goto err;
+        }
+        if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_COLON))
+        {
+            goto err;
+        }
+        mc_lexer_nexttoken(&p->lexer);
+        value = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
+        if(!value)
+        {
+            goto err;
+        }
+        ok = mc_ptrarray_push(values, value);
+        if(!ok)
+        {
+            mc_astexpr_destroy(value);
+            goto err;
+        }
+        if(mc_lexer_currtokenis(&p->lexer, MC_TOK_RBRACE))
+        {
+            break;
+        }
+        if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_COMMA))
+        {
+            goto err;
+        }
+        mc_lexer_nexttoken(&p->lexer);
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    res = mc_astexpr_makeliteralmap(p->pstate, keys, values);
+    if(!res)
+    {
+        goto err;
+    }
+    return res;
+err:
+    mc_ptrarray_destroy(keys, (mcitemdestroyfn_t)mc_astexpr_destroy);
+    mc_ptrarray_destroy(values, (mcitemdestroyfn_t)mc_astexpr_destroy);
+    return NULL;
+}
+
+TMPSTATIC mcastexpression_t* mc_parser_parseprefixexpr(mcastparser_t* p)
+{
+    mcastmathoptype_t op;
+    mcastexpression_t* res;
+    mcastexpression_t* right;
+    op = mc_parser_tokentomathop(p->lexer.currtoken.type);
+    mc_lexer_nexttoken(&p->lexer);
+    right = mc_parser_parseexpression(p, MC_ASTPREC_PREFIX);
+    if(!right)
+    {
+        return NULL;
+    }
+    res = mc_astexpr_makeprefixexpr(p->pstate, op, right);
+    if(!res)
+    {
+        mc_astexpr_destroy(right);
+        return NULL;
+    }
+    return res;
+}
+
+TMPSTATIC mcastexpression_t* mc_parser_parseinfixexpr(mcastparser_t* p, mcastexpression_t* left)
+{
+    mcastmathoptype_t op;
+    mcastprecedence_t prec;
+    mcastexpression_t* res;
+    mcastexpression_t* right;
+    op = mc_parser_tokentomathop(p->lexer.currtoken.type);
+    prec = mc_parser_getprecedence(p->lexer.currtoken.type);
+    mc_lexer_nexttoken(&p->lexer);
+    right = mc_parser_parseexpression(p, prec);
+    if(!right)
+    {
+        return NULL;
+    }
+    res = mc_astexpr_makeinfixexpr(p->pstate, op, left, right);
+    if(!res)
+    {
+        mc_astexpr_destroy(right);
+        return NULL;
+    }
+    return res;
+}
+
+TMPSTATIC mcastexpression_t* mc_parser_parsegroupedexpr(mcastparser_t* p)
+{
+    mcastexpression_t* expr;
+    mc_lexer_nexttoken(&p->lexer);
+    expr = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
+    if(!expr || !mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
+    {
+        mc_astexpr_destroy(expr);
+        return NULL;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    return expr;
+}
+
+
+TMPSTATIC bool mc_parser_parsefuncparams(mcastparser_t* p, mcptrarray_t* outparams)
+{
+    bool ok;
+    mcastident_t* ident;
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LPAREN))
+    {
+        return false;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    if(mc_lexer_currtokenis(&p->lexer, MC_TOK_RPAREN))
+    {
+        mc_lexer_nexttoken(&p->lexer);
+        return true;
+    }
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_IDENT))
+    {
+        return false;
+    }
+    ident = mc_astident_make(p->pstate, p->lexer.currtoken);
+    if(!ident)
+    {
+        return false;
+    }
+    ok = mc_ptrarray_push(outparams, ident);
+    if(!ok)
+    {
+        mc_astident_destroy(ident);
+        return false;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    while(mc_lexer_currtokenis(&p->lexer, MC_TOK_COMMA))
+    {
+        mc_lexer_nexttoken(&p->lexer);
+        if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_IDENT))
+        {
+            return false;
+        }
+        ident = mc_astident_make(p->pstate, p->lexer.currtoken);
+        if(!ident)
+        {
+            return false;
+        }
+        ok = mc_ptrarray_push(outparams, ident);
+        if(!ok)
+        {
+            mc_astident_destroy(ident);
+            return false;
+        }
+        mc_lexer_nexttoken(&p->lexer);
+    }
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
+    {
+        return false;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    return true;
+}
+
+TMPSTATIC mcastexpression_t* mc_parser_parseliteralfunction(mcastparser_t* p)
+{
+    bool ok;
+    mcptrarray_t* params;
+    mcastcodeblock_t* body;
+    mcastexpression_t* res;
+    p->depth++;
+    params = NULL;
+    body = NULL;
+    if(mc_lexer_currtokenis(&p->lexer, MC_TOK_FUNCTION))
+    {
+        mc_lexer_nexttoken(&p->lexer);
+    }
+    params = mc_ptrarray_make(p->pstate);
+    ok = mc_parser_parsefuncparams(p, params);
+    if(!ok)
+    {
+        goto err;
+    }
+    body = mc_parser_parsecodeblock(p);
+    if(!body)
+    {
+        goto err;
+    }
+    res = mc_astexpr_makeliteralfunction(p->pstate, params, body);
+    if(!res)
+    {
+        goto err;
+    }
+    p->depth -= 1;
+    return res;
+err:
+    mc_astcodeblock_destroy(body);
+    mc_ptrarray_destroy(params, (mcitemdestroyfn_t)mc_astident_destroy);
+    p->depth -= 1;
+    return NULL;
+}
+
+TMPSEMISTATIC mcastexpression_t* mc_parser_parsefunctionstmt(mcastparser_t* p)
+{
+    mcastident_t* nameident;
+    mcastexpression_t* res;
+    mcastexpression_t* value;
+    mcastlocation_t pos;
+    nameident = NULL;
+    value = NULL;
+    pos = p->lexer.currtoken.pos;
+    mc_lexer_nexttoken(&p->lexer);
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_IDENT))
+    {
+        goto err;
+    }
+    nameident = mc_astident_make(p->pstate, p->lexer.currtoken);
+    if(!nameident)
+    {
+        goto err;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    value = mc_parser_parseliteralfunction(p);
+    if(!value)
+    {
+        goto err;
+    }
+    value->pos = pos;
+    value->exprlitfunction.name = mc_util_strdup(p->pstate, nameident->value);
+    if(!value->exprlitfunction.name)
+    {
+        goto err;
+    }
+    res = mc_astexpr_makedefineexpr(p->pstate, nameident, value, false);
+    if(!res)
+    {
+        goto err;
+    }
+    return res;
+err:
+    mc_astexpr_destroy(value);
+    mc_astident_destroy(nameident);
+    return NULL;
+}
+
+
+TMPSTATIC mcastexpression_t* mc_parser_parsecallexpr(mcastparser_t* p, mcastexpression_t* left)
+{
+    mcptrarray_t* args;
+    mcastexpression_t* res;
+    mcastexpression_t* function;
+    function = left;
+    args = mc_parser_parseexprlist(p, MC_TOK_LPAREN, MC_TOK_RPAREN, false);
+    if(!args)
+    {
+        return NULL;
+    }
+    res = mc_astexpr_makecallexpr(p->pstate, function, args);
+    if(!res)
+    {
+        mc_ptrarray_destroy(args, (mcitemdestroyfn_t)mc_astexpr_destroy);
+        return NULL;
+    }
+    return res;
+}
+
+TMPSTATIC mcptrarray_t* mc_parser_parseexprlist(mcastparser_t* p, mcasttoktype_t starttoken, mcasttoktype_t endtoken, bool trailingcommaallowed)
+{
+    bool ok;
+    mcptrarray_t* res;
+    mcastexpression_t* argexpr;
+    if(!mc_lexer_expectcurrent(&p->lexer, starttoken))
+    {
+        return NULL;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    res = mc_ptrarray_make(p->pstate);
+    if(mc_lexer_currtokenis(&p->lexer, endtoken))
+    {
+        mc_lexer_nexttoken(&p->lexer);
+        return res;
+    }
+    argexpr = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
+    if(!argexpr)
+    {
+        goto err;
+    }
+    ok = mc_ptrarray_push(res, argexpr);
+    if(!ok)
+    {
+        mc_astexpr_destroy(argexpr);
+        goto err;
+    }
+    while(mc_lexer_currtokenis(&p->lexer, MC_TOK_COMMA))
+    {
+        mc_lexer_nexttoken(&p->lexer);
+        if(trailingcommaallowed && mc_lexer_currtokenis(&p->lexer, endtoken))
+        {
+            break;
+        }
+        argexpr = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
+        if(!argexpr)
+        {
+            goto err;
+        }
+        ok = mc_ptrarray_push(res, argexpr);
+        if(!ok)
+        {
+            mc_astexpr_destroy(argexpr);
+            goto err;
+        }
+    }
+    if(!mc_lexer_expectcurrent(&p->lexer, endtoken))
+    {
+        goto err;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    return res;
+err:
+    mc_ptrarray_destroy(res, (mcitemdestroyfn_t)mc_astexpr_destroy);
+    return NULL;
+}
+
+TMPSTATIC mcastexpression_t* mc_parser_parseindexexpr(mcastparser_t* p, mcastexpression_t* left)
+{
+    mcastexpression_t* res;
+    mcastexpression_t* index;
+    mc_lexer_nexttoken(&p->lexer);
+    index = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
+    if(!index)
+    {
+        return NULL;
+    }
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RBRACKET))
+    {
+        mc_astexpr_destroy(index);
+        return NULL;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    res = mc_astexpr_makeindexexpr(p->pstate, left, index);
+    if(!res)
+    {
+        mc_astexpr_destroy(index);
+        return NULL;
+    }
+    return res;
+}
+
+TMPSTATIC mcastexpression_t* mc_parser_parseassignexpr(mcastparser_t* p, mcastexpression_t* left)
+{
+    mcastlocation_t pos;
+    mcastmathoptype_t op;
+    mcasttoktype_t assigntype;
+    mcastexpression_t* res;
+    mcastexpression_t* source;
+    mcastexpression_t* leftcopy;
+    mcastexpression_t* newsource;
+    source = NULL;
+    assigntype = p->lexer.currtoken.type;
+    mc_lexer_nexttoken(&p->lexer);
+    source = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
+    if(!source)
+    {
+        goto err;
+    }
+    switch(assigntype)
+    {
+        case MC_TOK_PLUSASSIGN:
+        case MC_TOK_MINUSASSIGN:
+        case MC_TOK_SLASHASSIGN:
+        case MC_TOK_ASTERISKASSIGN:
+        case MC_TOK_PERCENTASSIGN:
+        case MC_TOK_BITANDASSIGN:
+        case MC_TOK_BITORASSIGN:
+        case MC_TOK_BITXORASSIGN:
+        case MC_TOK_LSHIFTASSIGN:
+        case MC_TOK_RSHIFTASSIGN:
+            {
+                op = mc_parser_tokentomathop(assigntype);
+                leftcopy = mc_astexpr_copy(left);
+                if(!leftcopy)
+                {
+                    goto err;
+                }
+                pos = source->pos;
+                newsource = mc_astexpr_makeinfixexpr(p->pstate, op, leftcopy, source);
+                if(!newsource)
+                {
+                    mc_astexpr_destroy(leftcopy);
+                    goto err;
+                }
+                newsource->pos = pos;
+                source = newsource;
+            }
+            break;
+        case MC_TOK_ASSIGN:
+            {
+            }
+            break;
+        default:
+            {
+                MC_ASSERT(false);
+            }
+            break;
+    }
+    res = mc_astexpr_makeassignexpr(p->pstate, left, source, false);
+    if(!res)
+    {
+        goto err;
+    }
+    return res;
+err:
+    mc_astexpr_destroy(source);
+    return NULL;
+}
+
+TMPSTATIC mcastexpression_t* mc_parser_parselogicalexpr(mcastparser_t* p, mcastexpression_t* left)
+{
+    mcastmathoptype_t op;
+    mcastprecedence_t prec;
+    mcastexpression_t* res;
+    mcastexpression_t* right;
+    op = mc_parser_tokentomathop(p->lexer.currtoken.type);
+    prec = mc_parser_getprecedence(p->lexer.currtoken.type);
+    mc_lexer_nexttoken(&p->lexer);
+    right = mc_parser_parseexpression(p, prec);
+    if(!right)
+    {
+        return NULL;
+    }
+    res = mc_astexpr_makelogicalexpr(p->pstate, op, left, right);
+    if(!res)
+    {
+        mc_astexpr_destroy(right);
+        return NULL;
+    }
+    return res;
+}
+
+TMPSTATIC mcastexpression_t* mc_parser_parseternaryexpr(mcastparser_t* p, mcastexpression_t* left)
+{
+    mcastexpression_t* res;
+    mcastexpression_t* ift;
+    mcastexpression_t* iffalse;
+    mc_lexer_nexttoken(&p->lexer);
+    ift = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
+    if(!ift)
+    {
+        return NULL;
+    }
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_COLON))
+    {
+        mc_astexpr_destroy(ift);
+        return NULL;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    iffalse = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
+    if(!iffalse)
+    {
+        mc_astexpr_destroy(ift);
+        return NULL;
+    }
+    res = mc_astexpr_maketernaryexpr(p->pstate, left, ift, iffalse);
+    if(!res)
+    {
+        mc_astexpr_destroy(ift);
+        mc_astexpr_destroy(iffalse);
+        return NULL;
+    }
+    return res;
+}
+
+TMPSTATIC mcastexpression_t* mc_parser_parseincdecprefixexpr(mcastparser_t* p)
+{
+    mcastlocation_t pos;
+    mcastmathoptype_t op;
+    mcasttoktype_t operationtype;
+    mcastexpression_t* res;
+    mcastexpression_t* dest;
+    mcastexpression_t* source;
+    mcastexpression_t* destcopy;
+    mcastexpression_t* operation;
+    mcastexpression_t* oneliteral;
+    source = NULL;
+    operationtype = p->lexer.currtoken.type;
+    pos = p->lexer.currtoken.pos;
+    mc_lexer_nexttoken(&p->lexer);
+    op = mc_parser_tokentomathop(operationtype);
+    dest = mc_parser_parseexpression(p, MC_ASTPREC_PREFIX);
+    if(!dest)
+    {
+        goto err;
+    }
+    oneliteral = mc_astexpr_makeliteralnumber(p->pstate, 1);
+    if(!oneliteral)
+    {
+        mc_astexpr_destroy(dest);
+        goto err;
+    }
+    oneliteral->pos = pos;
+    destcopy = mc_astexpr_copy(dest);
+    if(!destcopy)
+    {
+        mc_astexpr_destroy(oneliteral);
+        mc_astexpr_destroy(dest);
+        goto err;
+    }
+    operation = mc_astexpr_makeinfixexpr(p->pstate, op, destcopy, oneliteral);
+    if(!operation)
+    {
+        mc_astexpr_destroy(destcopy);
+        mc_astexpr_destroy(dest);
+        mc_astexpr_destroy(oneliteral);
+        goto err;
+    }
+    operation->pos = pos;
+    res = mc_astexpr_makeassignexpr(p->pstate, dest, operation, false);
+    if(!res)
+    {
+        mc_astexpr_destroy(dest);
+        mc_astexpr_destroy(operation);
+        goto err;
+    }
+    return res;
+err:
+    mc_astexpr_destroy(source);
+    return NULL;
+}
+
+TMPSTATIC mcastexpression_t* mc_parser_parseincdecpostfixexpr(mcastparser_t* p, mcastexpression_t* left)
+{
+    mcastlocation_t pos;
+    mcastmathoptype_t op;
+    mcasttoktype_t operationtype;
+    mcastexpression_t* res;
+    mcastexpression_t* source;
+    mcastexpression_t* leftcopy;
+    mcastexpression_t* operation;
+    mcastexpression_t* oneliteral;
+    source = NULL;
+    operationtype = p->lexer.currtoken.type;
+    pos = p->lexer.currtoken.pos;
+    mc_lexer_nexttoken(&p->lexer);
+    op = mc_parser_tokentomathop(operationtype);
+    leftcopy = mc_astexpr_copy(left);
+    if(!leftcopy)
+    {
+        goto err;
+    }
+    oneliteral = mc_astexpr_makeliteralnumber(p->pstate, 1);
+    if(!oneliteral)
+    {
+        mc_astexpr_destroy(leftcopy);
+        goto err;
+    }
+    oneliteral->pos = pos;
+    operation = mc_astexpr_makeinfixexpr(p->pstate, op, leftcopy, oneliteral);
+    if(!operation)
+    {
+        mc_astexpr_destroy(oneliteral);
+        mc_astexpr_destroy(leftcopy);
+        goto err;
+    }
+    operation->pos = pos;
+    res = mc_astexpr_makeassignexpr(p->pstate, left, operation, true);
+    if(!res)
+    {
+        mc_astexpr_destroy(operation);
+        goto err;
+    }
+    return res;
+err:
+    mc_astexpr_destroy(source);
+    return NULL;
+}
+
+TMPSTATIC mcastexpression_t* mc_parser_parsedotexpression(mcastparser_t* p, mcastexpression_t* left)
+{
+    size_t len;
+    char* str;
+    mcastexpression_t* res;
+    mcastexpression_t* index;
+    mc_lexer_nexttoken(&p->lexer);
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_IDENT))
+    {
+        return NULL;
+    }
+    str = token_duplicate_literal(p->pstate, &p->lexer.currtoken);
+    len = strlen(str);
+    index = mc_astexpr_makeliteralstring(p->pstate, str, len);
+    if(!index)
+    {
+        mc_allocator_free(p->pstate, str);
+        return NULL;
+    }
+    index->pos = p->lexer.currtoken.pos;
+    mc_lexer_nexttoken(&p->lexer);
+    res = mc_astexpr_makeindexexpr(p->pstate, left, index);
+    if(!res)
+    {
+        mc_astexpr_destroy(index);
+        return NULL;
+    }
+    return res;
+}
+
+TMPSTATIC mcastprecedence_t mc_parser_getprecedence(mcasttoktype_t tk)
+{
+    switch(tk)
+    {
+        case MC_TOK_EQ:
+        case MC_TOK_NOTEQ:
+            return MC_ASTPREC_EQUALS;
+        case MC_TOK_LT:
+        case MC_TOK_LTE:
+        case MC_TOK_GT:
+        case MC_TOK_GTE:
+            return MC_ASTPREC_LESSGREATER;
+        case MC_TOK_PLUS:
+        case MC_TOK_MINUS:
+            return MC_ASTPREC_SUM;
+        case MC_TOK_SLASH:
+        case MC_TOK_ASTERISK:
+        case MC_TOK_PERCENT:
+            return MC_ASTPREC_PRODUCT;
+        case MC_TOK_LPAREN:
+        case MC_TOK_LBRACKET:
+            return MC_ASTPREC_POSTFIX;
+        case MC_TOK_ASSIGN:
+        case MC_TOK_PLUSASSIGN:
+        case MC_TOK_MINUSASSIGN:
+        case MC_TOK_ASTERISKASSIGN:
+        case MC_TOK_SLASHASSIGN:
+        case MC_TOK_PERCENTASSIGN:
+        case MC_TOK_BITANDASSIGN:
+        case MC_TOK_BITORASSIGN:
+        case MC_TOK_BITXORASSIGN:
+        case MC_TOK_LSHIFTASSIGN:
+        case MC_TOK_RSHIFTASSIGN:
+            return MC_ASTPREC_ASSIGN;
+        case MC_TOK_DOT:
+            return MC_ASTPREC_POSTFIX;
+        case MC_TOK_AND:
+            return MC_ASTPREC_LOGICALAND;
+        case MC_TOK_OR:
+            return MC_ASTPREC_LOGICALOR;
+        case MC_TOK_BITOR:
+            return MC_ASTPREC_BITOR;
+        case MC_TOK_BITXOR:
+            return MC_ASTPREC_BITXOR;
+        case MC_TOK_BITAND:
+            return MC_ASTPREC_BITAND;
+        case MC_TOK_LSHIFT:
+        case MC_TOK_RSHIFT:
+            return MC_ASTPREC_SHIFT;
+        case MC_TOK_QUESTION:
+            return MC_ASTPREC_TERNARY;
+        case MC_TOK_PLUSPLUS:
+        case MC_TOK_MINUSMINUS:
+            return MC_ASTPREC_INCDEC;
+        default:
+            return MC_ASTPREC_LOWEST;
+    }
+}
+
+TMPSTATIC mcastmathoptype_t mc_parser_tokentomathop(mcasttoktype_t tk)
+{
+    switch(tk)
+    {
+        case MC_TOK_ASSIGN:
+            return MC_MATHOP_ASSIGN;
+        case MC_TOK_PLUS:
+            return MC_MATHOP_PLUS;
+        case MC_TOK_MINUS:
+            return MC_MATHOP_MINUS;
+        case MC_TOK_BANG:
+            return MC_MATHOP_BANG;
+        case MC_TOK_ASTERISK:
+            return MC_MATHOP_ASTERISK;
+        case MC_TOK_SLASH:
+            return MC_MATHOP_SLASH;
+        case MC_TOK_LT:
+            return MC_MATHOP_LT;
+        case MC_TOK_LTE:
+            return MC_MATHOP_LTE;
+        case MC_TOK_GT:
+            return MC_MATHOP_GT;
+        case MC_TOK_GTE:
+            return MC_MATHOP_GTE;
+        case MC_TOK_EQ:
+            return MC_MATHOP_EQ;
+        case MC_TOK_NOTEQ:
+            return MC_MATHOP_NOTEQ;
+        case MC_TOK_PERCENT:
+            return MC_MATHOP_MODULUS;
+        case MC_TOK_AND:
+            return MC_MATHOP_LOGICALAND;
+        case MC_TOK_OR:
+            return MC_MATHOP_LOGICALOR;
+        case MC_TOK_PLUSASSIGN:
+            return MC_MATHOP_PLUS;
+        case MC_TOK_MINUSASSIGN:
+            return MC_MATHOP_MINUS;
+        case MC_TOK_ASTERISKASSIGN:
+            return MC_MATHOP_ASTERISK;
+        case MC_TOK_SLASHASSIGN:
+            return MC_MATHOP_SLASH;
+        case MC_TOK_PERCENTASSIGN:
+            return MC_MATHOP_MODULUS;
+        case MC_TOK_BITANDASSIGN:
+            return MC_MATHOP_BITAND;
+        case MC_TOK_BITORASSIGN:
+            return MC_MATHOP_BITOR;
+        case MC_TOK_BITXORASSIGN:
+            return MC_MATHOP_BITXOR;
+        case MC_TOK_LSHIFTASSIGN:
+            return MC_MATHOP_LSHIFT;
+        case MC_TOK_RSHIFTASSIGN:
+            return MC_MATHOP_RSHIFT;
+        case MC_TOK_BITAND:
+            return MC_MATHOP_BITAND;
+        case MC_TOK_BITOR:
+            return MC_MATHOP_BITOR;
+        case MC_TOK_BITXOR:
+            return MC_MATHOP_BITXOR;
+        case MC_TOK_LSHIFT:
+            return MC_MATHOP_LSHIFT;
+        case MC_TOK_RSHIFT:
+            return MC_MATHOP_RSHIFT;
+        case MC_TOK_PLUSPLUS:
+            return MC_MATHOP_PLUS;
+        case MC_TOK_MINUSMINUS:
+            return MC_MATHOP_MINUS;
+        default:
+            {
+                MC_ASSERT(false);
+            }
+            break;
+    }
+    return MC_MATHOP_NONE;
+
+}
+
+TMPSTATIC char mc_parser_getescapechar(char c)
+{
+    switch(c)
+    {
+        case '\"':
+            return '\"';
+        case '\\':
+            return '\\';
+        case '/':
+            return '/';
+        case 'b':
+            return '\b';
+        case 'f':
+            return '\f';
+        case 'n':
+            return '\n';
+        case 'r':
+            return '\r';
+        case 't':
+            return '\t';
+        case '0':
+            return '\0';
+        default:
+            break;
+    }
+    return c;
+}
+
+TMPSTATIC char* mc_parser_processandcopystring(mcstate_t* state, const char* input, size_t len)
+{
+    size_t ini;
+    size_t outi;
+    char* output;
+    output = (char*)mc_allocator_alloc(state, len + 1);
+    if(!output)
+    {
+        return NULL;
+    }
+    ini = 0;
+    outi = 0;
+    while(input[ini] != '\0' && ini < len)
+    {
+        if(input[ini] == '\\')
+        {
+            ini++;
+            output[outi] = mc_parser_getescapechar(input[ini]);
+            if(output[outi] < 0)
+            {
+                goto error;
+            }
+        }
+        else
+        {
+            output[outi] = input[ini];
+        }
+        outi++;
+        ini++;
+    }
+    output[outi] = '\0';
+    return output;
+error:
+    mc_allocator_free(state, output);
+    return NULL;
+}
+
+TMPSTATIC mcastexpression_t* mc_parser_makefunccallexpr(mcstate_t* state, mcastexpression_t* expr, const char* fname)
+{
+    bool ok;
+    mcasttoken_t fntoken;
+    mcastident_t* ident;
+    mcptrarray_t* args;
+    mcastexpression_t* ce;
+    mcastexpression_t* functionidentexpr;
+    token_init(&fntoken, MC_TOK_IDENT, fname, strlen(fname));
+    fntoken.pos = expr->pos;
+    ident = mc_astident_make(state, fntoken);
+    if(!ident)
+    {
+        return NULL;
+    }
+    ident->pos = fntoken.pos;
+    functionidentexpr = mc_astexpr_makeident(state, ident);
+    if(!functionidentexpr)
+    {
+        mc_astident_destroy(ident);
+        return NULL;
+    }
+    functionidentexpr->pos = expr->pos;
+    ident = NULL;
+    args = mc_ptrarray_make(state);
+    if(!args)
+    {
+        mc_astexpr_destroy(functionidentexpr);
+        return NULL;
+    }
+    ok = mc_ptrarray_push(args, expr);
+    if(!ok)
+    {
+        mc_ptrarray_destroy(args, NULL);
+        mc_astexpr_destroy(functionidentexpr);
+        return NULL;
+    }
+    ce = mc_astexpr_makecallexpr(state, functionidentexpr, args);
+    if(!ce)
+    {
+        mc_ptrarray_destroy(args, NULL);
+        mc_astexpr_destroy(functionidentexpr);
+        return NULL;
+    }
+    ce->pos = expr->pos;
+    return ce;
+}
+
+TMPSEMISTATIC mcastexpression_t* mc_optimizer_optexpression(mcastexpression_t* expr)
+{
+    switch(expr->type)
+    {
+        case MC_EXPR_INFIX:
+            return mc_optimizer_optinfixexpr(expr);
+        case MC_EXPR_PREFIX:
+            return mc_optimizer_optprefixexpr(expr);
+        default:
+            break;
+    }
+    return NULL;
+}
+
+TMPSTATIC mcastexpression_t* mc_optimizer_optinfixexpr(mcastexpression_t* expr)
+{
+    bool leftisnumeric;
+    bool rightisnumeric;
+    bool leftisstring;
+    bool rightisstring;
+    double dnleft;
+    double dnright;
+    size_t len;
+    mcstate_t* state;
+    mcastexpression_t* res;
+    mcastexpression_t* left;
+    mcastexpression_t* right;
+    mcastexpression_t* leftoptimized;
+    mcastexpression_t* rightoptimized;
+    state = expr->pstate;
+    left = expr->exprinfix.left;
+    leftoptimized = mc_optimizer_optexpression(left);
+    if(leftoptimized)
+    {
+        left = leftoptimized;
+    }
+    right = expr->exprinfix.right;
+    rightoptimized = mc_optimizer_optexpression(right);
+    if(rightoptimized)
+    {
+        right = rightoptimized;
+    }
+    res = NULL;
+    leftisnumeric = left->type == MC_EXPR_NUMBERLITERAL || left->type == MC_EXPR_BOOLLITERAL;
+    rightisnumeric = right->type == MC_EXPR_NUMBERLITERAL || right->type == MC_EXPR_BOOLLITERAL;
+    leftisstring = left->type == MC_EXPR_STRINGLITERAL;
+    rightisstring = right->type == MC_EXPR_STRINGLITERAL;
+    if(leftisnumeric && rightisnumeric)
+    {
+        dnleft = left->type == MC_EXPR_NUMBERLITERAL ? left->exprlitnumber : left->exprlitbool;
+        dnright = right->type == MC_EXPR_NUMBERLITERAL ? right->exprlitnumber : right->exprlitbool;
+        switch(expr->exprinfix.op)
+        {
+            case MC_MATHOP_PLUS:
+                {
+                    res = mc_astexpr_makeliteralnumber(state, mc_mathutil_add(dnleft, dnright));
+                }
+                break;
+            case MC_MATHOP_MINUS:
+                {
+                    res = mc_astexpr_makeliteralnumber(state, mc_mathutil_sub(dnleft, dnright));
+                }
+                break;
+            case MC_MATHOP_ASTERISK:
+                {
+                    res = mc_astexpr_makeliteralnumber(state, mc_mathutil_mult(dnleft, dnright));
+                }
+                break;
+            case MC_MATHOP_SLASH:
+                {
+                    res = mc_astexpr_makeliteralnumber(state, mc_mathutil_div(dnleft, dnright));
+                }
+                break;
+            case MC_MATHOP_LT:
+                {
+                    res = mc_astexpr_makeliteralbool(state, dnleft < dnright);
+                }
+                break;
+            case MC_MATHOP_LTE:
+                {
+                    res = mc_astexpr_makeliteralbool(state, dnleft <= dnright);
+                }
+                break;
+            case MC_MATHOP_GT:
+                {
+                    res = mc_astexpr_makeliteralbool(state, dnleft > dnright);
+                }
+                break;
+            case MC_MATHOP_GTE:
+                {
+                    res = mc_astexpr_makeliteralbool(state, dnleft >= dnright);
+                }
+                break;
+            case MC_MATHOP_EQ:
+                {
+                    res = mc_astexpr_makeliteralbool(state, MC_UTIL_CMPFLOAT(dnleft, dnright));
+                }
+                break;
+            case MC_MATHOP_NOTEQ:
+                {
+                    res = mc_astexpr_makeliteralbool(state, !MC_UTIL_CMPFLOAT(dnleft, dnright));
+                }
+                break;
+            case MC_MATHOP_MODULUS:
+                {
+                    res = mc_astexpr_makeliteralnumber(state, mc_mathutil_mod(dnleft, dnright));
+                }
+                break;
+            case MC_MATHOP_BITAND:
+                {
+                    res = mc_astexpr_makeliteralnumber(state, mc_mathutil_binand(dnleft, dnright));
+                }
+                break;
+            case MC_MATHOP_BITOR:
+                {
+                    res = mc_astexpr_makeliteralnumber(state, mc_mathutil_binor(dnleft, dnright));
+                }
+                break;
+            case MC_MATHOP_BITXOR:
+                {
+                    res = mc_astexpr_makeliteralnumber(state, mc_mathutil_binxor(dnleft, dnright));
+                }
+                break;
+            case MC_MATHOP_LSHIFT:
+                {
+                    res = mc_astexpr_makeliteralnumber(state, mc_mathutil_binshiftleft(dnleft, dnright));
+                }
+                break;
+            case MC_MATHOP_RSHIFT:
+                {
+                    res = mc_astexpr_makeliteralnumber(state, mc_mathutil_binshiftright(dnleft, dnright));
+                }
+                break;
+            default:
+                {
+                }
+                break;
+        }
+    }
+    else if(expr->exprinfix.op == MC_MATHOP_PLUS && leftisstring && rightisstring)
+    {
+        /* TODO:FIXME: horrible method of joining strings!!!!!!! */
+        char* resstr;
+        const char* strleft;
+        const char* strright;
+        strleft = left->exprlitstring.data;
+        strright = right->exprlitstring.data;
+        resstr = mc_util_stringallocfmt(state, "%s%s", strleft, strright);
+        len = strlen(resstr);
+        if(resstr)
+        {
+            res = mc_astexpr_makeliteralstring(state, resstr, len);
+            if(!res)
+            {
+                mc_allocator_free(state, resstr);
+            }
+        }
+    }
+    mc_astexpr_destroy(leftoptimized);
+    mc_astexpr_destroy(rightoptimized);
+    if(res)
+    {
+        res->pos = expr->pos;
+    }
+    return res;
+}
+
+TMPSTATIC mcastexpression_t* mc_optimizer_optprefixexpr(mcastexpression_t* expr)
+{
+    mcastexpression_t* res;
+    mcastexpression_t* right;
+    mcastexpression_t* rightoptimized;
+    right = expr->exprprefix.right;
+    rightoptimized = mc_optimizer_optexpression(right);
+    if(rightoptimized)
+    {
+        right = rightoptimized;
+    }
+    res = NULL;
+    if(expr->exprprefix.op == MC_MATHOP_MINUS && right->type == MC_EXPR_NUMBERLITERAL)
+    {
+        res = mc_astexpr_makeliteralnumber(expr->pstate, -right->exprlitnumber);
+    }
+    else if(expr->exprprefix.op == MC_MATHOP_BANG && right->type == MC_EXPR_BOOLLITERAL)
+    {
+        res = mc_astexpr_makeliteralbool(expr->pstate, !right->exprlitbool);
+    }
+    mc_astexpr_destroy(rightoptimized);
+    if(res)
+    {
+        res->pos = expr->pos;
+    }
+    return res;
 }
 
 TMPSTATIC int mc_compiler_gencode(mcinternopcode_t op, int operandscount, const uint64_t* operands, mcbasicarray_t* res)
@@ -5524,9 +8009,9 @@ TMPSTATIC int mc_compiler_gencode(mcinternopcode_t op, int operandscount, const 
         return 0;
     }
     instrlen = 1;
-    for(i = 0; i < def->num_operands; i++)
+    for(i = 0; i < def->numoperands; i++)
     {
-        instrlen += def->operand_widths[i];
+        instrlen += def->operandwidths[i];
     }
     val = op;
     ok = false;
@@ -5548,7 +8033,7 @@ TMPSTATIC int mc_compiler_gencode(mcinternopcode_t op, int operandscount, const 
 
     for(i = 0; i < operandscount; i++)
     {
-        width = def->operand_widths[i];
+        width = def->operandwidths[i];
         switch(width)
         {
             case 1:
@@ -5601,6 +8086,7 @@ TMPSTATIC int mc_compiler_emit(mcastcompiler_t* comp, mcinternopcode_t op, int o
     int ip;
     int len;
     mcastlocation_t* srcpos;
+    mcastscopecomp_t* compscope;
     ip = mc_compiler_getip(comp);
     len = mc_compiler_gencode(op, operandscount, operands, mc_compiler_getbytecode(comp));
     if(len == 0)
@@ -5609,7 +8095,7 @@ TMPSTATIC int mc_compiler_emit(mcastcompiler_t* comp, mcinternopcode_t op, int o
     }
     for(i = 0; i < len; i++)
     {
-        srcpos = (mcastlocation_t*)mc_basicarray_top(comp->src_positions_stack);
+        srcpos = (mcastlocation_t*)mc_basicarray_top(comp->srcposstack);
         MC_ASSERT(srcpos->line >= 0);
         MC_ASSERT(srcpos->column >= 0);
         ok = mc_basicarray_push(mc_compiler_getsrcpositions(comp), srcpos);
@@ -5618,15 +8104,14 @@ TMPSTATIC int mc_compiler_emit(mcastcompiler_t* comp, mcinternopcode_t op, int o
             return -1;
         }
     }
-    mcastscopecomp_t* compscope;
     compscope = mc_compiler_getcompilationscope(comp);
-    compscope->last_opcode = op;
+    compscope->lastopcode = op;
     return ip;
 }
 
 TMPSTATIC mcastscopecomp_t* mc_compiler_getcompilationscope(mcastcompiler_t* comp)
 {
-    return comp->compilation_scope;
+    return comp->compilationscope;
 }
 
 TMPSTATIC bool mc_compiler_pushcompilationscope(mcastcompiler_t* comp)
@@ -5645,7 +8130,8 @@ TMPSTATIC bool mc_compiler_pushcompilationscope(mcastcompiler_t* comp)
 
 TMPSTATIC void mc_compiler_popcompilationscope(mcastcompiler_t* comp)
 {
-    mcastscopecomp_t* currentscope = mc_compiler_getcompilationscope(comp);
+    mcastscopecomp_t* currentscope;
+    currentscope = mc_compiler_getcompilationscope(comp);
     MC_ASSERT(currentscope);
     mc_compiler_setcompilationscope(comp, currentscope->outer);
     mc_astcompscope_destroy(currentscope);
@@ -5653,17 +8139,19 @@ TMPSTATIC void mc_compiler_popcompilationscope(mcastcompiler_t* comp)
 
 TMPSTATIC bool mc_compiler_pushsymtable(mcastcompiler_t* comp, int globaloffset)
 {
-    mcastscopefile_t* filescope = (mcastscopefile_t*)mc_ptrarray_top(comp->file_scopes);
+    mcastscopefile_t* filescope;
+    mcastsymtable_t* currenttable;
+    filescope = (mcastscopefile_t*)mc_ptrarray_top(comp->filescopelist);
     if(!filescope)
     {
         MC_ASSERT(false);
         return false;
     }
-    mcastsymtable_t* currenttable = filescope->symbol_table;
-    filescope->symbol_table = mc_symtable_make(comp->pstate, currenttable, comp->global_store, globaloffset);
-    if(!filescope->symbol_table)
+    currenttable = filescope->filesymtab;
+    filescope->filesymtab = mc_symtable_make(comp->pstate, currenttable, comp->compglobalstore, globaloffset);
+    if(!filescope->filesymtab)
     {
-        filescope->symbol_table = currenttable;
+        filescope->filesymtab = currenttable;
         return false;
     }
     return true;
@@ -5671,35 +8159,39 @@ TMPSTATIC bool mc_compiler_pushsymtable(mcastcompiler_t* comp, int globaloffset)
 
 TMPSTATIC void mc_compiler_popsymtable(mcastcompiler_t* comp)
 {
-    mcastscopefile_t* filescope = (mcastscopefile_t*)mc_ptrarray_top(comp->file_scopes);
+    mcastscopefile_t* filescope;
+    mcastsymtable_t* currenttable;
+    filescope = (mcastscopefile_t*)mc_ptrarray_top(comp->filescopelist);
     if(!filescope)
     {
         MC_ASSERT(false);
         return;
     }
-    mcastsymtable_t* currenttable = filescope->symbol_table;
+    currenttable = filescope->filesymtab;
     if(!currenttable)
     {
         MC_ASSERT(false);
         return;
     }
-    filescope->symbol_table = currenttable->outer;
+    filescope->filesymtab = currenttable->outer;
     mc_symtable_destroy(currenttable);
 }
 
 TMPSTATIC mcinternopcode_t mc_compiler_getlastopcode(mcastcompiler_t* comp)
 {
-    mcastscopecomp_t* currentscope = mc_compiler_getcompilationscope(comp);
-    return currentscope->last_opcode;
+    mcastscopecomp_t* currentscope;
+    currentscope = mc_compiler_getcompilationscope(comp);
+    return currentscope->lastopcode;
 }
 
 TMPSTATIC bool mc_compiler_docompilesource(mcastcompiler_t* comp, const char* code)
 {
     bool ok;
-    mcastscopefile_t* filescope = (mcastscopefile_t*)mc_ptrarray_top(comp->file_scopes);
+    mcptrarray_t* statements;
+    mcastscopefile_t* filescope;
+    filescope = (mcastscopefile_t*)mc_ptrarray_top(comp->filescopelist);
     MC_ASSERT(filescope);
-
-    mcptrarray_t* statements = parser_parse_all(filescope->parser, code, filescope->file);
+    statements = mc_astparser_parseall(filescope->parser, code, filescope->file);
     if(!statements)
     {
         /* errors are added by parser */
@@ -5713,22 +8205,20 @@ TMPSTATIC bool mc_compiler_docompilesource(mcastcompiler_t* comp, const char* co
         fprintf(stderr, "\n---AST dump end---\n");
     }
     ok = mc_compiler_compilestmtlist(comp, statements);
-
-    mc_ptrarray_destroy(statements, (mcitemdestroyfn_t)statement_destroy);
+    mc_ptrarray_destroy(statements, (mcitemdestroyfn_t)mc_astexpr_destroy);
     /*
     * //Left for debugging purposes
     if (ok)
     {
-        mcprintstate_t *buf = mc_printer_make(NULL, NULL);
-        mc_printer_printbytecode(buf,
-            mc_basicarray_data(comp->compilation_scope->bytecode),
-            mc_basicarray_data(comp->compilation_scope->src_positions),
-            mc_basicarray_count(comp->compilation_scope->bytecode));
-        puts(mc_printer_getstring(buf));
-        mc_printer_destroy(buf);
+        mcprintstate_t *pr = mc_printer_make(NULL, NULL);
+        mc_printer_printbytecode(pr,
+            mc_basicarray_data(comp->compilationscope->bytecode),
+            mc_basicarray_data(comp->compilationscope->scopesrcposlist),
+            mc_basicarray_count(comp->compilationscope->bytecode));
+        puts(mc_printer_getstring(pr));
+        mc_printer_destroy(pr);
     }
     */
-
     return ok;
 }
 
@@ -5774,12 +8264,12 @@ TMPSTATIC bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_
     result = false;
     filepath = NULL;
     code = NULL;
-    filescope = (mcastscopefile_t*)mc_ptrarray_top(comp->file_scopes);
+    filescope = (mcastscopefile_t*)mc_ptrarray_top(comp->filescopelist);
     modulepath = importstmt->exprimportstmt.path;
     modulename = mc_util_getmodulename(modulepath);
-    for(i = 0; i < mc_ptrarray_count(filescope->loaded_module_names); i++)
+    for(i = 0; i < mc_ptrarray_count(filescope->loadedmodnames); i++)
     {
-        loadedname = (const char*)mc_ptrarray_get(filescope->loaded_module_names, i);
+        loadedname = (const char*)mc_ptrarray_get(filescope->loadedmodnames, i);
         if(kg_streq(loadedname, modulename))
         {
             mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, importstmt->pos, "Module \"%s\" was already imported", modulename);
@@ -5817,15 +8307,15 @@ TMPSTATIC bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_
         goto end;
     }
     symtab = mc_compiler_getsymtable(comp);
-    if(symtab->outer != NULL || mc_ptrarray_count(symtab->block_scopes) > 1)
+    if(symtab->outer != NULL || mc_ptrarray_count(symtab->blockscopes) > 1)
     {
         mc_errlist_push(comp->errors, MC_ERROR_COMPILING, importstmt->pos, "Modules can only be imported in global scope");
         result = false;
         goto end;
     }
-    for(i = 0; i < mc_ptrarray_count(comp->file_scopes); i++)
+    for(i = 0; i < mc_ptrarray_count(comp->filescopelist); i++)
     {
-        fs = (mcastscopefile_t*)mc_ptrarray_get(comp->file_scopes, i);
+        fs = (mcastscopefile_t*)mc_ptrarray_get(comp->filescopelist, i);
         if(MC_UTIL_STREQ(fs->file->path, filepath))
         {
             mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, importstmt->pos, "Cyclic reference of file \"%s\"", filepath);
@@ -5877,9 +8367,7 @@ TMPSTATIC bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_
             symbol = mc_symtable_getmodglobalsymat(st, i);
             mc_module_addsymbol(module, symbol);
         }
-
         mc_compiler_filescopepop(comp);
-
         ok = mc_genericdict_set(comp->modules, filepath, module);
         if(!ok)
         {
@@ -5888,7 +8376,6 @@ TMPSTATIC bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_
             goto end;
         }
     }
-
     for(i = 0; i < mc_ptrarray_count(module->symbols); i++)
     {
         symbol = (mcastsymbol_t*)mc_ptrarray_get(module->symbols, i);
@@ -5905,7 +8392,7 @@ TMPSTATIC bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_
         result = false;
         goto end;
     }
-    ok = mc_ptrarray_push(filescope->loaded_module_names, namecopy);
+    ok = mc_ptrarray_push(filescope->loadedmodnames, namecopy);
     if(!ok)
     {
         mc_allocator_free(comp->pstate, namecopy);
@@ -5928,7 +8415,7 @@ TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpr
     mcastsymtable_t* symtab;
     ok = false;
     ip = -1;
-    ok = mc_basicarray_push(comp->src_positions_stack, &expr->pos);
+    ok = mc_basicarray_push(comp->srcposstack, &expr->pos);
     if(!ok)
     {
         return false;
@@ -5938,413 +8425,414 @@ TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpr
     switch(expr->type)
     {
         case MC_EXPR_STMTEXPRESSION:
-        {
-            ok = mc_compiler_compileexpression(comp, expr->exprexpression);
-            if(!ok)
             {
-                return false;
-            }
-            ip = mc_compiler_emit(comp, OPCODE_POP, 0, NULL);
-            if(ip < 0)
-            {
-                return false;
+                ok = mc_compiler_compileexpression(comp, expr->exprexpression);
+                if(!ok)
+                {
+                    return false;
+                }
+                ip = mc_compiler_emit(comp, MC_OPCODE_POP, 0, NULL);
+                if(ip < 0)
+                {
+                    return false;
+                }
             }
             break;
-        }
         case MC_EXPR_STMTDEFINE:
-        {
-            mcastsymbol_t* symbol;
-            ok = mc_compiler_compileexpression(comp, expr->exprdefine.value);
-            if(!ok)
             {
-                return false;
-            }
-            symbol = mc_compiler_defsymbol(comp, expr->exprdefine.name->pos, expr->exprdefine.name->value, expr->exprdefine.assignable, false);
-            if(!symbol)
-            {
-                return false;
-            }
-            ok = mc_compiler_storesymbol(comp, symbol, true);
-            if(!ok)
-            {
-                return false;
+                mcastsymbol_t* symbol;
+                ok = mc_compiler_compileexpression(comp, expr->exprdefine.value);
+                if(!ok)
+                {
+                    return false;
+                }
+                symbol = mc_compiler_defsymbol(comp, expr->exprdefine.name->pos, expr->exprdefine.name->value, expr->exprdefine.assignable, false);
+                if(!symbol)
+                {
+                    return false;
+                }
+                ok = mc_compiler_storesymbol(comp, symbol, true);
+                if(!ok)
+                {
+                    return false;
+                }
             }
             break;
-        }
         case MC_EXPR_STMTIF:
-        {
-            int i;
-            int afteraltip;
-            int nextcasejumpip;
-            int jumptoendip;
-            int afterelifip;
-            int* pos;
-            mcastifcase_t* ifcase;
-            if_statement_t* ifstmt;
-            ifstmt = &expr->exprifstmt;
-            mcbasicarray_t* jumptoendips;
-            jumptoendips = mc_basicarray_make(comp->pstate, sizeof(int));
-            if(!jumptoendips)
             {
-                goto statementiferror;
-            }
-            for(i = 0; i < mc_ptrarray_count(ifstmt->cases); i++)
-            {
-                ifcase = (mcastifcase_t*)mc_ptrarray_get(ifstmt->cases, i);
-                ok = mc_compiler_compileexpression(comp, ifcase->ifcond);
-                if(!ok)
+                int i;
+                int afteraltip;
+                int nextcasejumpip;
+                int jumptoendip;
+                int afterelifip;
+                int* pos;
+                mcastifcase_t* ifcase;
+                if_statement_t* ifstmt;
+                mcbasicarray_t* jumptoendips;
+                ifstmt = &expr->exprifstmt;
+                jumptoendips = mc_basicarray_make(comp->pstate, sizeof(int));
+                if(!jumptoendips)
                 {
                     goto statementiferror;
                 }
-                opbuf[0] = 0xbeef;
-                nextcasejumpip = mc_compiler_emit(comp, OPCODE_JUMP_IF_FALSE, 1, opbuf);
-                ok = mc_compiler_compilecodeblock(comp, ifcase->consequence);
-                if(!ok)
+                for(i = 0; i < mc_ptrarray_count(ifstmt->cases); i++)
                 {
-                    goto statementiferror;
-                }
-                /* don't emit jump for the last statement */
-                if(i < (mc_ptrarray_count(ifstmt->cases) - 1) || ifstmt->alternative)
-                {
+                    ifcase = (mcastifcase_t*)mc_ptrarray_get(ifstmt->cases, i);
+                    ok = mc_compiler_compileexpression(comp, ifcase->ifcond);
+                    if(!ok)
+                    {
+                        goto statementiferror;
+                    }
                     opbuf[0] = 0xbeef;
-                    jumptoendip = mc_compiler_emit(comp, OPCODE_JUMP, 1, opbuf);
-                    ok = mc_basicarray_push(jumptoendips, &jumptoendip);
+                    nextcasejumpip = mc_compiler_emit(comp, MC_OPCODE_JUMPIFFALSE, 1, opbuf);
+                    ok = mc_compiler_compilecodeblock(comp, ifcase->consequence);
+                    if(!ok)
+                    {
+                        goto statementiferror;
+                    }
+                    /* don't emit jump for the last statement */
+                    if(i < (mc_ptrarray_count(ifstmt->cases) - 1) || ifstmt->alternative)
+                    {
+                        opbuf[0] = 0xbeef;
+                        jumptoendip = mc_compiler_emit(comp, MC_OPCODE_JUMP, 1, opbuf);
+                        ok = mc_basicarray_push(jumptoendips, &jumptoendip);
+                        if(!ok)
+                        {
+                            goto statementiferror;
+                        }
+                    }
+                    afterelifip = mc_compiler_getip(comp);
+                    mc_compiler_changeuint16operand(comp, nextcasejumpip + 1, afterelifip);
+                }
+                if(ifstmt->alternative)
+                {
+                    ok = mc_compiler_compilecodeblock(comp, ifstmt->alternative);
                     if(!ok)
                     {
                         goto statementiferror;
                     }
                 }
-                afterelifip = mc_compiler_getip(comp);
-                mc_compiler_changeuint16operand(comp, nextcasejumpip + 1, afterelifip);
-            }
-            if(ifstmt->alternative)
-            {
-                ok = mc_compiler_compilecodeblock(comp, ifstmt->alternative);
-                if(!ok)
+                afteraltip = mc_compiler_getip(comp);
+                for(i = 0; i < mc_basicarray_count(jumptoendips); i++)
                 {
-                    goto statementiferror;
+                    pos = (int*)mc_basicarray_get(jumptoendips, i);
+                    mc_compiler_changeuint16operand(comp, *pos + 1, afteraltip);
                 }
+                mc_basicarray_destroy(jumptoendips);
+                break;
+            statementiferror:
+                mc_basicarray_destroy(jumptoendips);
+                return false;
             }
-            afteraltip = mc_compiler_getip(comp);
-            for(i = 0; i < mc_basicarray_count(jumptoendips); i++)
-            {
-                pos = (int*)mc_basicarray_get(jumptoendips, i);
-                mc_compiler_changeuint16operand(comp, *pos + 1, afteraltip);
-            }
-            mc_basicarray_destroy(jumptoendips);
             break;
-        statementiferror:
-            mc_basicarray_destroy(jumptoendips);
-            return false;
-        }
         case MC_EXPR_STMTRETURN:
-        {
-            if(compscope->outer == NULL)
             {
-                mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "Nothing to return from");
-                return false;
-            }
-            ip = -1;
-            if(expr->exprreturnvalue)
-            {
-                ok = mc_compiler_compileexpression(comp, expr->exprreturnvalue);
-                if(!ok)
+                if(compscope->outer == NULL)
+                {
+                    mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "Nothing to return from");
+                    return false;
+                }
+                ip = -1;
+                if(expr->exprreturnvalue)
+                {
+                    ok = mc_compiler_compileexpression(comp, expr->exprreturnvalue);
+                    if(!ok)
+                    {
+                        return false;
+                    }
+                    ip = mc_compiler_emit(comp, MC_OPCODE_RETURNVALUE, 0, NULL);
+                }
+                else
+                {
+                    ip = mc_compiler_emit(comp, MC_OPCODE_RETURN, 0, NULL);
+                }
+                if(ip < 0)
                 {
                     return false;
                 }
-                ip = mc_compiler_emit(comp, OPCODE_RETURN_VALUE, 0, NULL);
-            }
-            else
-            {
-                ip = mc_compiler_emit(comp, OPCODE_RETURN, 0, NULL);
-            }
-            if(ip < 0)
-            {
-                return false;
             }
             break;
-        }
         case MC_EXPR_STMTLOOPWHILE:
-        {
-            int beforetestip;
-            int aftertestip;
-            int afterbodyip;
-            int jumptoafterbodyip;
-            while_loop_statement_t* loop;
-            loop = &expr->exprwhileloopstmt;
-            beforetestip = mc_compiler_getip(comp);
-            ok = mc_compiler_compileexpression(comp, loop->loopcond);
-            if(!ok)
             {
-                return false;
+                int beforetestip;
+                int aftertestip;
+                int afterbodyip;
+                int jumptoafterbodyip;
+                while_loop_statement_t* loop;
+                loop = &expr->exprwhileloopstmt;
+                beforetestip = mc_compiler_getip(comp);
+                ok = mc_compiler_compileexpression(comp, loop->loopcond);
+                if(!ok)
+                {
+                    return false;
+                }
+                aftertestip = mc_compiler_getip(comp);
+                opbuf[0] = aftertestip + 6;
+                ip = mc_compiler_emit(comp, MC_OPCODE_JUMPIFTRUE, 1, opbuf);
+                if(ip < 0)
+                {
+                    return false;
+                }
+                opbuf[0] = 0xdead;
+                jumptoafterbodyip = mc_compiler_emit(comp, MC_OPCODE_JUMP, 1, opbuf);
+                if(jumptoafterbodyip < 0)
+                {
+                    return false;
+                }
+                ok = mc_compiler_pushcontinueip(comp, beforetestip);
+                if(!ok)
+                {
+                    return false;
+                }
+                ok = mc_compiler_pushbreakip(comp, jumptoafterbodyip);
+                if(!ok)
+                {
+                    return false;
+                }
+                ok = mc_compiler_compilecodeblock(comp, loop->body);
+                if(!ok)
+                {
+                    return false;
+                }
+                mc_compiler_popbreakip(comp);
+                mc_compiler_popcontinueip(comp);
+                opbuf[0] = beforetestip;
+                ip = mc_compiler_emit(comp, MC_OPCODE_JUMP, 1, opbuf);
+                if(ip < 0)
+                {
+                    return false;
+                }
+                afterbodyip = mc_compiler_getip(comp);
+                mc_compiler_changeuint16operand(comp, jumptoafterbodyip + 1, afterbodyip);
             }
-            aftertestip = mc_compiler_getip(comp);
-            opbuf[0] = aftertestip + 6;
-            ip = mc_compiler_emit(comp, OPCODE_JUMP_IF_TRUE, 1, opbuf);
-            if(ip < 0)
-            {
-                return false;
-            }
-            opbuf[0] = 0xdead;
-            jumptoafterbodyip = mc_compiler_emit(comp, OPCODE_JUMP, 1, opbuf);
-            if(jumptoafterbodyip < 0)
-            {
-                return false;
-            }
-            ok = mc_compiler_pushcontinueip(comp, beforetestip);
-            if(!ok)
-            {
-                return false;
-            }
-            ok = mc_compiler_pushbreakip(comp, jumptoafterbodyip);
-            if(!ok)
-            {
-                return false;
-            }
-            ok = mc_compiler_compilecodeblock(comp, loop->body);
-            if(!ok)
-            {
-                return false;
-            }
-            mc_compiler_popbreakip(comp);
-            mc_compiler_popcontinueip(comp);
-            opbuf[0] = beforetestip;
-            ip = mc_compiler_emit(comp, OPCODE_JUMP, 1, opbuf);
-            if(ip < 0)
-            {
-                return false;
-            }
-            afterbodyip = mc_compiler_getip(comp);
-            mc_compiler_changeuint16operand(comp, jumptoafterbodyip + 1, afterbodyip);
             break;
-        }
         case MC_EXPR_STMTBREAK:
-        {
-            int breakip;
-            breakip = mc_compiler_getbreakip(comp);
-            if(breakip < 0)
             {
-                mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "Nothing to break from.");
-                return false;
-            }
-            opbuf[0] = breakip;
-            ip = mc_compiler_emit(comp, OPCODE_JUMP, 1, opbuf);
-            if(ip < 0)
-            {
-                return false;
+                int breakip;
+                breakip = mc_compiler_getbreakip(comp);
+                if(breakip < 0)
+                {
+                    mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "Nothing to break from.");
+                    return false;
+                }
+                opbuf[0] = breakip;
+                ip = mc_compiler_emit(comp, MC_OPCODE_JUMP, 1, opbuf);
+                if(ip < 0)
+                {
+                    return false;
+                }
             }
             break;
-        }
         case MC_EXPR_STMTCONTINUE:
-        {
-            int continueip;
-            continueip = mc_compiler_getcontinueip(comp);
-            if(continueip < 0)
             {
-                mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "Nothing to continue from.");
-                return false;
-            }
-            opbuf[0] = continueip;
-            ip = mc_compiler_emit(comp, OPCODE_JUMP, 1, opbuf);
-            if(ip < 0)
-            {
-                return false;
+                int continueip;
+                continueip = mc_compiler_getcontinueip(comp);
+                if(continueip < 0)
+                {
+                    mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "Nothing to continue from.");
+                    return false;
+                }
+                opbuf[0] = continueip;
+                ip = mc_compiler_emit(comp, MC_OPCODE_JUMP, 1, opbuf);
+                if(ip < 0)
+                {
+                    return false;
+                }
             }
             break;
-        }
         case MC_EXPR_STMTLOOPFOREACH:
-        {
-            int jumptoafterupdateip;
-            int updateip;
-            int afterupdateip;
-            int aftertestip;
-            int jumptoafterbodyip;
-            int afterbodyip;
-            mcastsymbol_t* itersymbol;
-            mcastsymbol_t* indexsymbol;
-            mcastsymbol_t* sourcesymbol;
-            foreach_statement_t* foreach;
-            foreach = &expr->exprforeachloopstmt;
-            ok = mc_symtable_pushblockscope(symtab);
-            if(!ok)
             {
-                return false;
-            }
-            /* Init */
-            indexsymbol = mc_compiler_defsymbol(comp, expr->pos, "@i", false, true);
-            if(!indexsymbol)
-            {
-                return false;
-            }
-            opbuf[0] = 0;
-            ip = mc_compiler_emit(comp, OPCODE_NUMBER, 1, opbuf);
-            if(ip < 0)
-            {
-                return false;
-            }
-            ok = mc_compiler_storesymbol(comp, indexsymbol, true);
-            if(!ok)
-            {
-                return false;
-            }
-            sourcesymbol = NULL;
-            if(foreach->source->type == MC_EXPR_IDENT)
-            {
-                sourcesymbol = mc_symtable_resolve(symtab, foreach->source->exprident->value);
-                if(!sourcesymbol)
-                {
-                    mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, foreach->source->pos, "Symbol \"%s\" could not be resolved", foreach->source->exprident->value);
-                    return false;
-                }
-            }
-            else
-            {
-                ok = mc_compiler_compileexpression(comp, foreach->source);
+                int jumptoafterupdateip;
+                int updateip;
+                int afterupdateip;
+                int aftertestip;
+                int jumptoafterbodyip;
+                int afterbodyip;
+                mcastsymbol_t* itersymbol;
+                mcastsymbol_t* indexsymbol;
+                mcastsymbol_t* sourcesymbol;
+                foreach_statement_t* foreach;
+                foreach = &expr->exprforeachloopstmt;
+                ok = mc_symtable_pushblockscope(symtab);
                 if(!ok)
                 {
                     return false;
                 }
-                sourcesymbol = mc_compiler_defsymbol(comp, foreach->source->pos, "@source", false, true);
-                if(!sourcesymbol)
+                /* Init */
+                indexsymbol = mc_compiler_defsymbol(comp, expr->pos, "@i", false, true);
+                if(!indexsymbol)
                 {
                     return false;
                 }
-                ok = mc_compiler_storesymbol(comp, sourcesymbol, true);
+                opbuf[0] = 0;
+                ip = mc_compiler_emit(comp, MC_OPCODE_NUMBER, 1, opbuf);
+                if(ip < 0)
+                {
+                    return false;
+                }
+                ok = mc_compiler_storesymbol(comp, indexsymbol, true);
                 if(!ok)
                 {
                     return false;
                 }
+                sourcesymbol = NULL;
+                if(foreach->source->type == MC_EXPR_IDENT)
+                {
+                    sourcesymbol = mc_symtable_resolve(symtab, foreach->source->exprident->value);
+                    if(!sourcesymbol)
+                    {
+                        mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, foreach->source->pos, "symbol \"%s\" could not be resolved", foreach->source->exprident->value);
+                        return false;
+                    }
+                }
+                else
+                {
+                    ok = mc_compiler_compileexpression(comp, foreach->source);
+                    if(!ok)
+                    {
+                        return false;
+                    }
+                    sourcesymbol = mc_compiler_defsymbol(comp, foreach->source->pos, "@source", false, true);
+                    if(!sourcesymbol)
+                    {
+                        return false;
+                    }
+                    ok = mc_compiler_storesymbol(comp, sourcesymbol, true);
+                    if(!ok)
+                    {
+                        return false;
+                    }
+                }
+                /* Update */
+                opbuf[0] = 0xbeef;
+                jumptoafterupdateip = mc_compiler_emit(comp, MC_OPCODE_JUMP, 1, opbuf);
+                if(jumptoafterupdateip < 0)
+                {
+                    return false;
+                }
+                updateip = mc_compiler_getip(comp);
+                ok = mc_compiler_readsymbol(comp, indexsymbol);
+                if(!ok)
+                {
+                    return false;
+                }
+                opbuf[0] = mc_util_doubletouint64(1);
+                ip = mc_compiler_emit(comp, MC_OPCODE_NUMBER, 1, opbuf);
+                if(ip < 0)
+                {
+                    return false;
+                }
+                ip = mc_compiler_emit(comp, MC_OPCODE_ADD, 0, NULL);
+                if(ip < 0)
+                {
+                    return false;
+                }
+                ok = mc_compiler_storesymbol(comp, indexsymbol, false);
+                if(!ok)
+                {
+                    return false;
+                }
+                afterupdateip = mc_compiler_getip(comp);
+                mc_compiler_changeuint16operand(comp, jumptoafterupdateip + 1, afterupdateip);
+                /* Test */
+                ok = mc_basicarray_push(comp->srcposstack, &foreach->source->pos);
+                if(!ok)
+                {
+                    return false;
+                }
+                ok = mc_compiler_readsymbol(comp, sourcesymbol);
+                if(!ok)
+                {
+                    return false;
+                }
+                ip = mc_compiler_emit(comp, MC_OPCODE_LEN, 0, NULL);
+                if(ip < 0)
+                {
+                    return false;
+                }
+                mc_basicarray_pop(comp->srcposstack, NULL);
+                ok = mc_compiler_readsymbol(comp, indexsymbol);
+                if(!ok)
+                {
+                    return false;
+                }
+                ip = mc_compiler_emit(comp, MC_OPCODE_COMPARE, 0, NULL);
+                if(ip < 0)
+                {
+                    return false;
+                }
+                ip = mc_compiler_emit(comp, MC_OPCODE_EQUAL, 0, NULL);
+                if(ip < 0)
+                {
+                    return false;
+                }
+                aftertestip = mc_compiler_getip(comp);
+                opbuf[0] = aftertestip + 6;
+                ip = mc_compiler_emit(comp, MC_OPCODE_JUMPIFFALSE, 1, opbuf);
+                if(ip < 0)
+                {
+                    return false;
+                }
+                opbuf[0] = 0xdead;
+                jumptoafterbodyip = mc_compiler_emit(comp, MC_OPCODE_JUMP, 1, opbuf);
+                if(jumptoafterbodyip < 0)
+                {
+                    return false;
+                }
+                ok = mc_compiler_readsymbol(comp, sourcesymbol);
+                if(!ok)
+                {
+                    return false;
+                }
+                ok = mc_compiler_readsymbol(comp, indexsymbol);
+                if(!ok)
+                {
+                    return false;
+                }
+                ip = mc_compiler_emit(comp, MC_OPCODE_GETVALUEAT, 0, NULL);
+                if(ip < 0)
+                {
+                    return false;
+                }
+                itersymbol = mc_compiler_defsymbol(comp, foreach->iterator->pos, foreach->iterator->value, false, false);
+                if(!itersymbol)
+                {
+                    return false;
+                }
+                ok = mc_compiler_storesymbol(comp, itersymbol, true);
+                if(!ok)
+                {
+                    return false;
+                }
+                /* Body */
+                ok = mc_compiler_pushcontinueip(comp, updateip);
+                if(!ok)
+                {
+                    return false;
+                }
+                ok = mc_compiler_pushbreakip(comp, jumptoafterbodyip);
+                if(!ok)
+                {
+                    return false;
+                }
+                ok = mc_compiler_compilecodeblock(comp, foreach->body);
+                if(!ok)
+                {
+                    return false;
+                }
+                mc_compiler_popbreakip(comp);
+                mc_compiler_popcontinueip(comp);
+                opbuf[0] = updateip;
+                ip = mc_compiler_emit(comp, MC_OPCODE_JUMP, 1, opbuf);
+                if(ip < 0)
+                {
+                    return false;
+                }
+                afterbodyip = mc_compiler_getip(comp);
+                mc_compiler_changeuint16operand(comp, jumptoafterbodyip + 1, afterbodyip);
+                mc_symtable_popblockscope(symtab);
             }
-            /* Update */
-            opbuf[0] = 0xbeef;
-            jumptoafterupdateip = mc_compiler_emit(comp, OPCODE_JUMP, 1, opbuf);
-            if(jumptoafterupdateip < 0)
-            {
-                return false;
-            }
-            updateip = mc_compiler_getip(comp);
-            ok = mc_compiler_readsymbol(comp, indexsymbol);
-            if(!ok)
-            {
-                return false;
-            }
-            opbuf[0] = mc_util_doubletouint64(1);
-            ip = mc_compiler_emit(comp, OPCODE_NUMBER, 1, opbuf);
-            if(ip < 0)
-            {
-                return false;
-            }
-            ip = mc_compiler_emit(comp, OPCODE_ADD, 0, NULL);
-            if(ip < 0)
-            {
-                return false;
-            }
-            ok = mc_compiler_storesymbol(comp, indexsymbol, false);
-            if(!ok)
-            {
-                return false;
-            }
-            afterupdateip = mc_compiler_getip(comp);
-            mc_compiler_changeuint16operand(comp, jumptoafterupdateip + 1, afterupdateip);
-            /* Test */
-            ok = mc_basicarray_push(comp->src_positions_stack, &foreach->source->pos);
-            if(!ok)
-            {
-                return false;
-            }
-            ok = mc_compiler_readsymbol(comp, sourcesymbol);
-            if(!ok)
-            {
-                return false;
-            }
-            ip = mc_compiler_emit(comp, OPCODE_LEN, 0, NULL);
-            if(ip < 0)
-            {
-                return false;
-            }
-            mc_basicarray_pop(comp->src_positions_stack, NULL);
-            ok = mc_compiler_readsymbol(comp, indexsymbol);
-            if(!ok)
-            {
-                return false;
-            }
-            ip = mc_compiler_emit(comp, OPCODE_COMPARE, 0, NULL);
-            if(ip < 0)
-            {
-                return false;
-            }
-            ip = mc_compiler_emit(comp, OPCODE_EQUAL, 0, NULL);
-            if(ip < 0)
-            {
-                return false;
-            }
-            aftertestip = mc_compiler_getip(comp);
-            opbuf[0] = aftertestip + 6;
-            ip = mc_compiler_emit(comp, OPCODE_JUMP_IF_FALSE, 1, opbuf);
-            if(ip < 0)
-            {
-                return false;
-            }
-            opbuf[0] = 0xdead;
-            jumptoafterbodyip = mc_compiler_emit(comp, OPCODE_JUMP, 1, opbuf);
-            if(jumptoafterbodyip < 0)
-            {
-                return false;
-            }
-            ok = mc_compiler_readsymbol(comp, sourcesymbol);
-            if(!ok)
-            {
-                return false;
-            }
-            ok = mc_compiler_readsymbol(comp, indexsymbol);
-            if(!ok)
-            {
-                return false;
-            }
-            ip = mc_compiler_emit(comp, OPCODE_GET_VALUE_AT, 0, NULL);
-            if(ip < 0)
-            {
-                return false;
-            }
-            itersymbol = mc_compiler_defsymbol(comp, foreach->iterator->pos, foreach->iterator->value, false, false);
-            if(!itersymbol)
-            {
-                return false;
-            }
-            ok = mc_compiler_storesymbol(comp, itersymbol, true);
-            if(!ok)
-            {
-                return false;
-            }
-            /* Body */
-            ok = mc_compiler_pushcontinueip(comp, updateip);
-            if(!ok)
-            {
-                return false;
-            }
-            ok = mc_compiler_pushbreakip(comp, jumptoafterbodyip);
-            if(!ok)
-            {
-                return false;
-            }
-            ok = mc_compiler_compilecodeblock(comp, foreach->body);
-            if(!ok)
-            {
-                return false;
-            }
-            mc_compiler_popbreakip(comp);
-            mc_compiler_popcontinueip(comp);
-            opbuf[0] = updateip;
-            ip = mc_compiler_emit(comp, OPCODE_JUMP, 1, opbuf);
-            if(ip < 0)
-            {
-                return false;
-            }
-            afterbodyip = mc_compiler_getip(comp);
-            mc_compiler_changeuint16operand(comp, jumptoafterbodyip + 1, afterbodyip);
-            mc_symtable_popblockscope(symtab);
             break;
-        }
         case MC_EXPR_STMTLOOPFORCLASSIC:
             {
                 int afterbodyip;
@@ -6371,7 +8859,7 @@ TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpr
                         return false;
                     }
                     opbuf[0] = 0xbeef;
-                    jumptoafterupdateip = mc_compiler_emit(comp, OPCODE_JUMP, 1, opbuf);
+                    jumptoafterupdateip = mc_compiler_emit(comp, MC_OPCODE_JUMP, 1, opbuf);
                     if(jumptoafterupdateip < 0)
                     {
                         return false;
@@ -6386,7 +8874,7 @@ TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpr
                     {
                         return false;
                     }
-                    ip = mc_compiler_emit(comp, OPCODE_POP, 0, NULL);
+                    ip = mc_compiler_emit(comp, MC_OPCODE_POP, 0, NULL);
                     if(ip < 0)
                     {
                         return false;
@@ -6408,7 +8896,7 @@ TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpr
                 }
                 else
                 {
-                    ip = mc_compiler_emit(comp, OPCODE_TRUE, 0, NULL);
+                    ip = mc_compiler_emit(comp, MC_OPCODE_TRUE, 0, NULL);
                     if(ip < 0)
                     {
                         return false;
@@ -6416,13 +8904,13 @@ TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpr
                 }
                 aftertestip = mc_compiler_getip(comp);
                 opbuf[0] = aftertestip + 6;
-                ip = mc_compiler_emit(comp, OPCODE_JUMP_IF_TRUE, 1, opbuf);
+                ip = mc_compiler_emit(comp, MC_OPCODE_JUMPIFTRUE, 1, opbuf);
                 if(ip < 0)
                 {
                     return false;
                 }
                 opbuf[0] = 0xdead;
-                jumptoafterbodyip = mc_compiler_emit(comp, OPCODE_JUMP, 1, opbuf);
+                jumptoafterbodyip = mc_compiler_emit(comp, MC_OPCODE_JUMP, 1, opbuf);
                 if(jumptoafterbodyip < 0)
                 {
                     return false;
@@ -6447,7 +8935,7 @@ TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpr
                 mc_compiler_popbreakip(comp);
                 mc_compiler_popcontinueip(comp);
                 opbuf[0] = updateip;
-                ip = mc_compiler_emit(comp, OPCODE_JUMP, 1, opbuf);
+                ip = mc_compiler_emit(comp, MC_OPCODE_JUMP, 1, opbuf);
                 if(ip < 0)
                 {
                     return false;
@@ -6477,7 +8965,7 @@ TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpr
             break;
         case MC_EXPR_STMTRECOVER:
             {
-                int recover_ip;
+                int recip;
                 int afterrecoverip;
                 int afterjumptorecoverip;
                 int jumptoafterrecoverip;
@@ -6495,19 +8983,19 @@ TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpr
                     return false;
                 }
                 opbuf[0] = 0xbeef;
-                recover_ip = mc_compiler_emit(comp, OPCODE_SET_RECOVER, 1, opbuf);
-                if(recover_ip < 0)
+                recip = mc_compiler_emit(comp, MC_OPCODE_SETRECOVER, 1, opbuf);
+                if(recip < 0)
                 {
                     return false;
                 }
                 opbuf[0] = 0xbeef;
-                jumptoafterrecoverip = mc_compiler_emit(comp, OPCODE_JUMP, 1, opbuf);
+                jumptoafterrecoverip = mc_compiler_emit(comp, MC_OPCODE_JUMP, 1, opbuf);
                 if(jumptoafterrecoverip < 0)
                 {
                     return false;
                 }
                 afterjumptorecoverip = mc_compiler_getip(comp);
-                mc_compiler_changeuint16operand(comp, recover_ip + 1, afterjumptorecoverip);
+                mc_compiler_changeuint16operand(comp, recip + 1, afterjumptorecoverip);
                 ok = mc_symtable_pushblockscope(symtab);
                 if(!ok)
                 {
@@ -6528,7 +9016,7 @@ TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpr
                 {
                     return false;
                 }
-                if(!mc_compiler_lastopcodeis(comp, OPCODE_RETURN) && !mc_compiler_lastopcodeis(comp, OPCODE_RETURN_VALUE))
+                if(!mc_compiler_lastopcodeis(comp, MC_OPCODE_RETURN) && !mc_compiler_lastopcodeis(comp, MC_OPCODE_RETURNVALUE))
                 {
                     mc_errlist_push(comp->errors, MC_ERROR_COMPILING, expr->pos, "Recover body must end with a return statement");
                     return false;
@@ -6538,23 +9026,26 @@ TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpr
                 mc_compiler_changeuint16operand(comp, jumptoafterrecoverip + 1, afterrecoverip);
             }
             break;
-
         default:
-        {
-            MC_ASSERT(false);
-            return false;
-        }
+            {
+                MC_ASSERT(false);
+                return false;
+            }
+            break;
     }
-    mc_basicarray_pop(comp->src_positions_stack, NULL);
+    mc_basicarray_pop(comp->srcposstack, NULL);
     return true;
 }
 
 TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexpression_t* expr)
 {
     bool ok;
+    bool res;
     int ip;
     uint64_t opbuf[10];
     mcastexpression_t* exproptimized;
+    mcastscopecomp_t* compscope;
+    mcastsymtable_t* symtab;
     ok = false;
     ip = -1;
     exproptimized = NULL;
@@ -6565,540 +9056,317 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
         expr = exproptimized;
     }
     #endif
-
-    ok = mc_basicarray_push(comp->src_positions_stack, &expr->pos);
+    ok = mc_basicarray_push(comp->srcposstack, &expr->pos);
     if(!ok)
     {
         return false;
     }
-
-    mcastscopecomp_t* compscope = mc_compiler_getcompilationscope(comp);
-    mcastsymtable_t* symtab = mc_compiler_getsymtable(comp);
-
-    bool res = false;
-
+    compscope = mc_compiler_getcompilationscope(comp);
+    symtab = mc_compiler_getsymtable(comp);
+    res = false;
     switch(expr->type)
     {
         case MC_EXPR_INFIX:
-        {
-            bool rearrange = false;
-
-            mcinternopcode_t op = OPCODE_NONE;
-            switch(expr->exprinfix.op)
             {
-                case OPERATOR_PLUS:
-                    op = OPCODE_ADD;
-                    break;
-                case OPERATOR_MINUS:
-                    op = OPCODE_SUB;
-                    break;
-                case OPERATOR_ASTERISK:
-                    op = OPCODE_MUL;
-                    break;
-                case OPERATOR_SLASH:
-                    op = OPCODE_DIV;
-                    break;
-                case OPERATOR_MODULUS:
-                    op = OPCODE_MOD;
-                    break;
-                case OPERATOR_EQ:
-                    op = OPCODE_EQUAL;
-                    break;
-                case OPERATOR_NOT_EQ:
-                    op = OPCODE_NOT_EQUAL;
-                    break;
-                case OPERATOR_GT:
-                    op = OPCODE_GREATER_THAN;
-                    break;
-                case OPERATOR_GTE:
-                    op = OPCODE_GREATER_THAN_EQUAL;
-                    break;
-                case OPERATOR_LT:
-                    op = OPCODE_GREATER_THAN;
-                    rearrange = true;
-                    break;
-                case OPERATOR_LTE:
-                    op = OPCODE_GREATER_THAN_EQUAL;
-                    rearrange = true;
-                    break;
-                case OPERATOR_BIT_OR:
-                    op = OPCODE_OR;
-                    break;
-                case OPERATOR_BIT_XOR:
-                    op = OPCODE_XOR;
-                    break;
-                case OPERATOR_BIT_AND:
-                    op = OPCODE_AND;
-                    break;
-                case OPERATOR_LSHIFT:
-                    op = OPCODE_LSHIFT;
-                    break;
-                case OPERATOR_RSHIFT:
-                    op = OPCODE_RSHIFT;
-                    break;
-                default:
+                bool rearrange;
+                mcinternopcode_t op;
+                mcastexpression_t* left;
+                mcastexpression_t* right;
+                rearrange = false;
+                op = MC_OPCODE_NONE;
+                switch(expr->exprinfix.op)
                 {
-                    mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "Unknown infix operator");
-                    goto error;
+                    case MC_MATHOP_PLUS:
+                        op = MC_OPCODE_ADD;
+                        break;
+                    case MC_MATHOP_MINUS:
+                        op = MC_OPCODE_SUB;
+                        break;
+                    case MC_MATHOP_ASTERISK:
+                        op = MC_OPCODE_MUL;
+                        break;
+                    case MC_MATHOP_SLASH:
+                        op = MC_OPCODE_DIV;
+                        break;
+                    case MC_MATHOP_MODULUS:
+                        op = MC_OPCODE_MOD;
+                        break;
+                    case MC_MATHOP_EQ:
+                        op = MC_OPCODE_EQUAL;
+                        break;
+                    case MC_MATHOP_NOTEQ:
+                        op = MC_OPCODE_NOTEQUAL;
+                        break;
+                    case MC_MATHOP_GT:
+                        op = MC_OPCODE_GREATERTHAN;
+                        break;
+                    case MC_MATHOP_GTE:
+                        op = MC_OPCODE_GREATERTHANEQUAL;
+                        break;
+                    case MC_MATHOP_LT:
+                        op = MC_OPCODE_GREATERTHAN;
+                        rearrange = true;
+                        break;
+                    case MC_MATHOP_LTE:
+                        op = MC_OPCODE_GREATERTHANEQUAL;
+                        rearrange = true;
+                        break;
+                    case MC_MATHOP_BITOR:
+                        op = MC_OPCODE_OR;
+                        break;
+                    case MC_MATHOP_BITXOR:
+                        op = MC_OPCODE_XOR;
+                        break;
+                    case MC_MATHOP_BITAND:
+                        op = MC_OPCODE_AND;
+                        break;
+                    case MC_MATHOP_LSHIFT:
+                        op = MC_OPCODE_LSHIFT;
+                        break;
+                    case MC_MATHOP_RSHIFT:
+                        op = MC_OPCODE_RSHIFT;
+                        break;
+                    default:
+                        {
+                            mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "Unknown infix operator");
+                            goto error;
+                        }
+                        break;
                 }
-            }
-
-            mcastexpression_t* left = rearrange ? expr->exprinfix.right : expr->exprinfix.left;
-            mcastexpression_t* right = rearrange ? expr->exprinfix.left : expr->exprinfix.right;
-
-            ok = mc_compiler_compileexpression(comp, left);
-            if(!ok)
-            {
-                goto error;
-            }
-
-            ok = mc_compiler_compileexpression(comp, right);
-            if(!ok)
-            {
-                goto error;
-            }
-
-            switch(expr->exprinfix.op)
-            {
-                case OPERATOR_EQ:
-                case OPERATOR_NOT_EQ:
-                {
-                    ip = mc_compiler_emit(comp, OPCODE_COMPARE_EQ, 0, NULL);
-                    if(ip < 0)
-                    {
-                        goto error;
-                    }
-                    break;
-                }
-                case OPERATOR_GT:
-                case OPERATOR_GTE:
-                case OPERATOR_LT:
-                case OPERATOR_LTE:
-                {
-                    ip = mc_compiler_emit(comp, OPCODE_COMPARE, 0, NULL);
-                    if(ip < 0)
-                    {
-                        goto error;
-                    }
-                    break;
-                }
-                default:
-                    break;
-            }
-
-            ip = mc_compiler_emit(comp, op, 0, NULL);
-            if(ip < 0)
-            {
-                goto error;
-            }
-
-            break;
-        }
-        case MC_EXPR_NUMBERLITERAL:
-        {
-            double number = expr->exprlitnumber;
-            opbuf[0] = mc_util_doubletouint64(number);
-            ip = mc_compiler_emit(comp, OPCODE_NUMBER, 1, opbuf);
-            if(ip < 0)
-            {
-                goto error;
-            }
-
-            break;
-        }
-        case MC_EXPR_STRINGLITERAL:
-        {
-            int pos = 0;
-            int* currentpos = (int*)mc_genericdict_get(comp->string_constants_positions, expr->exprlitstring.data);
-            if(currentpos)
-            {
-                pos = *currentpos;
-            }
-            else
-            {
-                mcvalue_t obj = mc_value_makestringlen(comp->pstate, expr->exprlitstring.data, expr->exprlitstring.length);
-                if(mc_value_isnull(obj))
-                {
-                    goto error;
-                }
-
-                pos = mc_compiler_addconstant(comp, obj);
-                if(pos < 0)
-                {
-                    goto error;
-                }
-
-                int* posval = (int*)mc_allocator_alloc(comp->pstate, sizeof(int));
-                if(!posval)
-                {
-                    goto error;
-                }
-
-                *posval = pos;
-                ok = mc_genericdict_set(comp->string_constants_positions, expr->exprlitstring.data, posval);
-                if(!ok)
-                {
-                    mc_allocator_free(comp->pstate, posval);
-                    goto error;
-                }
-            }
-            opbuf[0] = pos;
-            ip = mc_compiler_emit(comp, OPCODE_CONSTANT, 1, opbuf);
-            if(ip < 0)
-            {
-                goto error;
-            }
-
-            break;
-        }
-        case MC_EXPR_NULLLITERAL:
-        {
-            ip = mc_compiler_emit(comp, OPCODE_NULL, 0, NULL);
-            if(ip < 0)
-            {
-                goto error;
-            }
-            break;
-        }
-        case MC_EXPR_BOOLLITERAL:
-        {
-            ip = mc_compiler_emit(comp, expr->exprlitbool ? OPCODE_TRUE : OPCODE_FALSE, 0, NULL);
-            if(ip < 0)
-            {
-                goto error;
-            }
-            break;
-        }
-        case MC_EXPR_ARRAYLITERAL:
-        {
-            int i;
-            for(i = 0; i < mc_ptrarray_count(expr->exprlitarray.litarritems); i++)
-            {
-                ok = mc_compiler_compileexpression(comp, (mcastexpression_t*)mc_ptrarray_get(expr->exprlitarray.litarritems, i));
+                left = rearrange ? expr->exprinfix.right : expr->exprinfix.left;
+                right = rearrange ? expr->exprinfix.left : expr->exprinfix.right;
+                ok = mc_compiler_compileexpression(comp, left);
                 if(!ok)
                 {
                     goto error;
                 }
-            }
-            opbuf[0] = mc_ptrarray_count(expr->exprlitarray.litarritems);
-            ip = mc_compiler_emit(comp, OPCODE_ARRAY, 1, opbuf);
-            if(ip < 0)
-            {
-                goto error;
-            }
-            break;
-        }
-        case MC_EXPR_MAPLITERAL:
-        {
-            int i;
-            mcastliteralmap_t* map = &expr->exprlitmap;
-            int len = mc_ptrarray_count(map->keys);
-            opbuf[0] = len;
-            ip = mc_compiler_emit(comp, OPCODE_MAP_START, 1, opbuf);
-            if(ip < 0)
-            {
-                goto error;
-            }
-
-            for(i = 0; i < len; i++)
-            {
-                mcastexpression_t* key = (mcastexpression_t*)mc_ptrarray_get(map->keys, i);
-                mcastexpression_t* val = (mcastexpression_t*)mc_ptrarray_get(map->values, i);
-
-                ok = mc_compiler_compileexpression(comp, key);
+                ok = mc_compiler_compileexpression(comp, right);
                 if(!ok)
                 {
                     goto error;
                 }
-
-                ok = mc_compiler_compileexpression(comp, val);
-                if(!ok)
+                switch(expr->exprinfix.op)
                 {
-                    goto error;
+                    case MC_MATHOP_EQ:
+                    case MC_MATHOP_NOTEQ:
+                        {
+                            ip = mc_compiler_emit(comp, MC_OPCODE_COMPAREEQ, 0, NULL);
+                            if(ip < 0)
+                            {
+                                goto error;
+                            }
+                        }
+                        break;
+                    case MC_MATHOP_GT:
+                    case MC_MATHOP_GTE:
+                    case MC_MATHOP_LT:
+                    case MC_MATHOP_LTE:
+                        {
+                            ip = mc_compiler_emit(comp, MC_OPCODE_COMPARE, 0, NULL);
+                            if(ip < 0)
+                            {
+                                goto error;
+                            }
+                        }
+                        break;
+                    default:
+                        {
+                        }
+                        break;
                 }
-            }
-            opbuf[0] = len;
-            ip = mc_compiler_emit(comp, OPCODE_MAP_END, 1, opbuf);
-            if(ip < 0)
-            {
-                goto error;
-            }
-
-            break;
-        }
-        case MC_EXPR_PREFIX:
-        {
-            ok = mc_compiler_compileexpression(comp, expr->exprprefix.right);
-            if(!ok)
-            {
-                goto error;
-            }
-
-            mcinternopcode_t op = OPCODE_NONE;
-            switch(expr->exprprefix.op)
-            {
-                case OPERATOR_MINUS:
-                    op = OPCODE_MINUS;
-                    break;
-                case OPERATOR_BANG:
-                    op = OPCODE_BANG;
-                    break;
-                default:
-                {
-                    mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "Unknown prefix operator.");
-                    goto error;
-                }
-            }
-            ip = mc_compiler_emit(comp, op, 0, NULL);
-            if(ip < 0)
-            {
-                goto error;
-            }
-
-            break;
-        }
-        case MC_EXPR_IDENT:
-        {
-            mcastident_t* ident = expr->exprident;
-            mcastsymbol_t* symbol = mc_symtable_resolve(symtab, ident->value);
-            if(!symbol)
-            {
-                mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, ident->pos, "Symbol \"%s\" could not be resolved", ident->value);
-                goto error;
-            }
-            ok = mc_compiler_readsymbol(comp, symbol);
-            if(!ok)
-            {
-                goto error;
-            }
-
-            break;
-        }
-        case MC_EXPR_INDEX:
-        {
-            index_expression_t* index = &expr->exprindex;
-            ok = mc_compiler_compileexpression(comp, index->left);
-            if(!ok)
-            {
-                goto error;
-            }
-            ok = mc_compiler_compileexpression(comp, index->index);
-            if(!ok)
-            {
-                goto error;
-            }
-            ip = mc_compiler_emit(comp, OPCODE_GET_INDEX, 0, NULL);
-            if(ip < 0)
-            {
-                goto error;
-            }
-
-            break;
-        }
-        case MC_EXPR_FUNCTIONLITERAL:
-        {
-            int i;
-            mcastliteralfunction_t* fn = &expr->exprlitfunction;
-
-            ok = mc_compiler_pushcompilationscope(comp);
-            if(!ok)
-            {
-                goto error;
-            }
-
-            ok = mc_compiler_pushsymtable(comp, 0);
-            if(!ok)
-            {
-                goto error;
-            }
-
-            compscope = mc_compiler_getcompilationscope(comp);
-            symtab = mc_compiler_getsymtable(comp);
-
-            if(fn->name)
-            {
-                mcastsymbol_t* fnsymbol = mc_symtable_definefunctionname(symtab, fn->name, false);
-                if(!fnsymbol)
-                {
-                    mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "Cannot define symbol \"%s\"", fn->name);
-                    goto error;
-                }
-            }
-
-            mcastsymbol_t* thissymbol = mc_symtable_definethis(symtab);
-            if(!thissymbol)
-            {
-                mc_errlist_push(comp->errors, MC_ERROR_COMPILING, expr->pos, "Cannot define \"this\" symbol");
-                goto error;
-            }
-
-            for(i = 0; i < mc_ptrarray_count(expr->exprlitfunction.params); i++)
-            {
-                mcastident_t* param = (mcastident_t*)mc_ptrarray_get(expr->exprlitfunction.params, i);
-                mcastsymbol_t* paramsymbol = mc_compiler_defsymbol(comp, param->pos, param->value, true, false);
-                if(!paramsymbol)
-                {
-                    goto error;
-                }
-            }
-
-            ok = mc_compiler_compilestmtlist(comp, fn->body->statements);
-            if(!ok)
-            {
-                goto error;
-            }
-
-            if(!mc_compiler_lastopcodeis(comp, OPCODE_RETURN_VALUE) && !mc_compiler_lastopcodeis(comp, OPCODE_RETURN))
-            {
-                ip = mc_compiler_emit(comp, OPCODE_RETURN, 0, NULL);
+                ip = mc_compiler_emit(comp, op, 0, NULL);
                 if(ip < 0)
                 {
                     goto error;
                 }
             }
+            break;
 
-            mcptrarray_t* free_symbols = symtab->free_symbols;
-            /* because it gets destroyed with compiler_pop_compilation_scope() */
-            symtab->free_symbols = NULL;
-
-            int num_locals = symtab->max_num_definitions;
-
-            mccompiledprogram_t* comp_res = mc_astcompscope_orphanresult(compscope);
-            if(!comp_res)
+        case MC_EXPR_NUMBERLITERAL:
             {
-                mc_ptrarray_destroy(free_symbols, (mcitemdestroyfn_t)mc_symbol_destroy);
-                goto error;
+                double number;
+                number = expr->exprlitnumber;
+                opbuf[0] = mc_util_doubletouint64(number);
+                ip = mc_compiler_emit(comp, MC_OPCODE_NUMBER, 1, opbuf);
+                if(ip < 0)
+                {
+                    goto error;
+                }
             }
-            mc_compiler_popsymtable(comp);
-            mc_compiler_popcompilationscope(comp);
-            compscope = mc_compiler_getcompilationscope(comp);
-            symtab = mc_compiler_getsymtable(comp);
+            break;
 
-            mcvalue_t obj = mc_value_makefuncscript(comp->pstate, fn->name, comp_res, true, num_locals, mc_ptrarray_count(fn->params), 0);
-
-            if(mc_value_isnull(obj))
+        case MC_EXPR_STRINGLITERAL:
             {
-                mc_ptrarray_destroy(free_symbols, (mcitemdestroyfn_t)mc_symbol_destroy);
-                mc_astcompresult_destroy(comp_res);
-                goto error;
+                int pos = 0;
+                int* posval;
+                int* currentpos;
+                mcvalue_t obj;
+                currentpos = (int*)mc_genericdict_get(comp->stringconstposdict, expr->exprlitstring.data);
+                if(currentpos)
+                {
+                    pos = *currentpos;
+                }
+                else
+                {
+                    obj = mc_value_makestringlen(comp->pstate, expr->exprlitstring.data, expr->exprlitstring.length);
+                    if(mc_value_isnull(obj))
+                    {
+                        goto error;
+                    }
+                    pos = mc_compiler_addconstant(comp, obj);
+                    if(pos < 0)
+                    {
+                        goto error;
+                    }
+                    posval = (int*)mc_allocator_alloc(comp->pstate, sizeof(int));
+                    if(!posval)
+                    {
+                        goto error;
+                    }
+                    *posval = pos;
+                    ok = mc_genericdict_set(comp->stringconstposdict, expr->exprlitstring.data, posval);
+                    if(!ok)
+                    {
+                        mc_allocator_free(comp->pstate, posval);
+                        goto error;
+                    }
+                }
+                opbuf[0] = pos;
+                ip = mc_compiler_emit(comp, MC_OPCODE_CONSTANT, 1, opbuf);
+                if(ip < 0)
+                {
+                    goto error;
+                }
             }
-
-            for(i = 0; i < mc_ptrarray_count(free_symbols); i++)
+            break;
+        case MC_EXPR_NULLLITERAL:
             {
-                mcastsymbol_t* symbol = (mcastsymbol_t*)mc_ptrarray_get(free_symbols, i);
+                ip = mc_compiler_emit(comp, MC_OPCODE_NULL, 0, NULL);
+                if(ip < 0)
+                {
+                    goto error;
+                }
+            }
+            break;
+        case MC_EXPR_BOOLLITERAL:
+            {
+                ip = mc_compiler_emit(comp, expr->exprlitbool ? MC_OPCODE_TRUE : MC_OPCODE_FALSE, 0, NULL);
+                if(ip < 0)
+                {
+                    goto error;
+                }
+            }
+            break;
+        case MC_EXPR_ARRAYLITERAL:
+            {
+                int i;
+                for(i = 0; i < mc_ptrarray_count(expr->exprlitarray.litarritems); i++)
+                {
+                    ok = mc_compiler_compileexpression(comp, (mcastexpression_t*)mc_ptrarray_get(expr->exprlitarray.litarritems, i));
+                    if(!ok)
+                    {
+                        goto error;
+                    }
+                }
+                opbuf[0] = mc_ptrarray_count(expr->exprlitarray.litarritems);
+                ip = mc_compiler_emit(comp, MC_OPCODE_ARRAY, 1, opbuf);
+                if(ip < 0)
+                {
+                    goto error;
+                }
+            }
+            break;
+        case MC_EXPR_MAPLITERAL:
+            {
+                int i;
+                int len;
+                mcastexpression_t* key;
+                mcastexpression_t* val;
+                mcastliteralmap_t* map;
+                map = &expr->exprlitmap;
+                len = mc_ptrarray_count(map->keys);
+                opbuf[0] = len;
+                ip = mc_compiler_emit(comp, MC_OPCODE_MAPSTART, 1, opbuf);
+                if(ip < 0)
+                {
+                    goto error;
+                }
+                for(i = 0; i < len; i++)
+                {
+                    key = (mcastexpression_t*)mc_ptrarray_get(map->keys, i);
+                    val = (mcastexpression_t*)mc_ptrarray_get(map->values, i);
+                    ok = mc_compiler_compileexpression(comp, key);
+                    if(!ok)
+                    {
+                        goto error;
+                    }
+                    ok = mc_compiler_compileexpression(comp, val);
+                    if(!ok)
+                    {
+                        goto error;
+                    }
+                }
+                opbuf[0] = len;
+                ip = mc_compiler_emit(comp, MC_OPCODE_MAPEND, 1, opbuf);
+                if(ip < 0)
+                {
+                    goto error;
+                }
+            }
+            break;
+        case MC_EXPR_PREFIX:
+            {
+                mcinternopcode_t op;
+                ok = mc_compiler_compileexpression(comp, expr->exprprefix.right);
+                if(!ok)
+                {
+                    goto error;
+                }
+                op = MC_OPCODE_NONE;
+                switch(expr->exprprefix.op)
+                {
+                    case MC_MATHOP_MINUS:
+                        op = MC_OPCODE_MINUS;
+                        break;
+                    case MC_MATHOP_BANG:
+                        op = MC_OPCODE_BANG;
+                        break;
+                    default:
+                        {
+                            mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "Unknown prefix operator.");
+                            goto error;
+                        }
+                        break;
+                }
+                ip = mc_compiler_emit(comp, op, 0, NULL);
+                if(ip < 0)
+                {
+                    goto error;
+                }
+            }
+            break;
+        case MC_EXPR_IDENT:
+            {
+                mcastsymbol_t* symbol;
+                mcastident_t* ident;
+                ident = expr->exprident;
+                symbol = mc_symtable_resolve(symtab, ident->value);
+                if(!symbol)
+                {
+                    mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, ident->pos, "Symbol \"%s\" could not be resolved", ident->value);
+                    goto error;
+                }
                 ok = mc_compiler_readsymbol(comp, symbol);
                 if(!ok)
                 {
-                    mc_ptrarray_destroy(free_symbols, (mcitemdestroyfn_t)mc_symbol_destroy);
                     goto error;
                 }
             }
-
-            int pos = mc_compiler_addconstant(comp, obj);
-            if(pos < 0)
-            {
-                mc_ptrarray_destroy(free_symbols, (mcitemdestroyfn_t)mc_symbol_destroy);
-                goto error;
-            }
-            opbuf[0] = pos;
-            opbuf[1] = mc_ptrarray_count(free_symbols);
-            ip = mc_compiler_emit(comp, OPCODE_FUNCTION, 2, opbuf);
-            if(ip < 0)
-            {
-                mc_ptrarray_destroy(free_symbols, (mcitemdestroyfn_t)mc_symbol_destroy);
-                goto error;
-            }
-
-            mc_ptrarray_destroy(free_symbols, (mcitemdestroyfn_t)mc_symbol_destroy);
-
             break;
-        }
-        case MC_EXPR_CALL:
-        {
-            int i;
-            ok = mc_compiler_compileexpression(comp, expr->exprcall.function);
-            if(!ok)
+        case MC_EXPR_INDEX:
             {
-                goto error;
-            }
-
-            for(i = 0; i < mc_ptrarray_count(expr->exprcall.args); i++)
-            {
-                mcastexpression_t* argexpr = (mcastexpression_t*)mc_ptrarray_get(expr->exprcall.args, i);
-                ok = mc_compiler_compileexpression(comp, argexpr);
-                if(!ok)
-                {
-                    goto error;
-                }
-            }
-            opbuf[0] = mc_ptrarray_count(expr->exprcall.args);
-            ip = mc_compiler_emit(comp, OPCODE_CALL, 1, opbuf);
-            if(ip < 0)
-            {
-                goto error;
-            }
-
-            break;
-        }
-        case MC_EXPR_ASSIGN:
-        {
-            assign_expression_t* assign = &expr->exprassign;
-            if(assign->dest->type != MC_EXPR_IDENT && assign->dest->type != MC_EXPR_INDEX)
-            {
-                mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, assign->dest->pos, "Expression is not assignable.");
-                goto error;
-            }
-
-            if(assign->is_postfix)
-            {
-                ok = mc_compiler_compileexpression(comp, assign->dest);
-                if(!ok)
-                {
-                    goto error;
-                }
-            }
-
-            ok = mc_compiler_compileexpression(comp, assign->source);
-            if(!ok)
-            {
-                goto error;
-            }
-
-            ip = mc_compiler_emit(comp, OPCODE_DUP, 0, NULL);
-            if(ip < 0)
-            {
-                goto error;
-            }
-
-            ok = mc_basicarray_push(comp->src_positions_stack, &assign->dest->pos);
-            if(!ok)
-            {
-                goto error;
-            }
-
-            if(assign->dest->type == MC_EXPR_IDENT)
-            {
-                mcastident_t* ident = assign->dest->exprident;
-                mcastsymbol_t* symbol = mc_symtable_resolve(symtab, ident->value);
-                if(!symbol)
-                {
-                    mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, assign->dest->pos, "Symbol \"%s\" could not be resolved", ident->value);
-                    goto error;
-                }
-                if(!symbol->assignable)
-                {
-                    mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, assign->dest->pos, "Symbol \"%s\" is not assignable", ident->value);
-                    goto error;
-                }
-                ok = mc_compiler_storesymbol(comp, symbol, false);
-                if(!ok)
-                {
-                    goto error;
-                }
-            }
-            else if(assign->dest->type == MC_EXPR_INDEX)
-            {
-                index_expression_t* index = &assign->dest->exprindex;
+                index_expression_t* index;
+                index = &expr->exprindex;
                 ok = mc_compiler_compileexpression(comp, index->left);
                 if(!ok)
                 {
@@ -7109,28 +9377,242 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
                 {
                     goto error;
                 }
-                ip = mc_compiler_emit(comp, OPCODE_SET_INDEX, 0, NULL);
+                ip = mc_compiler_emit(comp, MC_OPCODE_GETINDEX, 0, NULL);
                 if(ip < 0)
                 {
                     goto error;
                 }
             }
-
-            if(assign->is_postfix)
-            {
-                ip = mc_compiler_emit(comp, OPCODE_POP, 0, NULL);
-                if(ip < 0)
-                {
-                    goto error;
-                }
-            }
-
-            mc_basicarray_pop(comp->src_positions_stack, NULL);
             break;
-        }
+        case MC_EXPR_FUNCTIONLITERAL:
+            {
+                int i;
+                int pos;
+                int nlocals;
+                mcvalue_t obj;
+                mcptrarray_t* freesyms;
+                mccompiledprogram_t* comp_res;
+                mcastliteralfunction_t* fn;
+                mcastsymbol_t* symbol;
+                mcastsymbol_t* fnsymbol;
+                mcastsymbol_t* thissymbol;
+                mcastsymbol_t* paramsymbol;
+                mcastident_t* param;
+                fn = &expr->exprlitfunction;
+                ok = mc_compiler_pushcompilationscope(comp);
+                if(!ok)
+                {
+                    goto error;
+                }
+                ok = mc_compiler_pushsymtable(comp, 0);
+                if(!ok)
+                {
+                    goto error;
+                }
+                compscope = mc_compiler_getcompilationscope(comp);
+                symtab = mc_compiler_getsymtable(comp);
+                if(fn->name)
+                {
+                    fnsymbol = mc_symtable_definefunctionname(symtab, fn->name, false);
+                    if(!fnsymbol)
+                    {
+                        mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "Cannot define symbol \"%s\"", fn->name);
+                        goto error;
+                    }
+                }
+                thissymbol = mc_symtable_definethis(symtab);
+                if(!thissymbol)
+                {
+                    mc_errlist_push(comp->errors, MC_ERROR_COMPILING, expr->pos, "Cannot define \"this\" symbol");
+                    goto error;
+                }
+                for(i = 0; i < mc_ptrarray_count(expr->exprlitfunction.params); i++)
+                {
+                    param = (mcastident_t*)mc_ptrarray_get(expr->exprlitfunction.params, i);
+                    paramsymbol = mc_compiler_defsymbol(comp, param->pos, param->value, true, false);
+                    if(!paramsymbol)
+                    {
+                        goto error;
+                    }
+                }
+                ok = mc_compiler_compilestmtlist(comp, fn->body->statements);
+                if(!ok)
+                {
+                    goto error;
+                }
+                if(!mc_compiler_lastopcodeis(comp, MC_OPCODE_RETURNVALUE) && !mc_compiler_lastopcodeis(comp, MC_OPCODE_RETURN))
+                {
+                    ip = mc_compiler_emit(comp, MC_OPCODE_RETURN, 0, NULL);
+                    if(ip < 0)
+                    {
+                        goto error;
+                    }
+                }
+                freesyms = symtab->freesymbols;
+                /* because it gets destroyed with compiler_pop_compilation_scope() */
+                symtab->freesymbols = NULL;
+                nlocals = symtab->maxnumdefinitions;
+                comp_res = mc_astcompscope_orphanresult(compscope);
+                if(!comp_res)
+                {
+                    mc_ptrarray_destroy(freesyms, (mcitemdestroyfn_t)mc_symbol_destroy);
+                    goto error;
+                }
+                mc_compiler_popsymtable(comp);
+                mc_compiler_popcompilationscope(comp);
+                compscope = mc_compiler_getcompilationscope(comp);
+                symtab = mc_compiler_getsymtable(comp);
+                obj = mc_value_makefuncscript(comp->pstate, fn->name, comp_res, true, nlocals, mc_ptrarray_count(fn->params), 0);
+                if(mc_value_isnull(obj))
+                {
+                    mc_ptrarray_destroy(freesyms, (mcitemdestroyfn_t)mc_symbol_destroy);
+                    mc_astcompresult_destroy(comp_res);
+                    goto error;
+                }
+                for(i = 0; i < mc_ptrarray_count(freesyms); i++)
+                {
+                    symbol = (mcastsymbol_t*)mc_ptrarray_get(freesyms, i);
+                    ok = mc_compiler_readsymbol(comp, symbol);
+                    if(!ok)
+                    {
+                        mc_ptrarray_destroy(freesyms, (mcitemdestroyfn_t)mc_symbol_destroy);
+                        goto error;
+                    }
+                }
+                pos = mc_compiler_addconstant(comp, obj);
+                if(pos < 0)
+                {
+                    mc_ptrarray_destroy(freesyms, (mcitemdestroyfn_t)mc_symbol_destroy);
+                    goto error;
+                }
+                opbuf[0] = pos;
+                opbuf[1] = mc_ptrarray_count(freesyms);
+                ip = mc_compiler_emit(comp, MC_OPCODE_FUNCTION, 2, opbuf);
+                if(ip < 0)
+                {
+                    mc_ptrarray_destroy(freesyms, (mcitemdestroyfn_t)mc_symbol_destroy);
+                    goto error;
+                }
+                mc_ptrarray_destroy(freesyms, (mcitemdestroyfn_t)mc_symbol_destroy);
+            }
+            break;
+
+        case MC_EXPR_CALL:
+            {
+                int i;
+                mcastexpression_t* argexpr;
+                ok = mc_compiler_compileexpression(comp, expr->exprcall.function);
+                if(!ok)
+                {
+                    goto error;
+                }
+                for(i = 0; i < mc_ptrarray_count(expr->exprcall.args); i++)
+                {
+                    argexpr = (mcastexpression_t*)mc_ptrarray_get(expr->exprcall.args, i);
+                    ok = mc_compiler_compileexpression(comp, argexpr);
+                    if(!ok)
+                    {
+                        goto error;
+                    }
+                }
+                opbuf[0] = mc_ptrarray_count(expr->exprcall.args);
+                ip = mc_compiler_emit(comp, MC_OPCODE_CALL, 1, opbuf);
+                if(ip < 0)
+                {
+                    goto error;
+                }
+            }
+            break;
+        case MC_EXPR_ASSIGN:
+            {
+                index_expression_t* index;
+                assign_expression_t* assign;
+                mcastident_t* ident;
+                mcastsymbol_t* symbol;
+                assign = &expr->exprassign;
+                if(assign->dest->type != MC_EXPR_IDENT && assign->dest->type != MC_EXPR_INDEX)
+                {
+                    mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, assign->dest->pos, "Expression is not assignable.");
+                    goto error;
+                }
+                if(assign->is_postfix)
+                {
+                    ok = mc_compiler_compileexpression(comp, assign->dest);
+                    if(!ok)
+                    {
+                        goto error;
+                    }
+                }
+                ok = mc_compiler_compileexpression(comp, assign->source);
+                if(!ok)
+                {
+                    goto error;
+                }
+                ip = mc_compiler_emit(comp, MC_OPCODE_DUP, 0, NULL);
+                if(ip < 0)
+                {
+                    goto error;
+                }
+                ok = mc_basicarray_push(comp->srcposstack, &assign->dest->pos);
+                if(!ok)
+                {
+                    goto error;
+                }
+                if(assign->dest->type == MC_EXPR_IDENT)
+                {
+                    ident = assign->dest->exprident;
+                    symbol = mc_symtable_resolve(symtab, ident->value);
+                    if(!symbol)
+                    {
+                        mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, assign->dest->pos, "Symbol \"%s\" could not be resolved", ident->value);
+                        goto error;
+                    }
+                    if(!symbol->assignable)
+                    {
+                        mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, assign->dest->pos, "Symbol \"%s\" is not assignable", ident->value);
+                        goto error;
+                    }
+                    ok = mc_compiler_storesymbol(comp, symbol, false);
+                    if(!ok)
+                    {
+                        goto error;
+                    }
+                }
+                else if(assign->dest->type == MC_EXPR_INDEX)
+                {
+                    index = &assign->dest->exprindex;
+                    ok = mc_compiler_compileexpression(comp, index->left);
+                    if(!ok)
+                    {
+                        goto error;
+                    }
+                    ok = mc_compiler_compileexpression(comp, index->index);
+                    if(!ok)
+                    {
+                        goto error;
+                    }
+                    ip = mc_compiler_emit(comp, MC_OPCODE_SETINDEX, 0, NULL);
+                    if(ip < 0)
+                    {
+                        goto error;
+                    }
+                }
+                if(assign->is_postfix)
+                {
+                    ip = mc_compiler_emit(comp, MC_OPCODE_POP, 0, NULL);
+                    if(ip < 0)
+                    {
+                        goto error;
+                    }
+                }
+                mc_basicarray_pop(comp->srcposstack, NULL);
+            }
+            break;
+
         case MC_EXPR_LOGICAL:
             {
                 int afterrightip;
+                int afterleftjumpip;
                 logical_expression_t* logi;
                 logi = &expr->exprlogical;
                 ok = mc_compiler_compileexpression(comp, logi->left);
@@ -7138,27 +9620,27 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
                 {
                     goto error;
                 }
-                ip = mc_compiler_emit(comp, OPCODE_DUP, 0, NULL);
+                ip = mc_compiler_emit(comp, MC_OPCODE_DUP, 0, NULL);
                 if(ip < 0)
                 {
                     goto error;
                 }
-                int afterleftjumpip = 0;
-                if(logi->op == OPERATOR_LOGICAL_AND)
+                afterleftjumpip = 0;
+                if(logi->op == MC_MATHOP_LOGICALAND)
                 {
                     opbuf[0] = 0xbeef;
-                    afterleftjumpip = mc_compiler_emit(comp, OPCODE_JUMP_IF_FALSE, 1, opbuf);
+                    afterleftjumpip = mc_compiler_emit(comp, MC_OPCODE_JUMPIFFALSE, 1, opbuf);
                 }
                 else
                 {
                     opbuf[0] = 0xbeef;
-                    afterleftjumpip = mc_compiler_emit(comp, OPCODE_JUMP_IF_TRUE, 1, opbuf);
+                    afterleftjumpip = mc_compiler_emit(comp, MC_OPCODE_JUMPIFTRUE, 1, opbuf);
                 }
                 if(afterleftjumpip < 0)
                 {
                     goto error;
                 }
-                ip = mc_compiler_emit(comp, OPCODE_POP, 0, NULL);
+                ip = mc_compiler_emit(comp, MC_OPCODE_POP, 0, NULL);
                 if(ip < 0)
                 {
                     goto error;
@@ -7172,7 +9654,6 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
                 mc_compiler_changeuint16operand(comp, afterleftjumpip + 1, afterrightip);
             }
             break;
-
         case MC_EXPR_TERNARY:
             {
                 int endip;
@@ -7187,14 +9668,14 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
                     goto error;
                 }
                 opbuf[0] = 0xbeef;
-                elsejumpip = mc_compiler_emit(comp, OPCODE_JUMP_IF_FALSE, 1, opbuf);
+                elsejumpip = mc_compiler_emit(comp, MC_OPCODE_JUMPIFFALSE, 1, opbuf);
                 ok = mc_compiler_compileexpression(comp, ternary->teriftrue);
                 if(!ok)
                 {
                     goto error;
                 }
                 opbuf[0] = 0xbeef;
-                endjumpip = mc_compiler_emit(comp, OPCODE_JUMP, 1, opbuf);
+                endjumpip = mc_compiler_emit(comp, MC_OPCODE_JUMP, 1, opbuf);
                 elseip = mc_compiler_getip(comp);
                 mc_compiler_changeuint16operand(comp, elsejumpip + 1, elseip);
                 ok = mc_compiler_compileexpression(comp, ternary->teriffalse);
@@ -7217,8 +9698,8 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
 error:
     res = false;
 end:
-    mc_basicarray_pop(comp->src_positions_stack, NULL);
-    expression_destroy(exproptimized);
+    mc_basicarray_pop(comp->srcposstack, NULL);
+    mc_astexpr_destroy(exproptimized);
     return res;
 }
 
@@ -7241,12 +9722,12 @@ TMPSEMISTATIC bool mc_compiler_compilecodeblock(mcastcompiler_t* comp, mcastcode
     }
     if(mc_ptrarray_count(block->statements) == 0)
     {
-        ip = mc_compiler_emit(comp, OPCODE_NULL, 0, NULL);
+        ip = mc_compiler_emit(comp, MC_OPCODE_NULL, 0, NULL);
         if(ip < 0)
         {
             return false;
         }
-        ip = mc_compiler_emit(comp, OPCODE_POP, 0, NULL);
+        ip = mc_compiler_emit(comp, MC_OPCODE_POP, 0, NULL);
         if(ip < 0)
         {
             return false;
@@ -7268,66 +9749,72 @@ TMPSEMISTATIC bool mc_compiler_compilecodeblock(mcastcompiler_t* comp, mcastcode
 TMPSTATIC int mc_compiler_addconstant(mcastcompiler_t* comp, mcvalue_t obj)
 {
     bool ok;
+    int pos;
     ok = mc_basicarray_push(comp->constants, &obj);
     if(!ok)
     {
         return -1;
     }
-    int pos = mc_basicarray_count(comp->constants) - 1;
+    pos = mc_basicarray_count(comp->constants) - 1;
     return pos;
 }
 
 TMPSTATIC void mc_compiler_changeuint16operand(mcastcompiler_t* comp, int ip, uint16_t operand)
 {
-    mcbasicarray_t* bytecode = mc_compiler_getbytecode(comp);
+    uint8_t hi;
+    uint8_t lo;
+    mcbasicarray_t* bytecode;
+    bytecode = mc_compiler_getbytecode(comp);
     if((ip + 1) >= mc_basicarray_count(bytecode))
     {
         MC_ASSERT(false);
         return;
     }
-    uint8_t hi = operand >> 8;
+    hi = operand >> 8;
     mc_basicarray_set(bytecode, ip, &hi);
-    uint8_t lo = operand;
+    lo = operand;
     mc_basicarray_set(bytecode, ip + 1, &lo);
 }
 
 TMPSTATIC bool mc_compiler_lastopcodeis(mcastcompiler_t* comp, mcinternopcode_t op)
 {
-    mcinternopcode_t last_opcode = mc_compiler_getlastopcode(comp);
-    return last_opcode == op;
+    mcinternopcode_t lastopcode;
+    lastopcode = mc_compiler_getlastopcode(comp);
+    return lastopcode == op;
 }
 
 TMPSTATIC bool mc_compiler_readsymbol(mcastcompiler_t* comp, mcastsymbol_t* symbol)
 {
-    int ip = -1;
+    int ip;
     uint64_t opbuf[10];
-    if(symbol->type == SYMBOL_MODULE_GLOBAL)
+    ip = -1;
+    if(symbol->type == MC_SYM_MODULEGLOBAL)
     {
         opbuf[0] = symbol->index;
-        ip = mc_compiler_emit(comp, OPCODE_GET_MODULE_GLOBAL, 1, opbuf);
+        ip = mc_compiler_emit(comp, MC_OPCODE_GETMODULEGLOBAL, 1, opbuf);
     }
-    else if(symbol->type == SYMBOL_GLOBALBUILTIN)
+    else if(symbol->type == MC_SYM_GLOBALBUILTIN)
     {
         opbuf[0] = symbol->index;
-        ip = mc_compiler_emit(comp, OPCODE_GETGLOBALBUILTIN, 1, opbuf);
+        ip = mc_compiler_emit(comp, MC_OPCODE_GETGLOBALBUILTIN, 1, opbuf);
     }
-    else if(symbol->type == SYMBOL_LOCAL)
+    else if(symbol->type == MC_SYM_LOCAL)
     {
         opbuf[0] = symbol->index;
-        ip = mc_compiler_emit(comp, OPCODE_GET_LOCAL, 1, opbuf);
+        ip = mc_compiler_emit(comp, MC_OPCODE_GETLOCAL, 1, opbuf);
     }
-    else if(symbol->type == SYMBOL_FREE)
+    else if(symbol->type == MC_SYM_FREE)
     {
         opbuf[0] = symbol->index;
-        ip = mc_compiler_emit(comp, OPCODE_GET_FREE, 1, opbuf);
+        ip = mc_compiler_emit(comp, MC_OPCODE_GETFREE, 1, opbuf);
     }
-    else if(symbol->type == SYMBOL_FUNCTION)
+    else if(symbol->type == MC_SYM_FUNCTION)
     {
-        ip = mc_compiler_emit(comp, OPCODE_CURRENT_FUNCTION, 0, NULL);
+        ip = mc_compiler_emit(comp, MC_OPCODE_CURRENTFUNCTION, 0, NULL);
     }
-    else if(symbol->type == SYMBOL_THIS)
+    else if(symbol->type == MC_SYM_THIS)
     {
-        ip = mc_compiler_emit(comp, OPCODE_GET_THIS, 0, NULL);
+        ip = mc_compiler_emit(comp, MC_OPCODE_GETTHIS, 0, NULL);
     }
     return ip >= 0;
 }
@@ -7337,133 +9824,145 @@ TMPSTATIC bool mc_compiler_storesymbol(mcastcompiler_t* comp, mcastsymbol_t* sym
     int ip;
     uint64_t opbuf[10];
     ip = -1;
-    if(symbol->type == SYMBOL_MODULE_GLOBAL)
+    if(symbol->type == MC_SYM_MODULEGLOBAL)
     {
         if(define)
         {
             opbuf[0] = symbol->index;
-            ip = mc_compiler_emit(comp, OPCODE_DEFINE_MODULE_GLOBAL, 1, opbuf);
+            ip = mc_compiler_emit(comp, MC_OPCODE_DEFINEMODULEGLOBAL, 1, opbuf);
         }
         else
         {
             opbuf[0] = symbol->index;
-            ip = mc_compiler_emit(comp, OPCODE_SET_MODULE_GLOBAL, 1, opbuf);
+            ip = mc_compiler_emit(comp, MC_OPCODE_SETMODULEGLOBAL, 1, opbuf);
         }
     }
-    else if(symbol->type == SYMBOL_LOCAL)
+    else if(symbol->type == MC_SYM_LOCAL)
     {
         if(define)
         {
             opbuf[0] = symbol->index;
-            ip = mc_compiler_emit(comp, OPCODE_DEFINE_LOCAL, 1, opbuf);
+            ip = mc_compiler_emit(comp, MC_OPCODE_DEFINELOCAL, 1, opbuf);
         }
         else
         {
             opbuf[0] = symbol->index;
-            ip = mc_compiler_emit(comp, OPCODE_SET_LOCAL, 1, opbuf);
+            ip = mc_compiler_emit(comp, MC_OPCODE_SETLOCAL, 1, opbuf);
         }
     }
-    else if(symbol->type == SYMBOL_FREE)
+    else if(symbol->type == MC_SYM_FREE)
     {
         opbuf[0] = symbol->index;
-        ip = mc_compiler_emit(comp, OPCODE_SET_FREE, 1, opbuf);
+        ip = mc_compiler_emit(comp, MC_OPCODE_SETFREE, 1, opbuf);
     }
     return ip >= 0;
 }
 
 TMPSTATIC bool mc_compiler_pushbreakip(mcastcompiler_t* comp, int ip)
 {
-    mcastscopecomp_t* compscope = mc_compiler_getcompilationscope(comp);
-    return mc_basicarray_push(compscope->break_ip_stack, &ip);
+    mcastscopecomp_t* compscope;
+    compscope = mc_compiler_getcompilationscope(comp);
+    return mc_basicarray_push(compscope->ipstackbreak, &ip);
 }
 
 TMPSTATIC void mc_compiler_popbreakip(mcastcompiler_t* comp)
 {
-    mcastscopecomp_t* compscope = mc_compiler_getcompilationscope(comp);
-    if(mc_basicarray_count(compscope->break_ip_stack) == 0)
+    mcastscopecomp_t* compscope;
+    compscope = mc_compiler_getcompilationscope(comp);
+    if(mc_basicarray_count(compscope->ipstackbreak) == 0)
     {
         MC_ASSERT(false);
         return;
     }
-    mc_basicarray_pop(compscope->break_ip_stack, NULL);
+    mc_basicarray_pop(compscope->ipstackbreak, NULL);
 }
 
 TMPSTATIC int mc_compiler_getbreakip(mcastcompiler_t* comp)
 {
-    mcastscopecomp_t* compscope = mc_compiler_getcompilationscope(comp);
-    if(mc_basicarray_count(compscope->break_ip_stack) == 0)
+    int* res;
+    mcastscopecomp_t* compscope;
+    compscope = mc_compiler_getcompilationscope(comp);
+    if(mc_basicarray_count(compscope->ipstackbreak) == 0)
     {
         return -1;
     }
-    int* res = (int*)mc_basicarray_top(compscope->break_ip_stack);
+    res = (int*)mc_basicarray_top(compscope->ipstackbreak);
     return *res;
 }
 
 TMPSTATIC bool mc_compiler_pushcontinueip(mcastcompiler_t* comp, int ip)
 {
-    mcastscopecomp_t* compscope = mc_compiler_getcompilationscope(comp);
-    return mc_basicarray_push(compscope->continue_ip_stack, &ip);
+    mcastscopecomp_t* compscope;
+    compscope = mc_compiler_getcompilationscope(comp);
+    return mc_basicarray_push(compscope->ipstackcontinue, &ip);
 }
 
 TMPSTATIC void mc_compiler_popcontinueip(mcastcompiler_t* comp)
 {
-    mcastscopecomp_t* compscope = mc_compiler_getcompilationscope(comp);
-    if(mc_basicarray_count(compscope->continue_ip_stack) == 0)
+    mcastscopecomp_t* compscope;
+    compscope = mc_compiler_getcompilationscope(comp);
+    if(mc_basicarray_count(compscope->ipstackcontinue) == 0)
     {
         MC_ASSERT(false);
         return;
     }
-    mc_basicarray_pop(compscope->continue_ip_stack, NULL);
+    mc_basicarray_pop(compscope->ipstackcontinue, NULL);
 }
 
 TMPSTATIC int mc_compiler_getcontinueip(mcastcompiler_t* comp)
 {
-    mcastscopecomp_t* compscope = mc_compiler_getcompilationscope(comp);
-    if(mc_basicarray_count(compscope->continue_ip_stack) == 0)
+    int* res;
+    mcastscopecomp_t* compscope;
+    compscope = mc_compiler_getcompilationscope(comp);
+    if(mc_basicarray_count(compscope->ipstackcontinue) == 0)
     {
         MC_ASSERT(false);
         return -1;
     }
-    int* res = (int*)mc_basicarray_top(compscope->continue_ip_stack);
+    res = (int*)mc_basicarray_top(compscope->ipstackcontinue);
     return *res;
 }
 
 TMPSTATIC int mc_compiler_getip(mcastcompiler_t* comp)
 {
-    mcastscopecomp_t* compscope = mc_compiler_getcompilationscope(comp);
+    mcastscopecomp_t* compscope;
+    compscope = mc_compiler_getcompilationscope(comp);
     return mc_basicarray_count(compscope->bytecode);
 }
 
 TMPSTATIC mcbasicarray_t* mc_compiler_getsrcpositions(mcastcompiler_t* comp)
 {
-    mcastscopecomp_t* compscope = mc_compiler_getcompilationscope(comp);
-    return compscope->src_positions;
+    mcastscopecomp_t* compscope;
+    compscope = mc_compiler_getcompilationscope(comp);
+    return compscope->scopesrcposlist;
 }
 
 TMPSTATIC mcbasicarray_t* mc_compiler_getbytecode(mcastcompiler_t* comp)
 {
-    mcastscopecomp_t* compscope = mc_compiler_getcompilationscope(comp);
+    mcastscopecomp_t* compscope;
+    compscope = mc_compiler_getcompilationscope(comp);
     return compscope->bytecode;
 }
 
 TMPSTATIC mcastscopefile_t* mc_compiler_filescopemake(mcastcompiler_t* comp, mcastcompiledfile_t* file)
 {
-    mcastscopefile_t* filescope = (mcastscopefile_t*)mc_allocator_alloc(comp->pstate, sizeof(mcastscopefile_t));
+    mcastscopefile_t* filescope;
+    filescope = (mcastscopefile_t*)mc_allocator_alloc(comp->pstate, sizeof(mcastscopefile_t));
     if(!filescope)
     {
         return NULL;
     }
     memset(filescope, 0, sizeof(mcastscopefile_t));
     filescope->pstate = comp->pstate;
-    filescope->parser = parser_make(comp->pstate, comp->config, comp->errors);
+    filescope->parser = mc_astparser_make(comp->pstate, comp->config, comp->errors);
     if(!filescope->parser)
     {
         goto err;
     }
-    filescope->symbol_table = NULL;
+    filescope->filesymtab = NULL;
     filescope->file = file;
-    filescope->loaded_module_names = mc_ptrarray_make(comp->pstate);
-    if(!filescope->loaded_module_names)
+    filescope->loadedmodnames = mc_ptrarray_make(comp->pstate);
+    if(!filescope->loadedmodnames)
     {
         goto err;
     }
@@ -7477,105 +9976,107 @@ TMPSTATIC void mc_compiler_filescopedestroy(mcastscopefile_t* scope)
 {
     int i;
     void* name;
-    for(i = 0; i < mc_ptrarray_count(scope->loaded_module_names); i++)
+    for(i = 0; i < mc_ptrarray_count(scope->loadedmodnames); i++)
     {
-        name = (void*)mc_ptrarray_get(scope->loaded_module_names, i);
+        name = (void*)mc_ptrarray_get(scope->loadedmodnames, i);
         mc_allocator_free(scope->pstate, name);
     }
-    mc_ptrarray_destroy(scope->loaded_module_names, NULL);
-    parser_destroy(scope->parser);
+    mc_ptrarray_destroy(scope->loadedmodnames, NULL);
+    mc_astparser_destroy(scope->parser);
     mc_allocator_free(scope->pstate, scope);
 }
 
 TMPSTATIC bool mc_compiler_filescopepush(mcastcompiler_t* comp, const char* filepath)
 {
     bool ok;
-    mcastsymtable_t* prevst = NULL;
-    if(mc_ptrarray_count(comp->file_scopes) > 0)
+    int globaloffset;
+    mcastscopeblock_t* prevsttopscope;
+    mcastsymtable_t* prevst;
+    mcastcompiledfile_t* file;
+    mcastscopefile_t* filescope;
+    prevst = NULL;
+    if(mc_ptrarray_count(comp->filescopelist) > 0)
     {
         prevst = mc_compiler_getsymtable(comp);
     }
-
-    mcastcompiledfile_t* file = mc_compiledfile_make(comp->pstate, filepath);
+    file = mc_compiledfile_make(comp->pstate, filepath);
     if(!file)
     {
         return false;
     }
-
     ok = mc_ptrarray_push(comp->files, file);
     if(!ok)
     {
         mc_compiledfile_destroy(file);
         return false;
     }
-
-    mcastscopefile_t* filescope = mc_compiler_filescopemake(comp, file);
+    filescope = mc_compiler_filescopemake(comp, file);
     if(!filescope)
     {
         return false;
     }
-
-    ok = mc_ptrarray_push(comp->file_scopes, filescope);
+    ok = mc_ptrarray_push(comp->filescopelist, filescope);
     if(!ok)
     {
         mc_compiler_filescopedestroy(filescope);
         return false;
     }
-
-    int globaloffset = 0;
+    globaloffset = 0;
     if(prevst)
     {
-        mcastscopeblock_t* prevsttopscope = mc_symtable_getblockscope(prevst);
-        globaloffset = prevsttopscope->offset + prevsttopscope->num_definitions;
+        prevsttopscope = mc_symtable_getblockscope(prevst);
+        globaloffset = prevsttopscope->offset + prevsttopscope->numdefinitions;
     }
-
     ok = mc_compiler_pushsymtable(comp, globaloffset);
     if(!ok)
     {
-        mc_ptrarray_pop(comp->file_scopes);
+        mc_ptrarray_pop(comp->filescopelist);
         mc_compiler_filescopedestroy(filescope);
         return false;
     }
-
     return true;
 }
 
 TMPSTATIC void mc_compiler_filescopepop(mcastcompiler_t* comp)
 {
-    mcastsymtable_t* poppedst = mc_compiler_getsymtable(comp);
-    mcastscopeblock_t* poppedsttopscope = mc_symtable_getblockscope(poppedst);
-    int poppednumdefs = poppedsttopscope->num_definitions;
-
+    int poppednumdefs;
+    mcastsymtable_t* poppedst;
+    mcastsymtable_t* currentst;
+    mcastscopefile_t* scope;
+    mcastscopeblock_t* currentsttopscope;
+    mcastscopeblock_t* poppedsttopscope;
+    poppedst = mc_compiler_getsymtable(comp);
+    poppedsttopscope = mc_symtable_getblockscope(poppedst);
+    poppednumdefs = poppedsttopscope->numdefinitions;
     while(mc_compiler_getsymtable(comp))
     {
         mc_compiler_popsymtable(comp);
     }
-    mcastscopefile_t* scope = (mcastscopefile_t*)mc_ptrarray_top(comp->file_scopes);
+    scope = (mcastscopefile_t*)mc_ptrarray_top(comp->filescopelist);
     if(!scope)
     {
         MC_ASSERT(false);
         return;
     }
     mc_compiler_filescopedestroy(scope);
-
-    mc_ptrarray_pop(comp->file_scopes);
-
-    if(mc_ptrarray_count(comp->file_scopes) > 0)
+    mc_ptrarray_pop(comp->filescopelist);
+    if(mc_ptrarray_count(comp->filescopelist) > 0)
     {
-        mcastsymtable_t* currentst = mc_compiler_getsymtable(comp);
-        mcastscopeblock_t* currentsttopscope = mc_symtable_getblockscope(currentst);
-        currentsttopscope->num_definitions += poppednumdefs;
+        currentst = mc_compiler_getsymtable(comp);
+        currentsttopscope = mc_symtable_getblockscope(currentst);
+        currentsttopscope->numdefinitions += poppednumdefs;
     }
 }
 
 TMPSTATIC void mc_compiler_setcompilationscope(mcastcompiler_t* comp, mcastscopecomp_t* scope)
 {
-    comp->compilation_scope = scope;
+    comp->compilationscope = scope;
 }
 
 TMPSTATIC module_t* mc_module_make(mcstate_t* state, const char* name)
 {
-    module_t* module = (module_t*)mc_allocator_alloc(state, sizeof(module_t));
+    module_t* module;
+    module = (module_t*)mc_allocator_alloc(state, sizeof(module_t));
     if(!module)
     {
         return NULL;
@@ -7660,7 +10161,7 @@ TMPSTATIC bool mc_module_addsymbol(module_t* module, mcastsymbol_t* symbol)
         mc_printer_destroy(namebuf);
         return false;
     }
-    modulesymbol = mc_symbol_make(module->pstate, mc_printer_getstring(namebuf), SYMBOL_MODULE_GLOBAL, symbol->index, false);
+    modulesymbol = mc_symbol_make(module->pstate, mc_printer_getstring(namebuf), MC_SYM_MODULEGLOBAL, symbol->index, false);
     mc_printer_destroy(namebuf);
     if(!modulesymbol)
     {
@@ -7699,2106 +10200,7 @@ TMPSTATIC mcastsymbol_t* mc_compiler_defsymbol(mcastcompiler_t* comp, mcastlocat
     return symbol;
 }
 
-TMPSTATIC mcastparser_t* parser_make(mcstate_t* state, mcconfig_t* config, mcerrlist_t* errors)
-{
-    mcastparser_t* parser;
-    parser = (mcastparser_t*)mc_allocator_alloc(state, sizeof(mcastparser_t));
-    if(!parser)
-    {
-        return NULL;
-    }
-    memset(parser, 0, sizeof(mcastparser_t));
-    parser->pstate = state;
-    parser->config = config;
-    parser->errors = errors;
-    {
-        parser->rightassocfuncs[MC_TOK_IDENT] = mc_parser_parseident;
-        parser->rightassocfuncs[MC_TOK_NUMBER] = mc_parser_parseliteralnumber;
-        parser->rightassocfuncs[MC_TOK_TRUE] = mc_parser_parseliteralbool;
-        parser->rightassocfuncs[MC_TOK_FALSE] = mc_parser_parseliteralbool;
-        parser->rightassocfuncs[MC_TOK_STRING] = mc_parser_parseliteralstring;
-        parser->rightassocfuncs[MC_TOK_TEMPLATESTRING] = mc_parser_parseliteraltemplatestring;
-        parser->rightassocfuncs[MC_TOK_NULL] = mc_parser_parseliteralnull;
-        parser->rightassocfuncs[MC_TOK_BANG] = mc_parser_parseprefixexpr;
-        parser->rightassocfuncs[MC_TOK_MINUS] = mc_parser_parseprefixexpr;
-        parser->rightassocfuncs[MC_TOK_LPAREN] = mc_parser_parsegroupedexpr;
-        parser->rightassocfuncs[MC_TOK_FUNCTION] = mc_parser_parseliteralfunction;
-        parser->rightassocfuncs[MC_TOK_LBRACKET] = mc_parser_parseliteralarray;
-        parser->rightassocfuncs[MC_TOK_LBRACE] = mc_parser_parseliteralmap;
-        parser->rightassocfuncs[MC_TOK_PLUSPLUS] = mc_parser_parseincdecprefixexpr;
-        parser->rightassocfuncs[MC_TOK_MINUSMINUS] = mc_parser_parseincdecprefixexpr;
-    }
-    {
-        parser->leftassocfuncs[MC_TOK_PLUS] = mc_parser_parseinfixexpr;
-        parser->leftassocfuncs[MC_TOK_MINUS] = mc_parser_parseinfixexpr;
-        parser->leftassocfuncs[MC_TOK_SLASH] = mc_parser_parseinfixexpr;
-        parser->leftassocfuncs[MC_TOK_ASTERISK] = mc_parser_parseinfixexpr;
-        parser->leftassocfuncs[MC_TOK_PERCENT] = mc_parser_parseinfixexpr;
-        parser->leftassocfuncs[MC_TOK_EQ] = mc_parser_parseinfixexpr;
-        parser->leftassocfuncs[MC_TOK_NOTEQ] = mc_parser_parseinfixexpr;
-        parser->leftassocfuncs[MC_TOK_LT] = mc_parser_parseinfixexpr;
-        parser->leftassocfuncs[MC_TOK_LTE] = mc_parser_parseinfixexpr;
-        parser->leftassocfuncs[MC_TOK_GT] = mc_parser_parseinfixexpr;
-        parser->leftassocfuncs[MC_TOK_GTE] = mc_parser_parseinfixexpr;
-        parser->leftassocfuncs[MC_TOK_LPAREN] = parse_call_expression;
-        parser->leftassocfuncs[MC_TOK_LBRACKET] = mc_parser_parseindexexpr;
-        parser->leftassocfuncs[MC_TOK_ASSIGN] = mc_parser_parseassignexpr;
-        parser->leftassocfuncs[MC_TOK_PLUSASSIGN] = mc_parser_parseassignexpr;
-        parser->leftassocfuncs[MC_TOK_MINUSASSIGN] = mc_parser_parseassignexpr;
-        parser->leftassocfuncs[MC_TOK_SLASHASSIGN] = mc_parser_parseassignexpr;
-        parser->leftassocfuncs[MC_TOK_ASTERISKASSIGN] = mc_parser_parseassignexpr;
-        parser->leftassocfuncs[MC_TOK_PERCENTASSIGN] = mc_parser_parseassignexpr;
-        parser->leftassocfuncs[MC_TOK_BITANDASSIGN] = mc_parser_parseassignexpr;
-        parser->leftassocfuncs[MC_TOK_BITORASSIGN] = mc_parser_parseassignexpr;
-        parser->leftassocfuncs[MC_TOK_BITXORASSIGN] = mc_parser_parseassignexpr;
-        parser->leftassocfuncs[MC_TOK_LSHIFTASSIGN] = mc_parser_parseassignexpr;
-        parser->leftassocfuncs[MC_TOK_RSHIFTASSIGN] = mc_parser_parseassignexpr;
-        parser->leftassocfuncs[MC_TOK_DOT] = parse_dot_expression;
-        parser->leftassocfuncs[MC_TOK_AND] = parse_logical_expression;
-        parser->leftassocfuncs[MC_TOK_OR] = parse_logical_expression;
-        parser->leftassocfuncs[MC_TOK_BITAND] = mc_parser_parseinfixexpr;
-        parser->leftassocfuncs[MC_TOK_BITOR] = mc_parser_parseinfixexpr;
-        parser->leftassocfuncs[MC_TOK_BITXOR] = mc_parser_parseinfixexpr;
-        parser->leftassocfuncs[MC_TOK_LSHIFT] = mc_parser_parseinfixexpr;
-        parser->leftassocfuncs[MC_TOK_RSHIFT] = mc_parser_parseinfixexpr;
-        parser->leftassocfuncs[MC_TOK_QUESTION] = parse_ternary_expression;
-        parser->leftassocfuncs[MC_TOK_PLUSPLUS] = parse_incdec_postfix_expression;
-        parser->leftassocfuncs[MC_TOK_MINUSMINUS] = parse_incdec_postfix_expression;
-    }
-    parser->depth = 0;
-    return parser;
-}
 
-TMPSTATIC void parser_destroy(mcastparser_t* parser)
-{
-    if(!parser)
-    {
-        return;
-    }
-    mc_allocator_free(parser->pstate, parser);
-}
-
-TMPSTATIC mcptrarray_t* parser_parse_all(mcastparser_t* parser, const char* input, mcastcompiledfile_t* file)
-{
-    bool ok;
-    mcastexpression_t* expr;
-    mcptrarray_t* statements;
-    parser->depth = 0;
-    ok = mc_lexer_init(&parser->lexer, parser->pstate, parser->errors, input, file);
-    if(!ok)
-    {
-        return NULL;
-    }
-    mc_lexer_nexttoken(&parser->lexer);
-    mc_lexer_nexttoken(&parser->lexer);
-    statements = mc_ptrarray_make(parser->pstate);
-    if(!statements)
-    {
-        return NULL;
-    }
-    while(!mc_lexer_currtokenis(&parser->lexer, MC_TOK_EOF))
-    {
-        if(mc_lexer_currtokenis(&parser->lexer, MC_TOK_SEMICOLON))
-        {
-            mc_lexer_nexttoken(&parser->lexer);
-            continue;
-        }
-        expr = parse_statement(parser);
-        if(!expr)
-        {
-            goto err;
-        }
-        ok = mc_ptrarray_push(statements, expr);
-        if(!ok)
-        {
-            statement_destroy(expr);
-            goto err;
-        }
-    }
-    if(mc_errlist_size(parser->errors) > 0)
-    {
-        goto err;
-    }
-    return statements;
-err:
-    mc_ptrarray_destroy(statements, (mcitemdestroyfn_t)statement_destroy);
-    return NULL;
-}
-
-TMPSTATIC mcastexpression_t* parse_statement(mcastparser_t* p)
-{
-    mcastlocation_t pos;
-    mcastexpression_t* res;
-    pos = p->lexer.currtoken.pos;
-    res = NULL;
-    switch(p->lexer.currtoken.type)
-    {
-        case MC_TOK_VAR:
-        case MC_TOK_CONST:
-            {
-                res = mc_parser_parsevarletstmt(p);
-            }
-            break;
-        case MC_TOK_IF:
-            {
-                res = parse_if_statement(p);
-            }
-            break;
-        case MC_TOK_RETURN:
-            {
-                res = parse_return_statement(p);
-            }
-            break;
-        case MC_TOK_WHILE:
-            {
-                res = parse_while_loop_statement(p);
-            }
-            break;
-        case MC_TOK_BREAK:
-            {
-                res = parse_break_statement(p);
-            }
-            break;
-        case MC_TOK_FOR:
-            {
-                res = parse_for_loop_statement(p);
-            }
-            break;
-        case MC_TOK_FUNCTION:
-            {
-                if(mc_lexer_peektokenis(&p->lexer, MC_TOK_IDENT))
-                {
-                    res = parse_function_statement(p);
-                }
-                else
-                {
-                    res = parse_expression_statement(p);
-                }
-            }
-            break;
-        case MC_TOK_LBRACE:
-            {
-                if(p->config->replmode && p->depth == 0)
-                {
-                    res = parse_expression_statement(p);
-                }
-                else
-                {
-                    res = parse_block_statement(p);
-                }
-            }
-            break;
-        case MC_TOK_CONTINUE:
-            {
-                res = parse_continue_statement(p);
-            }
-            break;
-        case MC_TOK_IMPORT:
-            {
-                res = parse_import_statement(p);
-            }
-            break;
-        case MC_TOK_RECOVER:
-            {
-                res = parse_recover_statement(p);
-            }
-            break;
-        default:
-            {
-                res = parse_expression_statement(p);
-            }
-            break;
-    }
-    if(res)
-    {
-        res->pos = pos;
-    }
-    return res;
-}
-
-TMPSEMISTATIC mcastexpression_t* mc_parser_parsevarletstmt(mcastparser_t* p)
-{
-    bool assignable;
-    mcastident_t* nameident;
-    mcastexpression_t* value;
-    mcastexpression_t* res;
-    nameident = NULL;
-    value = NULL;
-    assignable = mc_lexer_currtokenis(&p->lexer, MC_TOK_VAR);
-    mc_lexer_nexttoken(&p->lexer);
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_IDENT))
-    {
-        goto err;
-    }
-    nameident = mc_astident_make(p->pstate, p->lexer.currtoken);
-    if(!nameident)
-    {
-        goto err;
-    }
-    mc_lexer_nexttoken(&p->lexer);
-    #if 0
-        if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_ASSIGN))
-    #else
-        if(!mc_lexer_currtokenis(&p->lexer, MC_TOK_ASSIGN))
-    #endif
-    {
-        value = expression_make_null_literal(p->pstate);
-        goto finish;
-    }
-    mc_lexer_nexttoken(&p->lexer);
-    value = parse_expression(p, PRECEDENCE_LOWEST);
-    if(!value)
-    {
-        goto err;
-    }
-    if(value->type == MC_EXPR_FUNCTIONLITERAL)
-    {
-        value->exprlitfunction.name = mc_util_strdup(p->pstate, nameident->value);
-        if(!value->exprlitfunction.name)
-        {
-            goto err;
-        }
-    }
-    finish:
-    res = statement_make_define(p->pstate, nameident, value, assignable);
-    if(!res)
-    {
-        goto err;
-    }
-    return res;
-err:
-    expression_destroy(value);
-    mc_astident_destroy(nameident);
-    return NULL;
-}
-
-TMPSEMISTATIC mcastexpression_t* parse_if_statement(mcastparser_t* p)
-{
-    bool ok;
-    mcptrarray_t* cases;
-    mcastifcase_t* cond;
-    mcastifcase_t* elif;
-    mcastcodeblock_t* alternative;
-    mcastexpression_t* res;
-    cases = NULL;
-    alternative = NULL;
-    cases = mc_ptrarray_make(p->pstate);
-    if(!cases)
-    {
-        goto err;
-    }
-    mc_lexer_nexttoken(&p->lexer);
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LPAREN))
-    {
-        goto err;
-    }
-    mc_lexer_nexttoken(&p->lexer);
-    cond = mc_astifcase_make(p->pstate, NULL, NULL);
-    if(!cond)
-    {
-        goto err;
-    }
-    ok = mc_ptrarray_push(cases, cond);
-    if(!ok)
-    {
-        mc_astifcase_destroy(cond);
-        goto err;
-    }
-    cond->ifcond = parse_expression(p, PRECEDENCE_LOWEST);
-    if(!cond->ifcond)
-    {
-        goto err;
-    }
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
-    {
-        goto err;
-    }
-    mc_lexer_nexttoken(&p->lexer);
-    cond->consequence = parse_code_block(p);
-    if(!cond->consequence)
-    {
-        goto err;
-    }
-    while(mc_lexer_currtokenis(&p->lexer, MC_TOK_ELSE))
-    {
-        mc_lexer_nexttoken(&p->lexer);
-        if(mc_lexer_currtokenis(&p->lexer, MC_TOK_IF))
-        {
-            mc_lexer_nexttoken(&p->lexer);
-            if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LPAREN))
-            {
-                goto err;
-            }
-            mc_lexer_nexttoken(&p->lexer);
-            elif = mc_astifcase_make(p->pstate, NULL, NULL);
-            if(!elif)
-            {
-                goto err;
-            }
-            ok = mc_ptrarray_push(cases, elif);
-            if(!ok)
-            {
-                mc_astifcase_destroy(elif);
-                goto err;
-            }
-            elif->ifcond = parse_expression(p, PRECEDENCE_LOWEST);
-            if(!elif->ifcond)
-            {
-                goto err;
-            }
-            if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
-            {
-                goto err;
-            }
-            mc_lexer_nexttoken(&p->lexer);
-            elif->consequence = parse_code_block(p);
-            if(!elif->consequence)
-            {
-                goto err;
-            }
-        }
-        else
-        {
-            alternative = parse_code_block(p);
-            if(!alternative)
-            {
-                goto err;
-            }
-        }
-    }
-    res = statement_make_if(p->pstate, cases, alternative);
-    if(!res)
-    {
-        goto err;
-    }
-    return res;
-err:
-    mc_ptrarray_destroy(cases, (mcitemdestroyfn_t)mc_astifcase_destroy);
-    mc_astcodeblock_destroy(alternative);
-    return NULL;
-}
-
-TMPSEMISTATIC mcastexpression_t* parse_return_statement(mcastparser_t* p)
-{
-    mcastexpression_t* res;
-    mcastexpression_t* expr;
-    expr = NULL;
-    mc_lexer_nexttoken(&p->lexer);
-    if(!mc_lexer_currtokenis(&p->lexer, MC_TOK_SEMICOLON) && !mc_lexer_currtokenis(&p->lexer, MC_TOK_RBRACE) && !mc_lexer_currtokenis(&p->lexer, MC_TOK_EOF))
-    {
-        expr = parse_expression(p, PRECEDENCE_LOWEST);
-        if(!expr)
-        {
-            return NULL;
-        }
-    }
-    res = statement_make_return(p->pstate, expr);
-    if(!res)
-    {
-        expression_destroy(expr);
-        return NULL;
-    }
-    return res;
-}
-
-TMPSEMISTATIC mcastexpression_t* parse_expression_statement(mcastparser_t* p)
-{
-    mcastexpression_t* res;
-    mcastexpression_t* expr;
-    expr = parse_expression(p, PRECEDENCE_LOWEST);
-    if(!expr)
-    {
-        return NULL;
-    }
-    if(expr && (!p->config->replmode || p->depth > 0))
-    {
-        if(expr->type != MC_EXPR_ASSIGN && expr->type != MC_EXPR_CALL)
-        {
-            mc_errlist_addf(p->errors, MC_ERROR_PARSING, expr->pos, "Only assignments and function calls can be expression statements");
-            expression_destroy(expr);
-            return NULL;
-        }
-    }
-    res = statement_make_expression(p->pstate, expr);
-    if(!res)
-    {
-        expression_destroy(expr);
-        return NULL;
-    }
-    return res;
-}
-
-TMPSEMISTATIC mcastexpression_t* parse_while_loop_statement(mcastparser_t* p)
-{
-    mcastexpression_t* res;
-    mcastexpression_t* test;
-    mcastcodeblock_t* body;
-    test = NULL;
-    body = NULL;
-    mc_lexer_nexttoken(&p->lexer);
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LPAREN))
-    {
-        goto err;
-    }
-    mc_lexer_nexttoken(&p->lexer);
-    test = parse_expression(p, PRECEDENCE_LOWEST);
-    if(!test)
-    {
-        goto err;
-    }
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
-    {
-        goto err;
-    }
-    mc_lexer_nexttoken(&p->lexer);
-    body = parse_code_block(p);
-    if(!body)
-    {
-        goto err;
-    }
-    res = statement_make_while_loop(p->pstate, test, body);
-    if(!res)
-    {
-        goto err;
-    }
-    return res;
-err:
-    mc_astcodeblock_destroy(body);
-    expression_destroy(test);
-    return NULL;
-}
-
-TMPSEMISTATIC mcastexpression_t* parse_break_statement(mcastparser_t* p)
-{
-    mc_lexer_nexttoken(&p->lexer);
-    return statement_make_break(p->pstate);
-}
-
-TMPSEMISTATIC mcastexpression_t* parse_continue_statement(mcastparser_t* p)
-{
-    mc_lexer_nexttoken(&p->lexer);
-    return statement_make_continue(p->pstate);
-}
-
-TMPSEMISTATIC mcastexpression_t* parse_block_statement(mcastparser_t* p)
-{
-    mcastcodeblock_t* block;
-    mcastexpression_t* res;
-    block = parse_code_block(p);
-    if(!block)
-    {
-        return NULL;
-    }
-    res = statement_make_block(p->pstate, block);
-    if(!res)
-    {
-        mc_astcodeblock_destroy(block);
-        return NULL;
-    }
-    return res;
-}
-
-TMPSEMISTATIC mcastexpression_t* parse_import_statement(mcastparser_t* p)
-{
-    char* processedname;
-    mcastexpression_t* res;
-    mc_lexer_nexttoken(&p->lexer);
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_STRING))
-    {
-        return NULL;
-    }
-    processedname = process_and_copy_string(p->pstate, p->lexer.currtoken.literal, p->lexer.currtoken.len);
-    if(!processedname)
-    {
-        mc_errlist_push(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "Error when parsing module name");
-        return NULL;
-    }
-    mc_lexer_nexttoken(&p->lexer);
-    res = statement_make_import(p->pstate, processedname);
-    if(!res)
-    {
-        mc_allocator_free(p->pstate, processedname);
-        return NULL;
-    }
-    return res;
-}
-
-TMPSEMISTATIC mcastexpression_t* parse_recover_statement(mcastparser_t* p)
-{
-    mcastexpression_t* res;
-    mcastident_t* eid;
-    mcastcodeblock_t* body;
-    eid = NULL;
-    body = NULL;
-    mc_lexer_nexttoken(&p->lexer);
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LPAREN))
-    {
-        return NULL;
-    }
-    mc_lexer_nexttoken(&p->lexer);
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_IDENT))
-    {
-        return NULL;
-    }
-    eid = mc_astident_make(p->pstate, p->lexer.currtoken);
-    if(!eid)
-    {
-        return NULL;
-    }
-    mc_lexer_nexttoken(&p->lexer);
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
-    {
-        goto err;
-    }
-    mc_lexer_nexttoken(&p->lexer);
-    body = parse_code_block(p);
-    if(!body)
-    {
-        goto err;
-    }
-    res = statement_make_recover(p->pstate, eid, body);
-    if(!res)
-    {
-        goto err;
-    }
-    return res;
-err:
-    mc_astcodeblock_destroy(body);
-    mc_astident_destroy(eid);
-    return NULL;
-}
-
-TMPSEMISTATIC mcastexpression_t* parse_for_loop_statement(mcastparser_t* p)
-{
-    mc_lexer_nexttoken(&p->lexer);
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LPAREN))
-    {
-        return NULL;
-    }
-    mc_lexer_nexttoken(&p->lexer);
-    if(mc_lexer_currtokenis(&p->lexer, MC_TOK_IDENT) && mc_lexer_peektokenis(&p->lexer, MC_TOK_IN))
-    {
-        return parse_foreach(p);
-    }
-    return parse_classic_for_loop(p);
-}
-
-TMPSTATIC mcastexpression_t* parse_foreach(mcastparser_t* p)
-{
-    mcastexpression_t* res;
-    mcastexpression_t* source;
-    mcastcodeblock_t* body;
-    mcastident_t* iteratorident;
-    source = NULL;
-    body = NULL;
-    iteratorident = NULL;
-    iteratorident = mc_astident_make(p->pstate, p->lexer.currtoken);
-    if(!iteratorident)
-    {
-        goto err;
-    }
-    mc_lexer_nexttoken(&p->lexer);
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_IN))
-    {
-        goto err;
-    }
-    mc_lexer_nexttoken(&p->lexer);
-    source = parse_expression(p, PRECEDENCE_LOWEST);
-    if(!source)
-    {
-        goto err;
-    }
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
-    {
-        goto err;
-    }
-    mc_lexer_nexttoken(&p->lexer);
-    body = parse_code_block(p);
-    if(!body)
-    {
-        goto err;
-    }
-    res = statement_make_foreach(p->pstate, iteratorident, source, body);
-    if(!res)
-    {
-        goto err;
-    }
-    return res;
-err:
-    mc_astcodeblock_destroy(body);
-    mc_astident_destroy(iteratorident);
-    expression_destroy(source);
-    return NULL;
-}
-
-TMPSTATIC mcastexpression_t* parse_classic_for_loop(mcastparser_t* p)
-{
-    mcastexpression_t* res;
-    mcastexpression_t* init;
-    mcastexpression_t* test;
-    mcastexpression_t* update;
-    mcastcodeblock_t* body;
-    init = NULL;
-    test = NULL;
-    update = NULL;
-    body = NULL;
-    if(!mc_lexer_currtokenis(&p->lexer, MC_TOK_SEMICOLON))
-    {
-        init = parse_statement(p);
-        if(!init)
-        {
-            goto err;
-        }
-        if(init->type != MC_EXPR_STMTDEFINE && init->type != MC_EXPR_STMTEXPRESSION)
-        {
-            mc_errlist_addf(p->errors, MC_ERROR_PARSING, init->pos, "for loop's init clause should be a define statement or an expression");
-            goto err;
-        }
-        if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_SEMICOLON))
-        {
-            goto err;
-        }
-    }
-    mc_lexer_nexttoken(&p->lexer);
-    if(!mc_lexer_currtokenis(&p->lexer, MC_TOK_SEMICOLON))
-    {
-        test = parse_expression(p, PRECEDENCE_LOWEST);
-        if(!test)
-        {
-            goto err;
-        }
-        if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_SEMICOLON))
-        {
-            goto err;
-        }
-    }
-    mc_lexer_nexttoken(&p->lexer);
-    if(!mc_lexer_currtokenis(&p->lexer, MC_TOK_RPAREN))
-    {
-        update = parse_expression(p, PRECEDENCE_LOWEST);
-        if(!update)
-        {
-            goto err;
-        }
-        if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
-        {
-            goto err;
-        }
-    }
-    mc_lexer_nexttoken(&p->lexer);
-    body = parse_code_block(p);
-    if(!body)
-    {
-        goto err;
-    }
-    res = statement_make_for_loop(p->pstate, init, test, update, body);
-    if(!res)
-    {
-        goto err;
-    }
-    return res;
-err:
-    statement_destroy(init);
-    expression_destroy(test);
-    expression_destroy(update);
-    mc_astcodeblock_destroy(body);
-    return NULL;
-}
-
-TMPSEMISTATIC mcastexpression_t* parse_function_statement(mcastparser_t* p)
-{
-    mcastident_t* nameident;
-    mcastexpression_t* res;
-    mcastexpression_t* value;
-    mcastlocation_t pos;
-    nameident = NULL;
-    value = NULL;
-    pos = p->lexer.currtoken.pos;
-    mc_lexer_nexttoken(&p->lexer);
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_IDENT))
-    {
-        goto err;
-    }
-    nameident = mc_astident_make(p->pstate, p->lexer.currtoken);
-    if(!nameident)
-    {
-        goto err;
-    }
-    mc_lexer_nexttoken(&p->lexer);
-    value = mc_parser_parseliteralfunction(p);
-    if(!value)
-    {
-        goto err;
-    }
-    value->pos = pos;
-    value->exprlitfunction.name = mc_util_strdup(p->pstate, nameident->value);
-    if(!value->exprlitfunction.name)
-    {
-        goto err;
-    }
-    res = statement_make_define(p->pstate, nameident, value, false);
-    if(!res)
-    {
-        goto err;
-    }
-    return res;
-err:
-    expression_destroy(value);
-    mc_astident_destroy(nameident);
-    return NULL;
-}
-
-TMPSTATIC mcastcodeblock_t* parse_code_block(mcastparser_t* p)
-{
-    bool ok;
-    mcastcodeblock_t* res;
-    mcastexpression_t* expr;
-    mcptrarray_t* statements;
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LBRACE))
-    {
-        return NULL;
-    }
-    mc_lexer_nexttoken(&p->lexer);
-    p->depth++;
-    statements = mc_ptrarray_make(p->pstate);
-    if(!statements)
-    {
-        goto err;
-    }
-    while(!mc_lexer_currtokenis(&p->lexer, MC_TOK_RBRACE))
-    {
-        if(mc_lexer_currtokenis(&p->lexer, MC_TOK_EOF))
-        {
-            mc_errlist_push(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "Unexpected EOF");
-            goto err;
-        }
-        if(mc_lexer_currtokenis(&p->lexer, MC_TOK_SEMICOLON))
-        {
-            mc_lexer_nexttoken(&p->lexer);
-            continue;
-        }
-        expr = parse_statement(p);
-        if(!expr)
-        {
-            goto err;
-        }
-        ok = mc_ptrarray_push(statements, expr);
-        if(!ok)
-        {
-            statement_destroy(expr);
-            goto err;
-        }
-    }
-    mc_lexer_nexttoken(&p->lexer);
-    p->depth--;
-    res = mc_astcodeblock_make(p->pstate, statements);
-    if(!res)
-    {
-        goto err;
-    }
-    return res;
-err:
-    p->depth--;
-    mc_ptrarray_destroy(statements, (mcitemdestroyfn_t)statement_destroy);
-    return NULL;
-}
-
-TMPSTATIC mcastexpression_t* parse_expression(mcastparser_t* p, mcastprecedence_t prec)
-{
-    char* literal;
-    mcastlocation_t pos;
-    mcleftassocparsefn_t parseleftassoc;
-    mcastrightassocparsefn_t parserightassoc;
-    mcastexpression_t* newleftexpr;
-    mcastexpression_t* leftexpr;
-    pos = p->lexer.currtoken.pos;
-    if(p->lexer.currtoken.type == MC_TOK_INVALID)
-    {
-        mc_errlist_push(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "Illegal token");
-        return NULL;
-    }
-    parserightassoc = p->rightassocfuncs[p->lexer.currtoken.type];
-    if(!parserightassoc)
-    {
-        literal = token_duplicate_literal(p->pstate, &p->lexer.currtoken);
-        mc_errlist_addf(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "No prefix parse function for \"%s\" found", literal);
-        mc_allocator_free(p->pstate, literal);
-        return NULL;
-    }
-    leftexpr = parserightassoc(p);
-    if(!leftexpr)
-    {
-        return NULL;
-    }
-    leftexpr->pos = pos;
-    while(!mc_lexer_currtokenis(&p->lexer, MC_TOK_SEMICOLON) && prec < get_precedence(p->lexer.currtoken.type))
-    {
-        parseleftassoc = p->leftassocfuncs[p->lexer.currtoken.type];
-        if(!parseleftassoc)
-        {
-            return leftexpr;
-        }
-        pos = p->lexer.currtoken.pos;
-        newleftexpr = parseleftassoc(p, leftexpr);
-        if(!newleftexpr)
-        {
-            expression_destroy(leftexpr);
-            return NULL;
-        }
-        newleftexpr->pos = pos;
-        leftexpr = newleftexpr;
-    }
-    return leftexpr;
-}
-
-TMPSTATIC mcastexpression_t* mc_parser_parseident(mcastparser_t* p)
-{
-    mcastident_t* ident;
-    mcastexpression_t* res;
-    ident = mc_astident_make(p->pstate, p->lexer.currtoken);
-    if(!ident)
-    {
-        return NULL;
-    }
-    res = expression_make_ident(p->pstate, ident);
-    if(!res)
-    {
-        mc_astident_destroy(ident);
-        return NULL;
-    }
-    mc_lexer_nexttoken(&p->lexer);
-    return res;
-}
-
-TMPSTATIC mcastexpression_t* mc_parser_parseliteralnumber(mcastparser_t* p)
-{
-    double number;
-    long parsedlen;
-    char* end;
-    char* literal;
-    number = 0;
-    errno = 0;
-    number = strtod(p->lexer.currtoken.literal, &end);
-    parsedlen = end - p->lexer.currtoken.literal;
-    if(errno || parsedlen != p->lexer.currtoken.len)
-    {
-        literal = token_duplicate_literal(p->pstate, &p->lexer.currtoken);
-        mc_errlist_addf(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "Parsing number literal \"%s\" failed", literal);
-        mc_allocator_free(p->pstate, literal);
-        return NULL;
-    }
-    mc_lexer_nexttoken(&p->lexer);
-    return expression_make_number_literal(p->pstate, number);
-}
-
-TMPSTATIC mcastexpression_t* mc_parser_parseliteralbool(mcastparser_t* p)
-{
-    mcastexpression_t* res;
-    res = expression_make_bool_literal(p->pstate, p->lexer.currtoken.type == MC_TOK_TRUE);
-    mc_lexer_nexttoken(&p->lexer);
-    return res;
-}
-
-TMPSTATIC mcastexpression_t* mc_parser_parseliteralstring(mcastparser_t* p)
-{
-    size_t len;
-    char* processedliteral;
-    mcastexpression_t* res;
-    processedliteral = process_and_copy_string(p->pstate, p->lexer.currtoken.literal, p->lexer.currtoken.len);
-    if(!processedliteral)
-    {
-        mc_errlist_push(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "Error when parsing string literal");
-        return NULL;
-    }
-    mc_lexer_nexttoken(&p->lexer);
-    len = strlen(processedliteral);
-    res = expression_make_string_literal(p->pstate, processedliteral, len);
-    if(!res)
-    {
-        mc_allocator_free(p->pstate, processedliteral);
-        return NULL;
-    }
-    return res;
-}
-
-TMPSTATIC mcastexpression_t* mc_parser_parseliteraltemplatestring(mcastparser_t* p)
-{
-    size_t len;
-    char* processedliteral;
-    mcastlocation_t pos;
-    mcastexpression_t* leftstringexpr;
-    mcastexpression_t* templateexpr;
-    mcastexpression_t* tostrcallexpr;
-    mcastexpression_t* leftaddexpr;
-    mcastexpression_t* rightexpr;
-    mcastexpression_t* rightaddexpr;
-    processedliteral = NULL;
-    leftstringexpr = NULL;
-    templateexpr = NULL;
-    tostrcallexpr = NULL;
-    leftaddexpr = NULL;
-    rightexpr = NULL;
-    rightaddexpr = NULL;
-    processedliteral = process_and_copy_string(p->pstate, p->lexer.currtoken.literal, p->lexer.currtoken.len);
-    if(!processedliteral)
-    {
-        mc_errlist_push(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "Error when parsing string literal");
-        return NULL;
-    }
-    mc_lexer_nexttoken(&p->lexer);
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LBRACE))
-    {
-        goto err;
-    }
-    mc_lexer_nexttoken(&p->lexer);
-    pos = p->lexer.currtoken.pos;
-    len = strlen(processedliteral);
-    leftstringexpr = expression_make_string_literal(p->pstate, processedliteral, len);
-    if(!leftstringexpr)
-    {
-        goto err;
-    }
-    leftstringexpr->pos = pos;
-    processedliteral = NULL;
-    pos = p->lexer.currtoken.pos;
-    templateexpr = parse_expression(p, PRECEDENCE_LOWEST);
-    if(!templateexpr)
-    {
-        goto err;
-    }
-    tostrcallexpr = wrap_expression_in_function_call(p->pstate, templateexpr, "tostring");
-    if(!tostrcallexpr)
-    {
-        goto err;
-    }
-    tostrcallexpr->pos = pos;
-    templateexpr = NULL;
-    leftaddexpr = expression_make_infix(p->pstate, OPERATOR_PLUS, leftstringexpr, tostrcallexpr);
-    if(!leftaddexpr)
-    {
-        goto err;
-    }
-    leftaddexpr->pos = pos;
-    leftstringexpr = NULL;
-    tostrcallexpr = NULL;
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RBRACE))
-    {
-        goto err;
-    }
-    mc_lexer_previoustoken(&p->lexer);
-    mc_lexer_conttplstring(&p->lexer);
-    mc_lexer_nexttoken(&p->lexer);
-    mc_lexer_nexttoken(&p->lexer);
-    pos = p->lexer.currtoken.pos;
-    rightexpr = parse_expression(p, PRECEDENCE_HIGHEST);
-    if(!rightexpr)
-    {
-        goto err;
-    }
-    rightaddexpr = expression_make_infix(p->pstate, OPERATOR_PLUS, leftaddexpr, rightexpr);
-    if(!rightaddexpr)
-    {
-        goto err;
-    }
-    rightaddexpr->pos = pos;
-    leftaddexpr = NULL;
-    rightexpr = NULL;
-    return rightaddexpr;
-err:
-    expression_destroy(rightaddexpr);
-    expression_destroy(rightexpr);
-    expression_destroy(leftaddexpr);
-    expression_destroy(tostrcallexpr);
-    expression_destroy(templateexpr);
-    expression_destroy(leftstringexpr);
-    mc_allocator_free(p->pstate, processedliteral);
-    return NULL;
-}
-
-TMPSTATIC mcastexpression_t* mc_parser_parseliteralnull(mcastparser_t* p)
-{
-    mc_lexer_nexttoken(&p->lexer);
-    return expression_make_null_literal(p->pstate);
-}
-
-TMPSTATIC mcastexpression_t* mc_parser_parseliteralarray(mcastparser_t* p)
-{
-    mcptrarray_t* array;
-    mcastexpression_t* res;
-    array = parse_expression_list(p, MC_TOK_LBRACKET, MC_TOK_RBRACKET, true);
-    if(!array)
-    {
-        return NULL;
-    }
-    res = expression_make_array_literal(p->pstate, array);
-    if(!res)
-    {
-        mc_ptrarray_destroy(array, (mcitemdestroyfn_t)expression_destroy);
-        return NULL;
-    }
-    return res;
-}
-
-TMPSTATIC mcastexpression_t* mc_parser_parseliteralmap(mcastparser_t* p)
-{
-    bool ok;
-    size_t len;
-    char* str;
-    mcptrarray_t* keys;
-    mcptrarray_t* values;
-    mcastexpression_t* res;
-    mcastexpression_t* key;
-    mcastexpression_t* value;
-    keys = mc_ptrarray_make(p->pstate);
-    values = mc_ptrarray_make(p->pstate);
-    if(!keys || !values)
-    {
-        goto err;
-    }
-    mc_lexer_nexttoken(&p->lexer);
-    while(!mc_lexer_currtokenis(&p->lexer, MC_TOK_RBRACE))
-    {
-        key = NULL;
-        if(mc_lexer_currtokenis(&p->lexer, MC_TOK_IDENT))
-        {
-            str = token_duplicate_literal(p->pstate, &p->lexer.currtoken);
-            len = strlen(str);
-            key = expression_make_string_literal(p->pstate, str, len);
-            if(!key)
-            {
-                mc_allocator_free(p->pstate, str);
-                goto err;
-            }
-            key->pos = p->lexer.currtoken.pos;
-            mc_lexer_nexttoken(&p->lexer);
-        }
-        else
-        {
-            key = parse_expression(p, PRECEDENCE_LOWEST);
-            if(!key)
-            {
-                goto err;
-            }
-            switch(key->type)
-            {
-                case MC_EXPR_STRINGLITERAL:
-                case MC_EXPR_NUMBERLITERAL:
-                case MC_EXPR_BOOLLITERAL:
-                {
-                    break;
-                }
-                default:
-                {
-                    mc_errlist_addf(p->errors, MC_ERROR_PARSING, key->pos, "Invalid map literal key type");
-                    expression_destroy(key);
-                    goto err;
-                }
-            }
-        }
-        ok = mc_ptrarray_push(keys, key);
-        if(!ok)
-        {
-            expression_destroy(key);
-            goto err;
-        }
-        if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_COLON))
-        {
-            goto err;
-        }
-        mc_lexer_nexttoken(&p->lexer);
-        value = parse_expression(p, PRECEDENCE_LOWEST);
-        if(!value)
-        {
-            goto err;
-        }
-        ok = mc_ptrarray_push(values, value);
-        if(!ok)
-        {
-            expression_destroy(value);
-            goto err;
-        }
-        if(mc_lexer_currtokenis(&p->lexer, MC_TOK_RBRACE))
-        {
-            break;
-        }
-        if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_COMMA))
-        {
-            goto err;
-        }
-        mc_lexer_nexttoken(&p->lexer);
-    }
-    mc_lexer_nexttoken(&p->lexer);
-    res = expression_make_map_literal(p->pstate, keys, values);
-    if(!res)
-    {
-        goto err;
-    }
-    return res;
-err:
-    mc_ptrarray_destroy(keys, (mcitemdestroyfn_t)expression_destroy);
-    mc_ptrarray_destroy(values, (mcitemdestroyfn_t)expression_destroy);
-    return NULL;
-}
-
-TMPSTATIC mcastexpression_t* mc_parser_parseprefixexpr(mcastparser_t* p)
-{
-    mcastmathoptype_t op;
-    mcastexpression_t* res;
-    mcastexpression_t* right;
-    op = token_to_operator(p->lexer.currtoken.type);
-    mc_lexer_nexttoken(&p->lexer);
-    right = parse_expression(p, PRECEDENCE_PREFIX);
-    if(!right)
-    {
-        return NULL;
-    }
-    res = expression_make_prefix(p->pstate, op, right);
-    if(!res)
-    {
-        expression_destroy(right);
-        return NULL;
-    }
-    return res;
-}
-
-TMPSTATIC mcastexpression_t* mc_parser_parseinfixexpr(mcastparser_t* p, mcastexpression_t* left)
-{
-    mcastmathoptype_t op;
-    mcastprecedence_t prec;
-    mcastexpression_t* res;
-    mcastexpression_t* right;
-    op = token_to_operator(p->lexer.currtoken.type);
-    prec = get_precedence(p->lexer.currtoken.type);
-    mc_lexer_nexttoken(&p->lexer);
-    right = parse_expression(p, prec);
-    if(!right)
-    {
-        return NULL;
-    }
-    res = expression_make_infix(p->pstate, op, left, right);
-    if(!res)
-    {
-        expression_destroy(right);
-        return NULL;
-    }
-    return res;
-}
-
-TMPSTATIC mcastexpression_t* mc_parser_parsegroupedexpr(mcastparser_t* p)
-{
-    mcastexpression_t* expr;
-    mc_lexer_nexttoken(&p->lexer);
-    expr = parse_expression(p, PRECEDENCE_LOWEST);
-    if(!expr || !mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
-    {
-        expression_destroy(expr);
-        return NULL;
-    }
-    mc_lexer_nexttoken(&p->lexer);
-    return expr;
-}
-
-TMPSTATIC mcastexpression_t* mc_parser_parseliteralfunction(mcastparser_t* p)
-{
-    bool ok;
-    mcptrarray_t* params;
-    mcastcodeblock_t* body;
-    mcastexpression_t* res;
-    p->depth++;
-    params = NULL;
-    body = NULL;
-    if(mc_lexer_currtokenis(&p->lexer, MC_TOK_FUNCTION))
-    {
-        mc_lexer_nexttoken(&p->lexer);
-    }
-    params = mc_ptrarray_make(p->pstate);
-    ok = parse_function_parameters(p, params);
-    if(!ok)
-    {
-        goto err;
-    }
-    body = parse_code_block(p);
-    if(!body)
-    {
-        goto err;
-    }
-    res = expression_make_fn_literal(p->pstate, params, body);
-    if(!res)
-    {
-        goto err;
-    }
-    p->depth -= 1;
-    return res;
-err:
-    mc_astcodeblock_destroy(body);
-    mc_ptrarray_destroy(params, (mcitemdestroyfn_t)mc_astident_destroy);
-    p->depth -= 1;
-    return NULL;
-}
-
-TMPSTATIC bool parse_function_parameters(mcastparser_t* p, mcptrarray_t* outparams)
-{
-    bool ok;
-    mcastident_t* ident;
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LPAREN))
-    {
-        return false;
-    }
-    mc_lexer_nexttoken(&p->lexer);
-    if(mc_lexer_currtokenis(&p->lexer, MC_TOK_RPAREN))
-    {
-        mc_lexer_nexttoken(&p->lexer);
-        return true;
-    }
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_IDENT))
-    {
-        return false;
-    }
-    ident = mc_astident_make(p->pstate, p->lexer.currtoken);
-    if(!ident)
-    {
-        return false;
-    }
-    ok = mc_ptrarray_push(outparams, ident);
-    if(!ok)
-    {
-        mc_astident_destroy(ident);
-        return false;
-    }
-    mc_lexer_nexttoken(&p->lexer);
-    while(mc_lexer_currtokenis(&p->lexer, MC_TOK_COMMA))
-    {
-        mc_lexer_nexttoken(&p->lexer);
-        if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_IDENT))
-        {
-            return false;
-        }
-        ident = mc_astident_make(p->pstate, p->lexer.currtoken);
-        if(!ident)
-        {
-            return false;
-        }
-        ok = mc_ptrarray_push(outparams, ident);
-        if(!ok)
-        {
-            mc_astident_destroy(ident);
-            return false;
-        }
-        mc_lexer_nexttoken(&p->lexer);
-    }
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
-    {
-        return false;
-    }
-    mc_lexer_nexttoken(&p->lexer);
-    return true;
-}
-
-TMPSTATIC mcastexpression_t* parse_call_expression(mcastparser_t* p, mcastexpression_t* left)
-{
-    mcptrarray_t* args;
-    mcastexpression_t* res;
-    mcastexpression_t* function;
-    function = left;
-    args = parse_expression_list(p, MC_TOK_LPAREN, MC_TOK_RPAREN, false);
-    if(!args)
-    {
-        return NULL;
-    }
-    res = expression_make_call(p->pstate, function, args);
-    if(!res)
-    {
-        mc_ptrarray_destroy(args, (mcitemdestroyfn_t)expression_destroy);
-        return NULL;
-    }
-    return res;
-}
-
-TMPSTATIC mcptrarray_t* parse_expression_list(mcastparser_t* p, mcasttoktype_t starttoken, mcasttoktype_t endtoken, bool trailingcommaallowed)
-{
-    bool ok;
-    mcptrarray_t* res;
-    mcastexpression_t* argexpr;
-    if(!mc_lexer_expectcurrent(&p->lexer, starttoken))
-    {
-        return NULL;
-    }
-    mc_lexer_nexttoken(&p->lexer);
-    res = mc_ptrarray_make(p->pstate);
-    if(mc_lexer_currtokenis(&p->lexer, endtoken))
-    {
-        mc_lexer_nexttoken(&p->lexer);
-        return res;
-    }
-    argexpr = parse_expression(p, PRECEDENCE_LOWEST);
-    if(!argexpr)
-    {
-        goto err;
-    }
-    ok = mc_ptrarray_push(res, argexpr);
-    if(!ok)
-    {
-        expression_destroy(argexpr);
-        goto err;
-    }
-    while(mc_lexer_currtokenis(&p->lexer, MC_TOK_COMMA))
-    {
-        mc_lexer_nexttoken(&p->lexer);
-        if(trailingcommaallowed && mc_lexer_currtokenis(&p->lexer, endtoken))
-        {
-            break;
-        }
-        argexpr = parse_expression(p, PRECEDENCE_LOWEST);
-        if(!argexpr)
-        {
-            goto err;
-        }
-        ok = mc_ptrarray_push(res, argexpr);
-        if(!ok)
-        {
-            expression_destroy(argexpr);
-            goto err;
-        }
-    }
-    if(!mc_lexer_expectcurrent(&p->lexer, endtoken))
-    {
-        goto err;
-    }
-    mc_lexer_nexttoken(&p->lexer);
-    return res;
-err:
-    mc_ptrarray_destroy(res, (mcitemdestroyfn_t)expression_destroy);
-    return NULL;
-}
-
-TMPSTATIC mcastexpression_t* mc_parser_parseindexexpr(mcastparser_t* p, mcastexpression_t* left)
-{
-    mcastexpression_t* res;
-    mcastexpression_t* index;
-    mc_lexer_nexttoken(&p->lexer);
-    index = parse_expression(p, PRECEDENCE_LOWEST);
-    if(!index)
-    {
-        return NULL;
-    }
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RBRACKET))
-    {
-        expression_destroy(index);
-        return NULL;
-    }
-    mc_lexer_nexttoken(&p->lexer);
-    res = expression_make_index(p->pstate, left, index);
-    if(!res)
-    {
-        expression_destroy(index);
-        return NULL;
-    }
-    return res;
-}
-
-TMPSTATIC mcastexpression_t* mc_parser_parseassignexpr(mcastparser_t* p, mcastexpression_t* left)
-{
-    mcastlocation_t pos;
-    mcastmathoptype_t op;
-    mcasttoktype_t assigntype;
-    mcastexpression_t* res;
-    mcastexpression_t* source;
-    mcastexpression_t* leftcopy;
-    mcastexpression_t* newsource;
-    source = NULL;
-    assigntype = p->lexer.currtoken.type;
-    mc_lexer_nexttoken(&p->lexer);
-    source = parse_expression(p, PRECEDENCE_LOWEST);
-    if(!source)
-    {
-        goto err;
-    }
-    switch(assigntype)
-    {
-        case MC_TOK_PLUSASSIGN:
-        case MC_TOK_MINUSASSIGN:
-        case MC_TOK_SLASHASSIGN:
-        case MC_TOK_ASTERISKASSIGN:
-        case MC_TOK_PERCENTASSIGN:
-        case MC_TOK_BITANDASSIGN:
-        case MC_TOK_BITORASSIGN:
-        case MC_TOK_BITXORASSIGN:
-        case MC_TOK_LSHIFTASSIGN:
-        case MC_TOK_RSHIFTASSIGN:
-            {
-                op = token_to_operator(assigntype);
-                leftcopy = expression_copy(left);
-                if(!leftcopy)
-                {
-                    goto err;
-                }
-                pos = source->pos;
-                newsource = expression_make_infix(p->pstate, op, leftcopy, source);
-                if(!newsource)
-                {
-                    expression_destroy(leftcopy);
-                    goto err;
-                }
-                newsource->pos = pos;
-                source = newsource;
-            }
-            break;
-        case MC_TOK_ASSIGN:
-            {
-            }
-            break;
-        default:
-            {
-                MC_ASSERT(false);
-            }
-            break;
-    }
-    res = expression_make_assign(p->pstate, left, source, false);
-    if(!res)
-    {
-        goto err;
-    }
-    return res;
-err:
-    expression_destroy(source);
-    return NULL;
-}
-
-TMPSTATIC mcastexpression_t* parse_logical_expression(mcastparser_t* p, mcastexpression_t* left)
-{
-    mcastmathoptype_t op;
-    mcastprecedence_t prec;
-    mcastexpression_t* res;
-    mcastexpression_t* right;
-    op = token_to_operator(p->lexer.currtoken.type);
-    prec = get_precedence(p->lexer.currtoken.type);
-    mc_lexer_nexttoken(&p->lexer);
-    right = parse_expression(p, prec);
-    if(!right)
-    {
-        return NULL;
-    }
-    res = expression_make_logical(p->pstate, op, left, right);
-    if(!res)
-    {
-        expression_destroy(right);
-        return NULL;
-    }
-    return res;
-}
-
-TMPSTATIC mcastexpression_t* parse_ternary_expression(mcastparser_t* p, mcastexpression_t* left)
-{
-    mcastexpression_t* res;
-    mcastexpression_t* ift;
-    mcastexpression_t* iffalse;
-    mc_lexer_nexttoken(&p->lexer);
-    ift = parse_expression(p, PRECEDENCE_LOWEST);
-    if(!ift)
-    {
-        return NULL;
-    }
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_COLON))
-    {
-        expression_destroy(ift);
-        return NULL;
-    }
-    mc_lexer_nexttoken(&p->lexer);
-    iffalse = parse_expression(p, PRECEDENCE_LOWEST);
-    if(!iffalse)
-    {
-        expression_destroy(ift);
-        return NULL;
-    }
-    res = expression_make_ternary(p->pstate, left, ift, iffalse);
-    if(!res)
-    {
-        expression_destroy(ift);
-        expression_destroy(iffalse);
-        return NULL;
-    }
-    return res;
-}
-
-TMPSTATIC mcastexpression_t* mc_parser_parseincdecprefixexpr(mcastparser_t* p)
-{
-    mcastlocation_t pos;
-    mcastmathoptype_t op;
-    mcasttoktype_t operationtype;
-    mcastexpression_t* res;
-    mcastexpression_t* dest;
-    mcastexpression_t* source;
-    mcastexpression_t* destcopy;
-    mcastexpression_t* operation;
-    mcastexpression_t* oneliteral;
-    source = NULL;
-    operationtype = p->lexer.currtoken.type;
-    pos = p->lexer.currtoken.pos;
-    mc_lexer_nexttoken(&p->lexer);
-    op = token_to_operator(operationtype);
-    dest = parse_expression(p, PRECEDENCE_PREFIX);
-    if(!dest)
-    {
-        goto err;
-    }
-    oneliteral = expression_make_number_literal(p->pstate, 1);
-    if(!oneliteral)
-    {
-        expression_destroy(dest);
-        goto err;
-    }
-    oneliteral->pos = pos;
-    destcopy = expression_copy(dest);
-    if(!destcopy)
-    {
-        expression_destroy(oneliteral);
-        expression_destroy(dest);
-        goto err;
-    }
-    operation = expression_make_infix(p->pstate, op, destcopy, oneliteral);
-    if(!operation)
-    {
-        expression_destroy(destcopy);
-        expression_destroy(dest);
-        expression_destroy(oneliteral);
-        goto err;
-    }
-    operation->pos = pos;
-    res = expression_make_assign(p->pstate, dest, operation, false);
-    if(!res)
-    {
-        expression_destroy(dest);
-        expression_destroy(operation);
-        goto err;
-    }
-    return res;
-err:
-    expression_destroy(source);
-    return NULL;
-}
-
-TMPSTATIC mcastexpression_t* parse_incdec_postfix_expression(mcastparser_t* p, mcastexpression_t* left)
-{
-    mcastlocation_t pos;
-    mcastmathoptype_t op;
-    mcasttoktype_t operationtype;
-    mcastexpression_t* res;
-    mcastexpression_t* source;
-    mcastexpression_t* leftcopy;
-    mcastexpression_t* operation;
-    mcastexpression_t* oneliteral;
-    source = NULL;
-    operationtype = p->lexer.currtoken.type;
-    pos = p->lexer.currtoken.pos;
-    mc_lexer_nexttoken(&p->lexer);
-    op = token_to_operator(operationtype);
-    leftcopy = expression_copy(left);
-    if(!leftcopy)
-    {
-        goto err;
-    }
-    oneliteral = expression_make_number_literal(p->pstate, 1);
-    if(!oneliteral)
-    {
-        expression_destroy(leftcopy);
-        goto err;
-    }
-    oneliteral->pos = pos;
-    operation = expression_make_infix(p->pstate, op, leftcopy, oneliteral);
-    if(!operation)
-    {
-        expression_destroy(oneliteral);
-        expression_destroy(leftcopy);
-        goto err;
-    }
-    operation->pos = pos;
-    res = expression_make_assign(p->pstate, left, operation, true);
-    if(!res)
-    {
-        expression_destroy(operation);
-        goto err;
-    }
-    return res;
-err:
-    expression_destroy(source);
-    return NULL;
-}
-
-TMPSTATIC mcastexpression_t* parse_dot_expression(mcastparser_t* p, mcastexpression_t* left)
-{
-    size_t len;
-    char* str;
-    mcastexpression_t* res;
-    mcastexpression_t* index;
-    mc_lexer_nexttoken(&p->lexer);
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_IDENT))
-    {
-        return NULL;
-    }
-    str = token_duplicate_literal(p->pstate, &p->lexer.currtoken);
-    len = strlen(str);
-    index = expression_make_string_literal(p->pstate, str, len);
-    if(!index)
-    {
-        mc_allocator_free(p->pstate, str);
-        return NULL;
-    }
-    index->pos = p->lexer.currtoken.pos;
-    mc_lexer_nexttoken(&p->lexer);
-    res = expression_make_index(p->pstate, left, index);
-    if(!res)
-    {
-        expression_destroy(index);
-        return NULL;
-    }
-    return res;
-}
-
-TMPSTATIC mcastprecedence_t get_precedence(mcasttoktype_t tk)
-{
-    switch(tk)
-    {
-        case MC_TOK_EQ:
-        case MC_TOK_NOTEQ:
-            return PRECEDENCE_EQUALS;
-        case MC_TOK_LT:
-        case MC_TOK_LTE:
-        case MC_TOK_GT:
-        case MC_TOK_GTE:
-            return PRECEDENCE_LESSGREATER;
-        case MC_TOK_PLUS:
-        case MC_TOK_MINUS:
-            return PRECEDENCE_SUM;
-        case MC_TOK_SLASH:
-        case MC_TOK_ASTERISK:
-        case MC_TOK_PERCENT:
-            return PRECEDENCE_PRODUCT;
-        case MC_TOK_LPAREN:
-        case MC_TOK_LBRACKET:
-            return PRECEDENCE_POSTFIX;
-        case MC_TOK_ASSIGN:
-        case MC_TOK_PLUSASSIGN:
-        case MC_TOK_MINUSASSIGN:
-        case MC_TOK_ASTERISKASSIGN:
-        case MC_TOK_SLASHASSIGN:
-        case MC_TOK_PERCENTASSIGN:
-        case MC_TOK_BITANDASSIGN:
-        case MC_TOK_BITORASSIGN:
-        case MC_TOK_BITXORASSIGN:
-        case MC_TOK_LSHIFTASSIGN:
-        case MC_TOK_RSHIFTASSIGN:
-            return PRECEDENCE_ASSIGN;
-        case MC_TOK_DOT:
-            return PRECEDENCE_POSTFIX;
-        case MC_TOK_AND:
-            return PRECEDENCE_LOGICAL_AND;
-        case MC_TOK_OR:
-            return PRECEDENCE_LOGICAL_OR;
-        case MC_TOK_BITOR:
-            return PRECEDENCE_BIT_OR;
-        case MC_TOK_BITXOR:
-            return PRECEDENCE_BIT_XOR;
-        case MC_TOK_BITAND:
-            return PRECEDENCE_BIT_AND;
-        case MC_TOK_LSHIFT:
-        case MC_TOK_RSHIFT:
-            return PRECEDENCE_SHIFT;
-        case MC_TOK_QUESTION:
-            return PRECEDENCE_TERNARY;
-        case MC_TOK_PLUSPLUS:
-        case MC_TOK_MINUSMINUS:
-            return PRECEDENCE_INCDEC;
-        default:
-            return PRECEDENCE_LOWEST;
-    }
-}
-
-TMPSTATIC mcastmathoptype_t token_to_operator(mcasttoktype_t tk)
-{
-    switch(tk)
-    {
-        case MC_TOK_ASSIGN:
-            return OPERATOR_ASSIGN;
-        case MC_TOK_PLUS:
-            return OPERATOR_PLUS;
-        case MC_TOK_MINUS:
-            return OPERATOR_MINUS;
-        case MC_TOK_BANG:
-            return OPERATOR_BANG;
-        case MC_TOK_ASTERISK:
-            return OPERATOR_ASTERISK;
-        case MC_TOK_SLASH:
-            return OPERATOR_SLASH;
-        case MC_TOK_LT:
-            return OPERATOR_LT;
-        case MC_TOK_LTE:
-            return OPERATOR_LTE;
-        case MC_TOK_GT:
-            return OPERATOR_GT;
-        case MC_TOK_GTE:
-            return OPERATOR_GTE;
-        case MC_TOK_EQ:
-            return OPERATOR_EQ;
-        case MC_TOK_NOTEQ:
-            return OPERATOR_NOT_EQ;
-        case MC_TOK_PERCENT:
-            return OPERATOR_MODULUS;
-        case MC_TOK_AND:
-            return OPERATOR_LOGICAL_AND;
-        case MC_TOK_OR:
-            return OPERATOR_LOGICAL_OR;
-        case MC_TOK_PLUSASSIGN:
-            return OPERATOR_PLUS;
-        case MC_TOK_MINUSASSIGN:
-            return OPERATOR_MINUS;
-        case MC_TOK_ASTERISKASSIGN:
-            return OPERATOR_ASTERISK;
-        case MC_TOK_SLASHASSIGN:
-            return OPERATOR_SLASH;
-        case MC_TOK_PERCENTASSIGN:
-            return OPERATOR_MODULUS;
-        case MC_TOK_BITANDASSIGN:
-            return OPERATOR_BIT_AND;
-        case MC_TOK_BITORASSIGN:
-            return OPERATOR_BIT_OR;
-        case MC_TOK_BITXORASSIGN:
-            return OPERATOR_BIT_XOR;
-        case MC_TOK_LSHIFTASSIGN:
-            return OPERATOR_LSHIFT;
-        case MC_TOK_RSHIFTASSIGN:
-            return OPERATOR_RSHIFT;
-        case MC_TOK_BITAND:
-            return OPERATOR_BIT_AND;
-        case MC_TOK_BITOR:
-            return OPERATOR_BIT_OR;
-        case MC_TOK_BITXOR:
-            return OPERATOR_BIT_XOR;
-        case MC_TOK_LSHIFT:
-            return OPERATOR_LSHIFT;
-        case MC_TOK_RSHIFT:
-            return OPERATOR_RSHIFT;
-        case MC_TOK_PLUSPLUS:
-            return OPERATOR_PLUS;
-        case MC_TOK_MINUSMINUS:
-            return OPERATOR_MINUS;
-        default:
-            {
-                MC_ASSERT(false);
-            }
-            break;
-    }
-    return OPERATOR_NONE;
-
-}
-
-TMPSTATIC char escape_char(char c)
-{
-    switch(c)
-    {
-        case '\"':
-            return '\"';
-        case '\\':
-            return '\\';
-        case '/':
-            return '/';
-        case 'b':
-            return '\b';
-        case 'f':
-            return '\f';
-        case 'n':
-            return '\n';
-        case 'r':
-            return '\r';
-        case 't':
-            return '\t';
-        case '0':
-            return '\0';
-        default:
-            break;
-    }
-    return c;
-}
-
-TMPSTATIC char* process_and_copy_string(mcstate_t* state, const char* input, size_t len)
-{
-    size_t ini;
-    size_t outi;
-    char* output;
-    output = (char*)mc_allocator_alloc(state, len + 1);
-    if(!output)
-    {
-        return NULL;
-    }
-    ini = 0;
-    outi = 0;
-    while(input[ini] != '\0' && ini < len)
-    {
-        if(input[ini] == '\\')
-        {
-            ini++;
-            output[outi] = escape_char(input[ini]);
-            if(output[outi] < 0)
-            {
-                goto error;
-            }
-        }
-        else
-        {
-            output[outi] = input[ini];
-        }
-        outi++;
-        ini++;
-    }
-    output[outi] = '\0';
-    return output;
-error:
-    mc_allocator_free(state, output);
-    return NULL;
-}
-
-TMPSTATIC mcastexpression_t* wrap_expression_in_function_call(mcstate_t* state, mcastexpression_t* expr, const char* function_name)
-{
-    bool ok;
-    mcasttoken_t fntoken;
-    mcastident_t* ident;
-    mcptrarray_t* args;
-    mcastexpression_t* ce;
-    mcastexpression_t* functionidentexpr;
-    token_init(&fntoken, MC_TOK_IDENT, function_name, strlen(function_name));
-    fntoken.pos = expr->pos;
-    ident = mc_astident_make(state, fntoken);
-    if(!ident)
-    {
-        return NULL;
-    }
-    ident->pos = fntoken.pos;
-    functionidentexpr = expression_make_ident(state, ident);
-    if(!functionidentexpr)
-    {
-        mc_astident_destroy(ident);
-        return NULL;
-    }
-    functionidentexpr->pos = expr->pos;
-    ident = NULL;
-    args = mc_ptrarray_make(state);
-    if(!args)
-    {
-        expression_destroy(functionidentexpr);
-        return NULL;
-    }
-    ok = mc_ptrarray_push(args, expr);
-    if(!ok)
-    {
-        mc_ptrarray_destroy(args, NULL);
-        expression_destroy(functionidentexpr);
-        return NULL;
-    }
-    ce = expression_make_call(state, functionidentexpr, args);
-    if(!ce)
-    {
-        mc_ptrarray_destroy(args, NULL);
-        expression_destroy(functionidentexpr);
-        return NULL;
-    }
-    ce->pos = expr->pos;
-    return ce;
-}
-
-TMPSEMISTATIC mcastexpression_t* mc_optimizer_optexpression(mcastexpression_t* expr)
-{
-    switch(expr->type)
-    {
-        case MC_EXPR_INFIX:
-            return mc_optimizer_optinfixexpr(expr);
-        case MC_EXPR_PREFIX:
-            return mc_optimizer_optprefixexpr(expr);
-        default:
-            break;
-    }
-    return NULL;
-}
-
-TMPSTATIC mcastexpression_t* mc_optimizer_optinfixexpr(mcastexpression_t* expr)
-{
-    bool leftisnumeric;
-    bool rightisnumeric;
-    bool leftisstring;
-    bool rightisstring;
-    double dnleft;
-    double dnright;
-    size_t len;
-    mcstate_t* state;
-    mcastexpression_t* res;
-    mcastexpression_t* left;
-    mcastexpression_t* right;
-    mcastexpression_t* leftoptimized;
-    mcastexpression_t* rightoptimized;
-    state = expr->pstate;
-    left = expr->exprinfix.left;
-    leftoptimized = mc_optimizer_optexpression(left);
-    if(leftoptimized)
-    {
-        left = leftoptimized;
-    }
-    right = expr->exprinfix.right;
-    rightoptimized = mc_optimizer_optexpression(right);
-    if(rightoptimized)
-    {
-        right = rightoptimized;
-    }
-    res = NULL;
-    leftisnumeric = left->type == MC_EXPR_NUMBERLITERAL || left->type == MC_EXPR_BOOLLITERAL;
-    rightisnumeric = right->type == MC_EXPR_NUMBERLITERAL || right->type == MC_EXPR_BOOLLITERAL;
-    leftisstring = left->type == MC_EXPR_STRINGLITERAL;
-    rightisstring = right->type == MC_EXPR_STRINGLITERAL;
-    if(leftisnumeric && rightisnumeric)
-    {
-        dnleft = left->type == MC_EXPR_NUMBERLITERAL ? left->exprlitnumber : left->exprlitbool;
-        dnright = right->type == MC_EXPR_NUMBERLITERAL ? right->exprlitnumber : right->exprlitbool;
-        switch(expr->exprinfix.op)
-        {
-            case OPERATOR_PLUS:
-            {
-                res = expression_make_number_literal(state, mc_mathutil_add(dnleft, dnright));
-                break;
-            }
-            case OPERATOR_MINUS:
-            {
-                res = expression_make_number_literal(state, mc_mathutil_sub(dnleft, dnright));
-                break;
-            }
-            case OPERATOR_ASTERISK:
-            {
-                res = expression_make_number_literal(state, mc_mathutil_mult(dnleft, dnright));
-                break;
-            }
-            case OPERATOR_SLASH:
-            {
-                res = expression_make_number_literal(state, mc_mathutil_div(dnleft, dnright));
-                break;
-            }
-            case OPERATOR_LT:
-                {
-                    res = expression_make_bool_literal(state, dnleft < dnright);
-                }
-                break;
-            case OPERATOR_LTE:
-                {
-                    res = expression_make_bool_literal(state, dnleft <= dnright);
-                }
-                break;
-            case OPERATOR_GT:
-                {
-                    res = expression_make_bool_literal(state, dnleft > dnright);
-                }
-                break;
-            case OPERATOR_GTE:
-                {
-                    res = expression_make_bool_literal(state, dnleft >= dnright);
-                }
-                break;
-            case OPERATOR_EQ:
-                {
-                    res = expression_make_bool_literal(state, MC_UTIL_CMPFLOAT(dnleft, dnright));
-                }
-                break;
-            case OPERATOR_NOT_EQ:
-                {
-                    res = expression_make_bool_literal(state, !MC_UTIL_CMPFLOAT(dnleft, dnright));
-                }
-                break;
-            case OPERATOR_MODULUS:
-                {
-                    res = expression_make_number_literal(state, mc_mathutil_mod(dnleft, dnright));
-                }
-                break;
-            case OPERATOR_BIT_AND:
-                {
-                    res = expression_make_number_literal(state, mc_mathutil_binand(dnleft, dnright));
-                }
-                break;
-            case OPERATOR_BIT_OR:
-                {
-                    res = expression_make_number_literal(state, mc_mathutil_binor(dnleft, dnright));
-                }
-                break;
-            case OPERATOR_BIT_XOR:
-                {
-                    res = expression_make_number_literal(state, mc_mathutil_binxor(dnleft, dnright));
-                }
-                break;
-            case OPERATOR_LSHIFT:
-                {
-                    res = expression_make_number_literal(state, mc_mathutil_binshiftleft(dnleft, dnright));
-                }
-                break;
-            case OPERATOR_RSHIFT:
-                {
-                    res = expression_make_number_literal(state, mc_mathutil_binshiftright(dnleft, dnright));
-                }
-                break;
-            default:
-                {
-                }
-                break;
-
-        }
-    }
-    else if(expr->exprinfix.op == OPERATOR_PLUS && leftisstring && rightisstring)
-    {
-        /* TODO:FIXME: horrible method of joining strings!!!!!!! */
-        char* resstr;
-        const char* strleft;
-        const char* strright;
-        strleft = left->exprlitstring.data;
-        strright = right->exprlitstring.data;
-        resstr = mc_util_stringallocfmt(state, "%s%s", strleft, strright);
-        len = strlen(resstr);
-        if(resstr)
-        {
-            res = expression_make_string_literal(state, resstr, len);
-            if(!res)
-            {
-                mc_allocator_free(state, resstr);
-            }
-        }
-    }
-    expression_destroy(leftoptimized);
-    expression_destroy(rightoptimized);
-    if(res)
-    {
-        res->pos = expr->pos;
-    }
-    return res;
-}
-
-TMPSTATIC mcastexpression_t* mc_optimizer_optprefixexpr(mcastexpression_t* expr)
-{
-    mcastexpression_t* res;
-    mcastexpression_t* right;
-    mcastexpression_t* rightoptimized;
-    right = expr->exprprefix.right;
-    rightoptimized = mc_optimizer_optexpression(right);
-    if(rightoptimized)
-    {
-        right = rightoptimized;
-    }
-    res = NULL;
-    if(expr->exprprefix.op == OPERATOR_MINUS && right->type == MC_EXPR_NUMBERLITERAL)
-    {
-        res = expression_make_number_literal(expr->pstate, -right->exprlitnumber);
-    }
-    else if(expr->exprprefix.op == OPERATOR_BANG && right->type == MC_EXPR_BOOLLITERAL)
-    {
-        res = expression_make_bool_literal(expr->pstate, !right->exprlitbool);
-    }
-    expression_destroy(rightoptimized);
-    if(res)
-    {
-        res->pos = expr->pos;
-    }
-    return res;
-}
 
 TMPSTATIC mcstate_t* mc_state_make(void* ctx)
 {
@@ -9823,12 +10225,12 @@ TMPSTATIC mcstate_t* mc_state_make(void* ctx)
         goto err;
     }
     mc_vm_init(state);
-    state->global_store = global_store_make(state);
-    if(!state->global_store)
+    state->vmglobalstore = global_store_make(state);
+    if(!state->vmglobalstore)
     {
         goto err;
     }
-    state->compiler = mc_compiler_make(state, &state->config, state->mem, &state->errors, state->files, state->global_store);
+    state->compiler = mc_compiler_make(state, &state->config, state->mem, &state->errors, state->files, state->vmglobalstore);
     if(!state->compiler)
     {
         goto err;
@@ -9944,7 +10346,7 @@ TMPSTATIC mcvalue_t mc_program_execute(mcstate_t* state, mccompiledprogram_t* pr
     {
         return mc_value_makenull();
     }
-    MC_ASSERT(state->sp == 0);
+    MC_ASSERT(state->vsposition == 0);
     res = mc_vm_getlastpopped(state);
     if(res.type == MC_OBJ_NONE)
     {
@@ -9978,7 +10380,7 @@ TMPUNUSED mcvalue_t mc_state_execcode(mcstate_t* state, const char* code)
     {
         goto err;
     }
-    MC_ASSERT(state->sp == 0);
+    MC_ASSERT(state->vsposition == 0);
     res = mc_vm_getlastpopped(state);
     if(res.type == MC_OBJ_NONE)
     {
@@ -9992,12 +10394,12 @@ err:
 }
 
 
-TMPUNUSED mcvalue_t mc_state_callfunctionbyname(mcstate_t* state, const char* function_name, int argc, mcvalue_t* args)
+TMPUNUSED mcvalue_t mc_state_callfunctionbyname(mcstate_t* state, const char* fname, int argc, mcvalue_t* args)
 {
     mcvalue_t res;
     mcvalue_t callee;
     mc_state_reset(state);
-    callee = mc_state_getglobalobjectbyname(state, function_name);
+    callee = mc_state_getglobalobjectbyname(state, fname);
     if(callee.type == MC_OBJ_NULL)
     {
         return mc_value_makenull();
@@ -10043,7 +10445,7 @@ TMPSTATIC bool mc_state_setnativefunction(mcstate_t* state, const char* name, mc
 
 TMPSTATIC bool mc_state_setglobalconstant(mcstate_t* state, const char* name, mcvalue_t obj)
 {
-    return global_store_set(state->global_store, name, obj);
+    return global_store_set(state->vmglobalstore, name, obj);
 }
 
 TMPSTATIC mcvalue_t mc_state_getglobalobjectbyname(mcstate_t* state, const char* name)
@@ -10060,14 +10462,14 @@ TMPSTATIC mcvalue_t mc_state_getglobalobjectbyname(mcstate_t* state, const char*
         return mc_value_makenull();
     }
     res = mc_value_makenull();
-    if(symbol->type == SYMBOL_MODULE_GLOBAL)
+    if(symbol->type == MC_SYM_MODULEGLOBAL)
     {
         res = mc_vm_getglobalbyindex(state, symbol->index);
     }
-    else if(symbol->type == SYMBOL_GLOBALBUILTIN)
+    else if(symbol->type == MC_SYM_GLOBALBUILTIN)
     {
         ok = false;
-        res = global_store_get_object_at(state->global_store, symbol->index, &ok);
+        res = global_store_get_object_at(state->vmglobalstore, symbol->index, &ok);
         if(!ok)
         {
             mc_state_pusherrorf(state, MC_ERROR_USER, srcposinvalid, "Failed to get global object at %d", symbol->index);
@@ -10124,7 +10526,7 @@ TMPSTATIC bool mc_value_iscallable(mcvalue_t obj)
 {
     mcobjtype_t type;
     type = mc_value_gettype(obj);
-    return type == MC_OBJ_NATIVE_FUNCTION || type == MC_OBJ_FUNCTION;
+    return type == MC_OBJ_FUNCNATIVE || type == MC_OBJ_FUNCSCRIPT;
 }
 
 TMPSTATIC const char* mc_util_objtypename(mcobjtype_t type)
@@ -10143,13 +10545,13 @@ TMPSTATIC const char* mc_util_objtypename(mcobjtype_t type)
             return "STRING";
         case MC_OBJ_NULL:
             return "NULL";
-        case MC_OBJ_NATIVE_FUNCTION:
+        case MC_OBJ_FUNCNATIVE:
             return "NATIVE_FUNCTION";
         case MC_OBJ_ARRAY:
             return "ARRAY";
         case MC_OBJ_MAP:
             return "MAP";
-        case MC_OBJ_FUNCTION:
+        case MC_OBJ_FUNCSCRIPT:
             return "FUNCTION";
         case MC_OBJ_EXTERNAL:
             return "EXTERNAL";
@@ -10161,407 +10563,6 @@ TMPSTATIC const char* mc_util_objtypename(mcobjtype_t type)
             break;
     }
     return "NONE";
-}
-
-TMPSTATIC mcvalue_t mc_object_makedatafrom(mcobjtype_t type, mcobjdata_t* data)
-{
-    mcvalue_t object;
-    object.type = type;
-    data->type = type;
-    object.isallocated = true;
-    object.objdatahandle = data;
-    return object;
-}
-
-TMPSTATIC mcvalue_t mc_value_makeempty(mcobjtype_t t)
-{
-    mcvalue_t o;
-    memset(&o, 0, sizeof(mcvalue_t));
-    o.type = t;
-    o.isallocated = false;
-    return o;
-}
-
-TMPSTATIC mcvalue_t mc_value_makenumber(double val)
-{
-    mcvalue_t o;
-    o = mc_value_makeempty(MC_OBJ_NUMBER);
-    o.valnumber = val;
-    return o;
-}
-
-TMPSTATIC mcvalue_t mc_value_makebool(bool val)
-{
-    mcvalue_t o;
-    o = mc_value_makeempty(MC_OBJ_BOOL);
-    o.valbool = val;
-    return o;
-}
-
-TMPSTATIC mcvalue_t mc_value_makenull()
-{
-    mcvalue_t o;
-    o = mc_value_makeempty(MC_OBJ_NULL);
-    return o;
-}
-
-TMPSTATIC mcvalue_t mc_value_makestrcapacity(mcstate_t* state, int capacity)
-{
-    bool ok;
-    mcobjdata_t* data;
-    data = mc_gcmemory_getdatafrompool(state, MC_OBJ_STRING);
-    if(!data)
-    {
-        data = mc_gcmemory_allocobjectdata(state);
-        if(!data)
-        {
-            return mc_value_makenull();
-        }
-        data->valstring.capacity = MC_CONF_OBJECT_STRING_BUF_SIZE - 1;
-        data->valstring.is_allocated = false;
-        data->valstring.data = data->valstring.actualonstack;
-    }
-    data->valstring.length = 0;
-    data->valstring.hash = 0;
-    if(capacity > data->valstring.capacity)
-    {
-        ok = mc_valstring_reservecapacity(data, capacity);
-        if(!ok)
-        {
-            return mc_value_makenull();
-        }
-    }
-    return mc_object_makedatafrom(MC_OBJ_STRING, data);
-}
-
-TMPUNUSED mcvalue_t mc_value_makestrformat(mcstate_t* state, const char* fmt, ...)
-{
-    int towrite;
-    int written;
-    char* resbuf;
-    va_list args;
-    mcvalue_t res;
-    (void)written;
-    va_start(args, fmt);
-    towrite = vsnprintf(NULL, 0, fmt, args);
-    va_end(args);
-    va_start(args, fmt);
-    res = mc_value_makestrcapacity(state, towrite);
-    if(mc_value_isnull(res))
-    {
-        return mc_value_makenull();
-    }
-    resbuf = mc_valstring_getmutabledata(res);
-    written = vsprintf(resbuf, fmt, args);
-    MC_ASSERT(written == towrite);
-    va_end(args);
-    mc_string_setlength(res, towrite);
-    return res;
-}
-
-TMPSTATIC mcvalue_t mc_value_makestringlen(mcstate_t* state, const char* string, size_t len)
-{
-    bool ok;
-    mcvalue_t res;
-    res = mc_value_makestrcapacity(state, len);
-    if(mc_value_isnull(res))
-    {
-        return res;
-    }
-    ok = mc_valstring_append(res, string, len);
-    if(!ok)
-    {
-        return mc_value_makenull();
-    }
-    return res;
-}
-
-TMPSTATIC mcvalue_t mc_value_makestring(mcstate_t* state, const char* string)
-{
-    return mc_value_makestringlen(state, string, strlen(string));
-}
-
-TMPSTATIC mcvalue_t mc_value_makefuncnative(mcstate_t* state, const char* name, mcnativefn_t fn, void* data, int dlen)
-{
-    mcobjdata_t* obj;
-    if(dlen > NATIVE_FN_MAX_DATA_LEN)
-    {
-        return mc_value_makenull();
-    }
-    obj = mc_gcmemory_allocobjectdata(state);
-    if(!obj)
-    {
-        return mc_value_makenull();
-    }
-    obj->native_function.name = mc_util_strdup(state, name);
-    if(!obj->native_function.name)
-    {
-        return mc_value_makenull();
-    }
-    obj->native_function.fn = fn;
-    if(data)
-    {
-        memcpy(obj->native_function.data, data, dlen);
-    }
-    obj->native_function.data_len = dlen;
-    return mc_object_makedatafrom(MC_OBJ_NATIVE_FUNCTION, obj);
-}
-
-TMPSTATIC mcvalue_t mc_value_makearray(mcstate_t* state)
-{
-    return mc_value_makearraycapacity(state, 8);
-}
-
-TMPSTATIC mcvalue_t mc_value_makearraycapacity(mcstate_t* state, unsigned capacity)
-{
-    mcobjdata_t* data;
-    data = mc_gcmemory_getdatafrompool(state, MC_OBJ_ARRAY);
-    if(data)
-    {
-        mc_basicarray_clear(data->array);
-        return mc_object_makedatafrom(MC_OBJ_ARRAY, data);
-    }
-    data = mc_gcmemory_allocobjectdata(state);
-    if(!data)
-    {
-        return mc_value_makenull();
-    }
-    data->array = mc_basicarray_makecapacity(state, capacity, sizeof(mcvalue_t));
-    if(!data->array)
-    {
-        return mc_value_makenull();
-    }
-    return mc_object_makedatafrom(MC_OBJ_ARRAY, data);
-}
-
-TMPSTATIC mcvalue_t mc_value_makemap(mcstate_t* state)
-{
-    return mc_value_makemapcapacity(state, 32);
-}
-
-TMPSTATIC mcvalue_t mc_value_makemapcapacity(mcstate_t* state, unsigned capacity)
-{
-    mcobjdata_t* data;
-    data = mc_gcmemory_getdatafrompool(state, MC_OBJ_MAP);
-    if(data)
-    {
-        mc_valdict_clear(data->map);
-        return mc_object_makedatafrom(MC_OBJ_MAP, data);
-    }
-    data = mc_gcmemory_allocobjectdata(state);
-    if(!data)
-    {
-        return mc_value_makenull();
-    }
-    data->map = mc_valdict_makecapacity(state, capacity, sizeof(mcvalue_t), sizeof(mcvalue_t));
-    if(!data->map)
-    {
-        return mc_value_makenull();
-    }
-    mc_valdict_sethashfunction(data->map, (mcitemhashfn_t)object_hash);
-    mc_valdict_setequalsfunction(data->map, (mcitemcomparefn_t)object_equals_wrapped);
-    return mc_object_makedatafrom(MC_OBJ_MAP, data);
-}
-
-TMPSTATIC mcvalue_t mc_value_makeerror(mcstate_t* state, const char* error)
-{
-    char* errorstr;
-    mcvalue_t res;
-    errorstr = mc_util_strdup(state, error);
-    if(!errorstr)
-    {
-        return mc_value_makenull();
-    }
-    res = mc_value_makeerrornocopy(state, errorstr);
-    if(mc_value_isnull(res))
-    {
-        mc_allocator_free(state, errorstr);
-        return mc_value_makenull();
-    }
-    return res;
-}
-
-TMPSTATIC mcvalue_t mc_value_makeerrornocopy(mcstate_t* state, char* error)
-{
-    mcobjdata_t* data;
-    data = mc_gcmemory_allocobjectdata(state);
-    if(!data)
-    {
-        return mc_value_makenull();
-    }
-    data->error.message = error;
-    data->error.traceback = NULL;
-    return mc_object_makedatafrom(MC_OBJ_ERROR, data);
-}
-
-TMPUNUSED mcvalue_t mc_value_makeerrorf(mcstate_t* state, const char* fmt, ...)
-{
-    int towrite;
-    int written;
-    char* res;
-    va_list args;
-    mcvalue_t resobj;
-    (void)written;
-    va_start(args, fmt);
-    towrite = vsnprintf(NULL, 0, fmt, args);
-    va_end(args);
-    va_start(args, fmt);
-    res = (char*)mc_allocator_alloc(state, towrite + 1);
-    if(!res)
-    {
-        return mc_value_makenull();
-    }
-    written = vsprintf(res, fmt, args);
-    MC_ASSERT(written == towrite);
-    va_end(args);
-    resobj = mc_value_makeerrornocopy(state, res);
-    if(mc_value_isnull(resobj))
-    {
-        mc_allocator_free(state, res);
-        return mc_value_makenull();
-    }
-    return resobj;
-}
-
-TMPSTATIC mcvalue_t mc_value_makefuncscript(mcstate_t* state, const char* name, mccompiledprogram_t* cres, bool ownsdt, int nlocals, int num_args, int fvc)
-{
-    mcobjdata_t* data;
-    data = mc_gcmemory_allocobjectdata(state);
-    if(!data)
-    {
-        return mc_value_makenull();
-    }
-    if(ownsdt)
-    {
-        data->function.name = name ? mc_util_strdup(state, name) : mc_util_strdup(state, "anonymous");
-        if(!data->function.name)
-        {
-            return mc_value_makenull();
-        }
-    }
-    else
-    {
-        data->function.const_name = name ? name : "anonymous";
-    }
-    data->function.comp_result = cres;
-    data->function.owns_data = ownsdt;
-    data->function.num_locals = nlocals;
-    data->function.num_args = num_args;
-    if(fvc >= MC_UTIL_STATICARRAYSIZE(data->function.free_vals_buf))
-    {
-        data->function.free_vals_allocated = (mcvalue_t*)mc_allocator_alloc(state, sizeof(mcvalue_t) * fvc);
-        if(!data->function.free_vals_allocated)
-        {
-            return mc_value_makenull();
-        }
-    }
-    data->function.free_vals_count = fvc;
-    return mc_object_makedatafrom(MC_OBJ_FUNCTION, data);
-}
-
-TMPSTATIC mcvalue_t mc_value_makeexternal(mcstate_t* state, void* data)
-{
-    mcobjdata_t* obj;
-    obj = mc_gcmemory_allocobjectdata(state);
-    if(!obj)
-    {
-        return mc_value_makenull();
-    }
-    obj->external.data = data;
-    obj->external.data_destroy_fn = NULL;
-    obj->external.data_copy_fn = NULL;
-    return mc_object_makedatafrom(MC_OBJ_EXTERNAL, obj);
-}
-
-TMPUNUSED void mc_value_deinit(mcvalue_t obj)
-{
-    mcobjdata_t* data;
-    if(mc_value_isallocated(obj))
-    {
-        data = object_get_allocated_data(obj);
-        mc_objectdata_deinit(data);
-    }
-}
-
-TMPSTATIC void mc_objectdata_deinit(mcobjdata_t* data)
-{
-    switch(data->type)
-    {
-        case MC_OBJ_FREED:
-            {
-                MC_ASSERT(false);
-                return;
-            }
-            break;
-        case MC_OBJ_STRING:
-            {
-                if(data->valstring.is_allocated)
-                {
-                    mc_allocator_free(data->pstate, data->valstring.actualallocated);
-                }
-            }
-            break;
-
-        case MC_OBJ_FUNCTION:
-            {
-                if(data->function.owns_data)
-                {
-                    mc_allocator_free(data->pstate, data->function.name);
-                    mc_astcompresult_destroy(data->function.comp_result);
-                }
-                if(freevals_are_allocated(&data->function))
-                {
-                    mc_allocator_free(data->pstate, data->function.free_vals_allocated);
-                }
-            }
-            break;
-        case MC_OBJ_ARRAY:
-            {
-                mc_basicarray_destroy(data->array);
-            }
-            break;
-        case MC_OBJ_MAP:
-            {
-                mc_valdict_destroy(data->map);
-            }
-            break;
-        case MC_OBJ_NATIVE_FUNCTION:
-            {
-                mc_allocator_free(data->pstate, data->native_function.name);
-            }
-            break;
-        case MC_OBJ_EXTERNAL:
-            {
-                if(data->external.data_destroy_fn)
-                {
-                    data->external.data_destroy_fn(data->external.data);
-                }
-            }
-            break;
-        case MC_OBJ_ERROR:
-            {
-                mc_allocator_free(data->pstate, data->error.message);
-                traceback_destroy(data->error.traceback);
-            }
-            break;
-        default:
-            {
-            }
-            break;
-    }
-    data->type = MC_OBJ_FREED;
-}
-
-TMPSTATIC bool mc_value_isallocated(mcvalue_t object)
-{
-    return object.isallocated;
-}
-
-TMPUNUSED mcgcmemory_t* mc_value_getmem(mcvalue_t obj)
-{
-    mcobjdata_t* data;
-    data = object_get_allocated_data(obj);
-    return data->mem;
 }
 
 TMPSTATIC const char* mc_error_getmessage(mcerror_t* error)
@@ -10702,7 +10703,7 @@ TMPSTATIC char* mc_error_serializetostring(mcstate_t* state, mcerror_t* err)
     if(traceback)
     {
         mc_printer_printf(pr, "Traceback:\n");
-        traceback_to_string((mctraceback_t*)mc_error_gettraceback(err), pr);
+        traceback_to_string(pr, (mctraceback_t*)mc_error_gettraceback(err));
     }
     if(mc_printer_failed(pr))
     {
@@ -10774,13 +10775,13 @@ TMPUNUSED const char* mc_traceback_getfunctionname(mctraceback_t* traceback, int
     {
         return "";
     }
-    return item->function_name;
+    return item->trfuncname;
 }
 
 TMPSTATIC void mc_state_deinit(mcstate_t* state)
 {
     mc_compiler_destroy(state->compiler);
-    global_store_destroy(state->global_store);
+    global_store_destroy(state->vmglobalstore);
     mc_gcmemory_destroy(state->mem);
     mc_ptrarray_destroy(state->files, (mcitemdestroyfn_t)mc_compiledfile_destroy);
     mc_errlist_deinit(&state->errors);
@@ -10797,11 +10798,11 @@ TMPSTATIC void mc_state_setdefaultconfig(mcstate_t* state)
     memset(&state->config, 0, sizeof(mcconfig_t));
     mc_state_setreplmode(state, false);
     mc_state_settimeout(state, -1);
-    mc_state_setfilereadfunction(state, read_file_default, state);
-    mc_state_setfilewritefunction(state, write_file_default, state);
+    mc_state_setfilereadfunction(state, mc_util_defaultreadfile, state);
+    mc_state_setfilewritefunction(state, mc_util_defaultwritefile, state);
 }
 
-TMPSTATIC char* read_file_default(void* ctx, const char* filename, size_t* flen)
+TMPSTATIC char* mc_util_defaultreadfile(void* ctx, const char* filename, size_t* flen)
 {
     mcstate_t* state;
     (void)state;
@@ -10809,7 +10810,7 @@ TMPSTATIC char* read_file_default(void* ctx, const char* filename, size_t* flen)
     return mc_util_readfile(filename, flen);
 }
 
-TMPSTATIC size_t write_file_default(void* ctx, const char* path, const char* string, size_t stringsize)
+TMPSTATIC size_t mc_util_defaultwritefile(void* ctx, const char* path, const char* string, size_t stringsize)
 {
     size_t written;
     FILE* fp;
@@ -10824,13 +10825,7 @@ TMPSTATIC size_t write_file_default(void* ctx, const char* path, const char* str
     return written;
 }
 
-TMPSTATIC size_t stdout_write_default(void* ctx, const void* data, size_t size)
-{
-    (void)ctx;
-    return fwrite(data, 1, size, stdout);
-}
-
-TMPSTATIC mcastexpression_t* expression_make_ident(mcstate_t* state, mcastident_t* ident)
+TMPSTATIC mcastexpression_t* mc_astexpr_makeident(mcstate_t* state, mcastident_t* ident)
 {
     mcastexpression_t* res;
     res = mc_ast_makeexpression(state, MC_EXPR_IDENT);
@@ -10842,7 +10837,7 @@ TMPSTATIC mcastexpression_t* expression_make_ident(mcstate_t* state, mcastident_
     return res;
 }
 
-TMPSTATIC mcastexpression_t* expression_make_number_literal(mcstate_t* state, double val)
+TMPSTATIC mcastexpression_t* mc_astexpr_makeliteralnumber(mcstate_t* state, double val)
 {
     mcastexpression_t* res;
     res = mc_ast_makeexpression(state, MC_EXPR_NUMBERLITERAL);
@@ -10854,7 +10849,7 @@ TMPSTATIC mcastexpression_t* expression_make_number_literal(mcstate_t* state, do
     return res;
 }
 
-TMPSTATIC mcastexpression_t* expression_make_bool_literal(mcstate_t* state, bool val)
+TMPSTATIC mcastexpression_t* mc_astexpr_makeliteralbool(mcstate_t* state, bool val)
 {
     mcastexpression_t* res;
     res = mc_ast_makeexpression(state, MC_EXPR_BOOLLITERAL);
@@ -10866,7 +10861,7 @@ TMPSTATIC mcastexpression_t* expression_make_bool_literal(mcstate_t* state, bool
     return res;
 }
 
-TMPSTATIC mcastexpression_t* expression_make_string_literal(mcstate_t* state, char* value, size_t len)
+TMPSTATIC mcastexpression_t* mc_astexpr_makeliteralstring(mcstate_t* state, char* value, size_t len)
 {
     mcastexpression_t* res;
     res = mc_ast_makeexpression(state, MC_EXPR_STRINGLITERAL);
@@ -10879,7 +10874,7 @@ TMPSTATIC mcastexpression_t* expression_make_string_literal(mcstate_t* state, ch
     return res;
 }
 
-TMPSTATIC mcastexpression_t* expression_make_null_literal(mcstate_t* state)
+TMPSTATIC mcastexpression_t* mc_astexpr_makeliteralnull(mcstate_t* state)
 {
     mcastexpression_t* res;
     res = mc_ast_makeexpression(state, MC_EXPR_NULLLITERAL);
@@ -10890,7 +10885,7 @@ TMPSTATIC mcastexpression_t* expression_make_null_literal(mcstate_t* state)
     return res;
 }
 
-TMPSTATIC mcastexpression_t* expression_make_array_literal(mcstate_t* state, mcptrarray_t* values)
+TMPSTATIC mcastexpression_t* mc_astexpr_makeliteralarray(mcstate_t* state, mcptrarray_t* values)
 {
     mcastexpression_t* res;
     res = mc_ast_makeexpression(state, MC_EXPR_ARRAYLITERAL);
@@ -10902,7 +10897,7 @@ TMPSTATIC mcastexpression_t* expression_make_array_literal(mcstate_t* state, mcp
     return res;
 }
 
-TMPSTATIC mcastexpression_t* expression_make_map_literal(mcstate_t* state, mcptrarray_t* keys, mcptrarray_t* values)
+TMPSTATIC mcastexpression_t* mc_astexpr_makeliteralmap(mcstate_t* state, mcptrarray_t* keys, mcptrarray_t* values)
 {
     mcastexpression_t* res;
     res = mc_ast_makeexpression(state, MC_EXPR_MAPLITERAL);
@@ -10915,7 +10910,7 @@ TMPSTATIC mcastexpression_t* expression_make_map_literal(mcstate_t* state, mcptr
     return res;
 }
 
-TMPSTATIC mcastexpression_t* expression_make_prefix(mcstate_t* state, mcastmathoptype_t op, mcastexpression_t* right)
+TMPSTATIC mcastexpression_t* mc_astexpr_makeprefixexpr(mcstate_t* state, mcastmathoptype_t op, mcastexpression_t* right)
 {
     mcastexpression_t* res;
     res = mc_ast_makeexpression(state, MC_EXPR_PREFIX);
@@ -10928,7 +10923,7 @@ TMPSTATIC mcastexpression_t* expression_make_prefix(mcstate_t* state, mcastmatho
     return res;
 }
 
-TMPSTATIC mcastexpression_t* expression_make_infix(mcstate_t* state, mcastmathoptype_t op, mcastexpression_t* left, mcastexpression_t* right)
+TMPSTATIC mcastexpression_t* mc_astexpr_makeinfixexpr(mcstate_t* state, mcastmathoptype_t op, mcastexpression_t* left, mcastexpression_t* right)
 {
     mcastexpression_t* res;
     res = mc_ast_makeexpression(state, MC_EXPR_INFIX);
@@ -10942,7 +10937,7 @@ TMPSTATIC mcastexpression_t* expression_make_infix(mcstate_t* state, mcastmathop
     return res;
 }
 
-TMPSTATIC mcastexpression_t* expression_make_fn_literal(mcstate_t* state, mcptrarray_t* params, mcastcodeblock_t* body)
+TMPSTATIC mcastexpression_t* mc_astexpr_makeliteralfunction(mcstate_t* state, mcptrarray_t* params, mcastcodeblock_t* body)
 {
     mcastexpression_t* res;
     res = mc_ast_makeexpression(state, MC_EXPR_FUNCTIONLITERAL);
@@ -10956,7 +10951,7 @@ TMPSTATIC mcastexpression_t* expression_make_fn_literal(mcstate_t* state, mcptra
     return res;
 }
 
-TMPSTATIC mcastexpression_t* expression_make_call(mcstate_t* state, mcastexpression_t* function, mcptrarray_t* args)
+TMPSTATIC mcastexpression_t* mc_astexpr_makecallexpr(mcstate_t* state, mcastexpression_t* function, mcptrarray_t* args)
 {
     mcastexpression_t* res;
     res = mc_ast_makeexpression(state, MC_EXPR_CALL);
@@ -10969,7 +10964,7 @@ TMPSTATIC mcastexpression_t* expression_make_call(mcstate_t* state, mcastexpress
     return res;
 }
 
-TMPSTATIC mcastexpression_t* expression_make_index(mcstate_t* state, mcastexpression_t* left, mcastexpression_t* index)
+TMPSTATIC mcastexpression_t* mc_astexpr_makeindexexpr(mcstate_t* state, mcastexpression_t* left, mcastexpression_t* index)
 {
     mcastexpression_t* res;
     res = mc_ast_makeexpression(state, MC_EXPR_INDEX);
@@ -10982,7 +10977,7 @@ TMPSTATIC mcastexpression_t* expression_make_index(mcstate_t* state, mcastexpres
     return res;
 }
 
-TMPSTATIC mcastexpression_t* expression_make_assign(mcstate_t* state, mcastexpression_t* dest, mcastexpression_t* source, bool is_postfix)
+TMPSTATIC mcastexpression_t* mc_astexpr_makeassignexpr(mcstate_t* state, mcastexpression_t* dest, mcastexpression_t* source, bool is_postfix)
 {
     mcastexpression_t* res;
     res = mc_ast_makeexpression(state, MC_EXPR_ASSIGN);
@@ -10996,7 +10991,7 @@ TMPSTATIC mcastexpression_t* expression_make_assign(mcstate_t* state, mcastexpre
     return res;
 }
 
-TMPSTATIC mcastexpression_t* expression_make_logical(mcstate_t* state, mcastmathoptype_t op, mcastexpression_t* left, mcastexpression_t* right)
+TMPSTATIC mcastexpression_t* mc_astexpr_makelogicalexpr(mcstate_t* state, mcastmathoptype_t op, mcastexpression_t* left, mcastexpression_t* right)
 {
     mcastexpression_t* res;
     res = mc_ast_makeexpression(state, MC_EXPR_LOGICAL);
@@ -11010,7 +11005,7 @@ TMPSTATIC mcastexpression_t* expression_make_logical(mcstate_t* state, mcastmath
     return res;
 }
 
-TMPSTATIC mcastexpression_t* expression_make_ternary(mcstate_t* state, mcastexpression_t* test, mcastexpression_t* ift, mcastexpression_t* iffalse)
+TMPSTATIC mcastexpression_t* mc_astexpr_maketernaryexpr(mcstate_t* state, mcastexpression_t* test, mcastexpression_t* ift, mcastexpression_t* iffalse)
 {
     mcastexpression_t* res;
     res = mc_ast_makeexpression(state, MC_EXPR_TERNARY);
@@ -11024,7 +11019,7 @@ TMPSTATIC mcastexpression_t* expression_make_ternary(mcstate_t* state, mcastexpr
     return res;
 }
 
-TMPSEMISTATIC void expression_destroy(mcastexpression_t* expr)
+TMPSEMISTATIC void mc_astexpr_destroy(mcastexpression_t* expr)
 {
     if(!expr)
     {
@@ -11058,24 +11053,24 @@ TMPSEMISTATIC void expression_destroy(mcastexpression_t* expr)
             break;
         case MC_EXPR_ARRAYLITERAL:
             {
-                mc_ptrarray_destroy(expr->exprlitarray.litarritems, (mcitemdestroyfn_t)expression_destroy);
+                mc_ptrarray_destroy(expr->exprlitarray.litarritems, (mcitemdestroyfn_t)mc_astexpr_destroy);
             }
             break;
         case MC_EXPR_MAPLITERAL:
             {
-                mc_ptrarray_destroy(expr->exprlitmap.keys, (mcitemdestroyfn_t)expression_destroy);
-                mc_ptrarray_destroy(expr->exprlitmap.values, (mcitemdestroyfn_t)expression_destroy);
+                mc_ptrarray_destroy(expr->exprlitmap.keys, (mcitemdestroyfn_t)mc_astexpr_destroy);
+                mc_ptrarray_destroy(expr->exprlitmap.values, (mcitemdestroyfn_t)mc_astexpr_destroy);
             }
             break;
         case MC_EXPR_PREFIX:
             {
-                expression_destroy(expr->exprprefix.right);
+                mc_astexpr_destroy(expr->exprprefix.right);
             }
             break;
         case MC_EXPR_INFIX:
             {
-                expression_destroy(expr->exprinfix.left);
-                expression_destroy(expr->exprinfix.right);
+                mc_astexpr_destroy(expr->exprinfix.left);
+                mc_astexpr_destroy(expr->exprinfix.right);
             }
             break;
         case MC_EXPR_FUNCTIONLITERAL:
@@ -11089,499 +11084,39 @@ TMPSEMISTATIC void expression_destroy(mcastexpression_t* expr)
             break;
         case MC_EXPR_CALL:
             {
-                mc_ptrarray_destroy(expr->exprcall.args, (mcitemdestroyfn_t)expression_destroy);
-                expression_destroy(expr->exprcall.function);
+                mc_ptrarray_destroy(expr->exprcall.args, (mcitemdestroyfn_t)mc_astexpr_destroy);
+                mc_astexpr_destroy(expr->exprcall.function);
             }
             break;
         case MC_EXPR_INDEX:
             {
-                expression_destroy(expr->exprindex.left);
-                expression_destroy(expr->exprindex.index);
+                mc_astexpr_destroy(expr->exprindex.left);
+                mc_astexpr_destroy(expr->exprindex.index);
             }
             break;
         case MC_EXPR_ASSIGN:
             {
-                expression_destroy(expr->exprassign.dest);
-                expression_destroy(expr->exprassign.source);
+                mc_astexpr_destroy(expr->exprassign.dest);
+                mc_astexpr_destroy(expr->exprassign.source);
             }
             break;
         case MC_EXPR_LOGICAL:
             {
-                expression_destroy(expr->exprlogical.left);
-                expression_destroy(expr->exprlogical.right);
+                mc_astexpr_destroy(expr->exprlogical.left);
+                mc_astexpr_destroy(expr->exprlogical.right);
             }
             break;
         case MC_EXPR_TERNARY:
             {
-                expression_destroy(expr->exprternary.tercond);
-                expression_destroy(expr->exprternary.teriftrue);
-                expression_destroy(expr->exprternary.teriffalse);
-            }
-            break;
-        default:
-            {
-            }
-            break;
-    }
-    mc_allocator_free(expr->pstate, expr);
-}
-
-TMPSEMISTATIC mcastexpression_t* expression_copy(mcastexpression_t* expr)
-{
-    mcastexpression_t* res;
-    if(!expr)
-    {
-        return NULL;
-    }
-    res = NULL;
-    switch(expr->type)
-    {
-        case MC_EXPR_NONE:
-            {
-                MC_ASSERT(false);
-            }
-            break;
-        case MC_EXPR_IDENT:
-            {
-                mcastident_t* ident;
-                ident = mc_astident_copy(expr->exprident);
-                if(!ident)
-                {
-                    return NULL;
-                }
-                res = expression_make_ident(expr->pstate, ident);
-                if(!res)
-                {
-                    mc_astident_destroy(ident);
-                    return NULL;
-                }
-            }
-            break;
-        case MC_EXPR_NUMBERLITERAL:
-            {
-                res = expression_make_number_literal(expr->pstate, expr->exprlitnumber);
-            }
-            break;
-        case MC_EXPR_BOOLLITERAL:
-            {
-                res = expression_make_bool_literal(expr->pstate, expr->exprlitbool);
-            }
-            break;
-        case MC_EXPR_STRINGLITERAL:
-            {
-                char* stringcopy;
-                stringcopy = mc_util_strndup(expr->pstate, expr->exprlitstring.data, expr->exprlitstring.length);
-                if(!stringcopy)
-                {
-                    return NULL;
-                }
-                res = expression_make_string_literal(expr->pstate, stringcopy, expr->exprlitstring.length);
-                if(!res)
-                {
-                    mc_allocator_free(expr->pstate, stringcopy);
-                    return NULL;
-                }
-            }
-            break;
-
-        case MC_EXPR_NULLLITERAL:
-            {
-                res = expression_make_null_literal(expr->pstate);
-            }
-            break;
-        case MC_EXPR_ARRAYLITERAL:
-            {
-                mcptrarray_t* valuescopy;
-                valuescopy = mc_ptrarray_copy(expr->exprlitarray.litarritems, (mcitemcopyfn_t)expression_copy, (mcitemdestroyfn_t)expression_destroy);
-                if(!valuescopy)
-                {
-                    return NULL;
-                }
-                res = expression_make_array_literal(expr->pstate, valuescopy);
-                if(!res)
-                {
-                    mc_ptrarray_destroy(valuescopy, (mcitemdestroyfn_t)expression_destroy);
-                    return NULL;
-                }
-            }
-            break;
-
-        case MC_EXPR_MAPLITERAL:
-            {
-                mcptrarray_t* keyscopy;
-                mcptrarray_t* valuescopy;
-                keyscopy = mc_ptrarray_copy(expr->exprlitmap.keys, (mcitemcopyfn_t)expression_copy, (mcitemdestroyfn_t)expression_destroy);
-                valuescopy = mc_ptrarray_copy(expr->exprlitmap.values, (mcitemcopyfn_t)expression_copy, (mcitemdestroyfn_t)expression_destroy);
-                if(!keyscopy || !valuescopy)
-                {
-                    mc_ptrarray_destroy(keyscopy, (mcitemdestroyfn_t)expression_destroy);
-                    mc_ptrarray_destroy(valuescopy, (mcitemdestroyfn_t)expression_destroy);
-                    return NULL;
-                }
-                res = expression_make_map_literal(expr->pstate, keyscopy, valuescopy);
-                if(!res)
-                {
-                    mc_ptrarray_destroy(keyscopy, (mcitemdestroyfn_t)expression_destroy);
-                    mc_ptrarray_destroy(valuescopy, (mcitemdestroyfn_t)expression_destroy);
-                    return NULL;
-                }
-            }
-            break;
-        case MC_EXPR_PREFIX:
-            {
-                mcastexpression_t* rightcopy;
-                rightcopy = expression_copy(expr->exprprefix.right);
-                if(!rightcopy)
-                {
-                    return NULL;
-                }
-                res = expression_make_prefix(expr->pstate, expr->exprprefix.op, rightcopy);
-                if(!res)
-                {
-                    expression_destroy(rightcopy);
-                    return NULL;
-                }
-            }
-            break;
-        case MC_EXPR_INFIX:
-            {
-                mcastexpression_t* leftcopy;
-                mcastexpression_t* rightcopy;
-                leftcopy = expression_copy(expr->exprinfix.left);
-                rightcopy = expression_copy(expr->exprinfix.right);
-                if(!leftcopy || !rightcopy)
-                {
-                    expression_destroy(leftcopy);
-                    expression_destroy(rightcopy);
-                    return NULL;
-                }
-                res = expression_make_infix(expr->pstate, expr->exprinfix.op, leftcopy, rightcopy);
-                if(!res)
-                {
-                    expression_destroy(leftcopy);
-                    expression_destroy(rightcopy);
-                    return NULL;
-                }
-            }
-            break;
-        case MC_EXPR_FUNCTIONLITERAL:
-            {
-                char* namecopy;
-                mcptrarray_t* pacopy;
-                mcastcodeblock_t* bodycopy;
-                pacopy = mc_ptrarray_copy(expr->exprlitfunction.params, (mcitemcopyfn_t)mc_astident_copy, (mcitemdestroyfn_t)mc_astident_destroy);
-                bodycopy = mc_astcodeblock_copy(expr->exprlitfunction.body);
-                namecopy = mc_util_strdup(expr->pstate, expr->exprlitfunction.name);
-                if(!pacopy || !bodycopy)
-                {
-                    mc_ptrarray_destroy(pacopy, (mcitemdestroyfn_t)mc_astident_destroy);
-                    mc_astcodeblock_destroy(bodycopy);
-                    mc_allocator_free(expr->pstate, namecopy);
-                    return NULL;
-                }
-                res = expression_make_fn_literal(expr->pstate, pacopy, bodycopy);
-                if(!res)
-                {
-                    mc_ptrarray_destroy(pacopy, (mcitemdestroyfn_t)mc_astident_destroy);
-                    mc_astcodeblock_destroy(bodycopy);
-                    mc_allocator_free(expr->pstate, namecopy);
-                    return NULL;
-                }
-                res->exprlitfunction.name = namecopy;
-            }
-            break;
-        case MC_EXPR_CALL:
-            {
-                mcastexpression_t* fcopy;
-                mcptrarray_t* argscopy;
-                fcopy = expression_copy(expr->exprcall.function);
-                argscopy = mc_ptrarray_copy(expr->exprcall.args, (mcitemcopyfn_t)expression_copy, (mcitemdestroyfn_t)expression_destroy);
-                if(!fcopy || !argscopy)
-                {
-                    expression_destroy(fcopy);
-                    mc_ptrarray_destroy(expr->exprcall.args, (mcitemdestroyfn_t)expression_destroy);
-                    return NULL;
-                }
-                res = expression_make_call(expr->pstate, fcopy, argscopy);
-                if(!res)
-                {
-                    expression_destroy(fcopy);
-                    mc_ptrarray_destroy(expr->exprcall.args, (mcitemdestroyfn_t)expression_destroy);
-                    return NULL;
-                }
-            }
-            break;
-        case MC_EXPR_INDEX:
-            {
-                mcastexpression_t* leftcopy;
-                mcastexpression_t* indexcopy;
-                leftcopy = expression_copy(expr->exprindex.left);
-                indexcopy = expression_copy(expr->exprindex.index);
-                if(!leftcopy || !indexcopy)
-                {
-                    expression_destroy(leftcopy);
-                    expression_destroy(indexcopy);
-                    return NULL;
-                }
-                res = expression_make_index(expr->pstate, leftcopy, indexcopy);
-                if(!res)
-                {
-                    expression_destroy(leftcopy);
-                    expression_destroy(indexcopy);
-                    return NULL;
-                }
-            }
-            break;
-        case MC_EXPR_ASSIGN:
-            {
-                mcastexpression_t* destcopy;
-                mcastexpression_t* sourcecopy;
-                destcopy = expression_copy(expr->exprassign.dest);
-                sourcecopy = expression_copy(expr->exprassign.source);
-                if(!destcopy || !sourcecopy)
-                {
-                    expression_destroy(destcopy);
-                    expression_destroy(sourcecopy);
-                    return NULL;
-                }
-                res = expression_make_assign(expr->pstate, destcopy, sourcecopy, expr->exprassign.is_postfix);
-                if(!res)
-                {
-                    expression_destroy(destcopy);
-                    expression_destroy(sourcecopy);
-                    return NULL;
-                }
-            }
-            break;
-        case MC_EXPR_LOGICAL:
-            {
-                mcastexpression_t* leftcopy;
-                mcastexpression_t* rightcopy;
-                leftcopy = expression_copy(expr->exprlogical.left);
-                rightcopy = expression_copy(expr->exprlogical.right);
-                if(!leftcopy || !rightcopy)
-                {
-                    expression_destroy(leftcopy);
-                    expression_destroy(rightcopy);
-                    return NULL;
-                }
-                res = expression_make_logical(expr->pstate, expr->exprlogical.op, leftcopy, rightcopy);
-                if(!res)
-                {
-                    expression_destroy(leftcopy);
-                    expression_destroy(rightcopy);
-                    return NULL;
-                }
-            }
-            break;
-        case MC_EXPR_TERNARY:
-            {
-                mcastexpression_t* testcopy;
-                mcastexpression_t* iftruecopy;
-                mcastexpression_t* iffalsecopy;
-                testcopy = expression_copy(expr->exprternary.tercond);
-                iftruecopy = expression_copy(expr->exprternary.teriftrue);
-                iffalsecopy = expression_copy(expr->exprternary.teriffalse);
-                if(!testcopy || !iftruecopy || !iffalsecopy)
-                {
-                    expression_destroy(testcopy);
-                    expression_destroy(iftruecopy);
-                    expression_destroy(iffalsecopy);
-                    return NULL;
-                }
-                res = expression_make_ternary(expr->pstate, testcopy, iftruecopy, iffalsecopy);
-                if(!res)
-                {
-                    expression_destroy(testcopy);
-                    expression_destroy(iftruecopy);
-                    expression_destroy(iffalsecopy);
-                    return NULL;
-                }
-            }
-            break;
-
-        default:
-            {
-            }
-            break;
-    }
-    if(!res)
-    {
-        return NULL;
-    }
-    res->pos = expr->pos;
-    return res;
-}
-
-TMPSTATIC mcastexpression_t* statement_make_define(mcstate_t* state, mcastident_t* name, mcastexpression_t* value, bool assignable)
-{
-    mcastexpression_t* res;
-    res = mc_ast_makeexpression(state, MC_EXPR_STMTDEFINE);
-    if(!res)
-    {
-        return NULL;
-    }
-    res->exprdefine.name = name;
-    res->exprdefine.value = value;
-    res->exprdefine.assignable = assignable;
-    return res;
-}
-
-TMPSTATIC mcastexpression_t* statement_make_if(mcstate_t* state, mcptrarray_t* cases, mcastcodeblock_t* alternative)
-{
-    mcastexpression_t* res;
-    res = mc_ast_makeexpression(state, MC_EXPR_STMTIF);
-    if(!res)
-    {
-        return NULL;
-    }
-    res->exprifstmt.cases = cases;
-    res->exprifstmt.alternative = alternative;
-    return res;
-}
-
-TMPSTATIC mcastexpression_t* statement_make_return(mcstate_t* state, mcastexpression_t* value)
-{
-    mcastexpression_t* res;
-    res = mc_ast_makeexpression(state, MC_EXPR_STMTRETURN);
-    if(!res)
-    {
-        return NULL;
-    }
-    res->exprreturnvalue = value;
-    return res;
-}
-
-TMPSTATIC mcastexpression_t* statement_make_expression(mcstate_t* state, mcastexpression_t* value)
-{
-    mcastexpression_t* res;
-    res = mc_ast_makeexpression(state, MC_EXPR_STMTEXPRESSION);
-    if(!res)
-    {
-        return NULL;
-    }
-    res->exprexpression = value;
-    return res;
-}
-
-TMPSTATIC mcastexpression_t* statement_make_while_loop(mcstate_t* state, mcastexpression_t* test, mcastcodeblock_t* body)
-{
-    mcastexpression_t* res;
-    res = mc_ast_makeexpression(state, MC_EXPR_STMTLOOPWHILE);
-    if(!res)
-    {
-        return NULL;
-    }
-    res->exprwhileloopstmt.loopcond = test;
-    res->exprwhileloopstmt.body = body;
-    return res;
-}
-
-TMPSTATIC mcastexpression_t* statement_make_break(mcstate_t* state)
-{
-    mcastexpression_t* res;
-    res = mc_ast_makeexpression(state, MC_EXPR_STMTBREAK);
-    if(!res)
-    {
-        return NULL;
-    }
-    return res;
-}
-
-TMPSTATIC mcastexpression_t* statement_make_foreach(mcstate_t* state, mcastident_t* iterator, mcastexpression_t* source, mcastcodeblock_t* body)
-{
-    mcastexpression_t* res;
-    res = mc_ast_makeexpression(state, MC_EXPR_STMTLOOPFOREACH);
-    if(!res)
-    {
-        return NULL;
-    }
-    res->exprforeachloopstmt.iterator = iterator;
-    res->exprforeachloopstmt.source = source;
-    res->exprforeachloopstmt.body = body;
-    return res;
-}
-
-TMPSTATIC mcastexpression_t* statement_make_for_loop(mcstate_t* state, mcastexpression_t* init, mcastexpression_t* test, mcastexpression_t* update, mcastcodeblock_t* body)
-{
-    mcastexpression_t* res;
-    res = mc_ast_makeexpression(state, MC_EXPR_STMTLOOPFORCLASSIC);
-    if(!res)
-    {
-        return NULL;
-    }
-    res->exprforloopstmt.init = init;
-    res->exprforloopstmt.loopcond = test;
-    res->exprforloopstmt.update = update;
-    res->exprforloopstmt.body = body;
-    return res;
-}
-
-TMPSTATIC mcastexpression_t* statement_make_continue(mcstate_t* state)
-{
-    mcastexpression_t* res;
-    res = mc_ast_makeexpression(state, MC_EXPR_STMTCONTINUE);
-    if(!res)
-    {
-        return NULL;
-    }
-    return res;
-}
-
-TMPSTATIC mcastexpression_t* statement_make_block(mcstate_t* state, mcastcodeblock_t* block)
-{
-    mcastexpression_t* res;
-    res = mc_ast_makeexpression(state, MC_EXPR_STMTBLOCK);
-    if(!res)
-    {
-        return NULL;
-    }
-    res->exprblockstmt = block;
-    return res;
-}
-
-TMPSTATIC mcastexpression_t* statement_make_import(mcstate_t* state, char* path)
-{
-    mcastexpression_t* res;
-    res = mc_ast_makeexpression(state, MC_EXPR_STMTIMPORT);
-    if(!res)
-    {
-        return NULL;
-    }
-    res->exprimportstmt.path = path;
-    return res;
-}
-
-TMPSTATIC mcastexpression_t* statement_make_recover(mcstate_t* state, mcastident_t* eid, mcastcodeblock_t* body)
-{
-    mcastexpression_t* res;
-    res = mc_ast_makeexpression(state, MC_EXPR_STMTRECOVER);
-    if(!res)
-    {
-        return NULL;
-    }
-    res->exprrecoverstmt.errident = eid;
-    res->exprrecoverstmt.body = body;
-    return res;
-}
-
-TMPSEMISTATIC void statement_destroy(mcastexpression_t* expr)
-{
-    if(!expr)
-    {
-        return;
-    }
-    switch(expr->type)
-    {
-        case MC_EXPR_NONE:
-            {
-                MC_ASSERT(false);
+                mc_astexpr_destroy(expr->exprternary.tercond);
+                mc_astexpr_destroy(expr->exprternary.teriftrue);
+                mc_astexpr_destroy(expr->exprternary.teriffalse);
             }
             break;
         case MC_EXPR_STMTDEFINE:
             {
                 mc_astident_destroy(expr->exprdefine.name);
-                expression_destroy(expr->exprdefine.value);
+                mc_astexpr_destroy(expr->exprdefine.value);
             }
             break;
         case MC_EXPR_STMTIF:
@@ -11592,17 +11127,17 @@ TMPSEMISTATIC void statement_destroy(mcastexpression_t* expr)
             break;
         case MC_EXPR_STMTRETURN:
             {
-                expression_destroy(expr->exprreturnvalue);
+                mc_astexpr_destroy(expr->exprreturnvalue);
             }
             break;
         case MC_EXPR_STMTEXPRESSION:
             {
-                expression_destroy(expr->exprexpression);
+                mc_astexpr_destroy(expr->exprexpression);
             }
             break;
         case MC_EXPR_STMTLOOPWHILE:
             {
-                expression_destroy(expr->exprwhileloopstmt.loopcond);
+                mc_astexpr_destroy(expr->exprwhileloopstmt.loopcond);
                 mc_astcodeblock_destroy(expr->exprwhileloopstmt.body);
             }
             break;
@@ -11617,15 +11152,15 @@ TMPSEMISTATIC void statement_destroy(mcastexpression_t* expr)
         case MC_EXPR_STMTLOOPFOREACH:
             {
                 mc_astident_destroy(expr->exprforeachloopstmt.iterator);
-                expression_destroy(expr->exprforeachloopstmt.source);
+                mc_astexpr_destroy(expr->exprforeachloopstmt.source);
                 mc_astcodeblock_destroy(expr->exprforeachloopstmt.body);
             }
             break;
         case MC_EXPR_STMTLOOPFORCLASSIC:
             {
-                statement_destroy(expr->exprforloopstmt.init);
-                expression_destroy(expr->exprforloopstmt.loopcond);
-                expression_destroy(expr->exprforloopstmt.update);
+                mc_astexpr_destroy(expr->exprforloopstmt.init);
+                mc_astexpr_destroy(expr->exprforloopstmt.loopcond);
+                mc_astexpr_destroy(expr->exprforloopstmt.update);
                 mc_astcodeblock_destroy(expr->exprforloopstmt.body);
             }
             break;
@@ -11653,14 +11188,14 @@ TMPSEMISTATIC void statement_destroy(mcastexpression_t* expr)
     mc_allocator_free(expr->pstate, expr);
 }
 
-TMPSEMISTATIC mcastexpression_t* statement_copy(mcastexpression_t* expr)
+TMPSEMISTATIC mcastexpression_t* mc_astexpr_copy(mcastexpression_t* expr)
 {
     mcastexpression_t* res;
     if(!expr)
     {
         return NULL;
     }
-    res= NULL;
+    res = NULL;
     switch(expr->type)
     {
         case MC_EXPR_NONE:
@@ -11668,18 +11203,276 @@ TMPSEMISTATIC mcastexpression_t* statement_copy(mcastexpression_t* expr)
                 MC_ASSERT(false);
             }
             break;
+        case MC_EXPR_IDENT:
+            {
+                mcastident_t* ident;
+                ident = mc_astident_copy(expr->exprident);
+                if(!ident)
+                {
+                    return NULL;
+                }
+                res = mc_astexpr_makeident(expr->pstate, ident);
+                if(!res)
+                {
+                    mc_astident_destroy(ident);
+                    return NULL;
+                }
+            }
+            break;
+        case MC_EXPR_NUMBERLITERAL:
+            {
+                res = mc_astexpr_makeliteralnumber(expr->pstate, expr->exprlitnumber);
+            }
+            break;
+        case MC_EXPR_BOOLLITERAL:
+            {
+                res = mc_astexpr_makeliteralbool(expr->pstate, expr->exprlitbool);
+            }
+            break;
+        case MC_EXPR_STRINGLITERAL:
+            {
+                char* stringcopy;
+                stringcopy = mc_util_strndup(expr->pstate, expr->exprlitstring.data, expr->exprlitstring.length);
+                if(!stringcopy)
+                {
+                    return NULL;
+                }
+                res = mc_astexpr_makeliteralstring(expr->pstate, stringcopy, expr->exprlitstring.length);
+                if(!res)
+                {
+                    mc_allocator_free(expr->pstate, stringcopy);
+                    return NULL;
+                }
+            }
+            break;
+
+        case MC_EXPR_NULLLITERAL:
+            {
+                res = mc_astexpr_makeliteralnull(expr->pstate);
+            }
+            break;
+        case MC_EXPR_ARRAYLITERAL:
+            {
+                mcptrarray_t* valuescopy;
+                valuescopy = mc_ptrarray_copy(expr->exprlitarray.litarritems, (mcitemcopyfn_t)mc_astexpr_copy, (mcitemdestroyfn_t)mc_astexpr_destroy);
+                if(!valuescopy)
+                {
+                    return NULL;
+                }
+                res = mc_astexpr_makeliteralarray(expr->pstate, valuescopy);
+                if(!res)
+                {
+                    mc_ptrarray_destroy(valuescopy, (mcitemdestroyfn_t)mc_astexpr_destroy);
+                    return NULL;
+                }
+            }
+            break;
+
+        case MC_EXPR_MAPLITERAL:
+            {
+                mcptrarray_t* keyscopy;
+                mcptrarray_t* valuescopy;
+                keyscopy = mc_ptrarray_copy(expr->exprlitmap.keys, (mcitemcopyfn_t)mc_astexpr_copy, (mcitemdestroyfn_t)mc_astexpr_destroy);
+                valuescopy = mc_ptrarray_copy(expr->exprlitmap.values, (mcitemcopyfn_t)mc_astexpr_copy, (mcitemdestroyfn_t)mc_astexpr_destroy);
+                if(!keyscopy || !valuescopy)
+                {
+                    mc_ptrarray_destroy(keyscopy, (mcitemdestroyfn_t)mc_astexpr_destroy);
+                    mc_ptrarray_destroy(valuescopy, (mcitemdestroyfn_t)mc_astexpr_destroy);
+                    return NULL;
+                }
+                res = mc_astexpr_makeliteralmap(expr->pstate, keyscopy, valuescopy);
+                if(!res)
+                {
+                    mc_ptrarray_destroy(keyscopy, (mcitemdestroyfn_t)mc_astexpr_destroy);
+                    mc_ptrarray_destroy(valuescopy, (mcitemdestroyfn_t)mc_astexpr_destroy);
+                    return NULL;
+                }
+            }
+            break;
+        case MC_EXPR_PREFIX:
+            {
+                mcastexpression_t* rightcopy;
+                rightcopy = mc_astexpr_copy(expr->exprprefix.right);
+                if(!rightcopy)
+                {
+                    return NULL;
+                }
+                res = mc_astexpr_makeprefixexpr(expr->pstate, expr->exprprefix.op, rightcopy);
+                if(!res)
+                {
+                    mc_astexpr_destroy(rightcopy);
+                    return NULL;
+                }
+            }
+            break;
+        case MC_EXPR_INFIX:
+            {
+                mcastexpression_t* leftcopy;
+                mcastexpression_t* rightcopy;
+                leftcopy = mc_astexpr_copy(expr->exprinfix.left);
+                rightcopy = mc_astexpr_copy(expr->exprinfix.right);
+                if(!leftcopy || !rightcopy)
+                {
+                    mc_astexpr_destroy(leftcopy);
+                    mc_astexpr_destroy(rightcopy);
+                    return NULL;
+                }
+                res = mc_astexpr_makeinfixexpr(expr->pstate, expr->exprinfix.op, leftcopy, rightcopy);
+                if(!res)
+                {
+                    mc_astexpr_destroy(leftcopy);
+                    mc_astexpr_destroy(rightcopy);
+                    return NULL;
+                }
+            }
+            break;
+        case MC_EXPR_FUNCTIONLITERAL:
+            {
+                char* namecopy;
+                mcptrarray_t* pacopy;
+                mcastcodeblock_t* bodycopy;
+                pacopy = mc_ptrarray_copy(expr->exprlitfunction.params, (mcitemcopyfn_t)mc_astident_copy, (mcitemdestroyfn_t)mc_astident_destroy);
+                bodycopy = mc_astcodeblock_copy(expr->exprlitfunction.body);
+                namecopy = mc_util_strdup(expr->pstate, expr->exprlitfunction.name);
+                if(!pacopy || !bodycopy)
+                {
+                    mc_ptrarray_destroy(pacopy, (mcitemdestroyfn_t)mc_astident_destroy);
+                    mc_astcodeblock_destroy(bodycopy);
+                    mc_allocator_free(expr->pstate, namecopy);
+                    return NULL;
+                }
+                res = mc_astexpr_makeliteralfunction(expr->pstate, pacopy, bodycopy);
+                if(!res)
+                {
+                    mc_ptrarray_destroy(pacopy, (mcitemdestroyfn_t)mc_astident_destroy);
+                    mc_astcodeblock_destroy(bodycopy);
+                    mc_allocator_free(expr->pstate, namecopy);
+                    return NULL;
+                }
+                res->exprlitfunction.name = namecopy;
+            }
+            break;
+        case MC_EXPR_CALL:
+            {
+                mcastexpression_t* fcopy;
+                mcptrarray_t* argscopy;
+                fcopy = mc_astexpr_copy(expr->exprcall.function);
+                argscopy = mc_ptrarray_copy(expr->exprcall.args, (mcitemcopyfn_t)mc_astexpr_copy, (mcitemdestroyfn_t)mc_astexpr_destroy);
+                if(!fcopy || !argscopy)
+                {
+                    mc_astexpr_destroy(fcopy);
+                    mc_ptrarray_destroy(expr->exprcall.args, (mcitemdestroyfn_t)mc_astexpr_destroy);
+                    return NULL;
+                }
+                res = mc_astexpr_makecallexpr(expr->pstate, fcopy, argscopy);
+                if(!res)
+                {
+                    mc_astexpr_destroy(fcopy);
+                    mc_ptrarray_destroy(expr->exprcall.args, (mcitemdestroyfn_t)mc_astexpr_destroy);
+                    return NULL;
+                }
+            }
+            break;
+        case MC_EXPR_INDEX:
+            {
+                mcastexpression_t* leftcopy;
+                mcastexpression_t* indexcopy;
+                leftcopy = mc_astexpr_copy(expr->exprindex.left);
+                indexcopy = mc_astexpr_copy(expr->exprindex.index);
+                if(!leftcopy || !indexcopy)
+                {
+                    mc_astexpr_destroy(leftcopy);
+                    mc_astexpr_destroy(indexcopy);
+                    return NULL;
+                }
+                res = mc_astexpr_makeindexexpr(expr->pstate, leftcopy, indexcopy);
+                if(!res)
+                {
+                    mc_astexpr_destroy(leftcopy);
+                    mc_astexpr_destroy(indexcopy);
+                    return NULL;
+                }
+            }
+            break;
+        case MC_EXPR_ASSIGN:
+            {
+                mcastexpression_t* destcopy;
+                mcastexpression_t* sourcecopy;
+                destcopy = mc_astexpr_copy(expr->exprassign.dest);
+                sourcecopy = mc_astexpr_copy(expr->exprassign.source);
+                if(!destcopy || !sourcecopy)
+                {
+                    mc_astexpr_destroy(destcopy);
+                    mc_astexpr_destroy(sourcecopy);
+                    return NULL;
+                }
+                res = mc_astexpr_makeassignexpr(expr->pstate, destcopy, sourcecopy, expr->exprassign.is_postfix);
+                if(!res)
+                {
+                    mc_astexpr_destroy(destcopy);
+                    mc_astexpr_destroy(sourcecopy);
+                    return NULL;
+                }
+            }
+            break;
+        case MC_EXPR_LOGICAL:
+            {
+                mcastexpression_t* leftcopy;
+                mcastexpression_t* rightcopy;
+                leftcopy = mc_astexpr_copy(expr->exprlogical.left);
+                rightcopy = mc_astexpr_copy(expr->exprlogical.right);
+                if(!leftcopy || !rightcopy)
+                {
+                    mc_astexpr_destroy(leftcopy);
+                    mc_astexpr_destroy(rightcopy);
+                    return NULL;
+                }
+                res = mc_astexpr_makelogicalexpr(expr->pstate, expr->exprlogical.op, leftcopy, rightcopy);
+                if(!res)
+                {
+                    mc_astexpr_destroy(leftcopy);
+                    mc_astexpr_destroy(rightcopy);
+                    return NULL;
+                }
+            }
+            break;
+        case MC_EXPR_TERNARY:
+            {
+                mcastexpression_t* testcopy;
+                mcastexpression_t* iftruecopy;
+                mcastexpression_t* iffalsecopy;
+                testcopy = mc_astexpr_copy(expr->exprternary.tercond);
+                iftruecopy = mc_astexpr_copy(expr->exprternary.teriftrue);
+                iffalsecopy = mc_astexpr_copy(expr->exprternary.teriffalse);
+                if(!testcopy || !iftruecopy || !iffalsecopy)
+                {
+                    mc_astexpr_destroy(testcopy);
+                    mc_astexpr_destroy(iftruecopy);
+                    mc_astexpr_destroy(iffalsecopy);
+                    return NULL;
+                }
+                res = mc_astexpr_maketernaryexpr(expr->pstate, testcopy, iftruecopy, iffalsecopy);
+                if(!res)
+                {
+                    mc_astexpr_destroy(testcopy);
+                    mc_astexpr_destroy(iftruecopy);
+                    mc_astexpr_destroy(iffalsecopy);
+                    return NULL;
+                }
+            }
+            break;
         case MC_EXPR_STMTDEFINE:
             {
                 mcastexpression_t* valuecopy;
-                valuecopy = expression_copy(expr->exprdefine.value);
+                valuecopy = mc_astexpr_copy(expr->exprdefine.value);
                 if(!valuecopy)
                 {
                     return NULL;
                 }
-                res = statement_make_define(expr->pstate, mc_astident_copy(expr->exprdefine.name), valuecopy, expr->exprdefine.assignable);
+                res = mc_astexpr_makedefineexpr(expr->pstate, mc_astident_copy(expr->exprdefine.name), valuecopy, expr->exprdefine.assignable);
                 if(!res)
                 {
-                    expression_destroy(valuecopy);
+                    mc_astexpr_destroy(valuecopy);
                     return NULL;
                 }
             }
@@ -11696,7 +11489,7 @@ TMPSEMISTATIC mcastexpression_t* statement_copy(mcastexpression_t* expr)
                     mc_astcodeblock_destroy(alternativecopy);
                     return NULL;
                 }
-                res = statement_make_if(expr->pstate, casescopy, alternativecopy);
+                res = mc_astexpr_makeifexpr(expr->pstate, casescopy, alternativecopy);
                 if(res)
                 {
                     mc_ptrarray_destroy(casescopy, (mcitemdestroyfn_t)mc_astifcase_destroy);
@@ -11708,15 +11501,15 @@ TMPSEMISTATIC mcastexpression_t* statement_copy(mcastexpression_t* expr)
         case MC_EXPR_STMTRETURN:
             {
                 mcastexpression_t* valuecopy;
-                valuecopy = expression_copy(expr->exprreturnvalue);
+                valuecopy = mc_astexpr_copy(expr->exprreturnvalue);
                 if(!valuecopy)
                 {
                     return NULL;
                 }
-                res = statement_make_return(expr->pstate, valuecopy);
+                res = mc_astexpr_makereturnexpr(expr->pstate, valuecopy);
                 if(!res)
                 {
-                    expression_destroy(valuecopy);
+                    mc_astexpr_destroy(valuecopy);
                     return NULL;
                 }
             }
@@ -11724,15 +11517,15 @@ TMPSEMISTATIC mcastexpression_t* statement_copy(mcastexpression_t* expr)
         case MC_EXPR_STMTEXPRESSION:
             {
                 mcastexpression_t* valuecopy;
-                valuecopy = expression_copy(expr->exprexpression);
+                valuecopy = mc_astexpr_copy(expr->exprexpression);
                 if(!valuecopy)
                 {
                     return NULL;
                 }
-                res = statement_make_expression(expr->pstate, valuecopy);
+                res = mc_astexpr_makeexprstmt(expr->pstate, valuecopy);
                 if(!res)
                 {
-                    expression_destroy(valuecopy);
+                    mc_astexpr_destroy(valuecopy);
                     return NULL;
                 }
             }
@@ -11741,18 +11534,18 @@ TMPSEMISTATIC mcastexpression_t* statement_copy(mcastexpression_t* expr)
             {
                 mcastexpression_t* testcopy;
                 mcastcodeblock_t* bodycopy;
-                testcopy = expression_copy(expr->exprwhileloopstmt.loopcond);
+                testcopy = mc_astexpr_copy(expr->exprwhileloopstmt.loopcond);
                 bodycopy = mc_astcodeblock_copy(expr->exprwhileloopstmt.body);
                 if(!testcopy || !bodycopy)
                 {
-                    expression_destroy(testcopy);
+                    mc_astexpr_destroy(testcopy);
                     mc_astcodeblock_destroy(bodycopy);
                     return NULL;
                 }
-                res = statement_make_while_loop(expr->pstate, testcopy, bodycopy);
+                res = mc_astexpr_makewhileexpr(expr->pstate, testcopy, bodycopy);
                 if(!res)
                 {
-                    expression_destroy(testcopy);
+                    mc_astexpr_destroy(testcopy);
                     mc_astcodeblock_destroy(bodycopy);
                     return NULL;
                 }
@@ -11760,30 +11553,30 @@ TMPSEMISTATIC mcastexpression_t* statement_copy(mcastexpression_t* expr)
             break;
         case MC_EXPR_STMTBREAK:
             {
-                res = statement_make_break(expr->pstate);
+                res = mc_astexpr_makebreakexpr(expr->pstate);
             }
             break;
         case MC_EXPR_STMTCONTINUE:
             {
-                res = statement_make_continue(expr->pstate);
+                res = mc_astexpr_makecontinueexpr(expr->pstate);
             }
             break;
         case MC_EXPR_STMTLOOPFOREACH:
             {
                 mcastexpression_t* sourcecopy;
                 mcastcodeblock_t* bodycopy;
-                sourcecopy = expression_copy(expr->exprforeachloopstmt.source);
+                sourcecopy = mc_astexpr_copy(expr->exprforeachloopstmt.source);
                 bodycopy = mc_astcodeblock_copy(expr->exprforeachloopstmt.body);
                 if(!sourcecopy || !bodycopy)
                 {
-                    expression_destroy(sourcecopy);
+                    mc_astexpr_destroy(sourcecopy);
                     mc_astcodeblock_destroy(bodycopy);
                     return NULL;
                 }
-                res = statement_make_foreach(expr->pstate, mc_astident_copy(expr->exprforeachloopstmt.iterator), sourcecopy, bodycopy);
+                res = mc_astexpr_makeforeachexpr(expr->pstate, mc_astident_copy(expr->exprforeachloopstmt.iterator), sourcecopy, bodycopy);
                 if(!res)
                 {
-                    expression_destroy(sourcecopy);
+                    mc_astexpr_destroy(sourcecopy);
                     mc_astcodeblock_destroy(bodycopy);
                     return NULL;
                 }
@@ -11795,24 +11588,24 @@ TMPSEMISTATIC mcastexpression_t* statement_copy(mcastexpression_t* expr)
                 mcastexpression_t* testcopy;
                 mcastexpression_t* updatecopy;
                 mcastcodeblock_t* bodycopy;
-                initcopy= statement_copy(expr->exprforloopstmt.init);
-                testcopy = expression_copy(expr->exprforloopstmt.loopcond);
-                updatecopy = expression_copy(expr->exprforloopstmt.update);
+                initcopy= mc_astexpr_copy(expr->exprforloopstmt.init);
+                testcopy = mc_astexpr_copy(expr->exprforloopstmt.loopcond);
+                updatecopy = mc_astexpr_copy(expr->exprforloopstmt.update);
                 bodycopy = mc_astcodeblock_copy(expr->exprforloopstmt.body);
                 if(!initcopy || !testcopy || !updatecopy || !bodycopy)
                 {
-                    statement_destroy(initcopy);
-                    expression_destroy(testcopy);
-                    expression_destroy(updatecopy);
+                    mc_astexpr_destroy(initcopy);
+                    mc_astexpr_destroy(testcopy);
+                    mc_astexpr_destroy(updatecopy);
                     mc_astcodeblock_destroy(bodycopy);
                     return NULL;
                 }
-                res = statement_make_for_loop(expr->pstate, initcopy, testcopy, updatecopy, bodycopy);
+                res = mc_astexpr_makeforloopexpr(expr->pstate, initcopy, testcopy, updatecopy, bodycopy);
                 if(!res)
                 {
-                    statement_destroy(initcopy);
-                    expression_destroy(testcopy);
-                    expression_destroy(updatecopy);
+                    mc_astexpr_destroy(initcopy);
+                    mc_astexpr_destroy(testcopy);
+                    mc_astexpr_destroy(updatecopy);
                     mc_astcodeblock_destroy(bodycopy);
                     return NULL;
                 }
@@ -11826,7 +11619,7 @@ TMPSEMISTATIC mcastexpression_t* statement_copy(mcastexpression_t* expr)
                 {
                     return NULL;
                 }
-                res = statement_make_block(expr->pstate, blockcopy);
+                res = mc_astexpr_makeblockexpr(expr->pstate, blockcopy);
                 if(!res)
                 {
                     mc_astcodeblock_destroy(blockcopy);
@@ -11842,7 +11635,7 @@ TMPSEMISTATIC mcastexpression_t* statement_copy(mcastexpression_t* expr)
                 {
                     return NULL;
                 }
-                res = statement_make_import(expr->pstate, pathcopy);
+                res = mc_astexpr_makeimportexpr(expr->pstate, pathcopy);
                 if(!res)
                 {
                     mc_allocator_free(expr->pstate, pathcopy);
@@ -11862,7 +11655,7 @@ TMPSEMISTATIC mcastexpression_t* statement_copy(mcastexpression_t* expr)
                     mc_astident_destroy(erroridentcopy);
                     return NULL;
                 }
-                res = statement_make_recover(expr->pstate, erroridentcopy, bodycopy);
+                res = mc_astexpr_makerecoverexpr(expr->pstate, erroridentcopy, bodycopy);
                 if(!res)
                 {
                     mc_astcodeblock_destroy(bodycopy);
@@ -11881,6 +11674,158 @@ TMPSEMISTATIC mcastexpression_t* statement_copy(mcastexpression_t* expr)
         return NULL;
     }
     res->pos = expr->pos;
+    return res;
+}
+
+TMPSTATIC mcastexpression_t* mc_astexpr_makedefineexpr(mcstate_t* state, mcastident_t* name, mcastexpression_t* value, bool assignable)
+{
+    mcastexpression_t* res;
+    res = mc_ast_makeexpression(state, MC_EXPR_STMTDEFINE);
+    if(!res)
+    {
+        return NULL;
+    }
+    res->exprdefine.name = name;
+    res->exprdefine.value = value;
+    res->exprdefine.assignable = assignable;
+    return res;
+}
+
+TMPSTATIC mcastexpression_t* mc_astexpr_makeifexpr(mcstate_t* state, mcptrarray_t* cases, mcastcodeblock_t* alternative)
+{
+    mcastexpression_t* res;
+    res = mc_ast_makeexpression(state, MC_EXPR_STMTIF);
+    if(!res)
+    {
+        return NULL;
+    }
+    res->exprifstmt.cases = cases;
+    res->exprifstmt.alternative = alternative;
+    return res;
+}
+
+TMPSTATIC mcastexpression_t* mc_astexpr_makereturnexpr(mcstate_t* state, mcastexpression_t* value)
+{
+    mcastexpression_t* res;
+    res = mc_ast_makeexpression(state, MC_EXPR_STMTRETURN);
+    if(!res)
+    {
+        return NULL;
+    }
+    res->exprreturnvalue = value;
+    return res;
+}
+
+TMPSTATIC mcastexpression_t* mc_astexpr_makeexprstmt(mcstate_t* state, mcastexpression_t* value)
+{
+    mcastexpression_t* res;
+    res = mc_ast_makeexpression(state, MC_EXPR_STMTEXPRESSION);
+    if(!res)
+    {
+        return NULL;
+    }
+    res->exprexpression = value;
+    return res;
+}
+
+TMPSTATIC mcastexpression_t* mc_astexpr_makewhileexpr(mcstate_t* state, mcastexpression_t* test, mcastcodeblock_t* body)
+{
+    mcastexpression_t* res;
+    res = mc_ast_makeexpression(state, MC_EXPR_STMTLOOPWHILE);
+    if(!res)
+    {
+        return NULL;
+    }
+    res->exprwhileloopstmt.loopcond = test;
+    res->exprwhileloopstmt.body = body;
+    return res;
+}
+
+TMPSTATIC mcastexpression_t* mc_astexpr_makebreakexpr(mcstate_t* state)
+{
+    mcastexpression_t* res;
+    res = mc_ast_makeexpression(state, MC_EXPR_STMTBREAK);
+    if(!res)
+    {
+        return NULL;
+    }
+    return res;
+}
+
+TMPSTATIC mcastexpression_t* mc_astexpr_makeforeachexpr(mcstate_t* state, mcastident_t* iterator, mcastexpression_t* source, mcastcodeblock_t* body)
+{
+    mcastexpression_t* res;
+    res = mc_ast_makeexpression(state, MC_EXPR_STMTLOOPFOREACH);
+    if(!res)
+    {
+        return NULL;
+    }
+    res->exprforeachloopstmt.iterator = iterator;
+    res->exprforeachloopstmt.source = source;
+    res->exprforeachloopstmt.body = body;
+    return res;
+}
+
+TMPSTATIC mcastexpression_t* mc_astexpr_makeforloopexpr(mcstate_t* state, mcastexpression_t* init, mcastexpression_t* test, mcastexpression_t* update, mcastcodeblock_t* body)
+{
+    mcastexpression_t* res;
+    res = mc_ast_makeexpression(state, MC_EXPR_STMTLOOPFORCLASSIC);
+    if(!res)
+    {
+        return NULL;
+    }
+    res->exprforloopstmt.init = init;
+    res->exprforloopstmt.loopcond = test;
+    res->exprforloopstmt.update = update;
+    res->exprforloopstmt.body = body;
+    return res;
+}
+
+TMPSTATIC mcastexpression_t* mc_astexpr_makecontinueexpr(mcstate_t* state)
+{
+    mcastexpression_t* res;
+    res = mc_ast_makeexpression(state, MC_EXPR_STMTCONTINUE);
+    if(!res)
+    {
+        return NULL;
+    }
+    return res;
+}
+
+TMPSTATIC mcastexpression_t* mc_astexpr_makeblockexpr(mcstate_t* state, mcastcodeblock_t* block)
+{
+    mcastexpression_t* res;
+    res = mc_ast_makeexpression(state, MC_EXPR_STMTBLOCK);
+    if(!res)
+    {
+        return NULL;
+    }
+    res->exprblockstmt = block;
+    return res;
+}
+
+TMPSTATIC mcastexpression_t* mc_astexpr_makeimportexpr(mcstate_t* state, char* path)
+{
+    mcastexpression_t* res;
+    res = mc_ast_makeexpression(state, MC_EXPR_STMTIMPORT);
+    if(!res)
+    {
+        return NULL;
+    }
+    res->exprimportstmt.path = path;
+    return res;
+}
+
+TMPSTATIC mcastexpression_t* mc_astexpr_makerecoverexpr(mcstate_t* state, mcastident_t* eid, mcastcodeblock_t* body)
+{
+    mcastexpression_t* res;
+    res = mc_ast_makeexpression(state, MC_EXPR_STMTRECOVER);
+    if(!res)
+    {
+        return NULL;
+    }
+    res->exprrecoverstmt.errident = eid;
+    res->exprrecoverstmt.body = body;
     return res;
 }
 
@@ -11903,7 +11848,7 @@ TMPSTATIC void mc_astcodeblock_destroy(mcastcodeblock_t* block)
     {
         return;
     }
-    mc_ptrarray_destroy(block->statements, (mcitemdestroyfn_t)statement_destroy);
+    mc_ptrarray_destroy(block->statements, (mcitemdestroyfn_t)mc_astexpr_destroy);
     mc_allocator_free(block->pstate, block);
 }
 
@@ -11915,7 +11860,7 @@ TMPSTATIC mcastcodeblock_t* mc_astcodeblock_copy(mcastcodeblock_t* block)
     {
         return NULL;
     }
-    statementscopy = mc_ptrarray_copy(block->statements, (mcitemcopyfn_t)statement_copy, (mcitemdestroyfn_t)statement_destroy);
+    statementscopy = mc_ptrarray_copy(block->statements, (mcitemcopyfn_t)mc_astexpr_copy, (mcitemdestroyfn_t)mc_astexpr_destroy);
     if(!statementscopy)
     {
         return NULL;
@@ -11923,7 +11868,7 @@ TMPSTATIC mcastcodeblock_t* mc_astcodeblock_copy(mcastcodeblock_t* block)
     res = mc_astcodeblock_make(block->pstate, statementscopy);
     if(!res)
     {
-        mc_ptrarray_destroy(statementscopy, (mcitemdestroyfn_t)statement_destroy);
+        mc_ptrarray_destroy(statementscopy, (mcitemdestroyfn_t)mc_astexpr_destroy);
         return NULL;
     }
     return res;
@@ -11997,7 +11942,7 @@ TMPSTATIC void mc_astifcase_destroy(mcastifcase_t* cond)
     {
         return;
     }
-    expression_destroy(cond->ifcond);
+    mc_astexpr_destroy(cond->ifcond);
     mc_astcodeblock_destroy(cond->consequence);
     mc_allocator_free(cond->pstate, cond);
 }
@@ -12014,7 +11959,7 @@ TMPSTATIC mcastifcase_t* mc_astifcase_copy(mcastifcase_t* ifcase)
     testcopy = NULL;
     consequencecopy = NULL;
     ifcasecopy = NULL;
-    testcopy = expression_copy(ifcase->ifcond);
+    testcopy = mc_astexpr_copy(ifcase->ifcond);
     if(!testcopy)
     {
         goto err;
@@ -12031,7 +11976,7 @@ TMPSTATIC mcastifcase_t* mc_astifcase_copy(mcastifcase_t* ifcase)
     }
     return ifcasecopy;
 err:
-    expression_destroy(testcopy);
+    mc_astexpr_destroy(testcopy);
     mc_astcodeblock_destroy(consequencecopy);
     mc_astifcase_destroy(ifcasecopy);
     return NULL;
@@ -12060,7 +12005,7 @@ TMPSTATIC void mc_astprint_stmtlist(mcprintstate_t* pr, mcptrarray_t* statements
     for(i = 0; i < count; i++)
     {
         expr = (mcastexpression_t*)mc_ptrarray_get(statements, i);
-        mc_astprint_statement(expr, pr);
+        mc_astprint_expression(pr, expr);
         if(i < (count - 1))
         {
             mc_printer_puts(pr, "\n");
@@ -12068,385 +12013,370 @@ TMPSTATIC void mc_astprint_stmtlist(mcprintstate_t* pr, mcptrarray_t* statements
     }
 }
 
-TMPSEMISTATIC void mc_astprint_statement(mcastexpression_t* expr, mcprintstate_t* buf)
-{
-    switch(expr->type)
-    {
-        case MC_EXPR_STMTDEFINE:
-        {
-            define_statement_t* defstmt = &expr->exprdefine;
-            if(expr->exprdefine.assignable)
-            {
-                mc_printer_puts(buf, "var ");
-            }
-            else
-            {
-                mc_printer_puts(buf, "const ");
-            }
-            mc_printer_puts(buf, defstmt->name->value);
-            mc_printer_puts(buf, " = ");
 
-            if(defstmt->value)
-            {
-                mc_astprint_expression(defstmt->value, buf);
-            }
-
-            break;
-        }
-        case MC_EXPR_STMTIF:
-            {
-                int i;
-                mcastifcase_t* ifcase = (mcastifcase_t*)mc_ptrarray_get(expr->exprifstmt.cases, 0);
-                mc_printer_puts(buf, "if (");
-                mc_astprint_expression(ifcase->ifcond, buf);
-                mc_printer_puts(buf, ") ");
-                mc_astprint_codeblock(ifcase->consequence, buf);
-                for(i = 1; i < mc_ptrarray_count(expr->exprifstmt.cases); i++)
-                {
-                    mcastifcase_t* elifcase = (mcastifcase_t*)mc_ptrarray_get(expr->exprifstmt.cases, i);
-                    mc_printer_puts(buf, " elif (");
-                    mc_astprint_expression(elifcase->ifcond, buf);
-                    mc_printer_puts(buf, ") ");
-                    mc_astprint_codeblock(elifcase->consequence, buf);
-                }
-                if(expr->exprifstmt.alternative)
-                {
-                    mc_printer_puts(buf, " else ");
-                    mc_astprint_codeblock(expr->exprifstmt.alternative, buf);
-                }
-            }
-            break;
-        case MC_EXPR_STMTRETURN:
-        {
-            mc_printer_puts(buf, "return ");
-            if(expr->exprreturnvalue)
-            {
-                mc_astprint_expression(expr->exprreturnvalue, buf);
-            }
-            break;
-        }
-        case MC_EXPR_STMTEXPRESSION:
-        {
-            if(expr->exprexpression)
-            {
-                mc_astprint_expression(expr->exprexpression, buf);
-            }
-            break;
-        }
-        case MC_EXPR_STMTLOOPWHILE:
-        {
-            mc_printer_puts(buf, "while (");
-            mc_astprint_expression(expr->exprwhileloopstmt.loopcond, buf);
-            mc_printer_puts(buf, ")");
-            mc_astprint_codeblock(expr->exprwhileloopstmt.body, buf);
-            break;
-        }
-        case MC_EXPR_STMTLOOPFORCLASSIC:
-        {
-            mc_printer_puts(buf, "for (");
-            if(expr->exprforloopstmt.init)
-            {
-                mc_astprint_statement(expr->exprforloopstmt.init, buf);
-                mc_printer_puts(buf, " ");
-            }
-            else
-            {
-                mc_printer_puts(buf, ";");
-            }
-            if(expr->exprforloopstmt.loopcond)
-            {
-                mc_astprint_expression(expr->exprforloopstmt.loopcond, buf);
-                mc_printer_puts(buf, "; ");
-            }
-            else
-            {
-                mc_printer_puts(buf, ";");
-            }
-            if(expr->exprforloopstmt.update)
-            {
-                mc_astprint_expression(expr->exprforloopstmt.loopcond, buf);
-            }
-            mc_printer_puts(buf, ")");
-            mc_astprint_codeblock(expr->exprforloopstmt.body, buf);
-            break;
-        }
-        case MC_EXPR_STMTLOOPFOREACH:
-        {
-            mc_printer_puts(buf, "for (");
-            mc_printer_printf(buf, "%s", expr->exprforeachloopstmt.iterator->value);
-            mc_printer_puts(buf, " in ");
-            mc_astprint_expression(expr->exprforeachloopstmt.source, buf);
-            mc_printer_puts(buf, ")");
-            mc_astprint_codeblock(expr->exprforeachloopstmt.body, buf);
-            break;
-        }
-        case MC_EXPR_STMTBLOCK:
-        {
-            mc_astprint_codeblock(expr->exprblockstmt, buf);
-            break;
-        }
-        case MC_EXPR_STMTBREAK:
-        {
-            mc_printer_puts(buf, "break");
-            break;
-        }
-        case MC_EXPR_STMTCONTINUE:
-        {
-            mc_printer_puts(buf, "continue");
-            break;
-        }
-        case MC_EXPR_STMTIMPORT:
-        {
-            mc_printer_printf(buf, "import \"%s\"", expr->exprimportstmt.path);
-            break;
-        }
-        case MC_EXPR_NONE:
-        {
-            mc_printer_puts(buf, "MC_EXPR_NONE");
-            break;
-        }
-        case MC_EXPR_STMTRECOVER:
-        {
-            mc_printer_printf(buf, "recover (%s)", expr->exprrecoverstmt.errident->value);
-            mc_astprint_codeblock(expr->exprrecoverstmt.body, buf);
-            break;
-        }
-        default:
-            break;
-    }
-}
-
-TMPSEMISTATIC void mc_astprint_expression(mcastexpression_t* expr, mcprintstate_t* buf)
+TMPSEMISTATIC void mc_astprint_expression(mcprintstate_t* pr, mcastexpression_t* expr)
 {
     switch(expr->type)
     {
         case MC_EXPR_IDENT:
         {
-            mc_printer_puts(buf, expr->exprident->value);
+            mc_printer_puts(pr, expr->exprident->value);
             break;
         }
         case MC_EXPR_NUMBERLITERAL:
         {
-            mc_printer_printf(buf, "%1.17g", expr->exprlitnumber);
+            mc_printer_printf(pr, "%1.17g", expr->exprlitnumber);
             break;
         }
         case MC_EXPR_BOOLLITERAL:
         {
-            mc_printer_printf(buf, "%s", expr->exprlitbool ? "true" : "false");
+            mc_printer_printf(pr, "%s", expr->exprlitbool ? "true" : "false");
             break;
         }
         case MC_EXPR_STRINGLITERAL:
         {
-            mc_printer_printescapedstring(buf, expr->exprlitstring.data, expr->exprlitstring.length);
+            mc_printer_printescapedstring(pr, expr->exprlitstring.data, expr->exprlitstring.length);
             break;
         }
         case MC_EXPR_NULLLITERAL:
         {
-            mc_printer_puts(buf, "null");
+            mc_printer_puts(pr, "null");
             break;
         }
         case MC_EXPR_ARRAYLITERAL:
             {
                 int i;
-                mc_printer_puts(buf, "[");
+                mc_printer_puts(pr, "[");
                 for(i = 0; i < mc_ptrarray_count(expr->exprlitarray.litarritems); i++)
                 {
                     mcastexpression_t* arrexpr = (mcastexpression_t*)mc_ptrarray_get(expr->exprlitarray.litarritems, i);
-                    mc_astprint_expression(arrexpr, buf);
+                    mc_astprint_expression(pr, arrexpr);
                     if(i < (mc_ptrarray_count(expr->exprlitarray.litarritems) - 1))
                     {
-                        mc_printer_puts(buf, ", ");
+                        mc_printer_puts(pr, ", ");
                     }
                 }
-                mc_printer_puts(buf, "]");
+                mc_printer_puts(pr, "]");
             }
             break;
         case MC_EXPR_MAPLITERAL:
-        {
-            int i;
-            mcastliteralmap_t* map;
-            map = &expr->exprlitmap;
-            mc_printer_puts(buf, "{");
-            for(i = 0; i < mc_ptrarray_count(map->keys); i++)
             {
-                mcastexpression_t* keyexpr = (mcastexpression_t*)mc_ptrarray_get(map->keys, i);
-                mcastexpression_t* valexpr = (mcastexpression_t*)mc_ptrarray_get(map->values, i);
-
-                mc_astprint_expression(keyexpr, buf);
-                mc_printer_puts(buf, " : ");
-                mc_astprint_expression(valexpr, buf);
-
-                if(i < (mc_ptrarray_count(map->keys) - 1))
+                int i;
+                mcastexpression_t* keyexpr;
+                mcastexpression_t* valexpr;
+                mcastliteralmap_t* map;
+                map = &expr->exprlitmap;
+                mc_printer_puts(pr, "{");
+                for(i = 0; i < mc_ptrarray_count(map->keys); i++)
                 {
-                    mc_printer_puts(buf, ", ");
+                    keyexpr = (mcastexpression_t*)mc_ptrarray_get(map->keys, i);
+                    valexpr = (mcastexpression_t*)mc_ptrarray_get(map->values, i);
+                    mc_astprint_expression(pr, keyexpr);
+                    mc_printer_puts(pr, " : ");
+                    mc_astprint_expression(pr, valexpr);
+                    if(i < (mc_ptrarray_count(map->keys) - 1))
+                    {
+                        mc_printer_puts(pr, ", ");
+                    }
                 }
+                mc_printer_puts(pr, "}");
             }
-            mc_printer_puts(buf, "}");
             break;
-        }
         case MC_EXPR_PREFIX:
-        {
-            mc_printer_puts(buf, "(");
-            mc_printer_puts(buf, operator_to_string(expr->exprinfix.op));
-            mc_astprint_expression(expr->exprprefix.right, buf);
-            mc_printer_puts(buf, ")");
+            {
+                mc_printer_puts(pr, "(");
+                mc_printer_puts(pr, operator_to_string(expr->exprinfix.op));
+                mc_astprint_expression(pr, expr->exprprefix.right);
+                mc_printer_puts(pr, ")");
+            }
             break;
-        }
         case MC_EXPR_INFIX:
-        {
-            mc_printer_puts(buf, "(");
-            mc_astprint_expression(expr->exprinfix.left, buf);
-            mc_printer_puts(buf, " ");
-            mc_printer_puts(buf, operator_to_string(expr->exprinfix.op));
-            mc_printer_puts(buf, " ");
-            mc_astprint_expression(expr->exprinfix.right, buf);
-            mc_printer_puts(buf, ")");
+            {
+                mc_printer_puts(pr, "(");
+                mc_astprint_expression(pr, expr->exprinfix.left);
+                mc_printer_puts(pr, " ");
+                mc_printer_puts(pr, operator_to_string(expr->exprinfix.op));
+                mc_printer_puts(pr, " ");
+                mc_astprint_expression(pr, expr->exprinfix.right);
+                mc_printer_puts(pr, ")");
+            }
             break;
-        }
         case MC_EXPR_FUNCTIONLITERAL:
-        {
-            int i;
-            mcastliteralfunction_t* fn = &expr->exprlitfunction;
-            mc_printer_puts(buf, "function");
-            mc_printer_puts(buf, "(");
-            for(i = 0; i < mc_ptrarray_count(fn->params); i++)
             {
-                mcastident_t* param = (mcastident_t*)mc_ptrarray_get(fn->params, i);
-                mc_printer_puts(buf, param->value);
-                if(i < (mc_ptrarray_count(fn->params) - 1))
+                int i;
+                mcastliteralfunction_t* fn;
+                fn = &expr->exprlitfunction;
+                mc_printer_puts(pr, "function");
+                mc_printer_puts(pr, "(");
+                for(i = 0; i < mc_ptrarray_count(fn->params); i++)
                 {
-                    mc_printer_puts(buf, ", ");
+                    mcastident_t* param = (mcastident_t*)mc_ptrarray_get(fn->params, i);
+                    mc_printer_puts(pr, param->value);
+                    if(i < (mc_ptrarray_count(fn->params) - 1))
+                    {
+                        mc_printer_puts(pr, ", ");
+                    }
                 }
+                mc_printer_puts(pr, ") ");
+                mc_astprint_codeblock(pr, fn->body);
             }
-            mc_printer_puts(buf, ") ");
-
-            mc_astprint_codeblock(fn->body, buf);
-
             break;
-        }
         case MC_EXPR_CALL:
-        {
-            int i;
-            call_expression_t* ce = &expr->exprcall;
-
-            mc_astprint_expression(ce->function, buf);
-
-            mc_printer_puts(buf, "(");
-            for(i = 0; i < mc_ptrarray_count(ce->args); i++)
             {
-                mcastexpression_t* arg = (mcastexpression_t*)mc_ptrarray_get(ce->args, i);
-                mc_astprint_expression(arg, buf);
-                if(i < (mc_ptrarray_count(ce->args) - 1))
+                int i;
+                call_expression_t* ce;
+                ce = &expr->exprcall;
+                mc_astprint_expression(pr, ce->function);
+                mc_printer_puts(pr, "(");
+                for(i = 0; i < mc_ptrarray_count(ce->args); i++)
                 {
-                    mc_printer_puts(buf, ", ");
+                    mcastexpression_t* arg = (mcastexpression_t*)mc_ptrarray_get(ce->args, i);
+                    mc_astprint_expression(pr, arg);
+                    if(i < (mc_ptrarray_count(ce->args) - 1))
+                    {
+                        mc_printer_puts(pr, ", ");
+                    }
+                }
+                mc_printer_puts(pr, ")");
+            }
+            break;
+
+        case MC_EXPR_INDEX:
+            {
+                mc_printer_puts(pr, "(");
+                mc_astprint_expression(pr, expr->exprindex.left);
+                mc_printer_puts(pr, "[");
+                mc_astprint_expression(pr, expr->exprindex.index);
+                mc_printer_puts(pr, "])");
+            }
+            break;
+        case MC_EXPR_ASSIGN:
+            {
+                mc_astprint_expression(pr, expr->exprassign.dest);
+                mc_printer_puts(pr, " = ");
+                mc_astprint_expression(pr, expr->exprassign.source);
+            }
+            break;
+        case MC_EXPR_LOGICAL:
+            {
+                mc_astprint_expression(pr, expr->exprlogical.left);
+                mc_printer_puts(pr, " ");
+                mc_printer_puts(pr, operator_to_string(expr->exprinfix.op));
+                mc_printer_puts(pr, " ");
+                mc_astprint_expression(pr, expr->exprlogical.right);
+            }
+            break;
+        case MC_EXPR_TERNARY:
+            {
+                mc_astprint_expression(pr, expr->exprternary.tercond);
+                mc_printer_puts(pr, " ? ");
+                mc_astprint_expression(pr, expr->exprternary.teriftrue);
+                mc_printer_puts(pr, " : ");
+                mc_astprint_expression(pr, expr->exprternary.teriffalse);
+            }
+            break;
+        case MC_EXPR_STMTDEFINE:
+            {
+                define_statement_t* defstmt;
+                defstmt = &expr->exprdefine;
+                if(expr->exprdefine.assignable)
+                {
+                    mc_printer_puts(pr, "var ");
+                }
+                else
+                {
+                    mc_printer_puts(pr, "const ");
+                }
+                mc_printer_puts(pr, defstmt->name->value);
+                mc_printer_puts(pr, " = ");
+                if(defstmt->value)
+                {
+                    mc_astprint_expression(pr, defstmt->value);
                 }
             }
-            mc_printer_puts(buf, ")");
-
             break;
-        }
-        case MC_EXPR_INDEX:
-        {
-            mc_printer_puts(buf, "(");
-            mc_astprint_expression(expr->exprindex.left, buf);
-            mc_printer_puts(buf, "[");
-            mc_astprint_expression(expr->exprindex.index, buf);
-            mc_printer_puts(buf, "])");
+        case MC_EXPR_STMTIF:
+            {
+                int i;
+                mcastifcase_t* ifcase;
+                ifcase = (mcastifcase_t*)mc_ptrarray_get(expr->exprifstmt.cases, 0);
+                mc_printer_puts(pr, "if (");
+                mc_astprint_expression(pr, ifcase->ifcond);
+                mc_printer_puts(pr, ") ");
+                mc_astprint_codeblock(pr, ifcase->consequence);
+                for(i = 1; i < mc_ptrarray_count(expr->exprifstmt.cases); i++)
+                {
+                    mcastifcase_t* elifcase = (mcastifcase_t*)mc_ptrarray_get(expr->exprifstmt.cases, i);
+                    mc_printer_puts(pr, " elif (");
+                    mc_astprint_expression(pr, elifcase->ifcond);
+                    mc_printer_puts(pr, ") ");
+                    mc_astprint_codeblock(pr, elifcase->consequence);
+                }
+                if(expr->exprifstmt.alternative)
+                {
+                    mc_printer_puts(pr, " else ");
+                    mc_astprint_codeblock(pr, expr->exprifstmt.alternative);
+                }
+            }
             break;
-        }
-        case MC_EXPR_ASSIGN:
-        {
-            mc_astprint_expression(expr->exprassign.dest, buf);
-            mc_printer_puts(buf, " = ");
-            mc_astprint_expression(expr->exprassign.source, buf);
+        case MC_EXPR_STMTRETURN:
+            {
+                mc_printer_puts(pr, "return ");
+                if(expr->exprreturnvalue)
+                {
+                    mc_astprint_expression(pr, expr->exprreturnvalue);
+                }
+            }
             break;
-        }
-        case MC_EXPR_LOGICAL:
-        {
-            mc_astprint_expression(expr->exprlogical.left, buf);
-            mc_printer_puts(buf, " ");
-            mc_printer_puts(buf, operator_to_string(expr->exprinfix.op));
-            mc_printer_puts(buf, " ");
-            mc_astprint_expression(expr->exprlogical.right, buf);
+        case MC_EXPR_STMTEXPRESSION:
+            {
+                if(expr->exprexpression)
+                {
+                    mc_astprint_expression(pr, expr->exprexpression);
+                }
+            }
             break;
-        }
-        case MC_EXPR_TERNARY:
-        {
-            mc_astprint_expression(expr->exprternary.tercond, buf);
-            mc_printer_puts(buf, " ? ");
-            mc_astprint_expression(expr->exprternary.teriftrue, buf);
-            mc_printer_puts(buf, " : ");
-            mc_astprint_expression(expr->exprternary.teriffalse, buf);
+        case MC_EXPR_STMTLOOPWHILE:
+            {
+                mc_printer_puts(pr, "while (");
+                mc_astprint_expression(pr, expr->exprwhileloopstmt.loopcond);
+                mc_printer_puts(pr, ")");
+                mc_astprint_codeblock(pr, expr->exprwhileloopstmt.body);
+            }
             break;
-        }
+        case MC_EXPR_STMTLOOPFORCLASSIC:
+            {
+                mc_printer_puts(pr, "for (");
+                if(expr->exprforloopstmt.init)
+                {
+                    mc_astprint_expression(pr, expr->exprforloopstmt.init);
+                    mc_printer_puts(pr, " ");
+                }
+                else
+                {
+                    mc_printer_puts(pr, ";");
+                }
+                if(expr->exprforloopstmt.loopcond)
+                {
+                    mc_astprint_expression(pr, expr->exprforloopstmt.loopcond);
+                    mc_printer_puts(pr, "; ");
+                }
+                else
+                {
+                    mc_printer_puts(pr, ";");
+                }
+                if(expr->exprforloopstmt.update)
+                {
+                    mc_astprint_expression(pr, expr->exprforloopstmt.loopcond);
+                }
+                mc_printer_puts(pr, ")");
+                mc_astprint_codeblock(pr, expr->exprforloopstmt.body);
+            }
+            break;
+        case MC_EXPR_STMTLOOPFOREACH:
+            {
+                mc_printer_puts(pr, "for (");
+                mc_printer_printf(pr, "%s", expr->exprforeachloopstmt.iterator->value);
+                mc_printer_puts(pr, " in ");
+                mc_astprint_expression(pr, expr->exprforeachloopstmt.source);
+                mc_printer_puts(pr, ")");
+                mc_astprint_codeblock(pr, expr->exprforeachloopstmt.body);
+            }
+            break;
+        case MC_EXPR_STMTBLOCK:
+            {
+                mc_astprint_codeblock(pr, expr->exprblockstmt);
+            }
+            break;
+        case MC_EXPR_STMTBREAK:
+            {
+                mc_printer_puts(pr, "break");
+            }
+            break;
+        case MC_EXPR_STMTCONTINUE:
+            {
+                mc_printer_puts(pr, "continue");
+            }
+            break;
+        case MC_EXPR_STMTIMPORT:
+            {
+                mc_printer_printf(pr, "import \"%s\"", expr->exprimportstmt.path);
+            }
+            break;
         case MC_EXPR_NONE:
-        {
-            mc_printer_puts(buf, "MC_EXPR_NONE");
+            {
+                mc_printer_puts(pr, "MC_EXPR_NONE");
+            }
             break;
-        }
+        case MC_EXPR_STMTRECOVER:
+            {
+                mc_printer_printf(pr, "recover (%s)", expr->exprrecoverstmt.errident->value);
+                mc_astprint_codeblock(pr, expr->exprrecoverstmt.body);
+            }
+            break;
         default:
             break;
     }
 }
 
-TMPSTATIC void mc_astprint_codeblock(mcastcodeblock_t* expr, mcprintstate_t* buf)
+TMPSTATIC void mc_astprint_codeblock(mcprintstate_t* pr, mcastcodeblock_t* expr)
 {
     int i;
     mcastexpression_t* istmt;
-    mc_printer_puts(buf, "{ ");
+    mc_printer_puts(pr, "{ ");
     for(i = 0; i < mc_ptrarray_count(expr->statements); i++)
     {
         istmt = (mcastexpression_t*)mc_ptrarray_get(expr->statements, i);
-        mc_astprint_statement(istmt, buf);
-        mc_printer_puts(buf, "\n");
+        mc_astprint_expression(pr, istmt);
+        mc_printer_puts(pr, "\n");
     }
-    mc_printer_puts(buf, " }");
+    mc_printer_puts(pr, " }");
 }
 
 TMPSTATIC const char* operator_to_string(mcastmathoptype_t op)
 {
     switch(op)
     {
-        case OPERATOR_NONE:
-            return "OPERATOR_NONE";
-        case OPERATOR_ASSIGN:
+        case MC_MATHOP_NONE:
+            return "MC_MATHOP_NONE";
+        case MC_MATHOP_ASSIGN:
             return "=";
-        case OPERATOR_PLUS:
+        case MC_MATHOP_PLUS:
             return "+";
-        case OPERATOR_MINUS:
+        case MC_MATHOP_MINUS:
             return "-";
-        case OPERATOR_BANG:
+        case MC_MATHOP_BANG:
             return "!";
-        case OPERATOR_ASTERISK:
+        case MC_MATHOP_ASTERISK:
             return "*";
-        case OPERATOR_SLASH:
+        case MC_MATHOP_SLASH:
             return "/";
-        case OPERATOR_LT:
+        case MC_MATHOP_LT:
             return "<";
-        case OPERATOR_GT:
+        case MC_MATHOP_GT:
             return ">";
-        case OPERATOR_EQ:
+        case MC_MATHOP_EQ:
             return "==";
-        case OPERATOR_NOT_EQ:
+        case MC_MATHOP_NOTEQ:
             return "!=";
-        case OPERATOR_MODULUS:
+        case MC_MATHOP_MODULUS:
             return "%";
-        case OPERATOR_LOGICAL_AND:
+        case MC_MATHOP_LOGICALAND:
             return "&&";
-        case OPERATOR_LOGICAL_OR:
+        case MC_MATHOP_LOGICALOR:
             return "||";
-        case OPERATOR_BIT_AND:
+        case MC_MATHOP_BITAND:
             return "&";
-        case OPERATOR_BIT_OR:
+        case MC_MATHOP_BITOR:
             return "|";
-        case OPERATOR_BIT_XOR:
+        case MC_MATHOP_BITXOR:
             return "^";
-        case OPERATOR_LSHIFT:
+        case MC_MATHOP_LSHIFT:
             return "<<";
-        case OPERATOR_RSHIFT:
+        case MC_MATHOP_RSHIFT:
             return ">>";
         default:
-            return "OPERATOR_UNKNOWN";
+            return "MC_MATHOP_UNKNOWN";
     }
 }
 
@@ -12533,8 +12463,8 @@ TMPUNUSED bool mc_args_check(mcstate_t* state, bool generateerror, int argc, mcv
         {
             if(generateerror)
             {
-                typestr = object_get_type_name(type);
-                expectedtypestr = object_get_type_union_name(state, expectedtype);
+                typestr = mc_valtype_getname(type);
+                expectedtypestr = mc_valtype_getunionname(state, expectedtype);
                 if(!expectedtypestr)
                 {
                     return false;
@@ -12556,7 +12486,7 @@ TMPUNUSED mcvalue_t cfn_binnot(mcstate_t* state, void* data, int argc, mcvalue_t
     (void)state;
     (void)data;
     (void)argc;
-    dn = args[0].valnumber;
+    dn = args[0].uval.valnumber;
     iv = (int64_t)dn;
     iv = ~iv;
     return mc_value_makenumber(iv);
@@ -12565,12 +12495,20 @@ TMPUNUSED mcvalue_t cfn_binnot(mcstate_t* state, void* data, int argc, mcvalue_t
 TMPUNUSED mcvalue_t cfn_ord(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     char ch;
+    size_t len;
     const char* str;
+    mcvalue_t sval;
     (void)state;
     (void)data;
     (void)argc;
-    str = args[0].objdatahandle->valstring.data;
-    ch = str[0];
+    sval = args[0];
+    str = mc_valstring_getdata(sval);
+    len = mc_valstring_getlength(sval);
+    ch = 0;
+    if(len > 0)
+    {
+        ch = str[0];
+    }
     return mc_value_makenumber(ch);
 }
 
@@ -12597,7 +12535,7 @@ TMPUNUSED mcvalue_t cfn_arrayjoin(mcstate_t* state, void* data, int argc, mcvalu
     for(i=1; i<alen; i++)
     {
         item = mc_valarray_getvalueat(array, i);
-        mc_printer_printobject(item, &pr, false);
+        mc_printer_printobject(&pr, item);
     }
     str = pr.data;
     slen = pr.len;
@@ -13272,7 +13210,7 @@ TMPSTATIC mcvalue_t cfn_test_check_args(mcstate_t* state, void *data, int argc, 
                   MC_OBJ_MAP,
                   MC_OBJ_STRING,
                   MC_OBJ_NUMBER | MC_OBJ_BOOL,
-                  MC_OBJ_FUNCTION | MC_OBJ_NATIVE_FUNCTION,
+                  MC_OBJ_FUNCSCRIPT | MC_OBJ_FUNCNATIVE,
                   MC_OBJ_ANY))
     {
         return mc_value_makenull();
@@ -13351,7 +13289,7 @@ TMPSTATIC mcvalue_t cfn_print(mcstate_t* state, void* data, int argc, mcvalue_t*
     for(i = 0; i < argc; i++)
     {
         arg = args[i];
-        mc_printer_printobject(arg, &pr, false);
+        mc_printer_printobject(&pr, arg);
     }
     mc_printer_destroy(&pr);
     return mc_value_makenull();
@@ -13430,7 +13368,34 @@ TMPSTATIC mcvalue_t cfn_tostring(mcstate_t* state, void* data, int argc, mcvalue
     (void)data;
     arg = args[0];
     mc_printer_init(&pr, state, 5, NULL, true);
-    mc_printer_printobject(arg, &pr, false);
+    mc_printer_printobject(&pr, arg);
+    if(mc_printer_failed(&pr))
+    {
+        mc_printer_destroy(&pr);
+        return mc_value_makenull();
+    }
+    resstr = mc_printer_getstring(&pr);
+    reslen = mc_printer_getlength(&pr);
+    res = mc_value_makestringlen(state, resstr, reslen);
+    mc_printer_destroy(&pr);
+    return res;
+}
+
+TMPSTATIC mcvalue_t cfn_jsonstringify(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    int reslen;
+    const char* resstr;
+    mcvalue_t arg;
+    mcvalue_t res;
+    mcprintstate_t pr;
+    (void)state;
+    (void)argc;
+    (void)data;
+    arg = args[0];
+    mc_printer_init(&pr, state, 5, NULL, true);
+    pr.config.verbosefunc = false;
+    pr.config.quotstring = true;
+    mc_printer_printobject(&pr, arg);
     if(mc_printer_failed(&pr))
     {
         mc_printer_destroy(&pr);
@@ -13531,8 +13496,8 @@ TMPSTATIC mcvalue_t cfn_range(mcstate_t* state, void* data, int argc, mcvalue_t*
         type = args[i].type;
         if(type != MC_OBJ_NUMBER)
         {
-            typestr = object_get_type_name(type);
-            expectedstr = object_get_type_name(MC_OBJ_NUMBER);
+            typestr = mc_valtype_getname(type);
+            expectedstr = mc_valtype_getname(MC_OBJ_NUMBER);
             mc_state_pusherrorf(state, MC_ERROR_RUNTIME, srcposinvalid, "Invalid argument %d passed to range, got %s instead of %s", i, typestr, expectedstr);
             return mc_value_makenull();
         }
@@ -13691,7 +13656,7 @@ TMPSTATIC mcvalue_t cfn_remove(mcstate_t* state, void* data, int argc, mcvalue_t
     for(i = 0; i < mc_valarray_getlength(args[0]); i++)
     {
         obj = mc_valarray_getvalueat(args[0], i);
-        if(object_equals(obj, args[1]))
+        if(mc_value_equals(obj, args[1]))
         {
             ix = i;
             break;
@@ -13768,7 +13733,7 @@ TMPSTATIC mcvalue_t cfn_assert(mcstate_t* state, void* data, int argc, mcvalue_t
     {
         return mc_value_makenull();
     }
-    if(!object_get_bool(args[0]))
+    if(!mc_value_getbool(args[0]))
     {
         mc_errlist_push(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "assertion failed");
         return mc_value_makenull();
@@ -13908,7 +13873,7 @@ TMPSTATIC mcvalue_t cfn_slice(mcstate_t* state, void* data, int argc, mcvalue_t*
         mc_string_setlength(res, reslen);
         return res;
     }
-    typestr = object_get_type_name(argtype);
+    typestr = mc_valtype_getname(argtype);
     mc_state_pusherrorf(state, MC_ERROR_RUNTIME, srcposinvalid, "Invalid argument 0 passed to slice, got %s instead", typestr);
     return mc_value_makenull();
 }
@@ -13994,7 +13959,7 @@ TMPSTATIC mcvalue_t cfn_isfunction(mcstate_t* state, void* data, int argc, mcval
     {
         return mc_value_makenull();
     }
-    return mc_value_makebool(mc_value_gettype(args[0]) == MC_OBJ_FUNCTION);
+    return mc_value_makebool(mc_value_gettype(args[0]) == MC_OBJ_FUNCSCRIPT);
 }
 
 TMPSTATIC mcvalue_t cfn_isexternal(mcstate_t* state, void* data, int argc, mcvalue_t* args)
@@ -14030,7 +13995,7 @@ TMPSTATIC mcvalue_t cfn_isnative_function(mcstate_t* state, void* data, int argc
     {
         return mc_value_makenull();
     }
-    return mc_value_makebool(mc_value_gettype(args[0]) == MC_OBJ_NATIVE_FUNCTION);
+    return mc_value_makebool(mc_value_gettype(args[0]) == MC_OBJ_FUNCNATIVE);
 }
 
 TMPSTATIC mcvalue_t cfn_sqrt(mcstate_t* state, void* data, int argc, mcvalue_t* args)
@@ -14257,7 +14222,7 @@ static struct
     { "abs", cfn_abs },
 };
 
-TMPSTATIC int builtins_count()
+TMPSTATIC int builtins_count(void)
 {
     return MC_UTIL_STATICARRAYSIZE(gnativefunctions);
 }
@@ -14279,9 +14244,9 @@ TMPSTATIC bool code_read_operands(mcopdefinition_t* def, const uint8_t* instr, u
     int operandwidth;
     uint64_t operand;
     offset = 0;
-    for(i = 0; i < def->num_operands; i++)
+    for(i = 0; i < def->numoperands; i++)
     {
-        operandwidth = def->operand_widths[i];
+        operandwidth = def->operandwidths[i];
         switch(operandwidth)
         {
             case 1:
@@ -14472,23 +14437,23 @@ TMPSTATIC bool kg_streq(const char* a, const char* b)
     return strcmp(a, b) == 0;
 }
 
-TMPSTATIC bool mc_callframe_init(mcvmframe_t* frame, mcvalue_t functionobj, int base_pointer)
+TMPSTATIC bool mc_callframe_init(mcvmframe_t* frame, mcvalue_t functionobj, int baseptr)
 {
     mcobjfuncscript_t* function;
-    if(mc_value_gettype(functionobj) != MC_OBJ_FUNCTION)
+    if(mc_value_gettype(functionobj) != MC_OBJ_FUNCSCRIPT)
     {
         return false;
     }
     function = mc_value_functiongetscriptfunction(functionobj);
     frame->function = functionobj;
-    frame->ip = 0;
-    frame->base_pointer = base_pointer;
-    frame->src_ip = 0;
-    frame->bytecode = function->comp_result->bytecode;
-    frame->src_positions = function->comp_result->src_positions;
-    frame->bytecode_size = function->comp_result->count;
-    frame->recover_ip = -1;
-    frame->is_recovering = false;
+    frame->bcposition = 0;
+    frame->basepointer = baseptr;
+    frame->sourcebcpos = 0;
+    frame->bytecode = function->compiledprogcode->bytecode;
+    frame->framesrcposlist = function->compiledprogcode->progsrcposlist;
+    frame->bcsize = function->compiledprogcode->count;
+    frame->recoverip = -1;
+    frame->isrecovering = false;
     return true;
 }
 
@@ -14496,8 +14461,8 @@ TMPSTATIC uint64_t mc_callframe_readuint64(mcvmframe_t* frame)
 {
     uint64_t res;
     uint8_t* data;
-    data = frame->bytecode + frame->ip;
-    frame->ip += 8;
+    data = frame->bytecode + frame->bcposition;
+    frame->bcposition += 8;
     res = 0;
     res |= (uint64_t)data[7];
     res |= (uint64_t)data[6] << 8;
@@ -14513,30 +14478,30 @@ TMPSTATIC uint64_t mc_callframe_readuint64(mcvmframe_t* frame)
 TMPSTATIC uint16_t mc_callframe_readuint16(mcvmframe_t* frame)
 {
     uint8_t* data;
-    data = frame->bytecode + frame->ip;
-    frame->ip += 2;
+    data = frame->bytecode + frame->bcposition;
+    frame->bcposition += 2;
     return (data[0] << 8) | data[1];
 }
 
 TMPSTATIC uint8_t mc_callframe_readuint8(mcvmframe_t* frame)
 {
     uint8_t* data;
-    data = frame->bytecode + frame->ip;
-    frame->ip++;
+    data = frame->bytecode + frame->bcposition;
+    frame->bcposition++;
     return data[0];
 }
 
 TMPSTATIC mcopcode_t mc_callframe_readopcode(mcvmframe_t* frame)
 {
-    frame->src_ip = frame->ip;
+    frame->sourcebcpos = frame->bcposition;
     return (mcopcode_t)mc_callframe_readuint8(frame);
 }
 
 TMPSTATIC mcastlocation_t mc_callframe_getpos(mcvmframe_t* frame)
 {
-    if(frame->src_positions)
+    if(frame->framesrcposlist)
     {
-        return frame->src_positions[frame->src_ip];
+        return frame->framesrcposlist[frame->sourcebcpos];
     }
     return srcposinvalid;
 }
@@ -14568,7 +14533,7 @@ TMPSTATIC mcgcmemory_t* mc_gcmemory_make(mcstate_t* state)
     }
     mem->allocssincesweep = 0;
     mem->onlydatapool.count = 0;
-    for(i = 0; i < GCMEM_POOLS_NUM; i++)
+    for(i = 0; i < MC_CONF_GCMEMPOOLCOUNT; i++)
     {
         mcgcobjdatapool_t* pool = &mem->mempools[i];
         mem->mempools[i].count = 0;
@@ -14600,7 +14565,7 @@ TMPSTATIC void mc_gcmemory_destroy(mcgcmemory_t* mem)
         mc_allocator_free(mem->pstate, obj);
     }
     mc_ptrarray_destroy(mem->gcobjlist, NULL);
-    for(i = 0; i < GCMEM_POOLS_NUM; i++)
+    for(i = 0; i < MC_CONF_GCMEMPOOLCOUNT; i++)
     {
         pool = &mem->mempools[i];
         for(j = 0; j < pool->count; j++)
@@ -14728,7 +14693,7 @@ TMPSEMISTATIC void gc_mark_object(mcvalue_t obj)
     {
         return;
     }
-    data = object_get_allocated_data(obj);
+    data = mc_value_getallocateddata(obj);
     if(data->gcmark)
     {
         return;
@@ -14744,7 +14709,7 @@ TMPSEMISTATIC void gc_mark_object(mcvalue_t obj)
                     key = mc_valmap_getkeyat(obj, i);
                     if(mc_value_isallocated(key))
                     {
-                        keydata = object_get_allocated_data(key);
+                        keydata = mc_value_getallocateddata(key);
                         if(!keydata->gcmark)
                         {
                             gc_mark_object(key);
@@ -14753,7 +14718,7 @@ TMPSEMISTATIC void gc_mark_object(mcvalue_t obj)
                     val = mc_valmap_getvalueat(obj, i);
                     if(mc_value_isallocated(val))
                     {
-                        valdata = object_get_allocated_data(val);
+                        valdata = mc_value_getallocateddata(val);
                         if(!valdata->gcmark)
                         {
                             gc_mark_object(val);
@@ -14770,7 +14735,7 @@ TMPSEMISTATIC void gc_mark_object(mcvalue_t obj)
                     val = mc_valarray_getvalueat(obj, i);
                     if(mc_value_isallocated(val))
                     {
-                        valdata = object_get_allocated_data(val);
+                        valdata = mc_value_getallocateddata(val);
                         if(!valdata->gcmark)
                         {
                             gc_mark_object(val);
@@ -14779,16 +14744,16 @@ TMPSEMISTATIC void gc_mark_object(mcvalue_t obj)
                 }
             }
             break;
-        case MC_OBJ_FUNCTION:
+        case MC_OBJ_FUNCSCRIPT:
             {
                 function = mc_value_functiongetscriptfunction(obj);
-                for(i = 0; i < function->free_vals_count; i++)
+                for(i = 0; i < function->freevalscount; i++)
                 {
                     freeval = mc_value_functiongetfreevalat(obj, i);
                     gc_mark_object(freeval);
                     if(mc_value_isallocated(freeval))
                     {
-                        freevaldata = object_get_allocated_data(freeval);
+                        freevaldata = mc_value_getallocateddata(freeval);
                         if(!freevaldata->gcmark)
                         {
                             gc_mark_object(freeval);
@@ -14837,7 +14802,7 @@ TMPSTATIC void mc_state_gcsweep(mcstate_t* state)
             else
             {
                 mc_objectdata_deinit(data);
-                if(state->mem->onlydatapool.count < GCMEM_POOL_SIZE)
+                if(state->mem->onlydatapool.count < MC_CONF_GCMEMPOOLSIZE)
                 {
                     state->mem->onlydatapool.data[state->mem->onlydatapool.count] = data;
                     state->mem->onlydatapool.count++;
@@ -14863,7 +14828,7 @@ TMPUNUSED bool gc_disable_on_object(mcvalue_t obj)
     {
         return false;
     }
-    data = object_get_allocated_data(obj);
+    data = mc_value_getallocateddata(obj);
     if(mc_basicarray_contains(data->mem->gcobjlistremains, &obj))
     {
         return false;
@@ -14879,13 +14844,13 @@ TMPUNUSED void gc_enable_on_object(mcvalue_t obj)
     {
         return;
     }
-    data = object_get_allocated_data(obj);
+    data = mc_value_getallocateddata(obj);
     mc_basicarray_removeitem(data->mem->gcobjlistremains, &obj);
 }
 
 TMPSTATIC int mc_state_gcshouldsweep(mcstate_t* state)
 {
-    return state->mem->allocssincesweep > GCMEM_SWEEP_INTERVAL;
+    return state->mem->allocssincesweep > MC_CONF_GCMEMSWEEPINTERVAL;
 }
 
 TMPSTATIC mcgcobjdatapool_t* get_pool_for_type(mcstate_t* state, mcobjtype_t type)
@@ -14932,7 +14897,7 @@ TMPSTATIC bool can_data_be_put_in_pool(mcstate_t* state, mcobjdata_t* data)
             break;
         case MC_OBJ_STRING:
             {
-                if(!data->valstring.is_allocated || data->valstring.capacity > 4096)
+                if(!data->valstring.isallocated || data->valstring.capacity > 4096)
                 {
                     return false;
                 }
@@ -14944,7 +14909,7 @@ TMPSTATIC bool can_data_be_put_in_pool(mcstate_t* state, mcobjdata_t* data)
             break;
     }
     pool= get_pool_for_type(state, data->type);
-    if(!pool || pool->count >= GCMEM_POOL_SIZE)
+    if(!pool || pool->count >= MC_CONF_GCMEMPOOLSIZE)
     {
         return false;
     }
@@ -14955,7 +14920,8 @@ TMPSTATIC mcglobalstore_t* global_store_make(mcstate_t* state)
 {
     bool ok;
     int i;
-    mcglobalstore_t* store = (mcglobalstore_t*)mc_allocator_alloc(state, sizeof(mcglobalstore_t));
+    mcglobalstore_t* store;
+    store = (mcglobalstore_t*)mc_allocator_alloc(state, sizeof(mcglobalstore_t));
     if(!store)
     {
         return NULL;
@@ -14972,7 +14938,6 @@ TMPSTATIC mcglobalstore_t* global_store_make(mcstate_t* state)
     {
         goto err;
     }
-
     if(state->mem)
     {
         for(i = 0; i < builtins_count(); i++)
@@ -14990,7 +14955,6 @@ TMPSTATIC mcglobalstore_t* global_store_make(mcstate_t* state)
             }
         }
     }
-
     return store;
 err:
     global_store_destroy(store);
@@ -15032,7 +14996,7 @@ TMPSTATIC bool global_store_set(mcglobalstore_t* store, const char* name, mcvalu
     {
         return false;
     }
-    symbol = mc_symbol_make(store->pstate, name, SYMBOL_GLOBALBUILTIN, ix, false);
+    symbol = mc_symbol_make(store->pstate, name, MC_SYM_GLOBALBUILTIN, ix, false);
     if(!symbol)
     {
         goto err;
@@ -15072,7 +15036,7 @@ TMPSTATIC int global_store_get_object_count(mcglobalstore_t* store)
     return mc_basicarray_count(store->objects);
 }
 
-TMPSTATIC bool object_is_hashable(mcvalue_t obj)
+TMPSTATIC bool mc_value_ishashable(mcvalue_t obj)
 {
     mcobjtype_t type = mc_value_gettype(obj);
     switch(type)
@@ -15120,9 +15084,9 @@ TMPSTATIC void mc_printer_printbytecode(mcprintstate_t* pr, uint8_t* code, mcast
         {
             return;
         }
-        for(i = 0; i < def->num_operands; i++)
+        for(i = 0; i < def->numoperands; i++)
         {
-            if(op == OPCODE_NUMBER)
+            if(op == MC_OPCODE_NUMBER)
             {
                 dval = mc_util_uint64todouble(operands[i]);
                 mc_printer_printf(pr, " %1.17g", dval);
@@ -15131,13 +15095,13 @@ TMPSTATIC void mc_printer_printbytecode(mcprintstate_t* pr, uint8_t* code, mcast
             {
                 mc_printer_printf(pr, " %llu", operands[i]);
             }
-            pos += def->operand_widths[i];
+            pos += def->operandwidths[i];
         }
         mc_printer_puts(pr, "\n");
     }
 }
 
-TMPSEMISTATIC void mc_printer_printobject(mcvalue_t obj, mcprintstate_t* pr, bool quotestr)
+TMPSEMISTATIC void mc_printer_printobject(mcprintstate_t* pr, mcvalue_t obj)
 {
     mcobjtype_t type = mc_value_gettype(obj);
     switch(type)
@@ -15161,7 +15125,7 @@ TMPSEMISTATIC void mc_printer_printobject(mcvalue_t obj, mcprintstate_t* pr, boo
             break;
         case MC_OBJ_BOOL:
             {
-                mc_printer_puts(pr, object_get_bool(obj) ? "true" : "false");
+                mc_printer_puts(pr, mc_value_getbool(obj) ? "true" : "false");
             }
             break;
         case MC_OBJ_STRING:
@@ -15170,7 +15134,7 @@ TMPSEMISTATIC void mc_printer_printobject(mcvalue_t obj, mcprintstate_t* pr, boo
                 const char* str;
                 str = mc_valstring_getdata(obj);
                 len = mc_valstring_getlength(obj);
-                if(quotestr)
+                if(pr->config.quotstring)
                 {
                     mc_printer_printescapedstring(pr, str, len);
                 }
@@ -15185,25 +15149,40 @@ TMPSEMISTATIC void mc_printer_printobject(mcvalue_t obj, mcprintstate_t* pr, boo
                 mc_printer_puts(pr, "null");
             }
             break;
-        case MC_OBJ_FUNCTION:
+        case MC_OBJ_FUNCSCRIPT:
             {
-                mcobjfuncscript_t* function;
-                function = mc_value_functiongetscriptfunction(obj);
-                mc_printer_printf(pr, "CompiledFunction: %s\n", mc_value_functiongetname(obj));
-                mc_printer_printbytecode(pr, function->comp_result->bytecode, function->comp_result->src_positions, function->comp_result->count);
+                const char* fname;
+                mcobjfuncscript_t* fn;
+                fn = mc_value_functiongetscriptfunction(obj);
+                fname = mc_value_functiongetname(obj);
+                mc_printer_printf(pr, "<scriptfunction '%s' locals=%d argc=%d fvc=%d", fname, fn->numlocals, fn->numargs, fn->freevalscount);
+                if(pr->config.verbosefunc)
+                {
+                    mc_printer_puts(pr, " [");
+                    mc_printer_printbytecode(pr, fn->compiledprogcode->bytecode, fn->compiledprogcode->progsrcposlist, fn->compiledprogcode->count);
+                    mc_printer_puts(pr, " ]");
+                }
+                else
+                {
+                }
+                mc_printer_puts(pr, ">");
             }
             break;
         case MC_OBJ_ARRAY:
             {
                 size_t i;
                 size_t alen;
+                bool tmp;
                 mcvalue_t iobj;
                 alen = mc_valarray_getlength(obj);
                 mc_printer_puts(pr, "[");
                 for(i = 0; i < alen; i++)
                 {
                     iobj = mc_valarray_getvalueat(obj, i);
-                    mc_printer_printobject(iobj, pr, true);
+                    tmp = pr->config.quotstring;
+                    pr->config.quotstring = true;
+                    mc_printer_printobject(pr, iobj);
+                    pr->config.quotstring = tmp;
                     if(i < (alen - 1))
                     {
                         mc_printer_puts(pr, ", ");
@@ -15214,6 +15193,7 @@ TMPSEMISTATIC void mc_printer_printobject(mcvalue_t obj, mcprintstate_t* pr, boo
             break;
         case MC_OBJ_MAP:
             {
+                bool tmp;
                 size_t i;
                 size_t alen;
                 mcvalue_t key;
@@ -15224,9 +15204,12 @@ TMPSEMISTATIC void mc_printer_printobject(mcvalue_t obj, mcprintstate_t* pr, boo
                 {
                     key = mc_valmap_getkeyat(obj, i);
                     val = mc_valmap_getvalueat(obj, i);
-                    mc_printer_printobject(key, pr, true);
+                    tmp = pr->config.quotstring;
+                    pr->config.quotstring = true;
+                    mc_printer_printobject(pr, key);
                     mc_printer_puts(pr, ": ");
-                    mc_printer_printobject(val, pr, true);
+                    mc_printer_printobject(pr, val);
+                    pr->config.quotstring = tmp;
                     if(i < (alen - 1))
                     {
                         mc_printer_puts(pr, ", ");
@@ -15235,7 +15218,7 @@ TMPSEMISTATIC void mc_printer_printobject(mcvalue_t obj, mcprintstate_t* pr, boo
                 mc_printer_puts(pr, "}");
             }
             break;
-        case MC_OBJ_NATIVE_FUNCTION:
+        case MC_OBJ_FUNCNATIVE:
             {
                 mc_printer_puts(pr, "NATIVE_FUNCTION");
             }
@@ -15254,7 +15237,7 @@ TMPSEMISTATIC void mc_printer_printobject(mcvalue_t obj, mcprintstate_t* pr, boo
                 if(traceback)
                 {
                     mc_printer_puts(pr, "Traceback:\n");
-                    traceback_to_string(traceback, pr);
+                    traceback_to_string(pr, traceback);
                 }
             }
             break;
@@ -15304,7 +15287,7 @@ TMPSTATIC mcastsymbol_t* mc_symbol_copy(mcastsymbol_t* symbol)
     return mc_symbol_make(symbol->pstate, symbol->name, symbol->type, symbol->index, symbol->assignable);
 }
 
-TMPSTATIC mcastsymtable_t* mc_symtable_make(mcstate_t* state, mcastsymtable_t* outer, mcglobalstore_t* global_store, int module_global_offset)
+TMPSTATIC mcastsymtable_t* mc_symtable_make(mcstate_t* state, mcastsymtable_t* outer, mcglobalstore_t* gstore, int mgo)
 {
     bool ok;
     mcastsymtable_t* table;
@@ -15315,22 +15298,22 @@ TMPSTATIC mcastsymtable_t* mc_symtable_make(mcstate_t* state, mcastsymtable_t* o
     }
     memset(table, 0, sizeof(mcastsymtable_t));
     table->pstate = state;
-    table->max_num_definitions = 0;
+    table->maxnumdefinitions = 0;
     table->outer = outer;
-    table->global_store = global_store;
-    table->module_global_offset = module_global_offset;
-    table->block_scopes = mc_ptrarray_make(state);
-    if(!table->block_scopes)
+    table->symglobalstore = gstore;
+    table->modglobaloffset = mgo;
+    table->blockscopes = mc_ptrarray_make(state);
+    if(!table->blockscopes)
     {
         goto err;
     }
-    table->free_symbols = mc_ptrarray_make(state);
-    if(!table->free_symbols)
+    table->freesymbols = mc_ptrarray_make(state);
+    if(!table->freesymbols)
     {
         goto err;
     }
-    table->module_global_symbols = mc_ptrarray_make(state);
-    if(!table->module_global_symbols)
+    table->modglobalsymbols = mc_ptrarray_make(state);
+    if(!table->modglobalsymbols)
     {
         goto err;
     }
@@ -15352,13 +15335,13 @@ TMPSTATIC void mc_symtable_destroy(mcastsymtable_t* table)
     {
         return;
     }
-    while(mc_ptrarray_count(table->block_scopes) > 0)
+    while(mc_ptrarray_count(table->blockscopes) > 0)
     {
         mc_symtable_popblockscope(table);
     }
-    mc_ptrarray_destroy(table->block_scopes, NULL);
-    mc_ptrarray_destroy(table->module_global_symbols, (mcitemdestroyfn_t)mc_symbol_destroy);
-    mc_ptrarray_destroy(table->free_symbols, (mcitemdestroyfn_t)mc_symbol_destroy);
+    mc_ptrarray_destroy(table->blockscopes, NULL);
+    mc_ptrarray_destroy(table->modglobalsymbols, (mcitemdestroyfn_t)mc_symbol_destroy);
+    mc_ptrarray_destroy(table->freesymbols, (mcitemdestroyfn_t)mc_symbol_destroy);
     state = table->pstate;
     memset(table, 0, sizeof(mcastsymtable_t));
     mc_allocator_free(state, table);
@@ -15375,24 +15358,24 @@ TMPSTATIC mcastsymtable_t* mc_symtable_copy(mcastsymtable_t* table)
     memset(copy, 0, sizeof(mcastsymtable_t));
     copy->pstate = table->pstate;
     copy->outer = table->outer;
-    copy->global_store = table->global_store;
-    copy->block_scopes = mc_ptrarray_copy(table->block_scopes, (mcitemcopyfn_t)block_scope_copy, (mcitemdestroyfn_t)block_scope_destroy);
-    if(!copy->block_scopes)
+    copy->symglobalstore = table->symglobalstore;
+    copy->blockscopes = mc_ptrarray_copy(table->blockscopes, (mcitemcopyfn_t)block_scope_copy, (mcitemdestroyfn_t)block_scope_destroy);
+    if(!copy->blockscopes)
     {
         goto err;
     }
-    copy->free_symbols = mc_ptrarray_copy(table->free_symbols, (mcitemcopyfn_t)mc_symbol_copy, (mcitemdestroyfn_t)mc_symbol_destroy);
-    if(!copy->free_symbols)
+    copy->freesymbols = mc_ptrarray_copy(table->freesymbols, (mcitemcopyfn_t)mc_symbol_copy, (mcitemdestroyfn_t)mc_symbol_destroy);
+    if(!copy->freesymbols)
     {
         goto err;
     }
-    copy->module_global_symbols = mc_ptrarray_copy(table->module_global_symbols, (mcitemcopyfn_t)mc_symbol_copy, (mcitemdestroyfn_t)mc_symbol_destroy);
-    if(!copy->module_global_symbols)
+    copy->modglobalsymbols = mc_ptrarray_copy(table->modglobalsymbols, (mcitemcopyfn_t)mc_symbol_copy, (mcitemdestroyfn_t)mc_symbol_destroy);
+    if(!copy->modglobalsymbols)
     {
         goto err;
     }
-    copy->max_num_definitions = table->max_num_definitions;
-    copy->module_global_offset = table->module_global_offset;
+    copy->maxnumdefinitions = table->maxnumdefinitions;
+    copy->modglobaloffset = table->modglobaloffset;
     return copy;
 err:
     mc_symtable_destroy(copy);
@@ -15403,7 +15386,7 @@ TMPSTATIC bool mc_symtable_addmodsymbol(mcastsymtable_t* st, mcastsymbol_t* symb
 {
     bool ok;
     mcastsymbol_t* copy;
-    if(symbol->type != SYMBOL_MODULE_GLOBAL)
+    if(symbol->type != MC_SYM_MODULEGLOBAL)
     {
         MC_ASSERT(false);
         return false;
@@ -15438,7 +15421,7 @@ TMPSTATIC mcastsymbol_t* mc_symtable_define(mcastsymtable_t* table, const char* 
     mcastscopeblock_t* topscope;
     mcastsymbol_t* globalsymbol;
     mcastsymbol_t* globalsymbolcopy;
-    globalsymbol = global_store_get_symbol(table->global_store, name);
+    globalsymbol = global_store_get_symbol(table->symglobalstore, name);
     if(globalsymbol)
     {
         return NULL;
@@ -15453,7 +15436,7 @@ TMPSTATIC mcastsymbol_t* mc_symtable_define(mcastsymtable_t* table, const char* 
     {
         return NULL;
     }
-    symboltype = table->outer == NULL ? SYMBOL_MODULE_GLOBAL : SYMBOL_LOCAL;
+    symboltype = table->outer == NULL ? MC_SYM_MODULEGLOBAL : MC_SYM_LOCAL;
     ix = mc_symtable_nextsymindex(table);
     symbol = mc_symbol_make(table->pstate, name, symboltype, ix, assignable);
     if(!symbol)
@@ -15462,7 +15445,7 @@ TMPSTATIC mcastsymbol_t* mc_symtable_define(mcastsymtable_t* table, const char* 
     }
     globalsymboladded = false;
     ok = false;
-    if(symboltype == SYMBOL_MODULE_GLOBAL && mc_ptrarray_count(table->block_scopes) == 1)
+    if(symboltype == MC_SYM_MODULEGLOBAL && mc_ptrarray_count(table->blockscopes) == 1)
     {
         globalsymbolcopy = mc_symbol_copy(symbol);
         if(!globalsymbolcopy)
@@ -15470,7 +15453,7 @@ TMPSTATIC mcastsymbol_t* mc_symtable_define(mcastsymtable_t* table, const char* 
             mc_symbol_destroy(symbol);
             return NULL;
         }
-        ok = mc_ptrarray_push(table->module_global_symbols, globalsymbolcopy);
+        ok = mc_ptrarray_push(table->modglobalsymbols, globalsymbolcopy);
         if(!ok)
         {
             mc_symbol_destroy(globalsymbolcopy);
@@ -15484,18 +15467,18 @@ TMPSTATIC mcastsymbol_t* mc_symtable_define(mcastsymtable_t* table, const char* 
     {
         if(globalsymboladded)
         {
-            globalsymbolcopy = (mcastsymbol_t*)mc_ptrarray_pop(table->module_global_symbols);
+            globalsymbolcopy = (mcastsymbol_t*)mc_ptrarray_pop(table->modglobalsymbols);
             mc_symbol_destroy(globalsymbolcopy);
         }
         mc_symbol_destroy(symbol);
         return NULL;
     }
-    topscope = (mcastscopeblock_t*)mc_ptrarray_top(table->block_scopes);
-    topscope->num_definitions++;
+    topscope = (mcastscopeblock_t*)mc_ptrarray_top(table->blockscopes);
+    topscope->numdefinitions++;
     definitionscount = mc_symtable_getnumdefs(table);
-    if(definitionscount > table->max_num_definitions)
+    if(definitionscount > table->maxnumdefinitions)
     {
-        table->max_num_definitions = definitionscount;
+        table->maxnumdefinitions = definitionscount;
     }
     return symbol;
 }
@@ -15510,13 +15493,13 @@ TMPSTATIC mcastsymbol_t* mc_symtable_defineanddestroyold(mcastsymtable_t* st, mc
     {
         return NULL;
     }
-    ok = mc_ptrarray_push(st->free_symbols, copy);
+    ok = mc_ptrarray_push(st->freesymbols, copy);
     if(!ok)
     {
         mc_symbol_destroy(copy);
         return NULL;
     }
-    symbol = mc_symbol_make(st->pstate, original->name, SYMBOL_FREE, mc_ptrarray_count(st->free_symbols) - 1, original->assignable);
+    symbol = mc_symbol_make(st->pstate, original->name, MC_SYM_FREE, mc_ptrarray_count(st->freesymbols) - 1, original->assignable);
     if(!symbol)
     {
         return NULL;
@@ -15539,7 +15522,7 @@ TMPSTATIC mcastsymbol_t* mc_symtable_definefunctionname(mcastsymtable_t* st, con
     {
         return NULL;
     }
-    symbol = mc_symbol_make(st->pstate, name, SYMBOL_FUNCTION, 0, assignable);
+    symbol = mc_symbol_make(st->pstate, name, MC_SYM_FUNCTION, 0, assignable);
     if(!symbol)
     {
         return NULL;
@@ -15557,7 +15540,7 @@ TMPSTATIC mcastsymbol_t* mc_symtable_definethis(mcastsymtable_t* st)
 {
     bool ok;
     mcastsymbol_t* symbol;
-    symbol = mc_symbol_make(st->pstate, "this", SYMBOL_THIS, 0, false);
+    symbol = mc_symbol_make(st->pstate, "this", MC_SYM_THIS, 0, false);
     if(!symbol)
     {
         return NULL;
@@ -15578,22 +15561,22 @@ TMPSEMISTATIC mcastsymbol_t* mc_symtable_resolve(mcastsymtable_t* table, const c
     mcastscopeblock_t* scope;
     symbol = NULL;
     scope = NULL;
-    symbol = global_store_get_symbol(table->global_store, name);
+    symbol = global_store_get_symbol(table->symglobalstore, name);
     if(symbol)
     {
         return symbol;
     }
 
-    for(i = mc_ptrarray_count(table->block_scopes) - 1; i >= 0; i--)
+    for(i = mc_ptrarray_count(table->blockscopes) - 1; i >= 0; i--)
     {
-        scope = (mcastscopeblock_t*)mc_ptrarray_get(table->block_scopes, i);
+        scope = (mcastscopeblock_t*)mc_ptrarray_get(table->blockscopes, i);
         symbol = (mcastsymbol_t*)mc_genericdict_get(scope->store, name);
         if(symbol)
         {
             break;
         }
     }
-    if(symbol && symbol->type == SYMBOL_THIS)
+    if(symbol && symbol->type == MC_SYM_THIS)
     {
         symbol = mc_symtable_defineanddestroyold(table, symbol);
     }
@@ -15604,7 +15587,7 @@ TMPSEMISTATIC mcastsymbol_t* mc_symtable_resolve(mcastsymtable_t* table, const c
         {
             return NULL;
         }
-        if(symbol->type == SYMBOL_MODULE_GLOBAL || symbol->type == SYMBOL_GLOBALBUILTIN)
+        if(symbol->type == MC_SYM_MODULEGLOBAL || symbol->type == MC_SYM_GLOBALBUILTIN)
         {
             return symbol;
         }
@@ -15618,12 +15601,12 @@ TMPSTATIC bool mc_symtable_isdefined(mcastsymtable_t* table, const char* name)
     /* todo: rename to something more obvious */
     mcastsymbol_t* symbol;
     mcastscopeblock_t* topscope;
-    symbol = global_store_get_symbol(table->global_store, name);
+    symbol = global_store_get_symbol(table->symglobalstore, name);
     if(symbol)
     {
         return true;
     }
-    topscope = (mcastscopeblock_t*)mc_ptrarray_top(table->block_scopes);
+    topscope = (mcastscopeblock_t*)mc_ptrarray_top(table->blockscopes);
     symbol = (mcastsymbol_t*)mc_genericdict_get(topscope->store, name);
     if(symbol)
     {
@@ -15639,21 +15622,21 @@ TMPSTATIC bool mc_symtable_pushblockscope(mcastsymtable_t* table)
     mcastscopeblock_t* newscope;
     mcastscopeblock_t* prevblockscope;
     blockscopeoffset = 0;
-    prevblockscope = (mcastscopeblock_t*)mc_ptrarray_top(table->block_scopes);
+    prevblockscope = (mcastscopeblock_t*)mc_ptrarray_top(table->blockscopes);
     if(prevblockscope)
     {
-        blockscopeoffset = table->module_global_offset + prevblockscope->offset + prevblockscope->num_definitions;
+        blockscopeoffset = table->modglobaloffset + prevblockscope->offset + prevblockscope->numdefinitions;
     }
     else
     {
-        blockscopeoffset = table->module_global_offset;
+        blockscopeoffset = table->modglobaloffset;
     }
     newscope = block_scope_make(table->pstate, blockscopeoffset);
     if(!newscope)
     {
         return false;
     }
-    ok = mc_ptrarray_push(table->block_scopes, newscope);
+    ok = mc_ptrarray_push(table->blockscopes, newscope);
     if(!ok)
     {
         block_scope_destroy(newscope);
@@ -15665,15 +15648,15 @@ TMPSTATIC bool mc_symtable_pushblockscope(mcastsymtable_t* table)
 TMPSTATIC void mc_symtable_popblockscope(mcastsymtable_t* table)
 {
     mcastscopeblock_t* topscope;
-    topscope = (mcastscopeblock_t*)mc_ptrarray_top(table->block_scopes);
-    mc_ptrarray_pop(table->block_scopes);
+    topscope = (mcastscopeblock_t*)mc_ptrarray_top(table->blockscopes);
+    mc_ptrarray_pop(table->blockscopes);
     block_scope_destroy(topscope);
 }
 
 TMPSTATIC mcastscopeblock_t* mc_symtable_getblockscope(mcastsymtable_t* table)
 {
     mcastscopeblock_t* topscope;
-    topscope = (mcastscopeblock_t*)mc_ptrarray_top(table->block_scopes);
+    topscope = (mcastscopeblock_t*)mc_ptrarray_top(table->blockscopes);
     return topscope;
 }
 
@@ -15684,7 +15667,7 @@ TMPSTATIC bool mc_symtable_ismodglobalscope(mcastsymtable_t* table)
 
 TMPSTATIC bool mc_symtable_istopblockscope(mcastsymtable_t* table)
 {
-    return mc_ptrarray_count(table->block_scopes) == 1;
+    return mc_ptrarray_count(table->blockscopes) == 1;
 }
 
 TMPSTATIC bool mc_symtable_istopglobalscope(mcastsymtable_t* table)
@@ -15694,12 +15677,12 @@ TMPSTATIC bool mc_symtable_istopglobalscope(mcastsymtable_t* table)
 
 TMPSTATIC int mc_symtable_getmodglobalsymcount(mcastsymtable_t* table)
 {
-    return mc_ptrarray_count(table->module_global_symbols);
+    return mc_ptrarray_count(table->modglobalsymbols);
 }
 
 TMPSTATIC mcastsymbol_t* mc_symtable_getmodglobalsymat(mcastsymtable_t* table, int ix)
 {
-    return (mcastsymbol_t*)mc_ptrarray_get(table->module_global_symbols, ix);
+    return (mcastsymbol_t*)mc_ptrarray_get(table->modglobalsymbols, ix);
 }
 
 TMPSTATIC mcastscopeblock_t* block_scope_make(mcstate_t* state, int offset)
@@ -15718,7 +15701,7 @@ TMPSTATIC mcastscopeblock_t* block_scope_make(mcstate_t* state, int offset)
         block_scope_destroy(newscope);
         return NULL;
     }
-    newscope->num_definitions = 0;
+    newscope->numdefinitions = 0;
     newscope->offset = offset;
     return newscope;
 }
@@ -15739,7 +15722,7 @@ TMPSTATIC mcastscopeblock_t* block_scope_copy(mcastscopeblock_t* scope)
     }
     memset(copy, 0, sizeof(mcastscopeblock_t));
     copy->pstate = scope->pstate;
-    copy->num_definitions = scope->num_definitions;
+    copy->numdefinitions = scope->numdefinitions;
     copy->offset = scope->offset;
     copy->store = mc_genericdict_copy(scope->store);
     if(!copy->store)
@@ -15754,7 +15737,7 @@ TMPSTATIC bool mc_symtable_setsymbol(mcastsymtable_t* table, mcastsymbol_t* symb
 {
     mcastscopeblock_t* topscope;
     mcastsymbol_t* existing;
-    topscope = (mcastscopeblock_t*)mc_ptrarray_top(table->block_scopes);
+    topscope = (mcastscopeblock_t*)mc_ptrarray_top(table->blockscopes);
     existing = (mcastsymbol_t*)mc_genericdict_get(topscope->store, symbol->name);
     if(existing)
     {
@@ -15767,8 +15750,8 @@ TMPSTATIC int mc_symtable_nextsymindex(mcastsymtable_t* table)
 {
     int ix;
     mcastscopeblock_t* topscope;
-    topscope = (mcastscopeblock_t*)mc_ptrarray_top(table->block_scopes);
-    ix = topscope->offset + topscope->num_definitions;
+    topscope = (mcastscopeblock_t*)mc_ptrarray_top(table->blockscopes);
+    ix = topscope->offset + topscope->numdefinitions;
     return ix;
 }
 
@@ -15778,10 +15761,10 @@ TMPSTATIC int mc_symtable_getnumdefs(mcastsymtable_t* table)
     int count;
     mcastscopeblock_t* scope;
     count = 0;
-    for(i = mc_ptrarray_count(table->block_scopes) - 1; i >= 0; i--)
+    for(i = mc_ptrarray_count(table->blockscopes) - 1; i >= 0; i--)
     {
-        scope = (mcastscopeblock_t*)mc_ptrarray_get(table->block_scopes, i);
-        count += scope->num_definitions;
+        scope = (mcastscopeblock_t*)mc_ptrarray_get(table->blockscopes, i);
+        count += scope->numdefinitions;
     }
     return count;
 }
@@ -15842,18 +15825,18 @@ TMPSTATIC void traceback_destroy(mctraceback_t* traceback)
     for(i = 0; i < mc_basicarray_count(traceback->items); i++)
     {
         item = (mctraceitem_t*)mc_basicarray_get(traceback->items, i);
-        mc_allocator_free(traceback->pstate, item->function_name);
+        mc_allocator_free(traceback->pstate, item->trfuncname);
     }
     mc_basicarray_destroy(traceback->items);
     mc_allocator_free(traceback->pstate, traceback);
 }
 
-TMPSTATIC bool traceback_append(mctraceback_t* traceback, const char* function_name, mcastlocation_t pos)
+TMPSTATIC bool traceback_append(mctraceback_t* traceback, const char* fname, mcastlocation_t pos)
 {
     bool ok;
     mctraceitem_t item;
-    item.function_name = mc_util_strdup(traceback->pstate, function_name);
-    if(!item.function_name)
+    item.trfuncname = mc_util_strdup(traceback->pstate, fname);
+    if(!item.trfuncname)
     {
         return false;
     }
@@ -15861,7 +15844,7 @@ TMPSTATIC bool traceback_append(mctraceback_t* traceback, const char* function_n
     ok = mc_basicarray_push(traceback->items, &item);
     if(!ok)
     {
-        mc_allocator_free(traceback->pstate, item.function_name);
+        mc_allocator_free(traceback->pstate, item.trfuncname);
         return false;
     }
     return true;
@@ -15872,9 +15855,9 @@ TMPSTATIC bool traceback_append_from_vm(mctraceback_t* traceback, mcstate_t* sta
     bool ok;
     int i;
     mcvmframe_t* frame;
-    for(i = state->frames_count - 1; i >= 0; i--)
+    for(i = state->framecount - 1; i >= 0; i--)
     {
-        frame = &state->frames[i];
+        frame = &state->framestack[i];
         ok = traceback_append(traceback, mc_value_functiongetname(frame->function), mc_callframe_getpos(frame));
         if(!ok)
         {
@@ -15884,7 +15867,7 @@ TMPSTATIC bool traceback_append_from_vm(mctraceback_t* traceback, mcstate_t* sta
     return true;
 }
 
-TMPSTATIC bool traceback_to_string(mctraceback_t* traceback, mcprintstate_t* buf)
+TMPSTATIC bool traceback_to_string(mcprintstate_t* pr, mctraceback_t* traceback)
 {
     int i;
     int depth;
@@ -15897,14 +15880,14 @@ TMPSTATIC bool traceback_to_string(mctraceback_t* traceback, mcprintstate_t* buf
         filename = traceback_item_get_filepath(item);
         if(item->pos.line >= 0 && item->pos.column >= 0)
         {
-            mc_printer_printf(buf, "%s in %s on %d:%d\n", item->function_name, filename, item->pos.line, item->pos.column);
+            mc_printer_printf(pr, "%s in %s on %d:%d\n", item->trfuncname, filename, item->pos.line, item->pos.column);
         }
         else
         {
-            mc_printer_printf(buf, "%s\n", item->function_name);
+            mc_printer_printf(pr, "%s\n", item->trfuncname);
         }
     }
-    return !mc_printer_failed(buf);
+    return !mc_printer_failed(pr);
 }
 
 TMPSTATIC const char* traceback_item_get_line(mctraceitem_t* item)
@@ -15938,14 +15921,14 @@ TMPSTATIC bool mc_vm_init(mcstate_t* state)
     int i;
     mcvalue_t keyobj;
     state->globals_count = 0;
-    state->sp = 0;
-    state->this_sp = 0;
-    state->frames_count = 0;
-    state->last_popped = mc_value_makenull();
+    state->vsposition = 0;
+    state->thisstpos = 0;
+    state->framecount = 0;
+    state->lastpopped = mc_value_makenull();
     state->running = false;
-    for(i = 0; i < OPCODE_MAX; i++)
+    for(i = 0; i < MC_OPCODE_MAX; i++)
     {
-        state->operator_oveload_keys[i] = mc_value_makenull();
+        state->operoverloadkeys[i] = mc_value_makenull();
     }
 #define SET_OPERATOR_OVERLOAD_KEY(op, key)\
     do\
@@ -15955,21 +15938,21 @@ TMPSTATIC bool mc_vm_init(mcstate_t* state)
         {\
             goto err;\
         }\
-        state->operator_oveload_keys[op] = keyobj;\
+        state->operoverloadkeys[op] = keyobj;\
     } while(0)
-    SET_OPERATOR_OVERLOAD_KEY(OPCODE_ADD, "__operator_add__");
-    SET_OPERATOR_OVERLOAD_KEY(OPCODE_SUB, "__operator_sub__");
-    SET_OPERATOR_OVERLOAD_KEY(OPCODE_MUL, "__operator_mul__");
-    SET_OPERATOR_OVERLOAD_KEY(OPCODE_DIV, "__operator_div__");
-    SET_OPERATOR_OVERLOAD_KEY(OPCODE_MOD, "__operator_mod__");
-    SET_OPERATOR_OVERLOAD_KEY(OPCODE_OR, "__operator_or__");
-    SET_OPERATOR_OVERLOAD_KEY(OPCODE_XOR, "__operator_xor__");
-    SET_OPERATOR_OVERLOAD_KEY(OPCODE_AND, "__operator_and__");
-    SET_OPERATOR_OVERLOAD_KEY(OPCODE_LSHIFT, "__operator_lshift__");
-    SET_OPERATOR_OVERLOAD_KEY(OPCODE_RSHIFT, "__operator_rshift__");
-    SET_OPERATOR_OVERLOAD_KEY(OPCODE_MINUS, "__operator_minus__");
-    SET_OPERATOR_OVERLOAD_KEY(OPCODE_BANG, "__operator_bang__");
-    SET_OPERATOR_OVERLOAD_KEY(OPCODE_COMPARE, "__cmp__");
+    SET_OPERATOR_OVERLOAD_KEY(MC_OPCODE_ADD, "__operator_add__");
+    SET_OPERATOR_OVERLOAD_KEY(MC_OPCODE_SUB, "__operator_sub__");
+    SET_OPERATOR_OVERLOAD_KEY(MC_OPCODE_MUL, "__operator_mul__");
+    SET_OPERATOR_OVERLOAD_KEY(MC_OPCODE_DIV, "__operator_div__");
+    SET_OPERATOR_OVERLOAD_KEY(MC_OPCODE_MOD, "__operator_mod__");
+    SET_OPERATOR_OVERLOAD_KEY(MC_OPCODE_OR, "__operator_or__");
+    SET_OPERATOR_OVERLOAD_KEY(MC_OPCODE_XOR, "__operator_xor__");
+    SET_OPERATOR_OVERLOAD_KEY(MC_OPCODE_AND, "__operator_and__");
+    SET_OPERATOR_OVERLOAD_KEY(MC_OPCODE_LSHIFT, "__operator_lshift__");
+    SET_OPERATOR_OVERLOAD_KEY(MC_OPCODE_RSHIFT, "__operator_rshift__");
+    SET_OPERATOR_OVERLOAD_KEY(MC_OPCODE_MINUS, "__operator_minus__");
+    SET_OPERATOR_OVERLOAD_KEY(MC_OPCODE_BANG, "__operator_bang__");
+    SET_OPERATOR_OVERLOAD_KEY(MC_OPCODE_COMPARE, "__cmp__");
 #undef SET_OPERATOR_OVERLOAD_KEY
     return true;
     err:
@@ -15978,9 +15961,9 @@ TMPSTATIC bool mc_vm_init(mcstate_t* state)
 
 TMPSTATIC void mc_vm_reset(mcstate_t* state)
 {
-    state->sp = 0;
-    state->this_sp = 0;
-    while(state->frames_count > 0)
+    state->vsposition = 0;
+    state->thisstpos = 0;
+    while(state->framecount > 0)
     {
         mc_vm_popframe(state);
     }
@@ -15995,10 +15978,10 @@ TMPSTATIC bool mc_vm_runexecfunc(mcstate_t* state, mccompiledprogram_t* comp_res
     mcvalue_t mainfn;
     (void)oldsp;
 #if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
-    oldsp = state->sp;
+    oldsp = state->vsposition;
 #endif
-    oldthissp = state->this_sp;
-    oldframescount = state->frames_count;
+    oldthissp = state->thisstpos;
+    oldframescount = state->framecount;
     mainfn = mc_value_makefuncscript(state, "main", comp_res, false, 0, 0, 0);
     if(mc_value_isnull(mainfn))
     {
@@ -16006,12 +15989,12 @@ TMPSTATIC bool mc_vm_runexecfunc(mcstate_t* state, mccompiledprogram_t* comp_res
     }
     mc_vm_stackpush(state, mainfn);
     res = mc_function_execfunction(state, mainfn, constants);
-    while(state->frames_count > oldframescount)
+    while(state->framecount > oldframescount)
     {
         mc_vm_popframe(state);
     }
-    MC_ASSERT(state->sp == oldsp);
-    state->this_sp = oldthissp;
+    MC_ASSERT(state->vsposition == oldsp);
+    state->thisstpos = oldthissp;
     return res;
 }
 
@@ -16025,14 +16008,14 @@ TMPSTATIC mcvalue_t mc_vm_callvalue(mcstate_t* state, mcbasicarray_t* constants,
     mcobjtype_t type;
     (void)oldsp;
     type = mc_value_gettype(callee);
-    if(type == MC_OBJ_FUNCTION)
+    if(type == MC_OBJ_FUNCSCRIPT)
     {
 #if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
-        oldsp = state->sp;
+        oldsp = state->vsposition;
 #endif
 
-        oldthissp = state->this_sp;
-        oldframescount = state->frames_count;
+        oldthissp = state->thisstpos;
+        oldframescount = state->framecount;
         mc_vm_stackpush(state, callee);
         for(i = 0; i < argc; i++)
         {
@@ -16043,15 +16026,15 @@ TMPSTATIC mcvalue_t mc_vm_callvalue(mcstate_t* state, mcbasicarray_t* constants,
         {
             return mc_value_makenull();
         }
-        while(state->frames_count > oldframescount)
+        while(state->framecount > oldframescount)
         {
             mc_vm_popframe(state);
         }
-        MC_ASSERT(state->sp == oldsp);
-        state->this_sp = oldthissp;
+        MC_ASSERT(state->vsposition == oldsp);
+        state->thisstpos = oldthissp;
         return mc_vm_getlastpopped(state);
     }
-    if(type == MC_OBJ_NATIVE_FUNCTION)
+    if(type == MC_OBJ_FUNCNATIVE)
     {
         return mc_vm_callnativefunction(state, callee, srcposinvalid, argc, args);
     }
@@ -16075,11 +16058,11 @@ TMPSTATIC bool mc_vm_tryoverloadoperator(mcstate_t* state, mcvalue_t left, mcval
         return true;
     }
     numoper = 2;
-    if(op == OPCODE_MINUS || op == OPCODE_BANG)
+    if(op == MC_OPCODE_MINUS || op == MC_OPCODE_BANG)
     {
         numoper = 1;
     }
-    key = state->operator_oveload_keys[op];
+    key = state->operoverloadkeys[op];
     callee = mc_value_makenull();
     if(lefttype == MC_OBJ_MAP)
     {
@@ -16110,7 +16093,7 @@ TMPSTATIC bool mc_vm_tryoverloadoperator(mcstate_t* state, mcvalue_t left, mcval
 
 TMPSTATIC mcvalue_t mc_vm_getlastpopped(mcstate_t* state)
 {
-    return state->last_popped;
+    return state->lastpopped;
 }
 
 TMPSTATIC bool mc_vm_haserrors(mcstate_t* state)
@@ -16120,7 +16103,7 @@ TMPSTATIC bool mc_vm_haserrors(mcstate_t* state)
 
 TMPSTATIC bool mc_vm_setglobalbyindex(mcstate_t* state, int ix, mcvalue_t val)
 {
-    if(ix >= VM_MAX_GLOBALS)
+    if(ix >= MC_CONF_VMMAXGLOBALS)
     {
         MC_ASSERT(false);
         mc_errlist_push(&state->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Global write out of range");
@@ -16136,7 +16119,7 @@ TMPSTATIC bool mc_vm_setglobalbyindex(mcstate_t* state, int ix, mcvalue_t val)
 
 TMPSTATIC mcvalue_t mc_vm_getglobalbyindex(mcstate_t* state, int ix)
 {
-    if(ix >= VM_MAX_GLOBALS)
+    if(ix >= MC_CONF_VMMAXGLOBALS)
     {
         MC_ASSERT(false);
         mc_errlist_push(&state->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Global read out of range");
@@ -16149,14 +16132,14 @@ TMPSTATIC void mc_vm_setstackpos(mcstate_t* state, int nsp)
 {
     int count;
     size_t bytescount;
-    if(nsp > state->sp)
+    if(nsp > state->vsposition)
     {
         /* to avoid gcing freed objects */
-        count = nsp - state->sp;
+        count = nsp - state->vsposition;
         bytescount = count * sizeof(mcvalue_t);
-        memset(state->stack + state->sp, 0, bytescount);
+        memset(state->valuestack + state->vsposition, 0, bytescount);
     }
-    state->sp = nsp;
+    state->vsposition = nsp;
 }
 
 TMPSTATIC void mc_vm_stackpush(mcstate_t* vm, mcvalue_t obj)
@@ -16168,7 +16151,7 @@ TMPSTATIC void mc_vm_stackpush(mcstate_t* vm, mcvalue_t obj)
     (void)frame;
     (void)currentfunction;
 #if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
-    if(vm->sp >= VM_STACK_SIZE)
+    if(vm->vsposition >= MC_CONF_VMVALSTACKSIZE)
     {
         MC_ASSERT(false);
         mc_errlist_push(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(vm->currframe), "Stack overflow");
@@ -16178,12 +16161,12 @@ TMPSTATIC void mc_vm_stackpush(mcstate_t* vm, mcvalue_t obj)
     {
         frame = vm->currframe;
         currentfunction = mc_value_functiongetscriptfunction(frame->function);
-        numlocals = currentfunction->num_locals;
-        MC_ASSERT(vm->sp >= (frame->base_pointer + numlocals));
+        numlocals = currentfunction->numlocals;
+        MC_ASSERT(vm->vsposition >= (frame->basepointer + numlocals));
     }
 #endif
-    vm->stack[vm->sp] = obj;
-    vm->sp++;
+    vm->valuestack[vm->vsposition] = obj;
+    vm->vsposition++;
 }
 
 TMPSTATIC mcvalue_t mc_vm_stackpop(mcstate_t* vm)
@@ -16196,7 +16179,7 @@ TMPSTATIC mcvalue_t mc_vm_stackpop(mcstate_t* vm)
     (void)frame;
     (void)currentfunction;
 #if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
-    if(vm->sp == 0)
+    if(vm->vsposition == 0)
     {
         mc_errlist_push(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(vm->currframe), "Stack underflow");
         MC_ASSERT(false);
@@ -16206,106 +16189,106 @@ TMPSTATIC mcvalue_t mc_vm_stackpop(mcstate_t* vm)
     {
         frame = vm->currframe;
         currentfunction = mc_value_functiongetscriptfunction(frame->function);
-        numlocals = currentfunction->num_locals;
-        MC_ASSERT((vm->sp - 1) >= (frame->base_pointer + numlocals));
+        numlocals = currentfunction->numlocals;
+        MC_ASSERT((vm->vsposition - 1) >= (frame->basepointer + numlocals));
     }
 #endif
-    vm->sp--;
-    res = vm->stack[vm->sp];
-    vm->last_popped = res;
+    vm->vsposition--;
+    res = vm->valuestack[vm->vsposition];
+    vm->lastpopped = res;
     return res;
 }
 
 TMPSTATIC mcvalue_t mc_vm_stackget(mcstate_t* vm, int nthitem)
 {
     int ix;
-    ix = vm->sp - 1 - nthitem;
+    ix = vm->vsposition - 1 - nthitem;
 #if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
-    if(ix < 0 || ix >= VM_STACK_SIZE)
+    if(ix < 0 || ix >= MC_CONF_VMVALSTACKSIZE)
     {
         mc_errlist_addf(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(vm->currframe), "Invalid stack index: %d", nthitem);
         MC_ASSERT(false);
         return mc_value_makenull();
     }
 #endif
-    return vm->stack[ix];
+    return vm->valuestack[ix];
 }
 
 TMPSTATIC void mc_vm_thisstackpush(mcstate_t* vm, mcvalue_t obj)
 {
 #if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
-    if(vm->this_sp >= VM_THIS_STACK_SIZE)
+    if(vm->thisstpos >= MC_CONF_VMTHISSTACKSIZE)
     {
         MC_ASSERT(false);
         mc_errlist_push(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(vm->currframe), "this stack overflow");
         return;
     }
 #endif
-    vm->this_stack[vm->this_sp] = obj;
-    vm->this_sp++;
+    vm->valthisstack[vm->thisstpos] = obj;
+    vm->thisstpos++;
 }
 
 TMPSTATIC mcvalue_t mc_vm_thisstackpop(mcstate_t* vm)
 {
 #if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
-    if(vm->this_sp == 0)
+    if(vm->thisstpos == 0)
     {
         mc_errlist_push(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(vm->currframe), "this stack underflow");
         MC_ASSERT(false);
         return mc_value_makenull();
     }
 #endif
-    vm->this_sp--;
-    return vm->this_stack[vm->this_sp];
+    vm->thisstpos--;
+    return vm->valthisstack[vm->thisstpos];
 }
 
 TMPSTATIC mcvalue_t mc_vm_thisstackget(mcstate_t* vm, int nthitem)
 {
     int ix;
-    ix = vm->this_sp - 1 - nthitem;
+    ix = vm->thisstpos - 1 - nthitem;
 #if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
-    if(ix < 0 || ix >= VM_THIS_STACK_SIZE)
+    if(ix < 0 || ix >= MC_CONF_VMTHISSTACKSIZE)
     {
         mc_errlist_addf(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(vm->currframe), "Invalid this stack index: %d", nthitem);
         MC_ASSERT(false);
         return mc_value_makenull();
     }
 #endif
-    return vm->this_stack[ix];
+    return vm->valthisstack[ix];
 }
 
 TMPSTATIC bool mv_vm_pushframe(mcstate_t* vm, mcvmframe_t frame)
 {
     mcobjfuncscript_t* framefunction;
-    if(vm->frames_count >= VM_MAX_FRAMES)
+    if(vm->framecount >= MC_CONF_VMMAXFRAMES)
     {
         MC_ASSERT(false);
         return false;
     }
-    vm->frames[vm->frames_count] = frame;
-    vm->currframe = &vm->frames[vm->frames_count];
-    vm->frames_count++;
+    vm->framestack[vm->framecount] = frame;
+    vm->currframe = &vm->framestack[vm->framecount];
+    vm->framecount++;
     framefunction = mc_value_functiongetscriptfunction(frame.function);
-    mc_vm_setstackpos(vm, frame.base_pointer + framefunction->num_locals);
+    mc_vm_setstackpos(vm, frame.basepointer + framefunction->numlocals);
     return true;
 }
 
 TMPSTATIC bool mc_vm_popframe(mcstate_t* vm)
 {
-    mc_vm_setstackpos(vm, vm->currframe->base_pointer - 1);
-    if(vm->frames_count <= 0)
+    mc_vm_setstackpos(vm, vm->currframe->basepointer - 1);
+    if(vm->framecount <= 0)
     {
         MC_ASSERT(false);
         vm->currframe = NULL;
         return false;
     }
-    vm->frames_count--;
-    if(vm->frames_count == 0)
+    vm->framecount--;
+    if(vm->framecount == 0)
     {
         vm->currframe = NULL;
         return false;
     }
-    vm->currframe = &vm->frames[vm->frames_count - 1];
+    vm->currframe = &vm->framestack[vm->framecount - 1];
     return true;
 }
 
@@ -16314,18 +16297,18 @@ TMPSTATIC void mc_vm_rungc(mcstate_t* vm, mcbasicarray_t* constants)
     int i;
     mcvmframe_t* frame;
     mc_state_gcunmarkall(vm);
-    gc_mark_objects(global_store_get_object_data(vm->global_store), global_store_get_object_count(vm->global_store));
+    gc_mark_objects(global_store_get_object_data(vm->vmglobalstore), global_store_get_object_count(vm->vmglobalstore));
     gc_mark_objects((mcvalue_t*)mc_basicarray_data(constants), mc_basicarray_count(constants));
     gc_mark_objects(vm->globals, vm->globals_count);
-    for(i = 0; i < vm->frames_count; i++)
+    for(i = 0; i < vm->framecount; i++)
     {
-        frame = &vm->frames[i];
+        frame = &vm->framestack[i];
         gc_mark_object(frame->function);
     }
-    gc_mark_objects(vm->stack, vm->sp);
-    gc_mark_objects(vm->this_stack, vm->this_sp);
-    gc_mark_object(vm->last_popped);
-    gc_mark_objects(vm->operator_oveload_keys, OPCODE_MAX);
+    gc_mark_objects(vm->valuestack, vm->vsposition);
+    gc_mark_objects(vm->valthisstack, vm->thisstpos);
+    gc_mark_object(vm->lastpopped);
+    gc_mark_objects(vm->operoverloadkeys, MC_OPCODE_MAX);
     mc_state_gcsweep(vm);
 }
 
@@ -16339,16 +16322,16 @@ TMPSTATIC bool mc_vm_callobject(mcstate_t* vm, mcvalue_t callee, int nargs)
     mcvalue_t* stackpos;
     mcobjfuncscript_t* calleefunction;
     calleetype = mc_value_gettype(callee);
-    if(calleetype == MC_OBJ_FUNCTION)
+    if(calleetype == MC_OBJ_FUNCSCRIPT)
     {
         calleefunction = mc_value_functiongetscriptfunction(callee);
-        if(nargs != calleefunction->num_args)
+        if(nargs != calleefunction->numargs)
         {
             mc_errlist_addf(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(vm->currframe), "Invalid number of arguments to \"%s\", expected %d, got %d",
-                              mc_value_functiongetname(callee), calleefunction->num_args, nargs);
+                              mc_value_functiongetname(callee), calleefunction->numargs, nargs);
             return false;
         }
-        ok = mc_callframe_init(&calleeframe, callee, vm->sp - nargs);
+        ok = mc_callframe_init(&calleeframe, callee, vm->vsposition - nargs);
         if(!ok)
         {
             mc_errlist_push(&vm->errors, MC_ERROR_RUNTIME, srcposinvalid, "Frame init failed in mc_vm_callobject");
@@ -16361,20 +16344,20 @@ TMPSTATIC bool mc_vm_callobject(mcstate_t* vm, mcvalue_t callee, int nargs)
             return false;
         }
     }
-    else if(calleetype == MC_OBJ_NATIVE_FUNCTION)
+    else if(calleetype == MC_OBJ_FUNCNATIVE)
     {
-        stackpos = vm->stack + vm->sp - nargs;
+        stackpos = vm->valuestack + vm->vsposition - nargs;
         res = mc_vm_callnativefunction(vm, callee, mc_callframe_getpos(vm->currframe), nargs, stackpos);
         if(mc_vm_haserrors(vm))
         {
             return false;
         }
-        mc_vm_setstackpos(vm, vm->sp - nargs - 1);
+        mc_vm_setstackpos(vm, vm->vsposition - nargs - 1);
         mc_vm_stackpush(vm, res);
     }
     else
     {
-        calleetypename = object_get_type_name(calleetype);
+        calleetypename = mc_valtype_getname(calleetype);
         mc_errlist_addf(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(vm->currframe), "%s object is not callable", calleetypename);
         return false;
     }
@@ -16389,7 +16372,7 @@ TMPSTATIC mcvalue_t mc_vm_callnativefunction(mcstate_t* vm, mcvalue_t callee, mc
     mctraceback_t* traceback;
     mcobjfuncnative_t* nativefun;
     nativefun = mc_value_functiongetnativefunction(callee);
-    res = nativefun->fn(vm, nativefun->data, argc, args);
+    res = nativefun->natptrfn(vm, nativefun->userdata, argc, args);
     if(mc_errlist_haserrors(&vm->errors) && !MC_UTIL_STREQ(nativefun->name, "crash"))
     {
         err = mc_errlist_getlast(&vm->errors);
@@ -16434,7 +16417,7 @@ TMPSTATIC bool mc_vm_checkassign(mcstate_t* state, mcvalue_t oldvalue, mcvalue_t
     if(oldvaluetype != nvaluetype)
     {
         mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Trying to assign variable of type %s to %s",
-                          object_get_type_name(nvaluetype), object_get_type_name(oldvaluetype));
+                          mc_valtype_getname(nvaluetype), mc_valtype_getname(oldvaluetype));
         return false;
     }
     #endif
@@ -16472,34 +16455,34 @@ TMPSTATIC bool mc_vmdo_math(mcstate_t* state, mcopcode_t opcode)
         res = 0;
         switch(opcode)
         {
-            case OPCODE_ADD:
+            case MC_OPCODE_ADD:
                 res = mc_mathutil_add(dnleft, dnright);
                 break;
-            case OPCODE_SUB:
+            case MC_OPCODE_SUB:
                 res = mc_mathutil_sub(dnleft, dnright);
                 break;
-            case OPCODE_MUL:
+            case MC_OPCODE_MUL:
                 res = mc_mathutil_mult(dnleft, dnright);
                 break;
-            case OPCODE_DIV:
+            case MC_OPCODE_DIV:
                 res = mc_mathutil_div(dnleft, dnright);
                 break;
-            case OPCODE_MOD:
+            case MC_OPCODE_MOD:
                 res = mc_mathutil_mod(dnleft, dnright);
                 break;
-            case OPCODE_OR:
+            case MC_OPCODE_OR:
                 res = mc_mathutil_binor(dnleft, dnright);
                 break;
-            case OPCODE_XOR:
+            case MC_OPCODE_XOR:
                 res = mc_mathutil_binxor(dnleft, dnright);
                 break;
-            case OPCODE_AND:
+            case MC_OPCODE_AND:
                 res = mc_mathutil_binand(dnleft, dnright);
                 break;
-            case OPCODE_LSHIFT:
+            case MC_OPCODE_LSHIFT:
                 res = mc_mathutil_binshiftleft(dnleft, dnright);
                 break;
-            case OPCODE_RSHIFT:
+            case MC_OPCODE_RSHIFT:
                 res = mc_mathutil_binshiftright(dnleft, dnright);
                 break;
             default:
@@ -16508,7 +16491,7 @@ TMPSTATIC bool mc_vmdo_math(mcstate_t* state, mcopcode_t opcode)
         }
         mc_vm_stackpush(state, mc_value_makenumber(res));
     }
-    else if(lefttype == MC_OBJ_STRING && righttype == MC_OBJ_STRING && opcode == OPCODE_ADD)
+    else if(lefttype == MC_OBJ_STRING && righttype == MC_OBJ_STRING && opcode == MC_OPCODE_ADD)
     {
         leftlen = mc_valstring_getlength(valleft);
         rightlen = mc_valstring_getlength(valright);
@@ -16553,8 +16536,8 @@ TMPSTATIC bool mc_vmdo_math(mcstate_t* state, mcopcode_t opcode)
         if(!overloadfound)
         {
             opcodename = opcode_get_name(opcode);
-            lefttypename = object_get_type_name(lefttype);
-            righttypename = object_get_type_name(righttype);
+            lefttypename = mc_valtype_getname(lefttype);
+            righttypename = mc_valtype_getname(righttype);
             mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Invalid operand types for %s, got %s and %s",
                               opcodename, lefttypename, righttypename);
             return false;
@@ -16588,7 +16571,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
     /* naming is hard */
     functionfunction = mc_value_functiongetscriptfunction(function);
     ok = false;
-    ok = mc_callframe_init(&createdframe, function, state->sp - functionfunction->num_args);
+    ok = mc_callframe_init(&createdframe, function, state->vsposition - functionfunction->numargs);
     if(!ok)
     {
         fprintf(stderr, "failed to init frames!\n");
@@ -16602,7 +16585,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
     }
     fprintf(stderr, "**executing function**\n");
     state->running = true;
-    state->last_popped = mc_value_makenull();
+    state->lastpopped = mc_value_makenull();
     checktime = false;
     maxexectimems = 0;
     #if 0
@@ -16619,7 +16602,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
     {
         timer = mc_timer_start();
     }
-    while(state->currframe->ip < state->currframe->bytecode_size)
+    while(state->currframe->bcposition < state->currframe->bcsize)
     {
         opcode = mc_callframe_readopcode(state->currframe);
         #if 0
@@ -16627,7 +16610,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
         #endif
         switch(opcode)
         {
-            case OPCODE_CONSTANT:
+            case MC_OPCODE_CONSTANT:
                 {
                     uint16_t constantix;
                     mcvalue_t* constant;
@@ -16641,16 +16624,16 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     mc_vm_stackpush(state, *constant);
                 }
                 break;
-            case OPCODE_ADD:
-            case OPCODE_SUB:
-            case OPCODE_MUL:
-            case OPCODE_DIV:
-            case OPCODE_MOD:
-            case OPCODE_OR:
-            case OPCODE_XOR:
-            case OPCODE_AND:
-            case OPCODE_LSHIFT:
-            case OPCODE_RSHIFT:
+            case MC_OPCODE_ADD:
+            case MC_OPCODE_SUB:
+            case MC_OPCODE_MUL:
+            case MC_OPCODE_DIV:
+            case MC_OPCODE_MOD:
+            case MC_OPCODE_OR:
+            case MC_OPCODE_XOR:
+            case MC_OPCODE_AND:
+            case MC_OPCODE_LSHIFT:
+            case MC_OPCODE_RSHIFT:
                 {
                     if(!mc_vmdo_math(state, opcode))
                     {
@@ -16658,23 +16641,23 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     }
                 }
                 break;
-            case OPCODE_POP:
+            case MC_OPCODE_POP:
                 {
                     mc_vm_stackpop(state);
                 }
                 break;
-            case OPCODE_TRUE:
+            case MC_OPCODE_TRUE:
                 {
                     mc_vm_stackpush(state, mc_value_makebool(true));
                 }
                 break;
-            case OPCODE_FALSE:
+            case MC_OPCODE_FALSE:
                 {
                     mc_vm_stackpush(state, mc_value_makebool(false));
                 }
                 break;
-            case OPCODE_COMPARE:
-            case OPCODE_COMPARE_EQ:
+            case MC_OPCODE_COMPARE:
+            case MC_OPCODE_COMPAREEQ:
                 {
                     bool isoverloaded;
                     double comparisonres;
@@ -16686,7 +16669,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     right = mc_vm_stackpop(state);
                     left = mc_vm_stackpop(state);
                     isoverloaded = false;
-                    ok = mc_vm_tryoverloadoperator(state, left, right, OPCODE_COMPARE, &isoverloaded);
+                    ok = mc_vm_tryoverloadoperator(state, left, right, MC_OPCODE_COMPARE, &isoverloaded);
                     if(!ok)
                     {
                         goto err;
@@ -16694,15 +16677,15 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     if(!isoverloaded)
                     {
                         comparisonres = mc_value_compare(left, right, &ok);
-                        if(ok || opcode == OPCODE_COMPARE_EQ)
+                        if(ok || opcode == MC_OPCODE_COMPAREEQ)
                         {
                             res = mc_value_makenumber(comparisonres);
                             mc_vm_stackpush(state, res);
                         }
                         else
                         {
-                            righttname = object_get_type_name(mc_value_gettype(right));
-                            lefttname = object_get_type_name(mc_value_gettype(left));
+                            righttname = mc_valtype_getname(mc_value_gettype(right));
+                            lefttname = mc_valtype_getname(mc_value_gettype(left));
                             mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "cannot compare %s and %s", lefttname, righttname);
                             goto err;
                         }
@@ -16710,10 +16693,10 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                 }
                 break;
 
-            case OPCODE_EQUAL:
-            case OPCODE_NOT_EQUAL:
-            case OPCODE_GREATER_THAN:
-            case OPCODE_GREATER_THAN_EQUAL:
+            case MC_OPCODE_EQUAL:
+            case MC_OPCODE_NOTEQUAL:
+            case MC_OPCODE_GREATERTHAN:
+            case MC_OPCODE_GREATERTHANEQUAL:
                 {
                     bool resval;
                     double comparisonres;
@@ -16724,22 +16707,22 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     resval = false;
                     switch(opcode)
                     {
-                        case OPCODE_EQUAL:
+                        case MC_OPCODE_EQUAL:
                             {
                                 resval = MC_UTIL_CMPFLOAT(comparisonres, 0);
                             }
                             break;
-                        case OPCODE_NOT_EQUAL:
+                        case MC_OPCODE_NOTEQUAL:
                             {
                                 resval = !MC_UTIL_CMPFLOAT(comparisonres, 0);
                             }
                             break;
-                        case OPCODE_GREATER_THAN:
+                        case MC_OPCODE_GREATERTHAN:
                             {
                                 resval = comparisonres > 0;
                             }
                             break;
-                        case OPCODE_GREATER_THAN_EQUAL:
+                        case MC_OPCODE_GREATERTHANEQUAL:
                             {
                                 resval = comparisonres > 0 || MC_UTIL_CMPFLOAT(comparisonres, 0);
                             }
@@ -16754,7 +16737,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     mc_vm_stackpush(state, res);
                 }
                 break;
-            case OPCODE_MINUS:
+            case MC_OPCODE_MINUS:
                 {
                     bool overloadfound;
                     double val;
@@ -16773,21 +16756,21 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     else
                     {
                         overloadfound = false;
-                        ok = mc_vm_tryoverloadoperator(state, operand, mc_value_makenull(), OPCODE_MINUS, &overloadfound);
+                        ok = mc_vm_tryoverloadoperator(state, operand, mc_value_makenull(), MC_OPCODE_MINUS, &overloadfound);
                         if(!ok)
                         {
                             goto err;
                         }
                         if(!overloadfound)
                         {
-                            opertname = object_get_type_name(opertype);
+                            opertname = mc_valtype_getname(opertype);
                             mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Invalid operand type for MINUS, got %s", opertname);
                             goto err;
                         }
                     }
                 }
                 break;
-            case OPCODE_BANG:
+            case MC_OPCODE_BANG:
                 {
                     bool overloadfound;
                     mcvalue_t res;
@@ -16797,7 +16780,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     type = mc_value_gettype(operand);
                     if(type == MC_OBJ_BOOL)
                     {
-                        res = mc_value_makebool(!object_get_bool(operand));
+                        res = mc_value_makebool(!mc_value_getbool(operand));
                         mc_vm_stackpush(state, res);
                     }
                     else if(type == MC_OBJ_NULL)
@@ -16808,7 +16791,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     else
                     {
                         overloadfound = false;
-                        ok = mc_vm_tryoverloadoperator(state, operand, mc_value_makenull(), OPCODE_BANG, &overloadfound);
+                        ok = mc_vm_tryoverloadoperator(state, operand, mc_value_makenull(), MC_OPCODE_BANG, &overloadfound);
                         if(!ok)
                         {
                             goto err;
@@ -16821,43 +16804,43 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     }
                 }
                 break;
-            case OPCODE_JUMP:
+            case MC_OPCODE_JUMP:
                 {
                     uint16_t pos;
                     pos = mc_callframe_readuint16(state->currframe);
-                    state->currframe->ip = pos;
+                    state->currframe->bcposition = pos;
                 }
                 break;
-            case OPCODE_JUMP_IF_FALSE:
-                {
-                    uint16_t pos;
-                    mcvalue_t test;
-                    pos = mc_callframe_readuint16(state->currframe);
-                    test = mc_vm_stackpop(state);
-                    if(!object_get_bool(test))
-                    {
-                        state->currframe->ip = pos;
-                    }
-                }
-                break;
-            case OPCODE_JUMP_IF_TRUE:
+            case MC_OPCODE_JUMPIFFALSE:
                 {
                     uint16_t pos;
                     mcvalue_t test;
                     pos = mc_callframe_readuint16(state->currframe);
                     test = mc_vm_stackpop(state);
-                    if(object_get_bool(test))
+                    if(!mc_value_getbool(test))
                     {
-                        state->currframe->ip = pos;
+                        state->currframe->bcposition = pos;
                     }
                 }
                 break;
-            case OPCODE_NULL:
+            case MC_OPCODE_JUMPIFTRUE:
+                {
+                    uint16_t pos;
+                    mcvalue_t test;
+                    pos = mc_callframe_readuint16(state->currframe);
+                    test = mc_vm_stackpop(state);
+                    if(mc_value_getbool(test))
+                    {
+                        state->currframe->bcposition = pos;
+                    }
+                }
+                break;
+            case MC_OPCODE_NULL:
                 {
                     mc_vm_stackpush(state, mc_value_makenull());
                 }
                 break;
-            case OPCODE_DEFINE_MODULE_GLOBAL:
+            case MC_OPCODE_DEFINEMODULEGLOBAL:
                 {
                     uint16_t ix;
                     mcvalue_t value;
@@ -16866,7 +16849,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     mc_vm_setglobalbyindex(state, ix, value);
                 }
                 break;
-            case OPCODE_SET_MODULE_GLOBAL:
+            case MC_OPCODE_SETMODULEGLOBAL:
                 {
                     uint16_t ix;
                     mcvalue_t nvalue;
@@ -16881,7 +16864,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     mc_vm_setglobalbyindex(state, ix, nvalue);
                 }
                 break;
-            case OPCODE_GET_MODULE_GLOBAL:
+            case MC_OPCODE_GETMODULEGLOBAL:
                 {
                     uint16_t ix;
                     mcvalue_t global;
@@ -16890,7 +16873,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     mc_vm_stackpush(state, global);
                 }
                 break;
-            case OPCODE_ARRAY:
+            case MC_OPCODE_ARRAY:
                 {
                     int i;
                     uint16_t count;
@@ -16903,7 +16886,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     {
                         goto err;
                     }
-                    items = state->stack + state->sp - count;
+                    items = state->valuestack + state->vsposition - count;
                     for(i = 0; i < count; i++)
                     {
                         item = items[i];
@@ -16913,11 +16896,11 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                             goto err;
                         }
                     }
-                    mc_vm_setstackpos(state, state->sp - count);
+                    mc_vm_setstackpos(state, state->vsposition - count);
                     mc_vm_stackpush(state, arrayobj);
                 }
                 break;
-            case OPCODE_MAP_START:
+            case MC_OPCODE_MAPSTART:
                 {
                     uint16_t count;
                     mcvalue_t mapobj;
@@ -16930,7 +16913,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     mc_vm_thisstackpush(state, mapobj);
                 }
                 break;
-            case OPCODE_MAP_END:
+            case MC_OPCODE_MAPEND:
                 {
                     int i;
                     uint16_t kvpcount;
@@ -16944,14 +16927,14 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     kvpcount = mc_callframe_readuint16(state->currframe);
                     itemscount = kvpcount * 2;
                     mapobj = mc_vm_thisstackpop(state);
-                    kvpairs = state->stack + state->sp - itemscount;
+                    kvpairs = state->valuestack + state->vsposition - itemscount;
                     for(i = 0; i < itemscount; i += 2)
                     {
                         key = kvpairs[i];
-                        if(!object_is_hashable(key))
+                        if(!mc_value_ishashable(key))
                         {
                             keytype = mc_value_gettype(key);
-                            keytypename = object_get_type_name(keytype);
+                            keytypename = mc_valtype_getname(keytype);
                             mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Key of type %s is not hashable", keytypename);
                             goto err;
                         }
@@ -16962,19 +16945,19 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                             goto err;
                         }
                     }
-                    mc_vm_setstackpos(state, state->sp - itemscount);
+                    mc_vm_setstackpos(state, state->vsposition - itemscount);
                     mc_vm_stackpush(state, mapobj);
                 }
                 break;
 
-            case OPCODE_GET_THIS:
+            case MC_OPCODE_GETTHIS:
                 {
                     mcvalue_t obj;
                     obj = mc_vm_thisstackget(state, 0);
                     mc_vm_stackpush(state, obj);
                 }
                 break;
-            case OPCODE_GET_INDEX:
+            case MC_OPCODE_GETINDEX:
                 {
                     int leftlen;
                     int ix;
@@ -16993,7 +16976,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     indextype = mc_value_gettype(index);
                     if(lefttype != MC_OBJ_ARRAY && lefttype != MC_OBJ_MAP && lefttype != MC_OBJ_STRING)
                     {
-                        lefttypename = object_get_type_name(lefttype);
+                        lefttypename = mc_valtype_getname(lefttype);
                         mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Type %s is not indexable", lefttypename);
                         goto err;
                     }
@@ -17002,8 +16985,8 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     {
                         if(indextype != MC_OBJ_NUMBER)
                         {
-                            lefttypename = object_get_type_name(lefttype);
-                            indextypename = object_get_type_name(indextype);
+                            lefttypename = mc_valtype_getname(lefttype);
+                            indextypename = mc_valtype_getname(indextype);
                             mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Cannot index %s with %s", lefttypename, indextypename);
                             goto err;
                         }
@@ -17036,7 +17019,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                 }
                 break;
 
-            case OPCODE_GET_VALUE_AT:
+            case MC_OPCODE_GETVALUEAT:
                 {
                     int ix;
                     int leftlen;
@@ -17055,15 +17038,15 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     indextype= mc_value_gettype(index);
                     if(lefttype != MC_OBJ_ARRAY && lefttype != MC_OBJ_MAP && lefttype != MC_OBJ_STRING)
                     {
-                        lefttypename = object_get_type_name(lefttype);
+                        lefttypename = mc_valtype_getname(lefttype);
                         mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Type %s is not indexable", lefttypename);
                         goto err;
                     }
                     res = mc_value_makenull();
                     if(indextype != MC_OBJ_NUMBER)
                     {
-                        lefttypename = object_get_type_name(lefttype);
-                        indextypename = object_get_type_name(indextype);
+                        lefttypename = mc_valtype_getname(lefttype);
+                        indextypename = mc_valtype_getname(indextype);
                         mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Cannot index %s with %s", lefttypename, indextypename);
                         goto err;
                     }
@@ -17091,7 +17074,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                 }
                 break;
 
-            case OPCODE_CALL:
+            case MC_OPCODE_CALL:
                 {
                     uint8_t nargs;
                     mcvalue_t callee;
@@ -17104,7 +17087,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     }
                 }
                 break;
-            case OPCODE_RETURN_VALUE:
+            case MC_OPCODE_RETURNVALUE:
                 {
                     mcvalue_t res;
                     res = mc_vm_stackpop(state);
@@ -17116,7 +17099,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     mc_vm_stackpush(state, res);
                 }
                 break;
-            case OPCODE_RETURN:
+            case MC_OPCODE_RETURN:
                 {
                     ok = mc_vm_popframe(state);
                     mc_vm_stackpush(state, mc_value_makenull());
@@ -17127,45 +17110,45 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     }
                 }
                 break;
-            case OPCODE_DEFINE_LOCAL:
+            case MC_OPCODE_DEFINELOCAL:
                 {
                     uint8_t pos;
                     pos = mc_callframe_readuint8(state->currframe);
-                    state->stack[state->currframe->base_pointer + pos] = mc_vm_stackpop(state);
+                    state->valuestack[state->currframe->basepointer + pos] = mc_vm_stackpop(state);
                 }
                 break;
-            case OPCODE_SET_LOCAL:
+            case MC_OPCODE_SETLOCAL:
                 {
                     uint8_t pos;
                     mcvalue_t nvalue;
                     mcvalue_t oldvalue;
                     pos = mc_callframe_readuint8(state->currframe);
                     nvalue = mc_vm_stackpop(state);
-                    oldvalue = state->stack[state->currframe->base_pointer + pos];
+                    oldvalue = state->valuestack[state->currframe->basepointer + pos];
                     if(!mc_vm_checkassign(state, oldvalue, nvalue))
                     {
                         goto err;
                     }
-                    state->stack[state->currframe->base_pointer + pos] = nvalue;
+                    state->valuestack[state->currframe->basepointer + pos] = nvalue;
                 }
                 break;
-            case OPCODE_GET_LOCAL:
+            case MC_OPCODE_GETLOCAL:
                 {
                     uint8_t pos;
                     mcvalue_t val;
                     pos = mc_callframe_readuint8(state->currframe);
-                    val = state->stack[state->currframe->base_pointer + pos];
+                    val = state->valuestack[state->currframe->basepointer + pos];
                     mc_vm_stackpush(state, val);
                 }
                 break;
 
-            case OPCODE_GETGLOBALBUILTIN:
+            case MC_OPCODE_GETGLOBALBUILTIN:
                 {
                     uint16_t ix;
                     mcvalue_t val;
                     ix = mc_callframe_readuint16(state->currframe);
                     ok = false;
-                    val = global_store_get_object_at(state->global_store, ix, &ok);
+                    val = global_store_get_object_at(state->vmglobalstore, ix, &ok);
                     if(!ok)
                     {
                         mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Global value %d not found", ix);
@@ -17175,7 +17158,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                 }
                 break;
 
-            case OPCODE_FUNCTION:
+            case MC_OPCODE_FUNCTION:
                 {
                     int i;
                     uint8_t numfree;
@@ -17196,30 +17179,30 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                         goto err;
                     }
                     constanttype = mc_value_gettype(*constant);
-                    if(constanttype != MC_OBJ_FUNCTION)
+                    if(constanttype != MC_OBJ_FUNCSCRIPT)
                     {
-                        tname = object_get_type_name(constanttype);
+                        tname = mc_valtype_getname(constanttype);
                         mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "%s is not a function", tname);
                         goto err;
                     }
                     constfun = mc_value_functiongetscriptfunction(*constant);
                     fname = mc_value_functiongetname(*constant);
-                    functionobj = mc_value_makefuncscript(state, fname, constfun->comp_result, false, constfun->num_locals, constfun->num_args, numfree);
+                    functionobj = mc_value_makefuncscript(state, fname, constfun->compiledprogcode, false, constfun->numlocals, constfun->numargs, numfree);
                     if(mc_value_isnull(functionobj))
                     {
                         goto err;
                     }
                     for(i = 0; i < numfree; i++)
                     {
-                        freeval = state->stack[state->sp - numfree + i];
+                        freeval = state->valuestack[state->vsposition - numfree + i];
                         mc_value_functionsetfreevalat(functionobj, i, freeval);
                     }
-                    mc_vm_setstackpos(state, state->sp - numfree);
+                    mc_vm_setstackpos(state, state->vsposition - numfree);
                     mc_vm_stackpush(state, functionobj);
                 }
                 break;
 
-            case OPCODE_GET_FREE:
+            case MC_OPCODE_GETFREE:
                 {
                     uint8_t freeix;
                     mcvalue_t val;
@@ -17228,7 +17211,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     mc_vm_stackpush(state, val);
                 }
                 break;
-            case OPCODE_SET_FREE:
+            case MC_OPCODE_SETFREE:
                 {
                     uint8_t freeix;
                     mcvalue_t val;
@@ -17237,14 +17220,14 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     mc_value_functionsetfreevalat(state->currframe->function, freeix, val);
                 }
                 break;
-            case OPCODE_CURRENT_FUNCTION:
+            case MC_OPCODE_CURRENTFUNCTION:
                 {
                     mcvalue_t currentfunction;
                     currentfunction = state->currframe->function;
                     mc_vm_stackpush(state, currentfunction);
                 }
                 break;
-            case OPCODE_SET_INDEX:
+            case MC_OPCODE_SETINDEX:
                 {
                     int alen;
                     int ix;
@@ -17263,7 +17246,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     indextype = mc_value_gettype(index);
                     if(lefttype != MC_OBJ_ARRAY && lefttype != MC_OBJ_MAP)
                     {
-                        lefttypename = object_get_type_name(lefttype);
+                        lefttypename = mc_valtype_getname(lefttype);
                         mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "type %s is not indexable", lefttypename);
                         goto err;
                     }
@@ -17271,8 +17254,8 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     {
                         if(indextype != MC_OBJ_NUMBER)
                         {
-                            lefttypename = object_get_type_name(lefttype);
-                            indextypename = object_get_type_name(indextype);
+                            lefttypename = mc_valtype_getname(lefttype);
+                            indextypename = mc_valtype_getname(indextype);
                             mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "cannot index %s with %s", lefttypename, indextypename);
                             goto err;
                         }
@@ -17301,14 +17284,14 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                 }
                 break;
 
-            case OPCODE_DUP:
+            case MC_OPCODE_DUP:
                 {
                     mcvalue_t val;
                     val = mc_vm_stackget(state, 0);
                     mc_vm_stackpush(state, val);
                 }
                 break;
-            case OPCODE_LEN:
+            case MC_OPCODE_LEN:
                 {
                     int len;
                     const char* tname;
@@ -17331,14 +17314,14 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     }
                     else
                     {
-                        tname = object_get_type_name(type);
+                        tname = mc_valtype_getname(type);
                         mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Cannot get length of %s", tname);
                         goto err;
                     }
                     mc_vm_stackpush(state, mc_value_makenumber(len));
                 }
                 break;
-            case OPCODE_NUMBER:
+            case MC_OPCODE_NUMBER:
                 {
                     uint64_t val;
                     double dval;
@@ -17349,11 +17332,11 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     mc_vm_stackpush(state, obj);
                 }
                 break;
-            case OPCODE_SET_RECOVER:
+            case MC_OPCODE_SETRECOVER:
                 {
-                    uint16_t recover_ip;
-                    recover_ip = mc_callframe_readuint16(state->currframe);
-                    state->currframe->recover_ip = recover_ip;
+                    uint16_t recip;
+                    recip = mc_callframe_readuint16(state->currframe);
+                    state->currframe->recoverip = recip;
                 }
                 break;
             default:
@@ -17385,10 +17368,10 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
             if(err->type == MC_ERROR_RUNTIME && mc_errlist_size(&state->errors) == 1)
             {
                 recoverframeix = -1;
-                for(fri = state->frames_count - 1; fri >= 0; fri--)
+                for(fri = state->framecount - 1; fri >= 0; fri--)
                 {
-                    frame = &state->frames[fri];
-                    if(frame->recover_ip >= 0 && !frame->is_recovering)
+                    frame = &state->framestack[fri];
+                    if(frame->recoverip >= 0 && !frame->isrecovering)
                     {
                         recoverframeix = fri;
                         break;
@@ -17406,7 +17389,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                 {
                     traceback_append_from_vm(err->traceback, state);
                 }
-                while(state->frames_count > (recoverframeix + 1))
+                while(state->framecount > (recoverframeix + 1))
                 {
                     mc_vm_popframe(state);
                 }
@@ -17417,8 +17400,8 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     err->traceback = NULL;
                 }
                 mc_vm_stackpush(state, errobj);
-                state->currframe->ip = state->currframe->recover_ip;
-                state->currframe->is_recovering = true;
+                state->currframe->bcposition = state->currframe->recoverip;
+                state->currframe->isrecovering = true;
                 mc_errlist_clear(&state->errors);
             }
             else
@@ -17640,6 +17623,30 @@ void mc_cli_installargv(mcstate_t* state, int argc, char** argv, int beginat)
     mc_state_setglobalconstant(state, "ARGV", argvobj);
 }
 
+void mc_cli_installjsondummy(mcstate_t* state)
+{
+    mcvalue_t jmap;
+    jmap = mc_value_makemap(state);
+    mc_valmap_setvalstring(jmap, "stringify", mc_value_makefuncnative(state, "stringify", cfn_jsonstringify, NULL, 0));
+    mc_state_setglobalconstant(state, "JSON", jmap);
+}
+
+
+void mc_cli_installjsconsole(mcstate_t* state)
+{
+    mcvalue_t jmap;
+    jmap = mc_value_makemap(state);
+    mc_valmap_setvalstring(jmap, "log", mc_value_makefuncnative(state, "log", cfn_println, NULL, 0));
+    mc_state_setglobalconstant(state, "console", jmap);
+}
+
+
+void mc_cli_installfauxjavascript(mcstate_t* state)
+{
+    mc_cli_installjsondummy(state);
+    mc_cli_installjsconsole(state);
+}
+
 void mc_cli_installotherstuff(mcstate_t* state)
 {
     mc_state_setglobalconstant(state, "test", mc_value_makenumber(42));
@@ -17648,6 +17655,7 @@ void mc_cli_installotherstuff(mcstate_t* state)
     mc_state_setnativefunction(state, "vec2_add", cfn_vec2add, NULL, 0);
     mc_state_setnativefunction(state, "vec2_sub", cfn_vec2sub, NULL, 0);
 }
+
 
 static optlongflags_t longopts[] =
 {
@@ -17719,6 +17727,7 @@ int main(int argc, char* argv[])
     fprintf(stderr, "nargc=%d\n", nargc);
     mc_cli_installargv(state, nargc, nargv, 0);
     mc_cli_installotherstuff(state);
+    mc_cli_installfauxjavascript(state);
     if(evalcode != NULL)
     {
         mc_cli_compileandrunsource(state, &tmp, evalcode);
