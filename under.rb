@@ -1,7 +1,11 @@
 #!/usr/bin/ruby
 
+require "ostruct"
+require "optparse"
+
 class Underscore
-  def initialize
+  def initialize(opts)
+    @opts = opts
     @cachedata = {}
     @files = []
     @symtab = {}
@@ -50,8 +54,6 @@ class Underscore
   ]
 
   REPLACEME = {
-
-
   }
 
   def whatwewant(sym)
@@ -88,10 +90,14 @@ class Underscore
     @files.each do |f|
       findinfile(f)
     end
-    @symtab.each do |sym, cnt|
-      #printf("  %p => %p,\n", sym, sym.gsub(/_/, ""))
+    if !@opts.doreplace then
+      @symtab.each do |sym, cnt|
+        printf("  %p => %p,\n", sym, sym.gsub(/_/, ""))
+      end
     end
-    $stderr.printf("now replacing ...\n")
+    if @opts.doreplace then
+      $stderr.printf("now replacing ...\n")
+    end
     @files.each do |file|
       d = File.read(file)
       totalcnt = 0
@@ -100,18 +106,18 @@ class Underscore
         if rep == nil then
           rep = cleanup(sym)
         end
-
         $stderr.printf("replacing %p --> %p\n", sym, rep)
         rx = /\b#{sym}\b/
         if d.match?(rx) then
           totalcnt += 1
           d.gsub!(rx, rep)
         end
-        
       end
       if totalcnt > 0 then
-        $stderr.printf("replacing %d identifiers in %p\n", totalcnt, file)
-        File.write(file, d)
+        if @opts.doreplace then
+          $stderr.printf("replacing %d identifiers in %p\n", totalcnt, file)
+          File.write(file, d)
+        end
       end
     end
   end
@@ -120,6 +126,14 @@ end
 
 
 begin
-  u = Underscore.new
+  opts = OpenStruct.new({
+    doreplace: false,
+  })
+  OptionParser.new{|prs|
+    prs.on("-r", "--replace", "do the actual physical replacing"){
+      opts.doreplace = true
+    }
+  }.parse!
+  u = Underscore.new(opts)
   u.main
 end

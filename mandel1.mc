@@ -1,27 +1,27 @@
 
 function main()
 {
-    var left_edge   = -420
-    var right_edge  =  300
-    var top_edge    =  300
-    var bottom_edge = -300
-    var x_step      =    7
-    var y_step      =   15
-    var max_iter    =  500
-    var y0 = top_edge
+    left_edge   = -420
+    right_edge  =  300
+    top_edge    =  300
+    bottom_edge = -300
+    x_step      =    7
+    y_step      =   15
+    max_iter    =  500
+    y0 = top_edge
     while(y0 > bottom_edge)
     {
-        var x0 = left_edge
+        x0 = left_edge
         while(x0 < right_edge)
         {
-            var y = 0
-            var x = 0
-            var chcode = 32
-            var i = 0
+            y = 0
+            x = 0
+            chcode = 32
+            i = 0
             while (i < max_iter)
             {
-                var x_x = (x * x) / 200
-                var y_y = (y * y) / 200
+                x_x = (x * x) / 200
+                y_y = (y * y) / 200
                 if (x_x + y_y > 800)
                 {
                     chcode = 48 + i
@@ -35,7 +35,7 @@ function main()
                 x = x_x - y_y + x0
                 i = i + 1
             }
-            var pch = '';
+            pch = '';
             if(chcode > 50)
             {
                 pch = "+";

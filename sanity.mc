@@ -1,4 +1,5 @@
 const squared = squarearray(1, 2, 3)
+println("squared=", squared)
 assert(squared[0] == 1)
 assert(squared[1] == 4)
 assert(squared[2] == 9)
@@ -278,6 +279,8 @@ var test_obj = {
 }
 
 assert(test_obj.fun() == 2)
+println(test_obj)
+println(test_obj["fun"] != 2)
 assert(test_obj["fun"] != 2)
 assert(test_obj["fun"]() == 2)
 

@@ -13,15 +13,18 @@ const G = [
     233230,
 ];
 
-function vec3(x, y, z) {
+function vec3(x, y, z)
+{
     return {
         x: x,
         y: y,
         z: z,
-        __operator_add__: function(a, b) {
+        __operator_add__: function(a, b)
+        {
             return vec3(a.x + b.x, a.y + b.y, a.z + b.z)
         },
-        __operator_mul__: function(a, b) {
+        __operator_mul__: function(a, b)
+        {
             if (isnumber(b)) {
                 return vec3(a.x * b, a.y * b, a.z * b)
             } else if (isnumber(a)) {
@@ -29,46 +32,50 @@ function vec3(x, y, z) {
             }
             assert(false)
         },
-        __operator_mod__: function(a, b) {
+        __operator_mod__: function(a, b)
+        {
             return a.x * b.x + a.y * b.y + a.z * b.z
         },
-        __operator_xor__: function(a, b) {
+        __operator_xor__: function(a, b)
+        {
             var v = vec3(0, 0, 0)
             v.x = (a.y * b.z) - (b.y * a.z)
             v.y = (a.z * b.x) - (b.z * a.x)
             v.z = (a.x * b.y) - (b.x * a.y)
             return v
         },
-        __operator_bang__: function(a) {
+        __operator_bang__: function(a)
+        {
             return a * (1 / sqrt(a % a))
         }
     }
 }
 
-function vtest(o, d, t, n) { 
-    t = 1e9
-
+function vtest(o, d, t, n)
+{ 
+    t = 1e9/8
     var m = 0
     var p = -o.z / d.z
-
-    if (0.01 < p) {
+    if (0.01 < p)
+    {
         t = p
         n = vec3(0, 0, 1)
         m = 1
     }
-
-    for (var k = 18; k >= 0; k -= 1) {
-        for (var j = 8; j >= 0; j -= 1) {        
+    for (var k = 18; k >= 0; k -= 1)
+    {
+        for (var j = 8; j >= 0; j -= 1)
+        {        
             if (G[j] & 1 << k) {                
                 var p2 = o + vec3(-k, 0, -j - 4)
                 var b = p2 % d
                 var c = p2 % p2 - 1
                 var q = b * b - c
-                
-                if (q > 0) {
+                if (q > 0)
+                {
                     var s = -b - sqrt(q)
-
-                    if (s < t && s > 0.01) {
+                    if (s < t && s > 0.01)
+                    {
                         t = s
                         n = !(p2 + d * t)
                         m = 2
@@ -84,74 +91,80 @@ function vtest(o, d, t, n) {
     };
   }
 
-
-function sample(o, d) {
+function sample(o, d)
+{
     var t = 0
     var n = vec3(0, 0, 0)
     var test_res = vtest(o, d, t, n)
     var m = test_res.m
     t = test_res.t
     n = test_res.n
-
-    if (m == 0) {
+    if (m == 0)
+    {
         return vec3(0.7, 0.6, 1.0) * pow(1 - d.z, 4)
     }
-
     var h = o + d * t
     var l = !(vec3(9 + random(), 9 + random(), 16) + h * - 1)
     var r = d + n * (n % d * - 2)
-
     var b = l % n
-
-    if (b < 0) {
+    if (b < 0)
+    {
         b = 0
-    } else {
+    }
+    else
+    {
         test_res = vtest(h, l, t, n)
         t = test_res.t
         n = test_res.n
-        if (test_res.m) {
+        if (test_res.m)
+        {
             b = 0
         }
     }
-
     var p = pow(l % r * (b > 0), 99)
-
-    if (m == 1) {
+    if (m == 1)
+    {
         h = h * 0.2
         var x = floor(ceil(h.x) + ceil(h.y)) & 1
-        if (x) {
+        if (x)
+        {
             return vec3(3, 1, 1) * (b * 0.2 + 0.1)
-        } else {
+        }
+        else
+        {
             return vec3(3, 3, 3) * (b * 0.2 + 0.1)
         }
     }
-
     return vec3(p, p, p) + sample(h, r) * 0.5
 }
 
-function main() {
-    print("P3 512 512 255 ")
-    
+function main()
+{
+    var res = []
     var g = !vec3(-6, -16, 0)
     var a = !(vec3(0, 0, 1) ^ g) * 0.002
     var b = !(g^a) * 0.002
     var c = (a+b) * -256 + g
 
-    for (var y = 511; y >= 0; y -= 1) {
-        for (var x = 511; x >= 0; x -= 1) {
+    for (var y = 511; y >= 0; y -= 1)
+    {
+        for (var x = 511; x >= 0; x -= 1)
+        {
             var p = vec3(13, 13, 13)
-            for (var r = 0; r < 64; r += 1) { 
+            for (var r = 0; r < 64; r += 1)
+            {
                 var t = a * (random() - 0.5) * 99 + b * (random() - 0.5) * 99
                 p = sample(vec3(17,16,8) + t, !(t * -1 + (a * (random() + x) + b * (y + random()) + c) * 16)) * 3.5 + p
             }
-            print(floor(p.x))
-            print(" ")
-            print(floor(p.y))
-            print(" ")
-            print(floor(p.z))
-            print(" ")
+            arraypush(res, floor(p.x), floor(p.y), floor(p.z))
         }
     }
+    print("P3 512 512 255 ")
+    for(item in res)
+    {
+        print(item, " ")
+    }
+
 }
 
 main()
