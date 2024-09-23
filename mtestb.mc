@@ -1,4 +1,4 @@
-import "module_dir/submc"
+import "modules/submc"
 
 function inc() {
     return submc::inc()

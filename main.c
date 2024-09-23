@@ -72,7 +72,7 @@ THE SOFTWARE.
     #define TMPSEMISTATIC static inline
 #else
     #if 1
-        #if 1
+        #if 0
             #define TMPSTATIC
             #define TMPSEMISTATIC
         #else
@@ -105,22 +105,31 @@ THE SOFTWARE.
 #define MC_UTIL_STREQ(a, b) (strcmp((a), (b)) == 0)
 #define MC_UTIL_STRNEQ(a, b, n) (strncmp((a), (b), (n)) == 0)
 #define MC_UTIL_STATICARRAYSIZE(array) ((int)(sizeof(array) / sizeof(array[0])))
-#define MC_UTIL_CMPFLOAT(a, b) (fabs((a) - (b)) < DBL_EPSILON)
 
-#if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
-    #define MC_ASSERT(x) assert((x))
+#if 1
+    #define MC_UTIL_CMPFLOAT(a, b) (fabs((a) - (b)) < DBL_EPSILON)
 #else
-    #define MC_ASSERT(x) ((void)0)
+    #define MC_UTIL_CMPFLOAT(a, b) ((a) == (b))
+#endif
+
+#if 0
+    #if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
+        #define MC_ASSERT(x) assert((x))
+    #else
+        #define MC_ASSERT(x) ((void)0)
+    #endif
+#else
+        #define MC_ASSERT(x)
 #endif
 
 
-#define MC_CONF_VMVALSTACKSIZE 2048
-#define MC_CONF_VMMAXGLOBALS 2048
-#define MC_CONF_VMMAXFRAMES 2048
-#define MC_CONF_VMTHISSTACKSIZE 2048
+#define MC_CONF_VMVALSTACKSIZE 1024
+#define MC_CONF_VMMAXGLOBALS MC_CONF_VMVALSTACKSIZE
+#define MC_CONF_VMMAXFRAMES MC_CONF_VMVALSTACKSIZE
+#define MC_CONF_VMTHISSTACKSIZE MC_CONF_VMVALSTACKSIZE
 #define MC_CONF_NATIVEFUNCMAXDATA 24
 #define MC_CONF_STRINGMAXSTACKSIZE 24
-#define MC_CONF_GCMEMPOOLSIZE 2048
+#define MC_CONF_GCMEMPOOLSIZE (2048/8)
 #define MC_CONF_GCMEMPOOLCOUNT 3
 #define MC_CONF_GCMEMSWEEPINTERVAL 128
 #define MC_CONF_ERROR_MAXERRORCOUNT 16
@@ -128,6 +137,16 @@ THE SOFTWARE.
 #define MC_CONF_GENERICDICTINVALIDIX UINT_MAX
 #define MC_CONF_VALDICTINVALIDIX UINT_MAX
 #define MC_CONF_GENERICDICTINITSIZE 32
+
+#if defined(__GNUC__)
+    #define mc_util_likely(x)   (__builtin_expect(!!(x), 1))
+    #define mc_util_unlikely(x) (__builtin_expect(!!(x), 0))
+#else
+    #define mc_util_likely(x)   (x)
+    #define mc_util_unlikely(x) (x)
+#endif
+
+#define mc_value_gettype(v) (v).type
 
 enum mcerrtype_t
 {
@@ -140,22 +159,22 @@ enum mcerrtype_t
     MC_ERROR_USER
 };
 
-enum mcobjtype_t
+enum mcvaltype_t
 {
-    MC_OBJ_NONE = 0,
-    MC_OBJ_ERROR = 1 << 0,
-    MC_OBJ_NUMBER = 1 << 1,
-    MC_OBJ_BOOL = 1 << 2,
-    MC_OBJ_STRING = 1 << 3,
-    MC_OBJ_NULL = 1 << 4,
-    MC_OBJ_FUNCNATIVE = 1 << 5,
-    MC_OBJ_ARRAY = 1 << 6,
-    MC_OBJ_MAP = 1 << 7,
-    MC_OBJ_FUNCSCRIPT = 1 << 8,
-    MC_OBJ_EXTERNAL = 1 << 9,
-    MC_OBJ_FREED = 1 << 10,
+    MC_VAL_NONE,
+    MC_VAL_ERROR,
+    MC_VAL_NUMBER,
+    MC_VAL_BOOL,
+    MC_VAL_STRING,
+    MC_VAL_NULL,
+    MC_VAL_FUNCNATIVE,
+    MC_VAL_ARRAY,
+    MC_VAL_MAP,
+    MC_VAL_FUNCSCRIPT,
+    MC_VAL_EXTERNAL,
+    MC_VAL_FREED,
     /* for checking types with & */
-    MC_OBJ_ANY = 0xffff
+    MC_VAL_ANY
 };
 
 enum mcasttoktype_t
@@ -177,8 +196,9 @@ enum mcasttoktype_t
     MC_TOK_QUESTION,
     MC_TOK_PLUS,
     MC_TOK_PLUSPLUS,
-    MC_TOK_MINUS,
+    MC_TOK_UNARYMINUS,
     MC_TOK_MINUSMINUS,
+    MC_TOK_UNARYBINNOT,
     MC_TOK_BANG,
     MC_TOK_ASTERISK,
     MC_TOK_SLASH,
@@ -239,6 +259,7 @@ enum mcastmathoptype_t
     MC_MATHOP_ASSIGN,
     MC_MATHOP_PLUS,
     MC_MATHOP_MINUS,
+    MC_MATHOP_BINNOT,
     MC_MATHOP_BANG,
     MC_MATHOP_ASTERISK,
     MC_MATHOP_SLASH,
@@ -309,6 +330,7 @@ enum mcopcode_t
     MC_OPCODE_GREATERTHAN,
     MC_OPCODE_GREATERTHANEQUAL,
     MC_OPCODE_MINUS,
+    MC_OPCODE_BINNOT,
     MC_OPCODE_BANG,
     MC_OPCODE_JUMP,
     MC_OPCODE_JUMPIFFALSE,
@@ -400,7 +422,7 @@ typedef uint8_t mcinternopcode_t;
 
 
 typedef enum mcerrtype_t mcerrtype_t;
-typedef enum mcobjtype_t mcobjtype_t;
+typedef enum mcvaltype_t mcvaltype_t;
 typedef enum mcasttoktype_t mcasttoktype_t;
 typedef enum mcastmathoptype_t mcastmathoptype_t;
 typedef enum mcastexprtype_t mcastexprtype_t;
@@ -413,7 +435,8 @@ typedef struct mcvaldict_t mcvaldict_t;
 typedef struct mcbasicarray_t mcbasicarray_t;
 typedef struct mcptrarray_t mcptrarray_t;
 typedef struct mcprintconfig_t mcprintconfig_t;
-typedef struct mcprintstate_t mcprintstate_t;
+typedef struct mcprinter_t mcprinter_t;
+
 typedef struct mcerror_t mcerror_t;
 typedef struct mctraceback_t mctraceback_t;
 typedef struct mcastcompiledfile_t mcastcompiledfile_t;
@@ -430,9 +453,8 @@ typedef struct mcastsymtable_t mcastsymtable_t;
 typedef struct mcastcompiler_t mcastcompiler_t;
 typedef struct mcastsymbol_t mcastsymbol_t;
 typedef struct mcvalue_t mcvalue_t;
-typedef struct mcvalcmpstate_t mcvalcmpstate_t;
+typedef struct mcvalcmpresult_t mcvalcmpresult_t;
 typedef struct mcastlocation_t mcastlocation_t;
-typedef struct mctimer_t mctimer_t;
 typedef struct mcasttoken_t mcasttoken_t;
 typedef struct mcastcodeblock_t mcastcodeblock_t;
 typedef struct mcastliteralmap_t mcastliteralmap_t;
@@ -460,7 +482,7 @@ typedef struct mcastexprstmtrecover_t mcastexprstmtrecover_t;
 
 typedef struct mcobjfuncscript_t mcobjfuncscript_t;
 typedef struct mcobjfuncnative_t mcobjfuncnative_t;
-typedef struct mcobjexternal_t mcobjexternal_t;
+typedef struct mcobjuserdata_t mcobjuserdata_t;
 typedef struct mcobjerror_t mcobjerror_t;
 typedef struct mcobjstring_t mcobjstring_t;
 
@@ -474,7 +496,7 @@ typedef struct mcastscopecomp_t mcastscopecomp_t;
 typedef struct mcgcobjdatapool_t mcgcobjdatapool_t;
 
 typedef struct mcastlexer_t mcastlexer_t;
-typedef struct mcastlexprevstate_t mcastlexprevstate_t;
+typedef struct mcastlexprevinfo_t mcastlexprevinfo_t;
 typedef struct mcvmframe_t mcvmframe_t;
 typedef struct mctraceitem_t mctraceitem_t;
 typedef struct module_t module_t;
@@ -522,12 +544,12 @@ union mcvalunion_t
 
 struct mcvalue_t
 {
-    mcobjtype_t type;
+    mcvaltype_t type;
     bool isallocated;
     mcvalunion_t uval;
 };
 
-struct mcvalcmpstate_t
+struct mcvalcmpresult_t
 {
     mcfloat_t result;
 };
@@ -543,17 +565,10 @@ struct mcastlocation_t
 struct mcconfig_t
 {
     bool dumpast;
+    bool dumpbytecode;
     bool fatalcomplaints;
     /* allows redefinition of symbols */
     bool replmode;
-    mcfloat_t maxexecutiontime;
-    bool havemaxexectime;
-};
-
-struct mctimer_t
-{
-    int64_t startoffset;
-    mcfloat_t starttimems;
 };
 
 struct mcasttoken_t
@@ -774,7 +789,7 @@ struct mcobjfuncnative_t
     int userdlen;
 };
 
-struct mcobjexternal_t
+struct mcobjuserdata_t
 {
     void* data;
     mcitemdestroyfn_t datadestroyfn;
@@ -812,14 +827,14 @@ union mcobjunion_t
     mcvaldict_t* valmap;
     mcobjfuncscript_t valscriptfunc;
     mcobjfuncnative_t valnativefunc;
-    mcobjexternal_t valexternal;
+    mcobjuserdata_t valuserobject;
 };
 
 struct mcobjdata_t
 {
     mcstate_t* pstate;
     mcgcmemory_t* mem;
-    mcobjtype_t type;
+    mcvaltype_t type;
     mcobjunion_t uvobj;
     bool gcmark;
 };
@@ -919,7 +934,7 @@ struct mcerrlist_t
     int count;
 };
 
-struct mcastlexprevstate_t
+struct mcastlexprevinfo_t
 {
     int position;
     int nextposition;
@@ -942,7 +957,7 @@ struct mcastlexer_t
     mcastcompiledfile_t* file;
     bool failed;
     bool continuetplstring;
-    mcastlexprevstate_t prevstate;
+    mcastlexprevinfo_t prevstate;
     mcasttoken_t prevtoken;
     mcasttoken_t currtoken;
     mcasttoken_t peektoken;
@@ -1004,6 +1019,7 @@ struct mcstate_t
     mcvalue_t operoverloadkeys[MC_OPCODE_MAX];
     mcptrarray_t* files;
     mcastcompiler_t* compiler;
+    mcprinter_t* stdoutprinter;
 };
 
 struct mcglobalstore_t
@@ -1017,9 +1033,10 @@ struct mcprintconfig_t
 {
     bool verbosefunc;
     bool quotstring;
+    bool shouldflush;
 };
 
-struct mcprintstate_t
+struct mcprinter_t
 {
     mcstate_t* pstate;
     mcprintconfig_t config;
@@ -1265,7 +1282,7 @@ TMPSTATIC bool mc_fsutil_fileexists(mcstate_t* state, const char* filename)
 }
 
 typedef uint32_t mcshiftint_t;
-TMPSTATIC mcfloat_t mc_mathutil_binshiftleft(mcfloat_t dnleft, mcfloat_t dnright)
+TMPSTATIC inline mcfloat_t mc_mathutil_binshiftleft(mcfloat_t dnleft, mcfloat_t dnright)
 {
     int64_t sileft;
     int64_t siright;
@@ -1283,7 +1300,7 @@ TMPSTATIC mcfloat_t mc_mathutil_binshiftleft(mcfloat_t dnleft, mcfloat_t dnright
     return (mcfloat_t)(ivleft << ivright);
 }
 
-TMPSTATIC mcfloat_t mc_mathutil_binshiftright(mcfloat_t dnleft, mcfloat_t dnright)
+TMPSTATIC inline mcfloat_t mc_mathutil_binshiftright(mcfloat_t dnleft, mcfloat_t dnright)
 {
     int64_t sileft;
     int64_t siright;
@@ -1301,7 +1318,7 @@ TMPSTATIC mcfloat_t mc_mathutil_binshiftright(mcfloat_t dnleft, mcfloat_t dnrigh
     return (mcfloat_t)(ivleft >> ivright);
 }
 
-TMPSTATIC mcfloat_t mc_mathutil_binor(mcfloat_t dnleft, mcfloat_t dnright)
+TMPSTATIC inline mcfloat_t mc_mathutil_binor(mcfloat_t dnleft, mcfloat_t dnright)
 {
     int64_t ivleft;
     int64_t ivright;
@@ -1310,7 +1327,7 @@ TMPSTATIC mcfloat_t mc_mathutil_binor(mcfloat_t dnleft, mcfloat_t dnright)
     return (mcfloat_t)(ivleft | ivright);
 }
 
-TMPSTATIC mcfloat_t mc_mathutil_binand(mcfloat_t dnleft, mcfloat_t dnright)
+TMPSTATIC inline mcfloat_t mc_mathutil_binand(mcfloat_t dnleft, mcfloat_t dnright)
 {
     int64_t ivleft;
     int64_t ivright;
@@ -1319,7 +1336,7 @@ TMPSTATIC mcfloat_t mc_mathutil_binand(mcfloat_t dnleft, mcfloat_t dnright)
     return (mcfloat_t)(ivleft & ivright);
 }
 
-TMPSTATIC mcfloat_t mc_mathutil_binxor(mcfloat_t dnleft, mcfloat_t dnright)
+TMPSTATIC inline mcfloat_t mc_mathutil_binxor(mcfloat_t dnleft, mcfloat_t dnright)
 {
     int64_t ivleft;
     int64_t ivright;
@@ -1328,27 +1345,27 @@ TMPSTATIC mcfloat_t mc_mathutil_binxor(mcfloat_t dnleft, mcfloat_t dnright)
     return (mcfloat_t)(ivleft ^ ivright);
 }
 
-TMPSTATIC mcfloat_t mc_mathutil_add(mcfloat_t dnleft, mcfloat_t dnright)
+TMPSTATIC inline mcfloat_t mc_mathutil_add(mcfloat_t dnleft, mcfloat_t dnright)
 {
     return dnleft + dnright;
 }
 
-TMPSTATIC mcfloat_t mc_mathutil_sub(mcfloat_t dnleft, mcfloat_t dnright)
+TMPSTATIC inline mcfloat_t mc_mathutil_sub(mcfloat_t dnleft, mcfloat_t dnright)
 {
     return dnleft - dnright;
 }
 
-TMPSTATIC mcfloat_t mc_mathutil_mult(mcfloat_t dnleft, mcfloat_t dnright)
+TMPSTATIC inline mcfloat_t mc_mathutil_mult(mcfloat_t dnleft, mcfloat_t dnright)
 {
     return dnleft * dnright;
 }
 
-TMPSTATIC mcfloat_t mc_mathutil_div(mcfloat_t dnleft, mcfloat_t dnright)
+TMPSTATIC inline mcfloat_t mc_mathutil_div(mcfloat_t dnleft, mcfloat_t dnright)
 {
     return dnleft / dnright;
 }
 
-TMPSTATIC mcfloat_t mc_mathutil_mod(mcfloat_t dnleft, mcfloat_t dnright)
+TMPSTATIC inline mcfloat_t mc_mathutil_mod(mcfloat_t dnleft, mcfloat_t dnright)
 {
     return fmod(dnleft, dnright);
 }
@@ -2293,7 +2310,7 @@ TMPUNUSED bool mc_basicarray_setn(mcbasicarray_t* arr, unsigned int ix, void* va
     return true;
 }
 
-TMPSTATIC void* mc_basicarray_get(mcbasicarray_t* arr, unsigned int ix)
+TMPSTATIC inline void* mc_basicarray_get(mcbasicarray_t* arr, unsigned int ix)
 {
     size_t offset;
     if(ix >= arr->count)
@@ -2305,7 +2322,7 @@ TMPSTATIC void* mc_basicarray_get(mcbasicarray_t* arr, unsigned int ix)
     return arr->data + offset;
 }
 
-TMPSTATIC void* mc_basicarray_getconst(mcbasicarray_t* arr, unsigned int ix)
+TMPSTATIC inline void* mc_basicarray_getconst(mcbasicarray_t* arr, unsigned int ix)
 {
     size_t offset;
     if(ix >= arr->count)
@@ -2317,16 +2334,7 @@ TMPSTATIC void* mc_basicarray_getconst(mcbasicarray_t* arr, unsigned int ix)
     return arr->data + offset;
 }
 
-TMPUNUSED void* mc_basicarray_getlast(mcbasicarray_t* arr)
-{
-    if(arr->count <= 0)
-    {
-        return NULL;
-    }
-    return mc_basicarray_get(arr, arr->count - 1);
-}
-
-TMPSTATIC int mc_basicarray_count(mcbasicarray_t* arr)
+TMPSTATIC inline int mc_basicarray_count(mcbasicarray_t* arr)
 {
     if(!arr)
     {
@@ -2335,7 +2343,7 @@ TMPSTATIC int mc_basicarray_count(mcbasicarray_t* arr)
     return arr->count;
 }
 
-TMPUNUSED unsigned int mc_basicarray_getcapacity(mcbasicarray_t* arr)
+TMPUNUSED inline unsigned int mc_basicarray_getcapacity(mcbasicarray_t* arr)
 {
     return arr->capacity;
 }
@@ -2686,15 +2694,14 @@ TMPUNUSED void mc_ptrarray_reverse(mcptrarray_t* arr)
     mc_basicarray_reverse(&arr->innerbarray);
 }
 
-TMPSTATIC mcprintstate_t* mc_printer_make(mcstate_t* state, FILE* ofh)
+TMPSTATIC mcprinter_t* mc_printer_make(mcstate_t* state, FILE* ofh)
 {
     return mc_printer_make_with_capacity(state, 1, ofh);
 }
 
-
-TMPSTATIC bool mc_printer_init(mcprintstate_t* pr, mcstate_t* state, size_t capacity, FILE* ofh, bool onstack)
+TMPSTATIC bool mc_printer_init(mcprinter_t* pr, mcstate_t* state, size_t capacity, FILE* ofh, bool onstack)
 {
-    memset(pr, 0, sizeof(mcprintstate_t));
+    memset(pr, 0, sizeof(mcprinter_t));
     pr->pstate = state;
     pr->failed = false;
     pr->destfile = ofh;
@@ -2704,6 +2711,7 @@ TMPSTATIC bool mc_printer_init(mcprintstate_t* pr, mcstate_t* state, size_t capa
     pr->onstack = onstack;
     pr->config.verbosefunc = true;
     pr->config.quotstring = false;
+    pr->config.shouldflush = true;
     if(ofh != NULL)
     {
         return true;
@@ -2720,10 +2728,10 @@ TMPSTATIC bool mc_printer_init(mcprintstate_t* pr, mcstate_t* state, size_t capa
     return true;
 }
 
-TMPSTATIC mcprintstate_t* mc_printer_make_with_capacity(mcstate_t* state, unsigned int capacity, FILE* ofh)
+TMPSTATIC mcprinter_t* mc_printer_make_with_capacity(mcstate_t* state, unsigned int capacity, FILE* ofh)
 {
-    mcprintstate_t* pr;
-    pr = (mcprintstate_t*)mc_allocator_alloc(state, sizeof(mcprintstate_t));
+    mcprinter_t* pr;
+    pr = (mcprinter_t*)mc_allocator_alloc(state, sizeof(mcprinter_t));
     if(pr == NULL)
     {
         return NULL;
@@ -2735,7 +2743,7 @@ TMPSTATIC mcprintstate_t* mc_printer_make_with_capacity(mcstate_t* state, unsign
     return pr;
 }
 
-TMPSTATIC void mc_printer_destroy(mcprintstate_t* pr)
+TMPSTATIC void mc_printer_destroy(mcprinter_t* pr)
 {
     if(pr == NULL)
     {
@@ -2752,7 +2760,7 @@ TMPSTATIC void mc_printer_destroy(mcprintstate_t* pr)
     mc_allocator_free(pr->pstate, pr);
 }
 
-TMPUNUSED void mc_printer_clear(mcprintstate_t* pr)
+TMPUNUSED void mc_printer_clear(mcprinter_t* pr)
 {
     if(pr->destfile == NULL)
     {
@@ -2765,7 +2773,7 @@ TMPUNUSED void mc_printer_clear(mcprintstate_t* pr)
     }
 }
 
-TMPSTATIC bool mc_printer_putlen(mcprintstate_t* pr, const char* str, size_t len)
+TMPSTATIC bool mc_printer_putlen(mcprinter_t* pr, const char* str, size_t len)
 {
     bool ok;
     size_t needcap;
@@ -2780,7 +2788,10 @@ TMPSTATIC bool mc_printer_putlen(mcprintstate_t* pr, const char* str, size_t len
     if(pr->destfile != NULL)
     {
         fwrite(str, sizeof(char), len, pr->destfile);
-        fflush(pr->destfile);
+        if(pr->config.shouldflush)
+        {
+            fflush(pr->destfile);
+        }
         return true;
     }
     needcap = pr->len + len + 1;
@@ -2798,19 +2809,19 @@ TMPSTATIC bool mc_printer_putlen(mcprintstate_t* pr, const char* str, size_t len
     return true;
 }
 
-TMPSTATIC bool mc_printer_puts(mcprintstate_t* pr, const char* str)
+TMPSTATIC bool mc_printer_puts(mcprinter_t* pr, const char* str)
 {
     return mc_printer_putlen(pr, str, mc_util_strlen(str));
 }
 
-TMPSTATIC bool mc_printer_putchar(mcprintstate_t* pr, int b)
+TMPSTATIC bool mc_printer_putchar(mcprinter_t* pr, int b)
 {
     char ch;
     ch = b;
     return mc_printer_putlen(pr, &ch, 1);
 }
 
-TMPSEMISTATIC bool mc_printer_printf(mcprintstate_t* pr, const char* fmt, ...)
+TMPSEMISTATIC bool mc_printer_printf(mcprinter_t* pr, const char* fmt, ...)
 {
     bool ok;
     int resz;
@@ -2826,7 +2837,10 @@ TMPSEMISTATIC bool mc_printer_printf(mcprintstate_t* pr, const char* fmt, ...)
     {
         va_start(va, fmt);
         vfprintf(pr->destfile, fmt, va);
-        fflush(pr->destfile);
+        if(pr->config.shouldflush)
+        {
+            fflush(pr->destfile);
+        }
         va_end(va);
         return true;
     }
@@ -2858,7 +2872,7 @@ TMPSEMISTATIC bool mc_printer_printf(mcprintstate_t* pr, const char* fmt, ...)
     return true;
 }
 
-void mc_printer_printescapedchar(mcprintstate_t* pr, int ch)
+void mc_printer_printescapedchar(mcprinter_t* pr, int ch)
 {
     switch(ch)
     {
@@ -2915,7 +2929,7 @@ void mc_printer_printescapedchar(mcprintstate_t* pr, int ch)
     }
 }
 
-void mc_printer_printescapedstring(mcprintstate_t* pr, const char* str, size_t len)
+void mc_printer_printescapedstring(mcprinter_t* pr, const char* str, size_t len)
 {
     int ch;
     size_t i;
@@ -2935,7 +2949,7 @@ void mc_printer_printescapedstring(mcprintstate_t* pr, const char* str, size_t l
     mc_printer_puts(pr, "\"");
 }
 
-TMPSTATIC const char* mc_printer_getstring(mcprintstate_t* pr)
+TMPSTATIC const char* mc_printer_getstring(mcprinter_t* pr)
 {
     if(pr->failed)
     {
@@ -2948,7 +2962,7 @@ TMPSTATIC const char* mc_printer_getstring(mcprintstate_t* pr)
     return pr->data;
 }
 
-TMPUNUSED size_t mc_printer_getlength(mcprintstate_t* pr)
+TMPUNUSED size_t mc_printer_getlength(mcprinter_t* pr)
 {
     if(pr->failed)
     {
@@ -2961,7 +2975,7 @@ TMPUNUSED size_t mc_printer_getlength(mcprintstate_t* pr)
     return pr->len;
 }
 
-TMPSTATIC char* mc_printer_getstringanddestroy(mcprintstate_t* pr, size_t* lendest)
+TMPSTATIC char* mc_printer_getstringanddestroy(mcprinter_t* pr, size_t* lendest)
 {
     char* res;
     if(pr->failed)
@@ -2983,12 +2997,12 @@ TMPSTATIC char* mc_printer_getstringanddestroy(mcprintstate_t* pr, size_t* lende
     return res;
 }
 
-TMPSTATIC bool mc_printer_failed(mcprintstate_t* pr)
+TMPSTATIC bool mc_printer_failed(mcprinter_t* pr)
 {
     return pr->failed;
 }
 
-TMPSTATIC bool mc_printer_grow(mcprintstate_t* pr, size_t newcapacity)
+TMPSTATIC bool mc_printer_grow(mcprinter_t* pr, size_t newcapacity)
 {
     char* ndata;
     if(pr->destfile != NULL)
@@ -3007,6 +3021,84 @@ TMPSTATIC bool mc_printer_grow(mcprintstate_t* pr, size_t newcapacity)
     pr->data = ndata;
     pr->capacity = newcapacity;
     return true;
+}
+
+#define mc_printer_printobject(pr, val) \
+    mc_printer_printobject_actual((val).type, pr, val)
+
+TMPSEMISTATIC void mc_printer_printobject_actual(int vt, mcprinter_t* pr, mcvalue_t obj)
+{
+    mcvaltype_t type = mc_value_gettype(obj);
+    switch(type)
+    {
+        case MC_VAL_FREED:
+            {
+                mc_printer_puts(pr, "FREED");
+            }
+            break;
+        case MC_VAL_NONE:
+            {
+                mc_printer_puts(pr, "NONE");
+            }
+            break;
+        case MC_VAL_NUMBER:
+            {
+                mcfloat_t number;
+                number = mc_value_getnumber(obj);
+                mc_printer_printf(pr, "%1.10g", number);
+            }
+            break;
+        case MC_VAL_BOOL:
+            {
+                mc_printer_puts(pr, mc_value_getbool(obj) ? "true" : "false");
+            }
+            break;
+        case MC_VAL_STRING:
+            {
+                mc_printer_printobjstring(pr, obj);
+            }
+            break;
+        case MC_VAL_NULL:
+            {
+                mc_printer_puts(pr, "null");
+            }
+            break;
+        case MC_VAL_FUNCSCRIPT:
+            {
+                mc_printer_printobjfuncscript(pr, obj);
+            }
+            break;
+        case MC_VAL_ARRAY:
+            {
+                mc_printer_printobjarray(pr, obj);
+            }
+            break;
+        case MC_VAL_MAP:
+            {
+                mc_printer_printobjmap(pr, obj);
+            }
+            break;
+        case MC_VAL_FUNCNATIVE:
+            {
+                mc_printer_puts(pr, "NATIVE_FUNCTION");
+            }
+            break;
+        case MC_VAL_EXTERNAL:
+            {
+                mc_printer_puts(pr, "EXTERNAL");
+            }
+            break;
+        case MC_VAL_ERROR:
+            {
+                mc_printer_printobjerror(pr, obj);
+            }
+            break;
+        case MC_VAL_ANY:
+            {
+                MC_ASSERT(false);
+            }
+            break;
+    }
 }
 
 TMPSTATIC mcastlocation_t mc_astlocation_make(mcastcompiledfile_t* file, int line, int column)
@@ -3060,42 +3152,6 @@ TMPSTATIC mcfloat_t mc_util_uint64todouble(uint64_t val)
     } temp;
     temp.val_uint64 = val;
     return temp.val_double;
-}
-
-TMPSTATIC bool mc_util_istimerplatformsupported(void)
-{
-    return true;
-}
-
-TMPSTATIC mctimer_t mc_timer_start(void)
-{
-    mctimer_t timer;
-    #if defined(__unix__)
-    struct timeval starttime;
-    #endif
-    memset(&timer, 0, sizeof(mctimer_t));
-    #if defined(__unix__)
-        /* At some point it should be replaced with more accurate per-platform timers */
-        gettimeofday(&starttime, NULL);
-        timer.startoffset = starttime.tv_sec;
-        timer.starttimems = starttime.tv_usec / 1000.0;
-    #endif
-    return timer;
-}
-
-TMPSTATIC mcfloat_t mc_timer_getelapsedms(mctimer_t* timer)
-{
-    #if defined(__unix__)
-        int times;
-        mcfloat_t currenttimems;
-        struct timeval currenttime;
-        gettimeofday(&currenttime, NULL);
-        times = (int)((int64_t)currenttime.tv_sec - timer->startoffset);
-        currenttimems = (times * 1000) + (currenttime.tv_usec / 1000.0);
-        return currenttimems - timer->starttimems;
-    #else
-        return 0;
-    #endif
 }
 
 TMPSTATIC void mc_errlist_init(mcerrlist_t* errors)
@@ -3161,7 +3217,7 @@ TMPSTATIC void mc_errlist_clear(mcerrlist_t* errors)
 {
     int i;
     mcerror_t* error;
-    for(i = 0; i < mc_errlist_size(errors); i++)
+    for(i = 0; i < errors->count; i++)
     {
         error = mc_errlist_get(errors, i);
         if(error->traceback)
@@ -3170,11 +3226,6 @@ TMPSTATIC void mc_errlist_clear(mcerrlist_t* errors)
         }
     }
     errors->count = 0;
-}
-
-TMPSTATIC int mc_errlist_size(mcerrlist_t* errors)
-{
-    return errors->count;
 }
 
 TMPSTATIC mcerror_t* mc_errlist_get(mcerrlist_t* errors, int ix)
@@ -3218,15 +3269,9 @@ TMPSTATIC mcerror_t* mc_errlist_getlast(mcerrlist_t* errors)
     return &errors->errors[errors->count - 1];
 }
 
-TMPSTATIC bool mc_errlist_haserrors(mcerrlist_t* errors)
-{
-    return mc_errlist_size(errors) > 0;
-}
-
-
 /* containerend utilsend */
 
-TMPSTATIC mcvalue_t mc_object_makedatafrom(mcobjtype_t type, mcobjdata_t* data)
+TMPSTATIC mcvalue_t mc_object_makedatafrom(mcvaltype_t type, mcobjdata_t* data)
 {
     mcvalue_t object;
     object.type = type;
@@ -3236,7 +3281,7 @@ TMPSTATIC mcvalue_t mc_object_makedatafrom(mcobjtype_t type, mcobjdata_t* data)
     return object;
 }
 
-TMPSTATIC mcvalue_t mc_value_makeempty(mcobjtype_t t)
+TMPSTATIC mcvalue_t mc_value_makeempty(mcvaltype_t t)
 {
     mcvalue_t o;
     memset(&o, 0, sizeof(mcvalue_t));
@@ -3248,7 +3293,7 @@ TMPSTATIC mcvalue_t mc_value_makeempty(mcobjtype_t t)
 TMPSTATIC mcvalue_t mc_value_makenumber(mcfloat_t val)
 {
     mcvalue_t o;
-    o = mc_value_makeempty(MC_OBJ_NUMBER);
+    o = mc_value_makeempty(MC_VAL_NUMBER);
     o.uval.valnumber = val;
     return o;
 }
@@ -3256,7 +3301,7 @@ TMPSTATIC mcvalue_t mc_value_makenumber(mcfloat_t val)
 TMPSTATIC mcvalue_t mc_value_makebool(bool val)
 {
     mcvalue_t o;
-    o = mc_value_makeempty(MC_OBJ_BOOL);
+    o = mc_value_makeempty(MC_VAL_BOOL);
     o.uval.valbool = val;
     return o;
 }
@@ -3264,7 +3309,7 @@ TMPSTATIC mcvalue_t mc_value_makebool(bool val)
 TMPSTATIC mcvalue_t mc_value_makenull(void)
 {
     mcvalue_t o;
-    o = mc_value_makeempty(MC_OBJ_NULL);
+    o = mc_value_makeempty(MC_VAL_NULL);
     return o;
 }
 
@@ -3272,7 +3317,7 @@ TMPSTATIC mcvalue_t mc_value_makestrcapacity(mcstate_t* state, int capacity)
 {
     bool ok;
     mcobjdata_t* data;
-    data = mc_gcmemory_getdatafrompool(state, MC_OBJ_STRING);
+    data = mc_gcmemory_getdatafrompool(state, MC_VAL_STRING);
     if(!data)
     {
         data = mc_gcmemory_allocobjectdata(state);
@@ -3293,7 +3338,7 @@ TMPSTATIC mcvalue_t mc_value_makestrcapacity(mcstate_t* state, int capacity)
             return mc_value_makenull();
         }
     }
-    return mc_object_makedatafrom(MC_OBJ_STRING, data);
+    return mc_object_makedatafrom(MC_VAL_STRING, data);
 }
 
 TMPUNUSED mcvalue_t mc_value_makestrformat(mcstate_t* state, const char* fmt, ...)
@@ -3366,7 +3411,7 @@ TMPSTATIC mcvalue_t mc_value_makefuncnative(mcstate_t* state, const char* name, 
         memcpy(obj->uvobj.valnativefunc.userdata, data, dlen);
     }
     obj->uvobj.valnativefunc.userdlen = dlen;
-    return mc_object_makedatafrom(MC_OBJ_FUNCNATIVE, obj);
+    return mc_object_makedatafrom(MC_VAL_FUNCNATIVE, obj);
 }
 
 TMPSTATIC mcvalue_t mc_value_makearray(mcstate_t* state)
@@ -3377,11 +3422,11 @@ TMPSTATIC mcvalue_t mc_value_makearray(mcstate_t* state)
 TMPSTATIC mcvalue_t mc_value_makearraycapacity(mcstate_t* state, unsigned capacity)
 {
     mcobjdata_t* data;
-    data = mc_gcmemory_getdatafrompool(state, MC_OBJ_ARRAY);
+    data = mc_gcmemory_getdatafrompool(state, MC_VAL_ARRAY);
     if(data)
     {
         mc_basicarray_clear(data->uvobj.valarray);
-        return mc_object_makedatafrom(MC_OBJ_ARRAY, data);
+        return mc_object_makedatafrom(MC_VAL_ARRAY, data);
     }
     data = mc_gcmemory_allocobjectdata(state);
     if(!data)
@@ -3393,7 +3438,7 @@ TMPSTATIC mcvalue_t mc_value_makearraycapacity(mcstate_t* state, unsigned capaci
     {
         return mc_value_makenull();
     }
-    return mc_object_makedatafrom(MC_OBJ_ARRAY, data);
+    return mc_object_makedatafrom(MC_VAL_ARRAY, data);
 }
 
 TMPSTATIC mcvalue_t mc_value_makemap(mcstate_t* state)
@@ -3404,11 +3449,11 @@ TMPSTATIC mcvalue_t mc_value_makemap(mcstate_t* state)
 TMPSTATIC mcvalue_t mc_value_makemapcapacity(mcstate_t* state, unsigned capacity)
 {
     mcobjdata_t* data;
-    data = mc_gcmemory_getdatafrompool(state, MC_OBJ_MAP);
+    data = mc_gcmemory_getdatafrompool(state, MC_VAL_MAP);
     if(data)
     {
         mc_valdict_clear(data->uvobj.valmap);
-        return mc_object_makedatafrom(MC_OBJ_MAP, data);
+        return mc_object_makedatafrom(MC_VAL_MAP, data);
     }
     data = mc_gcmemory_allocobjectdata(state);
     if(!data)
@@ -3422,7 +3467,7 @@ TMPSTATIC mcvalue_t mc_value_makemapcapacity(mcstate_t* state, unsigned capacity
     }
     mc_valdict_sethashfunction(data->uvobj.valmap, (mcitemhashfn_t)mc_value_hash);
     mc_valdict_setequalsfunction(data->uvobj.valmap, (mcitemcomparefn_t)mc_value_equalswrapped);
-    return mc_object_makedatafrom(MC_OBJ_MAP, data);
+    return mc_object_makedatafrom(MC_VAL_MAP, data);
 }
 
 TMPSTATIC mcvalue_t mc_value_makeerror(mcstate_t* state, const char* error)
@@ -3453,7 +3498,7 @@ TMPSTATIC mcvalue_t mc_value_makeerrornocopy(mcstate_t* state, char* error)
     }
     data->uvobj.valerror.message = error;
     data->uvobj.valerror.traceback = NULL;
-    return mc_object_makedatafrom(MC_OBJ_ERROR, data);
+    return mc_object_makedatafrom(MC_VAL_ERROR, data);
 }
 
 TMPUNUSED mcvalue_t mc_value_makeerrorf(mcstate_t* state, const char* fmt, ...)
@@ -3518,10 +3563,10 @@ TMPSTATIC mcvalue_t mc_value_makefuncscript(mcstate_t* state, const char* name, 
         }
     }
     data->uvobj.valscriptfunc.freevalscount = fvc;
-    return mc_object_makedatafrom(MC_OBJ_FUNCSCRIPT, data);
+    return mc_object_makedatafrom(MC_VAL_FUNCSCRIPT, data);
 }
 
-TMPSTATIC mcvalue_t mc_value_makeexternal(mcstate_t* state, void* data)
+TMPSTATIC mcvalue_t mc_value_makeuserobject(mcstate_t* state, void* data)
 {
     mcobjdata_t* obj;
     obj = mc_gcmemory_allocobjectdata(state);
@@ -3529,11 +3574,13 @@ TMPSTATIC mcvalue_t mc_value_makeexternal(mcstate_t* state, void* data)
     {
         return mc_value_makenull();
     }
-    obj->uvobj.valexternal.data = data;
-    obj->uvobj.valexternal.datadestroyfn = NULL;
-    obj->uvobj.valexternal.datacopyfn = NULL;
-    return mc_object_makedatafrom(MC_OBJ_EXTERNAL, obj);
+    obj->uvobj.valuserobject.data = data;
+    obj->uvobj.valuserobject.datadestroyfn = NULL;
+    obj->uvobj.valuserobject.datacopyfn = NULL;
+    return mc_object_makedatafrom(MC_VAL_EXTERNAL, obj);
 }
+
+#define mc_value_getallocateddata(object) (object).uval.odata
 
 TMPUNUSED void mc_value_deinit(mcvalue_t obj)
 {
@@ -3549,13 +3596,13 @@ TMPSTATIC void mc_objectdata_deinit(mcobjdata_t* data)
 {
     switch(data->type)
     {
-        case MC_OBJ_FREED:
+        case MC_VAL_FREED:
             {
                 MC_ASSERT(false);
                 return;
             }
             break;
-        case MC_OBJ_STRING:
+        case MC_VAL_STRING:
             {
                 if(data->uvobj.valstring.isallocated)
                 {
@@ -3563,7 +3610,7 @@ TMPSTATIC void mc_objectdata_deinit(mcobjdata_t* data)
                 }
             }
             break;
-        case MC_OBJ_FUNCSCRIPT:
+        case MC_VAL_FUNCSCRIPT:
             {
                 if(data->uvobj.valscriptfunc.ownsdata)
                 {
@@ -3576,30 +3623,30 @@ TMPSTATIC void mc_objectdata_deinit(mcobjdata_t* data)
                 }
             }
             break;
-        case MC_OBJ_ARRAY:
+        case MC_VAL_ARRAY:
             {
                 mc_basicarray_destroy(data->uvobj.valarray);
             }
             break;
-        case MC_OBJ_MAP:
+        case MC_VAL_MAP:
             {
                 mc_valdict_destroy(data->uvobj.valmap);
             }
             break;
-        case MC_OBJ_FUNCNATIVE:
+        case MC_VAL_FUNCNATIVE:
             {
                 mc_allocator_free(data->pstate, data->uvobj.valnativefunc.name);
             }
             break;
-        case MC_OBJ_EXTERNAL:
+        case MC_VAL_EXTERNAL:
             {
-                if(data->uvobj.valexternal.datadestroyfn)
+                if(data->uvobj.valuserobject.datadestroyfn)
                 {
-                    data->uvobj.valexternal.datadestroyfn(data->uvobj.valexternal.data);
+                    data->uvobj.valuserobject.datadestroyfn(data->uvobj.valuserobject.data);
                 }
             }
             break;
-        case MC_OBJ_ERROR:
+        case MC_VAL_ERROR:
             {
                 mc_allocator_free(data->pstate, data->uvobj.valerror.message);
                 mc_traceback_destroy(data->uvobj.valerror.traceback);
@@ -3610,7 +3657,7 @@ TMPSTATIC void mc_objectdata_deinit(mcobjdata_t* data)
             }
             break;
     }
-    data->type = MC_OBJ_FREED;
+    data->type = MC_VAL_FREED;
 }
 
 TMPSTATIC bool mc_value_isallocated(mcvalue_t object)
@@ -3625,45 +3672,45 @@ TMPUNUSED mcgcmemory_t* mc_value_getmem(mcvalue_t obj)
     return data->mem;
 }
 
-TMPSTATIC const char* mc_valtype_getname(mcobjtype_t type)
+TMPSTATIC const char* mc_valtype_getname(mcvaltype_t type)
 {
     switch(type)
     {
-        case MC_OBJ_NONE:
+        case MC_VAL_NONE:
             return "NONE";
-        case MC_OBJ_FREED:
+        case MC_VAL_FREED:
             return "NONE";
-        case MC_OBJ_NUMBER:
+        case MC_VAL_NUMBER:
             return "NUMBER";
-        case MC_OBJ_BOOL:
+        case MC_VAL_BOOL:
             return "BOOL";
-        case MC_OBJ_STRING:
+        case MC_VAL_STRING:
             return "STRING";
-        case MC_OBJ_NULL:
+        case MC_VAL_NULL:
             return "NULL";
-        case MC_OBJ_FUNCNATIVE:
+        case MC_VAL_FUNCNATIVE:
             return "NATIVE_FUNCTION";
-        case MC_OBJ_ARRAY:
+        case MC_VAL_ARRAY:
             return "ARRAY";
-        case MC_OBJ_MAP:
+        case MC_VAL_MAP:
             return "MAP";
-        case MC_OBJ_FUNCSCRIPT:
+        case MC_VAL_FUNCSCRIPT:
             return "FUNCTION";
-        case MC_OBJ_EXTERNAL:
+        case MC_VAL_EXTERNAL:
             return "EXTERNAL";
-        case MC_OBJ_ERROR:
+        case MC_VAL_ERROR:
             return "ERROR";
-        case MC_OBJ_ANY:
+        case MC_VAL_ANY:
             return "ANY";
     }
     return "NONE";
 }
 
-TMPSTATIC char* mc_valtype_getunionname(mcstate_t* state, mcobjtype_t type)
+TMPSTATIC char* mc_valtype_getunionname(mcstate_t* state, mcvaltype_t type)
 {
     bool inbetween;
-    mcprintstate_t* res;
-    if(type == MC_OBJ_ANY || type == MC_OBJ_NONE || type == MC_OBJ_FREED)
+    mcprinter_t* res;
+    if(type == MC_VAL_ANY || type == MC_VAL_NONE || type == MC_VAL_FREED)
     {
         return mc_util_strdup(state, mc_valtype_getname(type));
     }
@@ -3687,16 +3734,16 @@ TMPSTATIC char* mc_valtype_getunionname(mcstate_t* state, mcobjtype_t type)
         }                                                \
     } while(0)
 
-    CHECK_TYPE(MC_OBJ_NUMBER);
-    CHECK_TYPE(MC_OBJ_BOOL);
-    CHECK_TYPE(MC_OBJ_STRING);
-    CHECK_TYPE(MC_OBJ_NULL);
-    CHECK_TYPE(MC_OBJ_FUNCNATIVE);
-    CHECK_TYPE(MC_OBJ_ARRAY);
-    CHECK_TYPE(MC_OBJ_MAP);
-    CHECK_TYPE(MC_OBJ_FUNCSCRIPT);
-    CHECK_TYPE(MC_OBJ_EXTERNAL);
-    CHECK_TYPE(MC_OBJ_ERROR);
+    CHECK_TYPE(MC_VAL_NUMBER);
+    CHECK_TYPE(MC_VAL_BOOL);
+    CHECK_TYPE(MC_VAL_STRING);
+    CHECK_TYPE(MC_VAL_NULL);
+    CHECK_TYPE(MC_VAL_FUNCNATIVE);
+    CHECK_TYPE(MC_VAL_ARRAY);
+    CHECK_TYPE(MC_VAL_MAP);
+    CHECK_TYPE(MC_VAL_FUNCSCRIPT);
+    CHECK_TYPE(MC_VAL_EXTERNAL);
+    CHECK_TYPE(MC_VAL_ERROR);
     return mc_printer_getstringanddestroy(res, NULL);
 }
 
@@ -3718,30 +3765,30 @@ TMPSTATIC mcvalue_t mc_value_copyflat(mcstate_t* state, mcvalue_t obj)
 {
     bool ok;
     mcvalue_t copy;
-    mcobjtype_t type;
+    mcvaltype_t type;
     copy = mc_value_makenull();
     type = mc_value_gettype(obj);
     switch(type)
     {
-        case MC_OBJ_ANY:
-        case MC_OBJ_FREED:
-        case MC_OBJ_NONE:
+        case MC_VAL_ANY:
+        case MC_VAL_FREED:
+        case MC_VAL_NONE:
             {
                 MC_ASSERT(false);
                 copy = mc_value_makenull();
             }
             break;
-        case MC_OBJ_NUMBER:
-        case MC_OBJ_BOOL:
-        case MC_OBJ_NULL:
-        case MC_OBJ_FUNCSCRIPT:
-        case MC_OBJ_FUNCNATIVE:
-        case MC_OBJ_ERROR:
+        case MC_VAL_NUMBER:
+        case MC_VAL_BOOL:
+        case MC_VAL_NULL:
+        case MC_VAL_FUNCSCRIPT:
+        case MC_VAL_FUNCNATIVE:
+        case MC_VAL_ERROR:
             {
                 copy = obj;
             }
             break;
-        case MC_OBJ_STRING:
+        case MC_VAL_STRING:
             {
                 size_t len;
                 const char* str;
@@ -3750,7 +3797,7 @@ TMPSTATIC mcvalue_t mc_value_copyflat(mcstate_t* state, mcvalue_t obj)
                 copy = mc_value_makestringlen(state, str, len);
             }
             break;
-        case MC_OBJ_ARRAY:
+        case MC_VAL_ARRAY:
             {
                 int i;
                 int len;
@@ -3772,7 +3819,7 @@ TMPSTATIC mcvalue_t mc_value_copyflat(mcstate_t* state, mcvalue_t obj)
                 }
             }
             break;
-        case MC_OBJ_MAP:
+        case MC_VAL_MAP:
             {
                 int i;
                 mcvalue_t key;
@@ -3790,16 +3837,16 @@ TMPSTATIC mcvalue_t mc_value_copyflat(mcstate_t* state, mcvalue_t obj)
                 }
             }
             break;
-        case MC_OBJ_EXTERNAL:
+        case MC_VAL_EXTERNAL:
             {
                 void* datacopy;
-                mcobjexternal_t* objext;
-                copy = mc_value_makeexternal(state, NULL);
+                mcobjuserdata_t* objext;
+                copy = mc_value_makeuserobject(state, NULL);
                 if(mc_value_isnull(copy))
                 {
                     return mc_value_makenull();
                 }
-                objext = mc_valexternal_getdata(obj);
+                objext = mc_valuserobject_getdata(obj);
                 datacopy = NULL;
                 if(objext->datacopyfn)
                 {
@@ -3809,16 +3856,16 @@ TMPSTATIC mcvalue_t mc_value_copyflat(mcstate_t* state, mcvalue_t obj)
                 {
                     datacopy = objext->data;
                 }
-                mc_valexternal_setdata(copy, datacopy);
-                mc_valexternal_setdestroyfunction(copy, objext->datadestroyfn);
-                mc_valexternal_setcopyfunction(copy, objext->datacopyfn);
+                mc_valuserobject_setdata(copy, datacopy);
+                mc_valuserobject_setdestroyfunction(copy, objext->datadestroyfn);
+                mc_valuserobject_setcopyfunction(copy, objext->datacopyfn);
             }
             break;
     }
     return copy;
 }
 
-TMPSTATIC bool mc_value_compare(mcvalue_t a, mcvalue_t b, mcvalcmpstate_t* cres)
+TMPSTATIC bool mc_value_compare(mcvalue_t a, mcvalue_t b, mcvalcmpresult_t* cres)
 {
     const char* astring;
     const char* bstring;
@@ -3830,8 +3877,8 @@ TMPSTATIC bool mc_value_compare(mcvalue_t a, mcvalue_t b, mcvalcmpstate_t* cres)
     mcfloat_t dnright;
     unsigned long ahash;
     unsigned long bhash;
-    mcobjtype_t atype;
-    mcobjtype_t btype;
+    mcvaltype_t atype;
+    mcvaltype_t btype;
     /*
     if(a.odata == b.odata)
     {
@@ -3841,14 +3888,14 @@ TMPSTATIC bool mc_value_compare(mcvalue_t a, mcvalue_t b, mcvalcmpstate_t* cres)
     cres->result = 1;
     atype = mc_value_gettype(a);
     btype = mc_value_gettype(b);
-    if((atype == MC_OBJ_NUMBER || atype == MC_OBJ_BOOL || atype == MC_OBJ_NULL) && (btype == MC_OBJ_NUMBER || btype == MC_OBJ_BOOL || btype == MC_OBJ_NULL))
+    if((atype == MC_VAL_NUMBER || atype == MC_VAL_BOOL || atype == MC_VAL_NULL) && (btype == MC_VAL_NUMBER || btype == MC_VAL_BOOL || btype == MC_VAL_NULL))
     {
         dnleft = mc_value_getnumber(a);
         dnright = mc_value_getnumber(b);
         cres->result = ((float)dnleft) - ((float)dnright);
         return true;
     }
-    if(atype == btype && atype == MC_OBJ_STRING)
+    if(atype == btype && atype == MC_VAL_STRING)
     {
         alen = mc_valstring_getlength(a);
         blen = mc_valstring_getlength(b);
@@ -3883,9 +3930,9 @@ TMPSTATIC bool mc_value_compare(mcvalue_t a, mcvalue_t b, mcvalcmpstate_t* cres)
 TMPSTATIC bool mc_value_equals(mcvalue_t a, mcvalue_t b)
 {
     bool ok;
-    mcvalcmpstate_t cres;
-    mcobjtype_t atype;
-    mcobjtype_t btype;
+    mcvalcmpresult_t cres;
+    mcvaltype_t atype;
+    mcvaltype_t btype;
     (void)ok;
     atype = mc_value_gettype(a);
     btype = mc_value_gettype(b);
@@ -3897,31 +3944,25 @@ TMPSTATIC bool mc_value_equals(mcvalue_t a, mcvalue_t b)
     return MC_UTIL_CMPFLOAT(cres.result, 0);
 }
 
-TMPSTATIC mcobjexternal_t* mc_valexternal_getdata(mcvalue_t object)
+TMPSTATIC mcobjuserdata_t* mc_valuserobject_getdata(mcvalue_t object)
 {
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_OBJ_EXTERNAL);
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_EXTERNAL);
     data = mc_value_getallocateddata(object);
-    return &data->uvobj.valexternal;
+    return &data->uvobj.valuserobject;
 }
 
-TMPSTATIC bool mc_valexternal_setdestroyfunction(mcvalue_t object, mcitemdestroyfn_t dfn)
+TMPSTATIC bool mc_valuserobject_setdestroyfunction(mcvalue_t object, mcitemdestroyfn_t dfn)
 {
-    mcobjexternal_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_OBJ_EXTERNAL);
-    data = mc_valexternal_getdata(object);
+    mcobjuserdata_t* data;
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_EXTERNAL);
+    data = mc_valuserobject_getdata(object);
     if(!data)
     {
         return false;
     }
     data->datadestroyfn = dfn;
     return true;
-}
-
-TMPSTATIC mcobjdata_t* mc_value_getallocateddata(mcvalue_t object)
-{
-    MC_ASSERT(mc_value_isallocated(object) || mc_value_gettype(object) == MC_OBJ_NULL);
-    return object.uval.odata;
 }
 
 TMPSTATIC bool mc_value_getbool(mcvalue_t obj)
@@ -3937,7 +3978,7 @@ TMPSTATIC mcfloat_t mc_value_getnumber(mcvalue_t obj)
 {
     if(mc_value_isnumber(obj))
     {
-        if(obj.type == MC_OBJ_BOOL)
+        if(obj.type == MC_VAL_BOOL)
         {
             return obj.uval.valbool;
         }
@@ -3946,16 +3987,16 @@ TMPSTATIC mcfloat_t mc_value_getnumber(mcvalue_t obj)
     return obj.uval.valnumber;
 }
 
-TMPSTATIC const char* mc_valstring_getdata(mcvalue_t object)
+TMPSTATIC inline const char* mc_valstring_getdata(mcvalue_t object)
 {
-    MC_ASSERT(mc_value_gettype(object) == MC_OBJ_STRING);
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_STRING);
     return mc_valstring_getdataintern(object);
 }
 
 TMPSTATIC int mc_valstring_getlength(mcvalue_t object)
 {
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_OBJ_STRING);
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_STRING);
     data = mc_value_getallocateddata(object);
     return data->uvobj.valstring.length;
 }
@@ -3963,7 +4004,7 @@ TMPSTATIC int mc_valstring_getlength(mcvalue_t object)
 TMPSTATIC void mc_string_setlength(mcvalue_t object, int len)
 {
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_OBJ_STRING);
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_STRING);
     data = mc_value_getallocateddata(object);
     data->uvobj.valstring.length = len;
 }
@@ -3971,14 +4012,14 @@ TMPSTATIC void mc_string_setlength(mcvalue_t object, int len)
 TMPUNUSED int mc_valstring_getcapacity(mcvalue_t object)
 {
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_OBJ_STRING);
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_STRING);
     data = mc_value_getallocateddata(object);
     return data->uvobj.valstring.capacity;
 }
 
-TMPSTATIC char* mc_valstring_getmutabledata(mcvalue_t object)
+TMPSTATIC inline char* mc_valstring_getmutabledata(mcvalue_t object)
 {
-    MC_ASSERT(mc_value_gettype(object) == MC_OBJ_STRING);
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_STRING);
     return mc_valstring_getdataintern(object);
 }
 
@@ -3989,7 +4030,7 @@ TMPSTATIC bool mc_valstring_append(mcvalue_t obj, const char* src, int len)
     char* strbuf;
     mcobjdata_t* data;
     mcobjstring_t* string;
-    MC_ASSERT(mc_value_gettype(obj) == MC_OBJ_STRING);
+    MC_ASSERT(mc_value_gettype(obj) == MC_VAL_STRING);
     data = mc_value_getallocateddata(obj);
     string = &data->uvobj.valstring;
     strbuf = mc_valstring_getmutabledata(obj);
@@ -4011,7 +4052,7 @@ TMPSTATIC unsigned long mc_valstring_gethash(mcvalue_t obj)
     size_t len;
     const char* str;
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(obj) == MC_OBJ_STRING);
+    MC_ASSERT(mc_value_gettype(obj) == MC_VAL_STRING);
     data = mc_value_getallocateddata(obj);
     if(data->uvobj.valstring.hash == 0)
     {
@@ -4029,12 +4070,12 @@ TMPSTATIC unsigned long mc_valstring_gethash(mcvalue_t obj)
 TMPSTATIC mcobjfuncscript_t* mc_value_functiongetscriptfunction(mcvalue_t object)
 {
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_OBJ_FUNCSCRIPT);
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_FUNCSCRIPT);
     data = mc_value_getallocateddata(object);
     return &data->uvobj.valscriptfunc;
 }
 
-TMPSTATIC mcobjfuncnative_t* mc_value_functiongetnativefunction(mcvalue_t obj)
+TMPSTATIC inline mcobjfuncnative_t* mc_value_functiongetnativefunction(mcvalue_t obj)
 {
     mcobjdata_t* data = mc_value_getallocateddata(obj);
     return &data->uvobj.valnativefunc;
@@ -4043,7 +4084,7 @@ TMPSTATIC mcobjfuncnative_t* mc_value_functiongetnativefunction(mcvalue_t obj)
 TMPSTATIC const char* mc_value_functiongetname(mcvalue_t obj)
 {
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(obj) == MC_OBJ_FUNCSCRIPT);
+    MC_ASSERT(mc_value_gettype(obj) == MC_VAL_FUNCSCRIPT);
     data = mc_value_getallocateddata(obj);
     MC_ASSERT(data);
     if(!data)
@@ -4061,7 +4102,7 @@ TMPSTATIC mcvalue_t mc_value_functiongetfreevalat(mcvalue_t obj, int ix)
 {
     mcobjdata_t* data;
     mcobjfuncscript_t* fun;
-    MC_ASSERT(mc_value_gettype(obj) == MC_OBJ_FUNCSCRIPT);
+    MC_ASSERT(mc_value_gettype(obj) == MC_VAL_FUNCSCRIPT);
     data = mc_value_getallocateddata(obj);
     MC_ASSERT(data);
     if(!data)
@@ -4085,7 +4126,7 @@ TMPSTATIC void mc_value_functionsetfreevalat(mcvalue_t obj, int ix, mcvalue_t va
 {
     mcobjdata_t* data;
     mcobjfuncscript_t* fun;
-    MC_ASSERT(mc_value_gettype(obj) == MC_OBJ_FUNCSCRIPT);
+    MC_ASSERT(mc_value_gettype(obj) == MC_VAL_FUNCSCRIPT);
     data = mc_value_getallocateddata(obj);
     MC_ASSERT(data);
     if(!data)
@@ -4112,7 +4153,7 @@ TMPUNUSED mcvalue_t* mc_value_functiongetfreevals(mcvalue_t obj)
 {
     mcobjdata_t* data;
     mcobjfuncscript_t* fun;
-    MC_ASSERT(mc_value_gettype(obj) == MC_OBJ_FUNCSCRIPT);
+    MC_ASSERT(mc_value_gettype(obj) == MC_VAL_FUNCSCRIPT);
     data = mc_value_getallocateddata(obj);
     MC_ASSERT(data);
     if(!data)
@@ -4130,7 +4171,7 @@ TMPUNUSED mcvalue_t* mc_value_functiongetfreevals(mcvalue_t obj)
 TMPSTATIC const char* mc_value_errorgetmessage(mcvalue_t object)
 {
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_OBJ_ERROR);
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_ERROR);
     data = mc_value_getallocateddata(object);
     return data->uvobj.valerror.message;
 }
@@ -4138,8 +4179,8 @@ TMPSTATIC const char* mc_value_errorgetmessage(mcvalue_t object)
 TMPSTATIC void mc_value_errorsettraceback(mcvalue_t object, mctraceback_t* traceback)
 {
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_OBJ_ERROR);
-    if(mc_value_gettype(object) != MC_OBJ_ERROR)
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_ERROR);
+    if(mc_value_gettype(object) != MC_VAL_ERROR)
     {
         return;
     }
@@ -4151,16 +4192,16 @@ TMPSTATIC void mc_value_errorsettraceback(mcvalue_t object, mctraceback_t* trace
 TMPSTATIC mctraceback_t* mc_value_errorgettraceback(mcvalue_t object)
 {
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_OBJ_ERROR);
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_ERROR);
     data = mc_value_getallocateddata(object);
     return data->uvobj.valerror.traceback;
 }
 
-TMPSTATIC bool mc_valexternal_setdata(mcvalue_t object, void* extdata)
+TMPSTATIC bool mc_valuserobject_setdata(mcvalue_t object, void* extdata)
 {
-    mcobjexternal_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_OBJ_EXTERNAL);
-    data = mc_valexternal_getdata(object);
+    mcobjuserdata_t* data;
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_EXTERNAL);
+    data = mc_valuserobject_getdata(object);
     if(!data)
     {
         return false;
@@ -4169,11 +4210,11 @@ TMPSTATIC bool mc_valexternal_setdata(mcvalue_t object, void* extdata)
     return true;
 }
 
-TMPSTATIC bool mc_valexternal_setcopyfunction(mcvalue_t object, mcitemcopyfn_t copyfn)
+TMPSTATIC bool mc_valuserobject_setcopyfunction(mcvalue_t object, mcitemcopyfn_t copyfn)
 {
-    mcobjexternal_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_OBJ_EXTERNAL);
-    data = mc_valexternal_getdata(object);
+    mcobjuserdata_t* data;
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_EXTERNAL);
+    data = mc_valuserobject_getdata(object);
     if(!data)
     {
         return false;
@@ -4186,7 +4227,7 @@ TMPSTATIC mcvalue_t mc_valarray_getvalueat(mcvalue_t object, int ix)
 {
     mcvalue_t* res;
     mcbasicarray_t* array;
-    MC_ASSERT(mc_value_gettype(object) == MC_OBJ_ARRAY);
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_ARRAY);
     array = mc_valarray_getinternalarray(object);
     if(ix < 0 || ix >= mc_basicarray_count(array))
     {
@@ -4205,7 +4246,7 @@ TMPSTATIC bool mc_valarray_setvalueat(mcvalue_t object, int ix, mcvalue_t val)
     int len;
     int toadd;
     mcbasicarray_t* array;
-    MC_ASSERT(mc_value_gettype(object) == MC_OBJ_ARRAY);
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_ARRAY);
     array = mc_valarray_getinternalarray(object);
     len = mc_basicarray_count(array);
     if(((ix < 0) || (ix >= len)) || (len == 0))
@@ -4226,7 +4267,7 @@ TMPSTATIC bool mc_valarray_setvalueat(mcvalue_t object, int ix, mcvalue_t val)
 TMPSTATIC bool mc_valarray_push(mcvalue_t object, mcvalue_t val)
 {
     mcbasicarray_t* array;
-    MC_ASSERT(mc_value_gettype(object) == MC_OBJ_ARRAY);
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_ARRAY);
     array = mc_valarray_getinternalarray(object);
     return mc_basicarray_push(array, &val);
 }
@@ -4234,7 +4275,7 @@ TMPSTATIC bool mc_valarray_push(mcvalue_t object, mcvalue_t val)
 TMPSTATIC int mc_valarray_getlength(mcvalue_t object)
 {
     mcbasicarray_t* array;
-    MC_ASSERT(mc_value_gettype(object) == MC_OBJ_ARRAY);
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_ARRAY);
     array = mc_valarray_getinternalarray(object);
     return mc_basicarray_count(array);
 }
@@ -4249,7 +4290,7 @@ TMPSTATIC bool mc_valarray_removevalueat(mcvalue_t object, int ix)
 TMPSTATIC int mc_valmap_getlength(mcvalue_t object)
 {
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_OBJ_MAP);
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
     data = mc_value_getallocateddata(object);
     return mc_valdict_count(data->uvobj.valmap);
 }
@@ -4258,7 +4299,7 @@ TMPSTATIC mcvalue_t mc_valmap_getkeyat(mcvalue_t object, int ix)
 {
     mcvalue_t* res;
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_OBJ_MAP);
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
     data = mc_value_getallocateddata(object);
     res = (mcvalue_t*)mc_valdict_getkeyat(data->uvobj.valmap, ix);
     if(!res)
@@ -4272,7 +4313,7 @@ TMPSTATIC mcvalue_t mc_valmap_getvalueat(mcvalue_t object, int ix)
 {
     mcvalue_t* res;
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_OBJ_MAP);
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
     data = mc_value_getallocateddata(object);
     res = (mcvalue_t*)mc_valdict_getvalueat(data->uvobj.valmap, ix);
     if(!res)
@@ -4285,7 +4326,7 @@ TMPSTATIC mcvalue_t mc_valmap_getvalueat(mcvalue_t object, int ix)
 TMPUNUSED bool mc_valmap_setvalueat(mcvalue_t object, int ix, mcvalue_t val)
 {
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_OBJ_MAP);
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
     if(ix >= mc_valmap_getlength(object))
     {
         return false;
@@ -4302,7 +4343,7 @@ TMPSTATIC mcvalue_t mc_valmap_getkvpairat(mcstate_t* state, mcvalue_t object, in
     mcvalue_t valobj;
     mcvalue_t keyobj;
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_OBJ_MAP);
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
     data = mc_value_getallocateddata(object);
     if(ix >= mc_valdict_count(data->uvobj.valmap))
     {
@@ -4333,7 +4374,7 @@ TMPSTATIC mcvalue_t mc_valmap_getkvpairat(mcstate_t* state, mcvalue_t object, in
 TMPSTATIC bool mc_valmap_setvalue(mcvalue_t object, mcvalue_t key, mcvalue_t val)
 {
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_OBJ_MAP);
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
     data = mc_value_getallocateddata(object);
     return mc_valdict_setkv(data->uvobj.valmap, &key, &val);
 }
@@ -4351,7 +4392,7 @@ TMPSTATIC mcvalue_t mc_valmap_getvalue(mcvalue_t object, mcvalue_t key)
 {
     mcvalue_t* res;
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_OBJ_MAP);
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
     data = mc_value_getallocateddata(object);
     res = (mcvalue_t*)mc_valdict_get(data->uvobj.valmap, &key);
     if(!res)
@@ -4365,7 +4406,7 @@ TMPUNUSED bool mc_valmap_haskey(mcvalue_t object, mcvalue_t key)
 {
     mcvalue_t* res;
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_OBJ_MAP);
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
     data = mc_value_getallocateddata(object);
     res = (mcvalue_t*)mc_valdict_get(data->uvobj.valmap, &key);
     return res != NULL;
@@ -4524,7 +4565,7 @@ TMPSEMISTATIC mcvalue_t mc_value_copydeepmap(mcstate_t* state, mcvalue_t obj, mc
 
 TMPSEMISTATIC mcvalue_t mc_value_copydeepintern(mcstate_t* state, mcvalue_t obj, mcvaldict_t* copies)
 {
-    mcobjtype_t type;
+    mcvaltype_t type;
     mcvalue_t copy;
     mcvalue_t* copyptr;
     copyptr = (mcvalue_t*)mc_valdict_get(copies, &obj);
@@ -4536,23 +4577,23 @@ TMPSEMISTATIC mcvalue_t mc_value_copydeepintern(mcstate_t* state, mcvalue_t obj,
     type = mc_value_gettype(obj);
     switch(type)
     {
-        case MC_OBJ_FREED:
-        case MC_OBJ_ANY:
-        case MC_OBJ_NONE:
+        case MC_VAL_FREED:
+        case MC_VAL_ANY:
+        case MC_VAL_NONE:
             {
                 MC_ASSERT(false);
                 copy = mc_value_makenull();
             }
             break;
-        case MC_OBJ_NUMBER:
-        case MC_OBJ_BOOL:
-        case MC_OBJ_NULL:
-        case MC_OBJ_FUNCNATIVE:
+        case MC_VAL_NUMBER:
+        case MC_VAL_BOOL:
+        case MC_VAL_NULL:
+        case MC_VAL_FUNCNATIVE:
             {
                 copy = obj;
             }
             break;
-        case MC_OBJ_STRING:
+        case MC_VAL_STRING:
             {
                 int len;
                 const char* str;
@@ -4562,27 +4603,27 @@ TMPSEMISTATIC mcvalue_t mc_value_copydeepintern(mcstate_t* state, mcvalue_t obj,
                 return copy;
             }
             break;
-        case MC_OBJ_FUNCSCRIPT:
+        case MC_VAL_FUNCSCRIPT:
             {
                 return mc_value_copydeepfuncscript(state, obj, copies);
             }
             break;
-        case MC_OBJ_ARRAY:
+        case MC_VAL_ARRAY:
             {
                 return mc_value_copydeeparray(state, obj, copies);
             }
             break;
-        case MC_OBJ_MAP:
+        case MC_VAL_MAP:
             {
                 return mc_value_copydeepmap(state, obj, copies);
             }
             break;
-        case MC_OBJ_EXTERNAL:
+        case MC_VAL_EXTERNAL:
             {
                 copy = mc_value_copyflat(state, obj);
             }
             break;
-        case MC_OBJ_ERROR:
+        case MC_VAL_ERROR:
             {
                 copy = obj;
             }
@@ -4605,24 +4646,24 @@ TMPSTATIC unsigned long mc_value_hash(mcvalue_t* objptr)
     bool bval;
     mcfloat_t dval;
     mcvalue_t obj;
-    mcobjtype_t type;
+    mcvaltype_t type;
     obj = *objptr;
     type = mc_value_gettype(obj);
     switch(type)
     {
-        case MC_OBJ_NUMBER:
+        case MC_VAL_NUMBER:
             {
                 dval = mc_value_getnumber(obj);
                 return mc_util_hashdouble(dval);
             }
             break;
-        case MC_OBJ_BOOL:
+        case MC_VAL_BOOL:
             {
                 bval = mc_value_getbool(obj);
                 return bval;
             }
             break;
-        case MC_OBJ_STRING:
+        case MC_VAL_STRING:
             {
                 return mc_valstring_gethash(obj);
             }
@@ -4638,14 +4679,14 @@ TMPSTATIC unsigned long mc_value_hash(mcvalue_t* objptr)
 TMPSTATIC mcbasicarray_t* mc_valarray_getinternalarray(mcvalue_t object)
 {
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_OBJ_ARRAY);
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_ARRAY);
     data = mc_value_getallocateddata(object);
     return data->uvobj.valarray;
 }
 
 TMPSTATIC bool mc_value_isnumber(mcvalue_t o)
 {
-    return (o.type == MC_OBJ_NUMBER || o.type == MC_OBJ_BOOL);
+    return (o.type == MC_VAL_NUMBER || o.type == MC_VAL_BOOL);
 }
 
 TMPSTATIC bool mc_objfunction_freevalsareallocated(mcobjfuncscript_t* fun)
@@ -4653,11 +4694,11 @@ TMPSTATIC bool mc_objfunction_freevalsareallocated(mcobjfuncscript_t* fun)
     return fun->freevalscount >= MC_UTIL_STATICARRAYSIZE(fun->ufv.freevalsstack);
 }
 
-TMPSTATIC char* mc_valstring_getdataintern(mcvalue_t object)
+TMPSTATIC inline char* mc_valstring_getdataintern(mcvalue_t object)
 {
     mcobjdata_t* data;
     data = mc_value_getallocateddata(object);
-    MC_ASSERT(data->type == MC_OBJ_STRING);
+    MC_ASSERT(data->type == MC_VAL_STRING);
     if(data->uvobj.valstring.isallocated)
     {
         return data->uvobj.valstring.ustrstore.actualallocated;
@@ -5002,9 +5043,14 @@ TMPSTATIC mcasttoken_t mc_lexer_nexttokinternal(mcastlexer_t* lex)
                     }
                     else
                     {
-                        mc_asttoken_init(&outtok, MC_TOK_MINUS, "-", 1);
+                        mc_asttoken_init(&outtok, MC_TOK_UNARYMINUS, "-", 1);
                         break;
                     }
+                }
+                break;
+            case '~':
+                {
+                    mc_asttoken_init(&outtok, MC_TOK_UNARYBINNOT, "~", 1);
                 }
                 break;
             case '!':
@@ -5862,7 +5908,7 @@ err:
     return false;
 }
 
-mcopdefinition_t* makedef(mcopdefinition_t* dest, const char* name, int numop, int opa1, int opa2)
+mcopdefinition_t* mc_parser_makedef(mcopdefinition_t* dest, const char* name, int numop, int opa1, int opa2)
 {
     dest->name = name;
     dest->numoperands = numop;
@@ -5874,7 +5920,7 @@ mcopdefinition_t* makedef(mcopdefinition_t* dest, const char* name, int numop, i
 #define makecase(dest, opc, name, opnum, opa1, opa2) \
     case opc: \
     { \
-        return makedef(&def, name, opnum, opa1, opa2); \
+        return mc_parser_makedef(&def, name, opnum, opa1, opa2); \
     } \
     break;
 
@@ -5904,6 +5950,7 @@ TMPSTATIC mcopdefinition_t* mc_opdef_lookup(mcinternopcode_t op)
         makecase(def, MC_OPCODE_GREATERTHAN, "greaterthan", 0, 0, 0);
         makecase(def, MC_OPCODE_GREATERTHANEQUAL, "greaterequal", 0, 0, 0);
         makecase(def, MC_OPCODE_MINUS, "minus", 0, 0, 0);
+        makecase(def, MC_OPCODE_BINNOT, "binnot", 0, 0, 0);
         makecase(def, MC_OPCODE_BANG, "not", 0, 0, 0);
         makecase(def, MC_OPCODE_JUMP, "jump", 1, 2, 0);
         makecase(def, MC_OPCODE_JUMPIFFALSE, "jmpiffalse", 1, 2, 0);
@@ -7189,7 +7236,8 @@ TMPSTATIC mcastparser_t* mc_astparser_make(mcstate_t* state, mcconfig_t* config,
         parser->rightassocfuncs[MC_TOK_TEMPLATESTRING] = mc_parser_parseliteraltemplatestring;
         parser->rightassocfuncs[MC_TOK_NULL] = mc_parser_parseliteralnull;
         parser->rightassocfuncs[MC_TOK_BANG] = mc_parser_parseprefixexpr;
-        parser->rightassocfuncs[MC_TOK_MINUS] = mc_parser_parseprefixexpr;
+        parser->rightassocfuncs[MC_TOK_UNARYMINUS] = mc_parser_parseprefixexpr;
+        parser->rightassocfuncs[MC_TOK_UNARYBINNOT] = mc_parser_parseprefixexpr;
         parser->rightassocfuncs[MC_TOK_LPAREN] = mc_parser_parsegroupedexpr;
         parser->rightassocfuncs[MC_TOK_FUNCTION] = mc_parser_parseliteralfunction;
         parser->rightassocfuncs[MC_TOK_LBRACKET] = mc_parser_parseliteralarray;
@@ -7202,7 +7250,7 @@ TMPSTATIC mcastparser_t* mc_astparser_make(mcstate_t* state, mcconfig_t* config,
     }
     {
         parser->leftassocfuncs[MC_TOK_PLUS] = mc_parser_parseinfixexpr;
-        parser->leftassocfuncs[MC_TOK_MINUS] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_UNARYMINUS] = mc_parser_parseinfixexpr;
         parser->leftassocfuncs[MC_TOK_SLASH] = mc_parser_parseinfixexpr;
         parser->leftassocfuncs[MC_TOK_ASTERISK] = mc_parser_parseinfixexpr;
         parser->leftassocfuncs[MC_TOK_PERCENT] = mc_parser_parseinfixexpr;
@@ -7287,7 +7335,7 @@ TMPSTATIC mcptrarray_t* mc_astparser_parseall(mcastparser_t* parser, const char*
             goto err;
         }
     }
-    if(mc_errlist_size(parser->errors) > 0)
+    if(parser->errors->count > 0)
     {
         goto err;
     }
@@ -8851,7 +8899,8 @@ TMPSTATIC mcastprecedence_t mc_parser_getprecedence(mcasttoktype_t tk)
         case MC_TOK_GTE:
             return MC_ASTPREC_LESSGREATER;
         case MC_TOK_PLUS:
-        case MC_TOK_MINUS:
+        case MC_TOK_UNARYMINUS:
+        case MC_TOK_UNARYBINNOT:
             return MC_ASTPREC_SUM;
         case MC_TOK_SLASH:
         case MC_TOK_ASTERISK:
@@ -8906,8 +8955,10 @@ TMPSTATIC mcastmathoptype_t mc_parser_tokentomathop(mcasttoktype_t tk)
             return MC_MATHOP_ASSIGN;
         case MC_TOK_PLUS:
             return MC_MATHOP_PLUS;
-        case MC_TOK_MINUS:
+        case MC_TOK_UNARYMINUS:
             return MC_MATHOP_MINUS;
+        case MC_TOK_UNARYBINNOT:
+            return MC_MATHOP_BINNOT;
         case MC_TOK_BANG:
             return MC_MATHOP_BANG;
         case MC_TOK_ASTERISK:
@@ -9284,6 +9335,17 @@ TMPSTATIC mcastexpression_t* mc_optimizer_optprefixexpr(mcastexpression_t* expr)
     return res;
 }
 
+#define APPEND_BYTE(n) \
+    do \
+    { \
+        val = (uint8_t)(operands[i] >> (n * 8)); \
+        ok = mc_basicarray_push(res, &val); \
+        if(!ok) \
+        { \
+            return 0; \
+        } \
+    } while(0)
+
 TMPSTATIC int mc_compiler_gencode(mcinternopcode_t op, int operandscount, const uint64_t* operands, mcbasicarray_t* res)
 {
     bool ok;
@@ -9309,17 +9371,6 @@ TMPSTATIC int mc_compiler_gencode(mcinternopcode_t op, int operandscount, const 
     {
         return 0;
     }
-#define APPEND_BYTE(n)                           \
-    do                                           \
-    {                                            \
-        val = (uint8_t)(operands[i] >> (n * 8)); \
-        ok = mc_basicarray_push(res, &val);               \
-        if(!ok)                                  \
-        {                                        \
-            return 0;                            \
-        }                                        \
-    } while(0)
-
     for(i = 0; i < operandscount; i++)
     {
         width = def->operandwidths[i];
@@ -9363,9 +9414,9 @@ TMPSTATIC int mc_compiler_gencode(mcinternopcode_t op, int operandscount, const 
                 break;
         }
     }
-#undef APPEND_BYTE
     return instrlen;
 }
+#undef APPEND_BYTE
 
 
 TMPSTATIC int mc_compiler_emit(mcastcompiler_t* comp, mcinternopcode_t op, int operandscount, uint64_t* operands)
@@ -9476,6 +9527,7 @@ TMPSTATIC mcinternopcode_t mc_compiler_getlastopcode(mcastcompiler_t* comp)
 TMPSTATIC bool mc_compiler_docompilesource(mcastcompiler_t* comp, const char* code)
 {
     bool ok;
+    mcprinter_t pr;
     mcptrarray_t* statements;
     mcastscopefile_t* filescope;
     filescope = (mcastscopefile_t*)mc_ptrarray_top(comp->filescopelist);
@@ -9486,10 +9538,13 @@ TMPSTATIC bool mc_compiler_docompilesource(mcastcompiler_t* comp, const char* co
         /* errors are added by parser */
         return false;
     }
+
+    if(comp->pstate->config.dumpast || comp->pstate->config.dumpbytecode)
+    {
+        mc_printer_init(&pr, comp->pstate, 0, stderr, true);
+    }
     if(comp->pstate->config.dumpast)
     {
-        mcprintstate_t pr;
-        mc_printer_init(&pr, comp->pstate, 0, stderr, true);
         pr.config.quotstring = true;
         fprintf(stderr, "---AST dump begin---\n");
         mc_astprint_stmtlist(&pr, statements);
@@ -9497,19 +9552,17 @@ TMPSTATIC bool mc_compiler_docompilesource(mcastcompiler_t* comp, const char* co
     }
     ok = mc_compiler_compilestmtlist(comp, statements);
     mc_ptrarray_destroy(statements, (mcitemdestroyfn_t)mc_astexpr_destroy);
-    /*
-    * //Left for debugging purposes
-    if (ok)
+    if(comp->pstate->config.dumpbytecode)
     {
-        mcprintstate_t *pr = mc_printer_make(NULL, NULL);
-        mc_printer_printbytecode(pr,
+        mc_printer_printbytecode(&pr,
             mc_basicarray_data(comp->compilationscope->bytecode),
             mc_basicarray_data(comp->compilationscope->scopesrcposlist),
-            mc_basicarray_count(comp->compilationscope->bytecode));
-        puts(mc_printer_getstring(pr));
-        mc_printer_destroy(pr);
+            mc_basicarray_count(comp->compilationscope->bytecode), false);
     }
-    */
+    if(comp->pstate->config.dumpast || comp->pstate->config.dumpbytecode)
+    {
+        mc_printer_destroy(&pr);
+    }
     return ok;
 }
 
@@ -9545,7 +9598,7 @@ TMPSTATIC bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_
     const char* loadedname;
     const char* searchedpath;
     const char* filepathnoncanonicalised;
-    mcprintstate_t* filepathbuf;
+    mcprinter_t* filepathbuf;
     mcastsymtable_t* symtab;
     mcastscopefile_t* fs;
     module_t* module;
@@ -10622,6 +10675,9 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
                     case MC_MATHOP_MINUS:
                         op = MC_OPCODE_MINUS;
                         break;
+                    case MC_MATHOP_BINNOT:
+                        op = MC_OPCODE_BINNOT;
+                        break;
                     case MC_MATHOP_BANG:
                         op = MC_OPCODE_BANG;
                         break;
@@ -10676,7 +10732,7 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
                 {
                     goto error;
                 }
-                #if 0
+                #if 1
                 if(index->isdot)
                 {
                     ip = mc_compiler_emit(comp, MC_OPCODE_GETDOTINDEX, 0, NULL);
@@ -11473,7 +11529,7 @@ TMPSTATIC bool mc_module_addsymbol(module_t* module, mcastsymbol_t* symbol)
 {
     bool ok;
     mcastsymbol_t* modulesymbol;
-    mcprintstate_t* namebuf;
+    mcprinter_t* namebuf;
     namebuf = mc_printer_make(module->pstate, NULL);
     if(!namebuf)
     {
@@ -11556,11 +11612,37 @@ TMPSTATIC mcstate_t* mc_state_make(void)
     {
         goto err;
     }
+    state->stdoutprinter = mc_printer_make(state, stdout);
     return state;
 err:
     mc_state_deinit(state);
     free(state);
     return NULL;
+}
+
+
+TMPSTATIC void mc_state_deinit(mcstate_t* state)
+{
+    mc_compiler_destroy(state->compiler);
+    mc_globalstore_destroy(state->vmglobalstore);
+    mc_gcmemory_destroy(state->mem);
+    mc_ptrarray_destroy(state->files, (mcitemdestroyfn_t)mc_compiledfile_destroy);
+    mc_errlist_deinit(&state->errors);
+}
+
+TMPSTATIC void mc_state_reset(mcstate_t* state)
+{
+    mc_state_clearerrors(state);
+    mc_vm_reset(state);
+}
+
+TMPSTATIC void mc_state_setdefaultconfig(mcstate_t* state)
+{
+    memset(&state->config, 0, sizeof(mcconfig_t));
+    state->config.replmode = false;
+    state->config.dumpast = false;
+    state->config.dumpbytecode = false;
+    state->config.fatalcomplaints = false;
 }
 
 TMPSTATIC void mc_state_destroy(mcstate_t* state)
@@ -11569,6 +11651,7 @@ TMPSTATIC void mc_state_destroy(mcstate_t* state)
     {
         return;
     }
+    mc_printer_destroy(state->stdoutprinter);
     mc_state_deinit(state);
     mc_allocator_free(state, state);
 }
@@ -11594,34 +11677,12 @@ TMPSTATIC void mc_state_printerrors(mcstate_t* state)
     }
 }
 
-TMPSTATIC bool mc_state_settimeout(mcstate_t* state, mcfloat_t maxexecms)
-{
-    if(!mc_util_istimerplatformsupported())
-    {
-        state->config.maxexecutiontime = 0;
-        state->config.havemaxexectime = false;
-        return false;
-    }
-    if(maxexecms >= 0)
-    {
-        state->config.maxexecutiontime = maxexecms;
-        state->config.havemaxexectime = true;
-    }
-    else
-    {
-        state->config.maxexecutiontime = 0;
-        state->config.havemaxexectime = false;
-    }
-    return true;
-}
-
-
 TMPSTATIC mccompiledprogram_t* mc_state_compilesource(mcstate_t* state, const char* code)
 {
     mccompiledprogram_t* compres;
     mc_state_clearerrors(state);
     compres = mc_compiler_compilesource(state->compiler, code);
-    if(mc_errlist_size(&state->errors) > 0)
+    if(state->errors.count > 0)
     {
         goto err;
     }
@@ -11647,13 +11708,13 @@ TMPSTATIC mcvalue_t mc_program_execute(mcstate_t* state, mccompiledprogram_t* pr
         return mc_value_makenull();
     }
     ok = mc_vm_runexecfunc(state, program, mc_compiler_getconstants(state->compiler));
-    if(!ok || mc_errlist_size(&state->errors) > 0)
+    if(!ok || state->errors.count > 0)
     {
         return mc_value_makenull();
     }
     MC_ASSERT(state->vsposition == 0);
     res = mc_vm_getlastpopped(state);
-    if(res.type == MC_OBJ_NONE)
+    if(res.type == MC_VAL_NONE)
     {
         return mc_value_makenull();
     }
@@ -11676,18 +11737,18 @@ TMPUNUSED mcvalue_t mc_state_execcode(mcstate_t* state, const char* code)
     mccompiledprogram_t* compres;
     mc_state_reset(state);
     compres = mc_compiler_compilesource(state->compiler, code);
-    if(!compres || mc_errlist_size(&state->errors) > 0)
+    if(!compres || state->errors.count > 0)
     {
         goto err;
     }
     ok = mc_vm_runexecfunc(state, compres, mc_compiler_getconstants(state->compiler));
-    if(!ok || mc_errlist_size(&state->errors) > 0)
+    if(!ok || state->errors.count > 0)
     {
         goto err;
     }
     MC_ASSERT(state->vsposition == 0);
     res = mc_vm_getlastpopped(state);
-    if(res.type == MC_OBJ_NONE)
+    if(res.type == MC_VAL_NONE)
     {
         goto err;
     }
@@ -11705,12 +11766,12 @@ TMPUNUSED mcvalue_t mc_state_callfunctionbyname(mcstate_t* state, const char* fn
     mcvalue_t callee;
     mc_state_reset(state);
     callee = mc_state_getglobalobjectbyname(state, fname);
-    if(callee.type == MC_OBJ_NULL)
+    if(callee.type == MC_VAL_NULL)
     {
         return mc_value_makenull();
     }
     res = mc_vm_callvalue(state, mc_compiler_getconstants(state->compiler), callee, argc, (mcvalue_t*)args);
-    if(mc_errlist_size(&state->errors) > 0)
+    if(state->errors.count > 0)
     {
         return mc_value_makenull();
     }
@@ -11724,7 +11785,7 @@ TMPSTATIC bool mc_state_haserrors(mcstate_t* state)
 
 TMPSTATIC int mc_state_errorcount(mcstate_t* state)
 {
-    return mc_errlist_size(&state->errors);
+    return state->errors.count;
 }
 
 TMPSTATIC void mc_state_clearerrors(mcstate_t* state)
@@ -11841,59 +11902,55 @@ TMPSEMISTATIC void mc_state_setruntimeerrorf(mcstate_t* state, const char* fmt, 
     va_end(va);
 }
 
-TMPSTATIC mcobjtype_t mc_value_gettype(mcvalue_t v)
-{
-    return (v).type;
-}
 
 TMPSTATIC bool mc_value_isnumeric(mcvalue_t obj)
 {
-    mcobjtype_t type;
+    mcvaltype_t type;
     type = mc_value_gettype(obj);
-    return type == MC_OBJ_NUMBER || type == MC_OBJ_BOOL;
+    return type == MC_VAL_NUMBER || type == MC_VAL_BOOL;
 }
 
 TMPSTATIC bool mc_value_isnull(mcvalue_t obj)
 {
-    return mc_value_gettype(obj) == MC_OBJ_NULL;
+    return mc_value_gettype(obj) == MC_VAL_NULL;
 }
 
 TMPSTATIC bool mc_value_iscallable(mcvalue_t obj)
 {
-    mcobjtype_t type;
+    mcvaltype_t type;
     type = mc_value_gettype(obj);
-    return type == MC_OBJ_FUNCNATIVE || type == MC_OBJ_FUNCSCRIPT;
+    return type == MC_VAL_FUNCNATIVE || type == MC_VAL_FUNCSCRIPT;
 }
 
-TMPSTATIC const char* mc_util_objtypename(mcobjtype_t type)
+TMPSTATIC const char* mc_util_objtypename(mcvaltype_t type)
 {
     switch(type)
     {
-        case MC_OBJ_NONE:
+        case MC_VAL_NONE:
             return "NONE";
-        case MC_OBJ_ERROR:
+        case MC_VAL_ERROR:
             return "ERROR";
-        case MC_OBJ_NUMBER:
+        case MC_VAL_NUMBER:
             return "NUMBER";
-        case MC_OBJ_BOOL:
+        case MC_VAL_BOOL:
             return "BOOL";
-        case MC_OBJ_STRING:
+        case MC_VAL_STRING:
             return "STRING";
-        case MC_OBJ_NULL:
+        case MC_VAL_NULL:
             return "NULL";
-        case MC_OBJ_FUNCNATIVE:
+        case MC_VAL_FUNCNATIVE:
             return "NATIVE_FUNCTION";
-        case MC_OBJ_ARRAY:
+        case MC_VAL_ARRAY:
             return "ARRAY";
-        case MC_OBJ_MAP:
+        case MC_VAL_MAP:
             return "MAP";
-        case MC_OBJ_FUNCSCRIPT:
+        case MC_VAL_FUNCSCRIPT:
             return "FUNCTION";
-        case MC_OBJ_EXTERNAL:
+        case MC_VAL_EXTERNAL:
             return "EXTERNAL";
-        case MC_OBJ_FREED:
+        case MC_VAL_FREED:
             return "FREED";
-        case MC_OBJ_ANY:
+        case MC_VAL_ANY:
             return "ANY";
         default:
             break;
@@ -12009,7 +12066,7 @@ TMPSTATIC char* mc_error_serializetostring(mcstate_t* state, mcerror_t* err)
     const char* line;
     const char* typestr;
     const char* filename;
-    mcprintstate_t* pr;
+    mcprinter_t* pr;
     mctraceback_t* traceback;
     typestr = mc_error_gettypestring(err);
     filename = mc_error_getfilepath(err);
@@ -12114,31 +12171,8 @@ TMPUNUSED const char* mc_traceback_getfunctionname(mctraceback_t* traceback, int
     return item->trfuncname;
 }
 
-TMPSTATIC void mc_state_deinit(mcstate_t* state)
-{
-    mc_compiler_destroy(state->compiler);
-    mc_globalstore_destroy(state->vmglobalstore);
-    mc_gcmemory_destroy(state->mem);
-    mc_ptrarray_destroy(state->files, (mcitemdestroyfn_t)mc_compiledfile_destroy);
-    mc_errlist_deinit(&state->errors);
-}
 
-TMPSTATIC void mc_state_reset(mcstate_t* state)
-{
-    mc_state_clearerrors(state);
-    mc_vm_reset(state);
-}
-
-TMPSTATIC void mc_state_setdefaultconfig(mcstate_t* state)
-{
-    memset(&state->config, 0, sizeof(mcconfig_t));
-    state->config.replmode = false;
-    state->config.dumpast = false;
-    state->config.fatalcomplaints = false;
-    mc_state_settimeout(state, -1);
-}
-
-TMPSTATIC void mc_astprint_stmtlist(mcprintstate_t* pr, mcptrarray_t* statements)
+TMPSTATIC void mc_astprint_stmtlist(mcprinter_t* pr, mcptrarray_t* statements)
 {
     int i;
     int count;
@@ -12155,7 +12189,7 @@ TMPSTATIC void mc_astprint_stmtlist(mcprintstate_t* pr, mcptrarray_t* statements
     }
 }
 
-TMPSEMISTATIC void mc_astprint_expression(mcprintstate_t* pr, mcastexpression_t* expr)
+TMPSEMISTATIC void mc_astprint_expression(mcprinter_t* pr, mcastexpression_t* expr)
 {
     bool prevquot;
     switch(expr->type)
@@ -12482,7 +12516,7 @@ TMPSEMISTATIC void mc_astprint_expression(mcprintstate_t* pr, mcastexpression_t*
     }
 }
 
-TMPSTATIC void mc_astprint_codeblock(mcprintstate_t* pr, mcastcodeblock_t* expr)
+TMPSTATIC void mc_astprint_codeblock(mcprinter_t* pr, mcastcodeblock_t* expr)
 {
     int i;
     mcastexpression_t* istmt;
@@ -12545,7 +12579,7 @@ TMPSTATIC const char* mc_util_mathopstring(mcastmathoptype_t op)
 }
 
 #if 1
-    bool MC_CHECK_ARGS(mcstate_t* state, bool generateerror, int argc, mcvalue_t* args, ...)
+    bool mc_argcheck_check(mcstate_t* state, bool generateerror, int argc, mcvalue_t* args, ...)
     {
         (void)state;
         (void)generateerror;
@@ -12555,20 +12589,20 @@ TMPSTATIC const char* mc_util_mathopstring(mcastmathoptype_t op)
     }
 #else
     #if defined(__cplusplus) || 1
-        #define MC_CHECK_ARGS(state, generateerror, argc, args, ...) true
+        #define mc_argcheck_check(state, generateerror, argc, args, ...) true
     #else
-        #define MC_CHECK_ARGS(state, generateerror, argc, args, ...) \
-            mc_args_check((state), (generateerror), (argc), (args), sizeof((mcobjtype_t[]){ __VA_ARGS__ }) / sizeof(mcobjtype_t), (mcobjtype_t[]){ __VA_ARGS__ })
+        #define mc_argcheck_check(state, generateerror, argc, args, ...) \
+            mc_argcheck_checkactual((state), (generateerror), (argc), (args), sizeof((mcvaltype_t[]){ __VA_ARGS__ }) / sizeof(mcvaltype_t), (mcvaltype_t[]){ __VA_ARGS__ })
     #endif
 #endif
 
-TMPUNUSED bool mc_args_check(mcstate_t* state, bool generateerror, int argc, mcvalue_t* args, int expectedargc, const mcobjtype_t* expectedtypes)
+TMPUNUSED bool mc_argcheck_checkactual(mcstate_t* state, bool generateerror, int argc, mcvalue_t* args, int expectedargc, const mcvaltype_t* expectedtypes)
 {
     int i;
     char* expectedtypestr;
     const char* typestr;
-    mcobjtype_t type;
-    mcobjtype_t expectedtype;
+    mcvaltype_t type;
+    mcvaltype_t expectedtype;
     mcvalue_t arg;
     if(argc != expectedargc)
     {
@@ -12647,12 +12681,12 @@ TMPUNUSED mcvalue_t mc_scriptfn_arrayjoin(mcstate_t* state, void* data, int argc
     mcvalue_t item;
     mcvalue_t array;
     mcvalue_t joinee;
-    mcprintstate_t pr;
+    mcprinter_t pr;
     (void)state;
     (void)argc;
     (void)data;
     havejoinee = false;
-    if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_ARRAY, MC_OBJ_ANY))
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY, MC_VAL_ANY))
     {
         return mc_value_makenull();
     }
@@ -12707,12 +12741,12 @@ TMPSTATIC mcvalue_t mc_scriptfn_index(mcstate_t* state, void* data, int argc, mc
     (void)inplen;
     (void)searchlen;
     startindex = 0;
-    if(argc == 3 && args[2].type == MC_OBJ_NUMBER)
+    if(argc == 3 && args[2].type == MC_VAL_NUMBER)
     {
         startval = args[2];
         startindex = mc_value_getnumber(startval);
     }
-    if((argc == 2 || argc == 3) && args[0].type == MC_OBJ_STRING && args[1].type == MC_OBJ_STRING)
+    if((argc == 2 || argc == 3) && args[0].type == MC_VAL_STRING && args[1].type == MC_VAL_STRING)
     {
         inpval = args[0];
         searchval = args[1];
@@ -12748,7 +12782,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_left(mcstate_t* state, void* data, int argc, mcv
     mcvalue_t inpval;
     mcvalue_t posval;
     (void)data;
-    if(argc == 2 && args[0].type == MC_OBJ_STRING && args[1].type == MC_OBJ_NUMBER)
+    if(argc == 2 && args[0].type == MC_VAL_STRING && args[1].type == MC_VAL_NUMBER)
     {
         inpval = args[0];
         posval = args[1];
@@ -12796,7 +12830,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_right(mcstate_t* state, void* data, int argc, mc
     mcvalue_t inpval;
     mcvalue_t idxval;
     (void)data;
-    if(argc == 2 && args[0].type == MC_OBJ_STRING && args[1].type == MC_OBJ_NUMBER)
+    if(argc == 2 && args[0].type == MC_VAL_STRING && args[1].type == MC_VAL_NUMBER)
     {
         inpval = args[0];
         idxval = args[1];
@@ -12853,7 +12887,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_replace(mcstate_t* state, void* data, int argc, 
     mcvalue_t searchval;
     mcvalue_t repval;
     (void)data;
-    if(argc == 3 && args[0].type == MC_OBJ_STRING && args[1].type == MC_OBJ_STRING && args[2].type == MC_OBJ_STRING)
+    if(argc == 3 && args[0].type == MC_VAL_STRING && args[1].type == MC_VAL_STRING && args[2].type == MC_VAL_STRING)
     {
         inpval = args[0];
         searchval = args[1];
@@ -12924,7 +12958,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_replacefirst(mcstate_t* state, void* data, int a
     mcvalue_t repval;
     mcvalue_t searchval;
     (void)data;
-    if(argc == 3 && args[0].type == MC_OBJ_STRING && args[1].type == MC_OBJ_STRING && args[2].type == MC_OBJ_STRING)
+    if(argc == 3 && args[0].type == MC_VAL_STRING && args[1].type == MC_VAL_STRING && args[2].type == MC_VAL_STRING)
     {
         inpval = args[0];
         searchval = args[1];
@@ -12978,7 +13012,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_trim(mcstate_t* state, void* data, int argc, mcv
     mcvalue_t obj;
     mcvalue_t inpval;
     (void)data;
-    if(argc == 1 && args[0].type == MC_OBJ_STRING)
+    if(argc == 1 && args[0].type == MC_VAL_STRING)
     {
         inpval = args[0];
         inpstr = mc_valstring_getdata(inpval);
@@ -13022,31 +13056,31 @@ TMPSTATIC mcvalue_t mc_scriptfn_trim(mcstate_t* state, void* data, int argc, mcv
     return mc_value_makenull();
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_len(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t mc_scriptfn_lengthof(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     int len;
     mcvalue_t arg;
-    mcobjtype_t type;
+    mcvaltype_t type;
     (void)data;
     (void)state;
     (void)argc;
-    if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_STRING | MC_OBJ_ARRAY | MC_OBJ_MAP))
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_STRING | MC_VAL_ARRAY | MC_VAL_MAP))
     {
         return mc_value_makenull();
     }
     arg = args[0];
     type = arg.type;
-    if(type == MC_OBJ_STRING)
+    if(type == MC_VAL_STRING)
     {
         len = mc_valstring_getlength(arg);
         return mc_value_makenumber(len);
     }
-    if(type == MC_OBJ_ARRAY)
+    if(type == MC_VAL_ARRAY)
     {
         len = mc_valarray_getlength(arg);
         return mc_value_makenumber(len);
     }
-    if(type == MC_OBJ_MAP)
+    if(type == MC_VAL_MAP)
     {
         len = mc_valmap_getlength(arg);
         return mc_value_makenumber(len);
@@ -13054,13 +13088,13 @@ TMPSTATIC mcvalue_t mc_scriptfn_len(mcstate_t* state, void* data, int argc, mcva
     return mc_value_makenull();
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_first(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t mc_scriptfn_arrayfirst(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     mcvalue_t arg;
     (void)state;
     (void)data;
     (void)argc;
-    if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_ARRAY))
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY))
     {
         return mc_value_makenull();
     }
@@ -13068,14 +13102,14 @@ TMPSTATIC mcvalue_t mc_scriptfn_first(mcstate_t* state, void* data, int argc, mc
     return mc_valarray_getvalueat(arg, 0);
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_last(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t mc_scriptfn_arraylast(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     int len;
     mcvalue_t arg;
     (void)state;
     (void)argc;
     (void)data;
-    if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_ARRAY))
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY))
     {
         return mc_value_makenull();
     }
@@ -13084,7 +13118,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_last(mcstate_t* state, void* data, int argc, mcv
     return mc_valarray_getvalueat(arg, len - 1);
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_rest(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t mc_scriptfn_arrayrest(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     bool ok;
     int i;
@@ -13095,7 +13129,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_rest(mcstate_t* state, void* data, int argc, mcv
     (void)state;
     (void)argc;
     (void)data;
-    if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_ARRAY))
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY))
     {
         return mc_value_makenull();
     }
@@ -13129,20 +13163,20 @@ TMPSTATIC mcvalue_t mc_scriptfn_reverse(mcstate_t* state, void* data, int argc, 
     int inplen;
     char* resbuf;
     const char* inpstr;
-    mcobjtype_t type;
+    mcvaltype_t type;
     mcvalue_t arg;
     mcvalue_t obj;
     mcvalue_t res;
     (void)state;
     (void)argc;
     (void)data;
-    if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_ARRAY | MC_OBJ_STRING))
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY | MC_VAL_STRING))
     {
         return mc_value_makenull();
     }
     arg = args[0];
     type = arg.type;
-    if(type == MC_OBJ_ARRAY)
+    if(type == MC_VAL_ARRAY)
     {
         inplen = mc_valarray_getlength(arg);
         res = mc_value_makearraycapacity(state, inplen);
@@ -13161,7 +13195,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_reverse(mcstate_t* state, void* data, int argc, 
         }
         return res;
     }
-    if(type == MC_OBJ_STRING)
+    if(type == MC_VAL_STRING)
     {
         inpstr = mc_valstring_getdata(arg);
         inplen = mc_valstring_getlength(arg);
@@ -13194,7 +13228,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_array(mcstate_t* state, void* data, int argc, mc
     (void)data;
     if(argc == 1)
     {
-        if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_NUMBER))
+        if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
         {
             return mc_value_makenull();
         }
@@ -13217,7 +13251,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_array(mcstate_t* state, void* data, int argc, mc
     }
     if(argc == 2)
     {
-        if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_NUMBER, MC_OBJ_ANY))
+        if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER, MC_VAL_ANY))
         {
             return mc_value_makenull();
         }
@@ -13237,7 +13271,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_array(mcstate_t* state, void* data, int argc, mc
         }
         return res;
     }
-    MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_NUMBER);
+    mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER);
     return mc_value_makenull();
 }
 
@@ -13249,7 +13283,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_arraypush(mcstate_t* state, void* data, int argc
     (void)state;
     (void)argc;
     (void)data;
-    if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_ARRAY, MC_OBJ_ANY))
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY, MC_VAL_ANY))
     {
         return mc_value_makenull();
     }
@@ -13289,7 +13323,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_vec2add(mcstate_t *state, void *data, int argc, 
     (void)state;
     (void)argc;
     (void)data;
-    if (!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_MAP, MC_OBJ_MAP))
+    if (!mc_argcheck_check(state, true, argc, args, MC_VAL_MAP, MC_VAL_MAP))
     {
         return mc_value_makenull();
     }
@@ -13300,7 +13334,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_vec2add(mcstate_t *state, void *data, int argc, 
     b_x = mc_value_getnumber(mc_valmap_getvalue(args[1], keyx));
     b_y = mc_value_getnumber(mc_valmap_getvalue(args[1], keyy));
     res = mc_value_makemap(state);
-    if (mc_value_gettype(res) == MC_OBJ_NULL)
+    if (mc_value_gettype(res) == MC_VAL_NULL)
     {
         return res;
     }
@@ -13321,7 +13355,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_vec2sub(mcstate_t *state, void *data, int argc, 
     (void)state;
     (void)argc;
     (void)data;
-    if (!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_MAP, MC_OBJ_MAP))
+    if (!mc_argcheck_check(state, true, argc, args, MC_VAL_MAP, MC_VAL_MAP))
     {
         return mc_value_makenull();
     }
@@ -13343,14 +13377,14 @@ TMPSTATIC mcvalue_t mc_scriptfn_testcheckargs(mcstate_t* state, void *data, int 
     (void)args;
     (void)argc;
     (void)data;
-    if (!MC_CHECK_ARGS(state, true, argc, args,
-                  MC_OBJ_NUMBER,
-                  MC_OBJ_ARRAY | MC_OBJ_MAP,
-                  MC_OBJ_MAP,
-                  MC_OBJ_STRING,
-                  MC_OBJ_NUMBER | MC_OBJ_BOOL,
-                  MC_OBJ_FUNCSCRIPT | MC_OBJ_FUNCNATIVE,
-                  MC_OBJ_ANY))
+    if (!mc_argcheck_check(state, true, argc, args,
+                  MC_VAL_NUMBER,
+                  MC_VAL_ARRAY | MC_VAL_MAP,
+                  MC_VAL_MAP,
+                  MC_VAL_STRING,
+                  MC_VAL_NUMBER | MC_VAL_BOOL,
+                  MC_VAL_FUNCSCRIPT | MC_VAL_FUNCNATIVE,
+                  MC_VAL_ANY))
     {
         return mc_value_makenull();
     }
@@ -13374,7 +13408,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_maketestdict(mcstate_t *state, void *data, int a
         mc_state_setruntimeerrorf(state, "Invalid type passed to maketestdict, got %d, expected 1", argc);
         return mc_value_makenull();
     }    
-    if (args[0].type != MC_OBJ_NUMBER)
+    if (args[0].type != MC_VAL_NUMBER)
     {
         tname = mc_util_objtypename(args[0].type);
         mc_state_setruntimeerrorf(state, "Invalid type passed to maketestdict, got %s", tname);
@@ -13382,7 +13416,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_maketestdict(mcstate_t *state, void *data, int a
     }
     numitems = mc_value_getnumber(args[0]);
     res = mc_value_makemap(state);
-    if (res.type == MC_OBJ_NULL)
+    if (res.type == MC_VAL_NULL)
     {
         return mc_value_makenull();
     }
@@ -13406,7 +13440,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_squarearray(mcstate_t *state, void *data, int ar
     res = mc_value_makearraycapacity(state, argc);
     for(i = 0; i < argc; i++)
     {
-        if(mc_value_gettype(args[i]) != MC_OBJ_NUMBER)
+        if(mc_value_gettype(args[i]) != MC_VAL_NUMBER)
         {
             mc_state_setruntimeerrorf(state, "Invalid type passed to squarearray");
             return mc_value_makenull();
@@ -13422,15 +13456,14 @@ TMPSTATIC mcvalue_t mc_scriptfn_print(mcstate_t* state, void* data, int argc, mc
 {
     int i;
     mcvalue_t arg;
-    mcprintstate_t pr;
+    mcprinter_t* pr;
     (void)data;
-    mc_printer_init(&pr, state, 0, stdout, true);
+    pr = state->stdoutprinter;
     for(i = 0; i < argc; i++)
     {
         arg = args[i];
-        mc_printer_printobject(&pr, arg);
+        mc_printer_printobject(pr, arg);
     }
-    mc_printer_destroy(&pr);
     return mc_value_makenull();
 }
 
@@ -13438,12 +13471,11 @@ TMPSTATIC mcvalue_t mc_scriptfn_println(mcstate_t* state, void* data, int argc, 
 {
     mcvalue_t o;
     o = mc_scriptfn_print(state, data, argc, args);
-    fputc('\n', stdout);
-    fflush(stdout);
+    mc_printer_putchar(state->stdoutprinter, '\n');
     return o;
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_writefile(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t mc_scriptfn_filewritefile(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     int slen;
     int written;
@@ -13452,7 +13484,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_writefile(mcstate_t* state, void* data, int argc
     (void)state;
     (void)argc;
     (void)data;
-    if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_STRING, MC_OBJ_STRING))
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_STRING, MC_VAL_STRING))
     {
         return mc_value_makenull();
     }
@@ -13463,7 +13495,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_writefile(mcstate_t* state, void* data, int argc
     return mc_value_makenumber(written);
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_readfile(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+TMPSTATIC mcvalue_t mc_scriptfn_filereadfile(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     size_t flen;
     char* contents;
@@ -13472,7 +13504,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_readfile(mcstate_t* state, void* data, int argc,
     (void)state;
     (void)argc;
     (void)data;
-    if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_STRING))
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_STRING))
     {
         return mc_value_makenull();
     }
@@ -13493,7 +13525,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_tostring(mcstate_t* state, void* data, int argc,
     const char* resstr;
     mcvalue_t arg;
     mcvalue_t res;
-    mcprintstate_t pr;
+    mcprinter_t pr;
     (void)state;
     (void)argc;
     (void)data;
@@ -13518,7 +13550,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_jsonstringify(mcstate_t* state, void* data, int 
     const char* resstr;
     mcvalue_t arg;
     mcvalue_t res;
-    mcprintstate_t pr;
+    mcprinter_t pr;
     (void)state;
     (void)argc;
     (void)data;
@@ -13549,7 +13581,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_tonum(mcstate_t* state, void* data, int argc, mc
     (void)state;
     (void)argc;
     (void)data;
-    if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_STRING | MC_OBJ_NUMBER | MC_OBJ_BOOL | MC_OBJ_NULL))
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_STRING | MC_VAL_NUMBER | MC_VAL_BOOL | MC_VAL_NULL))
     {
         return mc_value_makenull();
     }
@@ -13563,7 +13595,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_tonum(mcstate_t* state, void* data, int argc, mc
     {
         result = 0;
     }
-    else if(args[0].type == MC_OBJ_STRING)
+    else if(args[0].type == MC_VAL_STRING)
     {
         stringlen = mc_valstring_getlength(args[0]);
         string = mc_valstring_getdata(args[0]);
@@ -13600,7 +13632,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_chr(mcstate_t* state, void* data, int argc, mcva
     (void)state;
     (void)argc;
     (void)data;
-    if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_NUMBER))
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
     {
         return mc_value_makenull();
     }
@@ -13618,17 +13650,17 @@ TMPSTATIC mcvalue_t mc_scriptfn_range(mcstate_t* state, void* data, int argc, mc
     int step;
     const char* typestr;
     const char* expectedstr;
-    mcobjtype_t type;
+    mcvaltype_t type;
     mcvalue_t res;
     mcvalue_t item;
     (void)data;
     for(i = 0; i < argc; i++)
     {
         type = args[i].type;
-        if(type != MC_OBJ_NUMBER)
+        if(type != MC_VAL_NUMBER)
         {
             typestr = mc_valtype_getname(type);
-            expectedstr = mc_valtype_getname(MC_OBJ_NUMBER);
+            expectedstr = mc_valtype_getname(MC_VAL_NUMBER);
             mc_state_pusherrorf(state, MC_ERROR_RUNTIME, srcposinvalid, "Invalid argument %d passed to range, got %s instead of %s", i, typestr, expectedstr);
             return mc_value_makenull();
         }
@@ -13689,7 +13721,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_keys(mcstate_t* state, void* data, int argc, mcv
     (void)state;
     (void)argc;
     (void)data;
-    if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_MAP))
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_MAP))
     {
         return mc_value_makenull();
     }
@@ -13723,7 +13755,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_values(mcstate_t* state, void* data, int argc, m
     (void)state;
     (void)argc;
     (void)data;
-    if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_MAP))
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_MAP))
     {
         return mc_value_makenull();
     }
@@ -13751,7 +13783,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_copy(mcstate_t* state, void* data, int argc, mcv
     (void)state;
     (void)argc;
     (void)data;
-    if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_ANY))
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
     {
         return mc_value_makenull();
     }
@@ -13763,7 +13795,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_copydeep(mcstate_t* state, void* data, int argc,
     (void)data;
     (void)state;
     (void)argc;
-    if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_ANY))
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
     {
         return mc_value_makenull();
     }
@@ -13779,7 +13811,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_remove(mcstate_t* state, void* data, int argc, m
     (void)data;
     (void)state;
     (void)argc;
-    if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_ARRAY, MC_OBJ_ANY))
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY, MC_VAL_ANY))
     {
         return mc_value_makenull();
     }
@@ -13805,11 +13837,11 @@ TMPSTATIC mcvalue_t mc_scriptfn_removeat(mcstate_t* state, void* data, int argc,
 {
     bool res;
     int ix;
-    mcobjtype_t type;
+    mcvaltype_t type;
     (void)data;
     (void)state;
     (void)argc;
-    if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_ARRAY, MC_OBJ_NUMBER))
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY, MC_VAL_NUMBER))
     {
         return mc_value_makenull();
     }
@@ -13817,7 +13849,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_removeat(mcstate_t* state, void* data, int argc,
     ix = (int)mc_value_getnumber(args[1]);
     switch(type)
     {
-        case MC_OBJ_ARRAY:
+        case MC_VAL_ARRAY:
             {
                 res = mc_valarray_removevalueat(args[0], ix);
                 return mc_value_makebool(res);
@@ -13834,7 +13866,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_removeat(mcstate_t* state, void* data, int argc,
 TMPSTATIC mcvalue_t mc_scriptfn_error(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
-    if(argc == 1 && args[0].type == MC_OBJ_STRING)
+    if(argc == 1 && args[0].type == MC_VAL_STRING)
     {
         return mc_value_makeerror(state, mc_valstring_getdata(args[0]));
     }
@@ -13844,7 +13876,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_error(mcstate_t* state, void* data, int argc, mc
 TMPSTATIC mcvalue_t mc_scriptfn_crash(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
-    if(argc == 1 && args[0].type == MC_OBJ_STRING)
+    if(argc == 1 && args[0].type == MC_VAL_STRING)
     {
         mc_errlist_push(&state->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), mc_valstring_getdata(args[0]));
     }
@@ -13860,7 +13892,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_assert(mcstate_t* state, void* data, int argc, m
     (void)data;
     (void)state;
     (void)argc;
-    if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_BOOL))
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_BOOL))
     {
         return mc_value_makenull();
     }
@@ -13878,7 +13910,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_randseed(mcstate_t* state, void* data, int argc,
     (void)data;
     (void)state;
     (void)argc;
-    if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_NUMBER))
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
     {
         return mc_value_makenull();
     }
@@ -13903,7 +13935,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_random(mcstate_t* state, void* data, int argc, m
     }
     if(argc == 2)
     {
-        if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_NUMBER, MC_OBJ_NUMBER))
+        if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER, MC_VAL_NUMBER))
         {
             return mc_value_makenull();
         }
@@ -13935,17 +13967,17 @@ TMPSTATIC mcvalue_t mc_scriptfn_slice(mcstate_t* state, void* data, int argc, mc
     const char* typestr;
     mcvalue_t res;
     mcvalue_t item;
-    mcobjtype_t argtype;
+    mcvaltype_t argtype;
     (void)data;
     (void)state;
     (void)argc;
-    if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_STRING | MC_OBJ_ARRAY, MC_OBJ_NUMBER))
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_STRING | MC_VAL_ARRAY, MC_VAL_NUMBER))
     {
         return mc_value_makenull();
     }
     argtype = args[0].type;
     index = (int)mc_value_getnumber(args[1]);
-    if(argtype == MC_OBJ_ARRAY)
+    if(argtype == MC_VAL_ARRAY)
     {
         len = mc_valarray_getlength(args[0]);
         if(index < 0)
@@ -13972,7 +14004,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_slice(mcstate_t* state, void* data, int argc, mc
         }
         return res;
     }
-    if(argtype == MC_OBJ_STRING)
+    if(argtype == MC_VAL_STRING)
     {
         str = mc_valstring_getdata(args[0]);
         len = mc_valstring_getlength(args[0]);
@@ -14014,11 +14046,11 @@ TMPSTATIC mcvalue_t mc_scriptfn_isstring(mcstate_t* state, void* data, int argc,
     (void)data;
     (void)state;
     (void)argc;
-    if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_ANY))
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
     {
         return mc_value_makenull();
     }
-    return mc_value_makebool(args[0].type == MC_OBJ_STRING);
+    return mc_value_makebool(args[0].type == MC_VAL_STRING);
 }
 
 TMPSTATIC mcvalue_t mc_scriptfn_isarray(mcstate_t* state, void* data, int argc, mcvalue_t* args)
@@ -14026,11 +14058,11 @@ TMPSTATIC mcvalue_t mc_scriptfn_isarray(mcstate_t* state, void* data, int argc, 
     (void)data;
     (void)state;
     (void)argc;
-    if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_ANY))
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
     {
         return mc_value_makenull();
     }
-    return mc_value_makebool(args[0].type == MC_OBJ_ARRAY);
+    return mc_value_makebool(args[0].type == MC_VAL_ARRAY);
 }
 
 TMPSTATIC mcvalue_t mc_scriptfn_ismap(mcstate_t* state, void* data, int argc, mcvalue_t* args)
@@ -14038,11 +14070,11 @@ TMPSTATIC mcvalue_t mc_scriptfn_ismap(mcstate_t* state, void* data, int argc, mc
     (void)data;
     (void)state;
     (void)argc;
-    if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_ANY))
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
     {
         return mc_value_makenull();
     }
-    return mc_value_makebool(args[0].type == MC_OBJ_MAP);
+    return mc_value_makebool(args[0].type == MC_VAL_MAP);
 }
 
 TMPSTATIC mcvalue_t mc_scriptfn_isnumber(mcstate_t* state, void* data, int argc, mcvalue_t* args)
@@ -14050,11 +14082,11 @@ TMPSTATIC mcvalue_t mc_scriptfn_isnumber(mcstate_t* state, void* data, int argc,
     (void)data;
     (void)state;
     (void)argc;
-    if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_ANY))
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
     {
         return mc_value_makenull();
     }
-    return mc_value_makebool(args[0].type == MC_OBJ_NUMBER);
+    return mc_value_makebool(args[0].type == MC_VAL_NUMBER);
 }
 
 TMPSTATIC mcvalue_t mc_scriptfn_isbool(mcstate_t* state, void* data, int argc, mcvalue_t* args)
@@ -14062,11 +14094,11 @@ TMPSTATIC mcvalue_t mc_scriptfn_isbool(mcstate_t* state, void* data, int argc, m
     (void)data;
     (void)state;
     (void)argc;
-    if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_ANY))
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
     {
         return mc_value_makenull();
     }
-    return mc_value_makebool(args[0].type == MC_OBJ_BOOL);
+    return mc_value_makebool(args[0].type == MC_VAL_BOOL);
 }
 
 TMPSTATIC mcvalue_t mc_scriptfn_isnull(mcstate_t* state, void* data, int argc, mcvalue_t* args)
@@ -14074,11 +14106,11 @@ TMPSTATIC mcvalue_t mc_scriptfn_isnull(mcstate_t* state, void* data, int argc, m
     (void)data;
     (void)state;
     (void)argc;
-    if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_ANY))
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
     {
         return mc_value_makenull();
     }
-    return mc_value_makebool(mc_value_gettype(args[0]) == MC_OBJ_NULL);
+    return mc_value_makebool(mc_value_gettype(args[0]) == MC_VAL_NULL);
 }
 
 TMPSTATIC mcvalue_t mc_scriptfn_isfunction(mcstate_t* state, void* data, int argc, mcvalue_t* args)
@@ -14086,11 +14118,11 @@ TMPSTATIC mcvalue_t mc_scriptfn_isfunction(mcstate_t* state, void* data, int arg
     (void)data;
     (void)state;
     (void)argc;
-    if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_ANY))
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
     {
         return mc_value_makenull();
     }
-    return mc_value_makebool(mc_value_gettype(args[0]) == MC_OBJ_FUNCSCRIPT);
+    return mc_value_makebool(mc_value_gettype(args[0]) == MC_VAL_FUNCSCRIPT);
 }
 
 TMPSTATIC mcvalue_t mc_scriptfn_isexternal(mcstate_t* state, void* data, int argc, mcvalue_t* args)
@@ -14098,11 +14130,11 @@ TMPSTATIC mcvalue_t mc_scriptfn_isexternal(mcstate_t* state, void* data, int arg
     (void)data;
     (void)state;
     (void)argc;
-    if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_ANY))
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
     {
         return mc_value_makenull();
     }
-    return mc_value_makebool(mc_value_gettype(args[0]) == MC_OBJ_EXTERNAL);
+    return mc_value_makebool(mc_value_gettype(args[0]) == MC_VAL_EXTERNAL);
 }
 
 TMPSTATIC mcvalue_t mc_scriptfn_iserror(mcstate_t* state, void* data, int argc, mcvalue_t* args)
@@ -14110,11 +14142,11 @@ TMPSTATIC mcvalue_t mc_scriptfn_iserror(mcstate_t* state, void* data, int argc, 
     (void)data;
     (void)state;
     (void)argc;
-    if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_ANY))
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
     {
         return mc_value_makenull();
     }
-    return mc_value_makebool(mc_value_gettype(args[0]) == MC_OBJ_ERROR);
+    return mc_value_makebool(mc_value_gettype(args[0]) == MC_VAL_ERROR);
 }
 
 TMPSTATIC mcvalue_t mc_scriptfn_isnativefunction(mcstate_t* state, void* data, int argc, mcvalue_t* args)
@@ -14122,11 +14154,11 @@ TMPSTATIC mcvalue_t mc_scriptfn_isnativefunction(mcstate_t* state, void* data, i
     (void)data;
     (void)state;
     (void)argc;
-    if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_ANY))
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
     {
         return mc_value_makenull();
     }
-    return mc_value_makebool(mc_value_gettype(args[0]) == MC_OBJ_FUNCNATIVE);
+    return mc_value_makebool(mc_value_gettype(args[0]) == MC_VAL_FUNCNATIVE);
 }
 
 TMPSTATIC mcvalue_t mc_scriptfn_sqrt(mcstate_t* state, void* data, int argc, mcvalue_t* args)
@@ -14136,7 +14168,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_sqrt(mcstate_t* state, void* data, int argc, mcv
     (void)data;
     (void)state;
     (void)argc;
-    if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_NUMBER))
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
     {
         return mc_value_makenull();
     }
@@ -14153,7 +14185,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_pow(mcstate_t* state, void* data, int argc, mcva
     (void)data;
     (void)state;
     (void)argc;
-    if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_NUMBER, MC_OBJ_NUMBER))
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER, MC_VAL_NUMBER))
     {
         return mc_value_makenull();
     }
@@ -14170,7 +14202,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_sin(mcstate_t* state, void* data, int argc, mcva
     (void)data;
     (void)state;
     (void)argc;
-    if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_NUMBER))
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
     {
         return mc_value_makenull();
     }
@@ -14186,7 +14218,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_cos(mcstate_t* state, void* data, int argc, mcva
     (void)data;
     (void)state;
     (void)argc;
-    if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_NUMBER))
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
     {
         return mc_value_makenull();
     }
@@ -14202,7 +14234,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_tan(mcstate_t* state, void* data, int argc, mcva
     (void)data;
     (void)state;
     (void)argc;
-    if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_NUMBER))
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
     {
         return mc_value_makenull();
     }
@@ -14218,7 +14250,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_log(mcstate_t* state, void* data, int argc, mcva
     (void)data;
     (void)state;
     (void)argc;
-    if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_NUMBER))
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
     {
         return mc_value_makenull();
     }
@@ -14234,7 +14266,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_ceil(mcstate_t* state, void* data, int argc, mcv
     (void)data;
     (void)state;
     (void)argc;
-    if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_NUMBER))
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
     {
         return mc_value_makenull();
     }
@@ -14250,7 +14282,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_floor(mcstate_t* state, void* data, int argc, mc
     (void)data;
     (void)state;
     (void)argc;
-    if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_NUMBER))
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
     {
         return mc_value_makenull();
     }
@@ -14266,7 +14298,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_abs(mcstate_t* state, void* data, int argc, mcva
     (void)data;
     (void)state;
     (void)argc;
-    if(!MC_CHECK_ARGS(state, true, argc, args, MC_OBJ_NUMBER))
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
     {
         return mc_value_makenull();
     }
@@ -14274,92 +14306,6 @@ TMPSTATIC mcvalue_t mc_scriptfn_abs(mcstate_t* state, void* data, int argc, mcva
     res = fabs(arg);
     return mc_value_makenumber(res);
 }
-
-static struct
-{
-    const char* name;
-    mcnativefn_t fn;
-} gnativefunctions[] = {
-    { "maketestdict", mc_scriptfn_maketestdict },
-    { "squarearray", mc_scriptfn_squarearray },
-    { "len", mc_scriptfn_len },
-    { "binnot", mc_scriptfn_binnot},
-    { "ord", mc_scriptfn_ord},
-    { "println", mc_scriptfn_println },
-    { "print", mc_scriptfn_print },
-    { "readfile", mc_scriptfn_readfile },
-    { "writefile", mc_scriptfn_writefile },
-    { "first", mc_scriptfn_first },
-    { "last", mc_scriptfn_last },
-    { "rest", mc_scriptfn_rest },
-    { "arrayjoin", mc_scriptfn_arrayjoin},
-    { "arraypush", mc_scriptfn_arraypush },
-    { "remove", mc_scriptfn_remove },
-    { "removeat", mc_scriptfn_removeat },
-    { "tostring", mc_scriptfn_tostring },
-    { "tonum", mc_scriptfn_tonum },
-    { "range", mc_scriptfn_range },
-    { "keys", mc_scriptfn_keys },
-    { "values", mc_scriptfn_values },
-    { "copy", mc_scriptfn_copy },
-    { "deepcopy", mc_scriptfn_copydeep },
-    { "chr", mc_scriptfn_chr },
-    { "reverse", mc_scriptfn_reverse },
-    { "array", mc_scriptfn_array },
-    { "error", mc_scriptfn_error },
-    { "crash", mc_scriptfn_crash },
-    { "assert", mc_scriptfn_assert },
-    { "randomseed", mc_scriptfn_randseed },
-    { "random", mc_scriptfn_random },
-    { "slice", mc_scriptfn_slice },
-
-    /* Custom */
-    { "indexof", mc_scriptfn_index },
-    { "left", mc_scriptfn_left },
-    { "right", mc_scriptfn_right },
-    { "replace", mc_scriptfn_replace },
-    { "replacefirst", mc_scriptfn_replacefirst },
-    { "trim", mc_scriptfn_trim },
-
-    /* Type checks */
-    { "isstring", mc_scriptfn_isstring },
-    { "isarray", mc_scriptfn_isarray },
-    { "ismap", mc_scriptfn_ismap },
-    { "isnumber", mc_scriptfn_isnumber },
-    { "isbool", mc_scriptfn_isbool },
-    { "isnull", mc_scriptfn_isnull },
-    { "isfunction", mc_scriptfn_isfunction },
-    { "isexternal", mc_scriptfn_isexternal },
-    { "iserror", mc_scriptfn_iserror },
-    { "isnativefunction", mc_scriptfn_isnativefunction },
-
-    /* Math */
-    { "sqrt", mc_scriptfn_sqrt },
-    { "pow", mc_scriptfn_pow },
-    { "sin", mc_scriptfn_sin },
-    { "cos", mc_scriptfn_cos },
-    { "tan", mc_scriptfn_tan },
-    { "log", mc_scriptfn_log },
-    { "ceil", mc_scriptfn_ceil },
-    { "floor", mc_scriptfn_floor },
-    { "abs", mc_scriptfn_abs },
-};
-
-TMPSTATIC int mc_corebuiltins_count(void)
-{
-    return MC_UTIL_STATICARRAYSIZE(gnativefunctions);
-}
-
-TMPSTATIC mcnativefn_t mc_corebuiltins_getfuncat(int ix)
-{
-    return gnativefunctions[ix].fn;
-}
-
-TMPSTATIC const char* mc_corebuiltins_getnameat(int ix)
-{
-    return gnativefunctions[ix].name;
-}
-
 
 TMPSTATIC mcptrarray_t* mc_util_splitstring(mcstate_t* state, const char* str, const char* delimiter)
 {
@@ -14425,7 +14371,7 @@ TMPSTATIC char* mc_util_joinstringarray(mcstate_t* state, mcptrarray_t* items, c
 {
     int i;
     char* item;
-    mcprintstate_t* res;
+    mcprinter_t* res;
     res = mc_printer_make(state, NULL);
     if(!res)
     {
@@ -14500,10 +14446,10 @@ TMPSTATIC bool mc_util_strequal(const char* a, const char* b)
     return strcmp(a, b) == 0;
 }
 
-TMPSTATIC bool mc_callframe_init(mcvmframe_t* frame, mcvalue_t functionobj, int baseptr)
+TMPSTATIC inline bool mc_callframe_init(mcvmframe_t* frame, mcvalue_t functionobj, int baseptr)
 {
     mcobjfuncscript_t* function;
-    if(mc_value_gettype(functionobj) != MC_OBJ_FUNCSCRIPT)
+    if(mc_value_gettype(functionobj) != MC_VAL_FUNCSCRIPT)
     {
         return false;
     }
@@ -14520,7 +14466,7 @@ TMPSTATIC bool mc_callframe_init(mcvmframe_t* frame, mcvalue_t functionobj, int 
     return true;
 }
 
-TMPSTATIC uint64_t mc_callframe_readuint64(mcvmframe_t* frame)
+TMPSTATIC inline uint64_t mc_callframe_readuint64(mcvmframe_t* frame)
 {
     uint64_t res;
     uint8_t* data;
@@ -14538,7 +14484,7 @@ TMPSTATIC uint64_t mc_callframe_readuint64(mcvmframe_t* frame)
     return res;
 }
 
-TMPSTATIC uint16_t mc_callframe_readuint16(mcvmframe_t* frame)
+TMPSTATIC inline uint16_t mc_callframe_readuint16(mcvmframe_t* frame)
 {
     uint8_t* data;
     data = frame->bytecode + frame->bcposition;
@@ -14546,7 +14492,7 @@ TMPSTATIC uint16_t mc_callframe_readuint16(mcvmframe_t* frame)
     return (data[0] << 8) | data[1];
 }
 
-TMPSTATIC uint8_t mc_callframe_readuint8(mcvmframe_t* frame)
+TMPSTATIC inline uint8_t mc_callframe_readuint8(mcvmframe_t* frame)
 {
     uint8_t* data;
     data = frame->bytecode + frame->bcposition;
@@ -14554,13 +14500,13 @@ TMPSTATIC uint8_t mc_callframe_readuint8(mcvmframe_t* frame)
     return data[0];
 }
 
-TMPSTATIC mcopcode_t mc_callframe_readopcode(mcvmframe_t* frame)
+TMPSTATIC inline mcopcode_t mc_callframe_readopcode(mcvmframe_t* frame)
 {
     frame->sourcebcpos = frame->bcposition;
     return (mcopcode_t)mc_callframe_readuint8(frame);
 }
 
-TMPSTATIC mcastlocation_t mc_callframe_getpos(mcvmframe_t* frame)
+TMPSTATIC inline mcastlocation_t mc_callframe_getpos(mcvmframe_t* frame)
 {
     if(frame->framesrcposlist)
     {
@@ -14688,7 +14634,7 @@ TMPSTATIC mcobjdata_t* mc_gcmemory_allocobjectdata(mcstate_t* state)
     return data;
 }
 
-TMPSTATIC mcobjdata_t* mc_gcmemory_getdatafrompool(mcstate_t* state, mcobjtype_t type)
+TMPSTATIC mcobjdata_t* mc_gcmemory_getdatafrompool(mcstate_t* state, mcvaltype_t type)
 {
     bool ok;
     mcobjdata_t* data;
@@ -14764,7 +14710,7 @@ TMPSEMISTATIC void mc_state_gcmarkobject(mcvalue_t obj)
     data->gcmark = true;
     switch(obj.type)
     {
-        case MC_OBJ_MAP:
+        case MC_VAL_MAP:
             {
                 len = mc_valmap_getlength(obj);
                 for(i = 0; i < len; i++)
@@ -14790,7 +14736,7 @@ TMPSEMISTATIC void mc_state_gcmarkobject(mcvalue_t obj)
                 }
             }
             break;
-        case MC_OBJ_ARRAY:
+        case MC_VAL_ARRAY:
             {
                 len = mc_valarray_getlength(obj);
                 for(i = 0; i < len; i++)
@@ -14807,7 +14753,7 @@ TMPSEMISTATIC void mc_state_gcmarkobject(mcvalue_t obj)
                 }
             }
             break;
-        case MC_OBJ_FUNCSCRIPT:
+        case MC_VAL_FUNCSCRIPT:
             {
                 function = mc_value_functiongetscriptfunction(obj);
                 for(i = 0; i < function->freevalscount; i++)
@@ -14916,15 +14862,15 @@ TMPSTATIC int mc_state_gcshouldsweep(mcstate_t* state)
     return state->mem->allocssincesweep > MC_CONF_GCMEMSWEEPINTERVAL;
 }
 
-TMPSTATIC mcgcobjdatapool_t* mc_state_gcgetpoolfortype(mcstate_t* state, mcobjtype_t type)
+TMPSTATIC mcgcobjdatapool_t* mc_state_gcgetpoolfortype(mcstate_t* state, mcvaltype_t type)
 {
     switch(type)
     {
-        case MC_OBJ_ARRAY:
+        case MC_VAL_ARRAY:
             return &state->mem->mempools[0];
-        case MC_OBJ_MAP:
+        case MC_VAL_MAP:
             return &state->mem->mempools[1];
-        case MC_OBJ_STRING:
+        case MC_VAL_STRING:
             return &state->mem->mempools[2];
         default:
             break;
@@ -14942,7 +14888,7 @@ TMPSTATIC bool mc_state_gccandatabeputinpool(mcstate_t* state, mcobjdata_t* data
     */
     switch(data->type)
     {
-        case MC_OBJ_ARRAY:
+        case MC_VAL_ARRAY:
             {
                 if(mc_valarray_getlength(obj) > 1024)
                 {
@@ -14950,7 +14896,7 @@ TMPSTATIC bool mc_state_gccandatabeputinpool(mcstate_t* state, mcobjdata_t* data
                 }
             }
             break;
-        case MC_OBJ_MAP:
+        case MC_VAL_MAP:
             {
                 if(mc_valmap_getlength(obj) > 1024)
                 {
@@ -14958,7 +14904,7 @@ TMPSTATIC bool mc_state_gccandatabeputinpool(mcstate_t* state, mcobjdata_t* data
                 }
             }
             break;
-        case MC_OBJ_STRING:
+        case MC_VAL_STRING:
             {
                 if(!data->uvobj.valstring.isallocated || data->uvobj.valstring.capacity > 4096)
                 {
@@ -14981,8 +14927,6 @@ TMPSTATIC bool mc_state_gccandatabeputinpool(mcstate_t* state, mcobjdata_t* data
 
 TMPSTATIC mcglobalstore_t* mc_globalstore_make(mcstate_t* state)
 {
-    bool ok;
-    int i;
     mcglobalstore_t* store;
     store = (mcglobalstore_t*)mc_allocator_alloc(state, sizeof(mcglobalstore_t));
     if(!store)
@@ -15000,23 +14944,6 @@ TMPSTATIC mcglobalstore_t* mc_globalstore_make(mcstate_t* state)
     if(!store->objects)
     {
         goto err;
-    }
-    if(state->mem)
-    {
-        for(i = 0; i < mc_corebuiltins_count(); i++)
-        {
-            const char* name = mc_corebuiltins_getnameat(i);
-            mcvalue_t builtin = mc_value_makefuncnative(state, name, mc_corebuiltins_getfuncat(i), NULL, 0);
-            if(mc_value_isnull(builtin))
-            {
-                goto err;
-            }
-            ok = mc_globalstore_setnamed(store, name, builtin);
-            if(!ok)
-            {
-                goto err;
-            }
-        }
     }
     return store;
 err:
@@ -15039,7 +14966,6 @@ TMPSTATIC mcastsymbol_t* mc_globalstore_getsymbol(mcglobalstore_t* store, const 
 {
     return (mcastsymbol_t*)mc_genericdict_get(store->symbols, name);
 }
-
 
 TMPSTATIC bool mc_globalstore_setnamed(mcglobalstore_t* store, const char* name, mcvalue_t object)
 {
@@ -15101,14 +15027,14 @@ TMPSTATIC int mc_globalstore_getcount(mcglobalstore_t* store)
 
 TMPSTATIC bool mc_value_ishashable(mcvalue_t obj)
 {
-    mcobjtype_t type = mc_value_gettype(obj);
+    mcvaltype_t type = mc_value_gettype(obj);
     switch(type)
     {
-        case MC_OBJ_STRING:
+        case MC_VAL_STRING:
             return true;
-        case MC_OBJ_NUMBER:
+        case MC_VAL_NUMBER:
             return true;
-        case MC_OBJ_BOOL:
+        case MC_VAL_BOOL:
             return true;
         default:
             break;
@@ -15177,7 +15103,7 @@ TMPSTATIC bool mc_printutil_bcreadoperands(mcopdefinition_t* def, const uint8_t*
     return true;
 }
 
-TMPSTATIC void mc_printer_printbytecode(mcprintstate_t* pr, uint8_t* code, mcastlocation_t* sposlist, size_t codesize, bool simple)
+TMPSTATIC void mc_printer_printbytecode(mcprinter_t* pr, uint8_t* code, mcastlocation_t* sposlist, size_t codesize, bool simple)
 {
     bool ok;
     int i;
@@ -15240,7 +15166,7 @@ TMPSTATIC void mc_printer_printbytecode(mcprintstate_t* pr, uint8_t* code, mcast
     }
 }
 
-TMPSTATIC void mc_printer_printobjstring(mcprintstate_t* pr, mcvalue_t obj)
+TMPSTATIC void mc_printer_printobjstring(mcprinter_t* pr, mcvalue_t obj)
 {
     size_t len;
     const char* str;
@@ -15256,7 +15182,7 @@ TMPSTATIC void mc_printer_printobjstring(mcprintstate_t* pr, mcvalue_t obj)
     }
 }
 
-TMPSTATIC void mc_printer_printobjfuncscript(mcprintstate_t* pr, mcvalue_t obj)
+TMPSTATIC void mc_printer_printobjfuncscript(mcprinter_t* pr, mcvalue_t obj)
 {
     const char* fname;
     mcobjfuncscript_t* fn;
@@ -15275,7 +15201,7 @@ TMPSTATIC void mc_printer_printobjfuncscript(mcprintstate_t* pr, mcvalue_t obj)
     mc_printer_puts(pr, ">");
 }
 
-TMPSTATIC void mc_printer_printobjarray(mcprintstate_t* pr, mcvalue_t obj)
+TMPSTATIC void mc_printer_printobjarray(mcprinter_t* pr, mcvalue_t obj)
 {
     bool recursion;
     size_t i;
@@ -15291,7 +15217,7 @@ TMPSTATIC void mc_printer_printobjarray(mcprintstate_t* pr, mcvalue_t obj)
     {
         recursion = false;
         iobj = mc_valarray_getvalueat(obj, i);
-        if(mc_value_gettype(iobj) == MC_OBJ_ARRAY)
+        if(mc_value_gettype(iobj) == MC_VAL_ARRAY)
         {
             otherary = mc_valarray_getinternalarray(iobj);
             if(otherary == actualary)
@@ -15318,7 +15244,7 @@ TMPSTATIC void mc_printer_printobjarray(mcprintstate_t* pr, mcvalue_t obj)
     mc_printer_puts(pr, "]");
 }
 
-TMPSTATIC void mc_printer_printobjmap(mcprintstate_t* pr, mcvalue_t obj)
+TMPSTATIC void mc_printer_printobjmap(mcprinter_t* pr, mcvalue_t obj)
 {
     bool prevquot;
     size_t i;
@@ -15345,7 +15271,7 @@ TMPSTATIC void mc_printer_printobjmap(mcprintstate_t* pr, mcvalue_t obj)
     mc_printer_puts(pr, "}");
 }
 
-TMPSTATIC void mc_printer_printobjerror(mcprintstate_t* pr, mcvalue_t obj)
+TMPSTATIC void mc_printer_printobjerror(mcprinter_t* pr, mcvalue_t obj)
 {
     mctraceback_t* traceback;
     mc_printer_printf(pr, "ERROR: %s\n", mc_value_errorgetmessage(obj));
@@ -15358,80 +15284,6 @@ TMPSTATIC void mc_printer_printobjerror(mcprintstate_t* pr, mcvalue_t obj)
     }
 }
 
-TMPSEMISTATIC void mc_printer_printobject(mcprintstate_t* pr, mcvalue_t obj)
-{
-    mcobjtype_t type = mc_value_gettype(obj);
-    switch(type)
-    {
-        case MC_OBJ_FREED:
-            {
-                mc_printer_puts(pr, "FREED");
-            }
-            break;
-        case MC_OBJ_NONE:
-            {
-                mc_printer_puts(pr, "NONE");
-            }
-            break;
-        case MC_OBJ_NUMBER:
-            {
-                mcfloat_t number;
-                number = mc_value_getnumber(obj);
-                mc_printer_printf(pr, "%1.10g", number);
-            }
-            break;
-        case MC_OBJ_BOOL:
-            {
-                mc_printer_puts(pr, mc_value_getbool(obj) ? "true" : "false");
-            }
-            break;
-        case MC_OBJ_STRING:
-            {
-                mc_printer_printobjstring(pr, obj);
-            }
-            break;
-        case MC_OBJ_NULL:
-            {
-                mc_printer_puts(pr, "null");
-            }
-            break;
-        case MC_OBJ_FUNCSCRIPT:
-            {
-                mc_printer_printobjfuncscript(pr, obj);
-            }
-            break;
-        case MC_OBJ_ARRAY:
-            {
-                mc_printer_printobjarray(pr, obj);
-            }
-            break;
-        case MC_OBJ_MAP:
-            {
-                mc_printer_printobjmap(pr, obj);
-            }
-            break;
-        case MC_OBJ_FUNCNATIVE:
-            {
-                mc_printer_puts(pr, "NATIVE_FUNCTION");
-            }
-            break;
-        case MC_OBJ_EXTERNAL:
-            {
-                mc_printer_puts(pr, "EXTERNAL");
-            }
-            break;
-        case MC_OBJ_ERROR:
-            {
-                mc_printer_printobjerror(pr, obj);
-            }
-            break;
-        case MC_OBJ_ANY:
-            {
-                MC_ASSERT(false);
-            }
-            break;
-    }
-}
 
 TMPSTATIC mcastsymbol_t* mc_symbol_make(mcstate_t* state, const char* name, mcastsymtype_t type, int index, bool assignable)
 {
@@ -15998,7 +15850,7 @@ TMPSTATIC const char* mc_asttoken_typename(mcasttoktype_t type)
             return "+";
         case MC_TOK_PLUSPLUS:
             return "++";
-        case MC_TOK_MINUS:
+        case MC_TOK_UNARYMINUS:
             return "-";
         case MC_TOK_MINUSMINUS:
             return "--";
@@ -16174,7 +16026,7 @@ TMPSTATIC bool mc_traceback_vmpush(mctraceback_t* traceback, mcstate_t* state)
     return true;
 }
 
-TMPSTATIC bool mc_printer_printtraceback(mcprintstate_t* pr, mctraceback_t* traceback)
+TMPSTATIC bool mc_printer_printtraceback(mcprinter_t* pr, mctraceback_t* traceback)
 {
     int i;
     int depth;
@@ -16258,6 +16110,7 @@ TMPSTATIC bool mc_vm_init(mcstate_t* state)
     SET_OPERATOR_OVERLOAD_KEY(MC_OPCODE_LSHIFT, "__operator_lshift__");
     SET_OPERATOR_OVERLOAD_KEY(MC_OPCODE_RSHIFT, "__operator_rshift__");
     SET_OPERATOR_OVERLOAD_KEY(MC_OPCODE_MINUS, "__operator_minus__");
+    SET_OPERATOR_OVERLOAD_KEY(MC_OPCODE_BINNOT, "__operator_binnot__");
     SET_OPERATOR_OVERLOAD_KEY(MC_OPCODE_BANG, "__operator_bang__");
     SET_OPERATOR_OVERLOAD_KEY(MC_OPCODE_COMPARE, "__cmp__");
 #undef SET_OPERATOR_OVERLOAD_KEY
@@ -16312,15 +16165,14 @@ TMPSTATIC mcvalue_t mc_vm_callvalue(mcstate_t* state, mcbasicarray_t* constants,
     int oldsp;
     int oldthissp;
     int oldframescount;
-    mcobjtype_t type;
+    mcvaltype_t type;
     (void)oldsp;
     type = mc_value_gettype(callee);
-    if(type == MC_OBJ_FUNCSCRIPT)
+    if(type == MC_VAL_FUNCSCRIPT)
     {
-#if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
-        oldsp = state->vsposition;
-#endif
-
+        #if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
+            oldsp = state->vsposition;
+        #endif
         oldthissp = state->thisstpos;
         oldframescount = state->framecount;
         mc_vm_stackpush(state, callee);
@@ -16341,7 +16193,7 @@ TMPSTATIC mcvalue_t mc_vm_callvalue(mcstate_t* state, mcbasicarray_t* constants,
         state->thisstpos = oldthissp;
         return mc_vm_getlastpopped(state);
     }
-    if(type == MC_OBJ_FUNCNATIVE)
+    if(type == MC_VAL_FUNCNATIVE)
     {
         return mc_vm_callnativefunction(state, callee, srcposinvalid, argc, args);
     }
@@ -16349,35 +16201,35 @@ TMPSTATIC mcvalue_t mc_vm_callvalue(mcstate_t* state, mcbasicarray_t* constants,
     return mc_value_makenull();
 }
 
-TMPSTATIC bool mc_vm_tryoverloadoperator(mcstate_t* state, mcvalue_t left, mcvalue_t right, mcinternopcode_t op, bool* outoverloadfound)
+TMPSTATIC inline bool mc_vmdo_tryoverloadoperator(mcstate_t* state, mcvalue_t left, mcvalue_t right, mcinternopcode_t op, bool* outoverloadfound)
 {
     int numoper;
     mcvalue_t key;
     mcvalue_t callee;
-    mcobjtype_t lefttype;
-    mcobjtype_t righttype;
+    mcvaltype_t lefttype;
+    mcvaltype_t righttype;
     *outoverloadfound = false;
     lefttype = mc_value_gettype(left);
     righttype = mc_value_gettype(right);
-    if(lefttype != MC_OBJ_MAP && righttype != MC_OBJ_MAP)
+    if(lefttype != MC_VAL_MAP && righttype != MC_VAL_MAP)
     {
         *outoverloadfound = false;
         return true;
     }
     numoper = 2;
-    if(op == MC_OPCODE_MINUS || op == MC_OPCODE_BANG)
+    if(op == MC_OPCODE_MINUS || op == MC_OPCODE_BINNOT || op == MC_OPCODE_BANG)
     {
         numoper = 1;
     }
     key = state->operoverloadkeys[op];
     callee = mc_value_makenull();
-    if(lefttype == MC_OBJ_MAP)
+    if(lefttype == MC_VAL_MAP)
     {
         callee = mc_valmap_getvalue(left, key);
     }
     if(!mc_value_iscallable(callee))
     {
-        if(righttype == MC_OBJ_MAP)
+        if(righttype == MC_VAL_MAP)
         {
             callee = mc_valmap_getvalue(right, key);
         }
@@ -16395,7 +16247,7 @@ TMPSTATIC bool mc_vm_tryoverloadoperator(mcstate_t* state, mcvalue_t left, mcval
     {
         mc_vm_stackpush(state, right);
     }
-    return mc_vm_callobject(state, callee, numoper);
+    return mc_vmdo_callobject(state, callee, numoper);
 }
 
 TMPSTATIC mcvalue_t mc_vm_getlastpopped(mcstate_t* state)
@@ -16405,7 +16257,7 @@ TMPSTATIC mcvalue_t mc_vm_getlastpopped(mcstate_t* state)
 
 TMPSTATIC bool mc_vm_haserrors(mcstate_t* state)
 {
-    return mc_errlist_size(&state->errors) > 0;
+    return state->errors.count > 0;
 }
 
 TMPSTATIC bool mc_vm_setglobalbyindex(mcstate_t* state, int ix, mcvalue_t val)
@@ -16619,17 +16471,17 @@ TMPSTATIC void mc_vm_rungc(mcstate_t* vm, mcbasicarray_t* constants)
     mc_state_gcsweep(vm);
 }
 
-TMPSTATIC bool mc_vm_callobject(mcstate_t* vm, mcvalue_t callee, int nargs)
+TMPSTATIC inline bool mc_vmdo_callobject(mcstate_t* vm, mcvalue_t callee, int nargs)
 {
     bool ok;
     const char* calleetypename;
-    mcobjtype_t calleetype;
+    mcvaltype_t calleetype;
     mcvmframe_t calleeframe;
     mcvalue_t res;
     mcvalue_t* stackpos;
     mcobjfuncscript_t* calleefunction;
     calleetype = mc_value_gettype(callee);
-    if(calleetype == MC_OBJ_FUNCSCRIPT)
+    if(calleetype == MC_VAL_FUNCSCRIPT)
     {
         calleefunction = mc_value_functiongetscriptfunction(callee);
         if(nargs != calleefunction->numargs)
@@ -16641,17 +16493,17 @@ TMPSTATIC bool mc_vm_callobject(mcstate_t* vm, mcvalue_t callee, int nargs)
         ok = mc_callframe_init(&calleeframe, callee, vm->vsposition - nargs);
         if(!ok)
         {
-            mc_errlist_push(&vm->errors, MC_ERROR_RUNTIME, srcposinvalid, "Frame init failed in mc_vm_callobject");
+            mc_errlist_push(&vm->errors, MC_ERROR_RUNTIME, srcposinvalid, "Frame init failed in mc_vmdo_callobject");
             return false;
         }
         ok = mc_vm_pushframe(vm, calleeframe);
         if(!ok)
         {
-            mc_errlist_push(&vm->errors, MC_ERROR_RUNTIME, srcposinvalid, "Pushing frame failed in mc_vm_callobject");
+            mc_errlist_push(&vm->errors, MC_ERROR_RUNTIME, srcposinvalid, "Pushing frame failed in mc_vmdo_callobject");
             return false;
         }
     }
-    else if(calleetype == MC_OBJ_FUNCNATIVE)
+    else if(calleetype == MC_VAL_FUNCNATIVE)
     {
         stackpos = vm->valuestack + vm->vsposition - nargs;
         res = mc_vm_callnativefunction(vm, callee, mc_callframe_getpos(vm->currframe), nargs, stackpos);
@@ -16673,14 +16525,14 @@ TMPSTATIC bool mc_vm_callobject(mcstate_t* vm, mcvalue_t callee, int nargs)
 
 TMPSTATIC mcvalue_t mc_vm_callnativefunction(mcstate_t* vm, mcvalue_t callee, mcastlocation_t srcpos, int argc, mcvalue_t* args)
 {
-    mcobjtype_t restype;
+    mcvaltype_t restype;
     mcvalue_t res;
     mcerror_t* err; 
     mctraceback_t* traceback;
     mcobjfuncnative_t* nativefun;
     nativefun = mc_value_functiongetnativefunction(callee);
     res = nativefun->natptrfn(vm, nativefun->userdata, argc, args);
-    if(mc_errlist_haserrors(&vm->errors) && !MC_UTIL_STREQ(nativefun->name, "crash"))
+    if(mc_util_unlikely(vm->errors.count > 0))
     {
         err = mc_errlist_getlast(&vm->errors);
         err->pos = srcpos;
@@ -16692,7 +16544,7 @@ TMPSTATIC mcvalue_t mc_vm_callnativefunction(mcstate_t* vm, mcvalue_t callee, mc
         return mc_value_makenull();
     }
     restype = mc_value_gettype(res);
-    if(restype == MC_OBJ_ERROR)
+    if(mc_util_unlikely(restype == MC_VAL_ERROR))
     {
         traceback = mc_traceback_make(vm);
         if(traceback)
@@ -16711,12 +16563,12 @@ TMPSTATIC mcvalue_t mc_vm_callnativefunction(mcstate_t* vm, mcvalue_t callee, mc
 
 TMPSTATIC bool mc_vm_checkassign(mcstate_t* state, mcvalue_t oldvalue, mcvalue_t nvalue)
 {
-    mcobjtype_t nvaluetype;
-    mcobjtype_t oldvaluetype;
+    mcvaltype_t nvaluetype;
+    mcvaltype_t oldvaluetype;
     (void)state;
     oldvaluetype = mc_value_gettype(oldvalue);
     nvaluetype = mc_value_gettype(nvalue);
-    if(oldvaluetype == MC_OBJ_NULL || nvaluetype == MC_OBJ_NULL)
+    if(oldvaluetype == MC_VAL_NULL || nvaluetype == MC_VAL_NULL)
     {
         return true;
     }
@@ -16731,7 +16583,7 @@ TMPSTATIC bool mc_vm_checkassign(mcstate_t* state, mcvalue_t oldvalue, mcvalue_t
     return true;
 }
 
-TMPSTATIC bool mc_vmdo_opaddstring(mcstate_t* state, mcvalue_t valleft, mcvalue_t valright, mcobjtype_t righttype, mcopcode_t opcode)
+TMPSTATIC inline bool mc_vmdo_opaddstring(mcstate_t* state, mcvalue_t valleft, mcvalue_t valright, mcvaltype_t righttype, mcopcode_t opcode)
 {
     bool ok;
     int leftlen;
@@ -16740,7 +16592,7 @@ TMPSTATIC bool mc_vmdo_opaddstring(mcstate_t* state, mcvalue_t valleft, mcvalue_
     const char* strright;
     mcvalue_t nstring;
     (void)opcode;
-    if(righttype != MC_OBJ_STRING)
+    if(righttype != MC_VAL_STRING)
     {
         return false;
     }
@@ -16778,7 +16630,7 @@ TMPSTATIC bool mc_vmdo_opaddstring(mcstate_t* state, mcvalue_t valleft, mcvalue_
     return true;
 }
 
-TMPSTATIC bool mc_vmdo_math(mcstate_t* state, mcopcode_t opcode)
+TMPSTATIC inline bool mc_vmdo_math(mcstate_t* state, mcopcode_t opcode)
 {
     bool ok;
     bool overloadfound;
@@ -16790,8 +16642,8 @@ TMPSTATIC bool mc_vmdo_math(mcstate_t* state, mcopcode_t opcode)
     const char* righttypename;
     mcvalue_t valright;
     mcvalue_t valleft;
-    mcobjtype_t lefttype;
-    mcobjtype_t righttype;
+    mcvaltype_t lefttype;
+    mcvaltype_t righttype;
     valright = mc_vm_stackpop(state);
     valleft = mc_vm_stackpop(state);
     lefttype = mc_value_gettype(valleft);
@@ -16856,7 +16708,7 @@ TMPSTATIC bool mc_vmdo_math(mcstate_t* state, mcopcode_t opcode)
         mc_vm_stackpush(state, mc_value_makenumber(res));
         return true;
     }
-    else if(lefttype == MC_OBJ_STRING && opcode == MC_OPCODE_ADD)
+    else if(lefttype == MC_VAL_STRING && opcode == MC_OPCODE_ADD)
     {
         if(mc_vmdo_opaddstring(state, valleft, valright, righttype, opcode))
         {
@@ -16864,7 +16716,7 @@ TMPSTATIC bool mc_vmdo_math(mcstate_t* state, mcopcode_t opcode)
         }
     }
     overloadfound = false;
-    ok = mc_vm_tryoverloadoperator(state, valleft, valright, opcode, &overloadfound);
+    ok = mc_vmdo_tryoverloadoperator(state, valleft, valright, opcode, &overloadfound);
     if(!ok)
     {
         return false;
@@ -16881,7 +16733,7 @@ TMPSTATIC bool mc_vmdo_math(mcstate_t* state, mcopcode_t opcode)
     return true;
 }
 
-TMPSTATIC bool mc_vmdo_getindexpartial(mcstate_t* state, mcvalue_t left, mcobjtype_t lefttype, mcvalue_t index, mcobjtype_t indextype)
+TMPSTATIC inline bool mc_vmdo_getindexpartial(mcstate_t* state, mcvalue_t left, mcvaltype_t lefttype, mcvalue_t index, mcvaltype_t indextype)
 {
     int leftlen;
     int ix;
@@ -16890,16 +16742,16 @@ TMPSTATIC bool mc_vmdo_getindexpartial(mcstate_t* state, mcvalue_t left, mcobjty
     const char* indextypename;
     const char* lefttypename;
     mcvalue_t res;
-    if(lefttype != MC_OBJ_ARRAY && lefttype != MC_OBJ_MAP && lefttype != MC_OBJ_STRING)
+    if(lefttype != MC_VAL_ARRAY && lefttype != MC_VAL_MAP && lefttype != MC_VAL_STRING)
     {
         lefttypename = mc_valtype_getname(lefttype);
         mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Type %s is not indexable", lefttypename);
         return false;
     }
     res = mc_value_makenull();
-    if(lefttype == MC_OBJ_ARRAY)
+    if(lefttype == MC_VAL_ARRAY)
     {
-        if(indextype != MC_OBJ_NUMBER)
+        if(indextype != MC_VAL_NUMBER)
         {
             lefttypename = mc_valtype_getname(lefttype);
             indextypename = mc_valtype_getname(indextype);
@@ -16916,13 +16768,13 @@ TMPSTATIC bool mc_vmdo_getindexpartial(mcstate_t* state, mcvalue_t left, mcobjty
             res = mc_valarray_getvalueat(left, ix);
         }
     }
-    else if(lefttype == MC_OBJ_MAP)
+    else if(lefttype == MC_VAL_MAP)
     {
         res = mc_valmap_getvalue(left, index);
     }
-    else if(lefttype == MC_OBJ_STRING)
+    else if(lefttype == MC_VAL_STRING)
     {
-        if(indextype != MC_OBJ_NUMBER)
+        if(indextype != MC_VAL_NUMBER)
         {
             lefttypename = mc_valtype_getname(lefttype);
             indextypename = mc_valtype_getname(indextype);
@@ -16942,10 +16794,10 @@ TMPSTATIC bool mc_vmdo_getindexpartial(mcstate_t* state, mcvalue_t left, mcobjty
     return true;
 }
 
-TMPSTATIC bool mc_vmdo_getindexfull(mcstate_t* state)
+TMPSTATIC inline bool mc_vmdo_getindexfull(mcstate_t* state)
 {
-    mcobjtype_t lefttype;
-    mcobjtype_t indextype;
+    mcvaltype_t lefttype;
+    mcvaltype_t indextype;
     mcvalue_t left;
     mcvalue_t index;
     index = mc_vm_stackpop(state);
@@ -16955,7 +16807,30 @@ TMPSTATIC bool mc_vmdo_getindexfull(mcstate_t* state)
     return mc_vmdo_getindexpartial(state, left, lefttype, index, indextype);
 }
 
-TMPSTATIC bool mc_vmdo_setindexpartial(mcstate_t* state, mcvalue_t left, mcobjtype_t lefttype, mcvalue_t index, mcobjtype_t indextype, mcvalue_t nvalue)
+bool mc_vm_findclassfor(mcstate_t* state)
+{
+    (void)state;
+    return false;
+}
+
+TMPSTATIC inline bool mc_vmdo_getdotindex(mcstate_t* state)
+{
+    mcvaltype_t lefttype;
+    mcvaltype_t indextype;
+    mcvalue_t left;
+    mcvalue_t index;
+    index = mc_vm_stackpop(state);
+    left = mc_vm_stackpop(state);
+    lefttype = mc_value_gettype(left);
+    indextype = mc_value_gettype(index);
+    if(indextype == MC_VAL_STRING)
+    {
+        /* TODO: find member function, if any */
+    }
+    return mc_vmdo_getindexpartial(state, left, lefttype, index, indextype);
+}
+
+TMPSTATIC inline bool mc_vmdo_setindexpartial(mcstate_t* state, mcvalue_t left, mcvaltype_t lefttype, mcvalue_t index, mcvaltype_t indextype, mcvalue_t nvalue)
 {
     bool ok;
     int alen;
@@ -16963,15 +16838,15 @@ TMPSTATIC bool mc_vmdo_setindexpartial(mcstate_t* state, mcvalue_t left, mcobjty
     const char* indextypename;
     const char* lefttypename;
     mcvalue_t oldvalue;
-    if(lefttype != MC_OBJ_ARRAY && lefttype != MC_OBJ_MAP)
+    if(lefttype != MC_VAL_ARRAY && lefttype != MC_VAL_MAP)
     {
         lefttypename = mc_valtype_getname(lefttype);
         mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "type %s is not indexable", lefttypename);
         return false;
     }
-    if(lefttype == MC_OBJ_ARRAY)
+    if(lefttype == MC_VAL_ARRAY)
     {
-        if(indextype != MC_OBJ_NUMBER)
+        if(indextype != MC_VAL_NUMBER)
         {
             lefttypename = mc_valtype_getname(lefttype);
             indextypename = mc_valtype_getname(indextype);
@@ -16987,7 +16862,7 @@ TMPSTATIC bool mc_vmdo_setindexpartial(mcstate_t* state, mcvalue_t left, mcobjty
             return false;
         }
     }
-    else if(lefttype == MC_OBJ_MAP)
+    else if(lefttype == MC_VAL_MAP)
     {
         oldvalue = mc_valmap_getvalue(left, index);
         if(!mc_vm_checkassign(state, oldvalue, nvalue))
@@ -17003,13 +16878,13 @@ TMPSTATIC bool mc_vmdo_setindexpartial(mcstate_t* state, mcvalue_t left, mcobjty
     return true;
 }
 
-TMPSTATIC bool mc_vmdo_setindexfull(mcstate_t* state)
+TMPSTATIC inline bool mc_vmdo_setindexfull(mcstate_t* state)
 {
     mcvalue_t index;
     mcvalue_t left;
     mcvalue_t nvalue;
-    mcobjtype_t lefttype;
-    mcobjtype_t indextype;
+    mcvaltype_t lefttype;
+    mcvaltype_t indextype;
     index = mc_vm_stackpop(state);
     left = mc_vm_stackpop(state);
     nvalue = mc_vm_stackpop(state);
@@ -17018,7 +16893,7 @@ TMPSTATIC bool mc_vmdo_setindexfull(mcstate_t* state)
     return mc_vmdo_setindexpartial(state, left, lefttype, index, indextype, nvalue);
 }
 
-TMPSTATIC bool mc_vmdo_getvalueatfull(mcstate_t* state)
+TMPSTATIC inline bool mc_vmdo_getvalueatfull(mcstate_t* state)
 {
     int ix;
     int leftlen;
@@ -17026,8 +16901,8 @@ TMPSTATIC bool mc_vmdo_getvalueatfull(mcstate_t* state)
     const char* lefttypename;
     const char* indextypename;
     const char* str;
-    mcobjtype_t lefttype;
-    mcobjtype_t indextype;
+    mcvaltype_t lefttype;
+    mcvaltype_t indextype;
     mcvalue_t index;
     mcvalue_t left;
     mcvalue_t res;
@@ -17035,14 +16910,14 @@ TMPSTATIC bool mc_vmdo_getvalueatfull(mcstate_t* state)
     left = mc_vm_stackpop(state);
     lefttype = mc_value_gettype(left);
     indextype= mc_value_gettype(index);
-    if(lefttype != MC_OBJ_ARRAY && lefttype != MC_OBJ_MAP && lefttype != MC_OBJ_STRING)
+    if(lefttype != MC_VAL_ARRAY && lefttype != MC_VAL_MAP && lefttype != MC_VAL_STRING)
     {
         lefttypename = mc_valtype_getname(lefttype);
         mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Type %s is not indexable", lefttypename);
         return false;
     }
     res = mc_value_makenull();
-    if(indextype != MC_OBJ_NUMBER)
+    if(indextype != MC_VAL_NUMBER)
     {
         lefttypename = mc_valtype_getname(lefttype);
         indextypename = mc_valtype_getname(indextype);
@@ -17050,15 +16925,15 @@ TMPSTATIC bool mc_vmdo_getvalueatfull(mcstate_t* state)
         return false;
     }
     ix = (int)mc_value_getnumber(index);
-    if(lefttype == MC_OBJ_ARRAY)
+    if(lefttype == MC_VAL_ARRAY)
     {
         res = mc_valarray_getvalueat(left, ix);
     }
-    else if(lefttype == MC_OBJ_MAP)
+    else if(lefttype == MC_VAL_MAP)
     {
         res = mc_valmap_getkvpairat(state, left, ix);
     }
-    else if(lefttype == MC_OBJ_STRING)
+    else if(lefttype == MC_VAL_STRING)
     {
         str = mc_valstring_getdata(left);
         leftlen = mc_valstring_getlength(left);
@@ -17073,14 +16948,14 @@ TMPSTATIC bool mc_vmdo_getvalueatfull(mcstate_t* state)
     return true;
 }
 
-TMPSTATIC bool mc_vmdo_makefunction(mcstate_t* state, mcbasicarray_t* constants)
+TMPSTATIC inline bool mc_vmdo_makefunction(mcstate_t* state, mcbasicarray_t* constants)
 {
     int i;
     uint8_t numfree;
     uint16_t constantix;
     const char* fname;
     const char* tname;
-    mcobjtype_t constanttype;
+    mcvaltype_t constanttype;
     mcvalue_t freeval;
     mcvalue_t functionobj;
     mcvalue_t* constant;
@@ -17094,7 +16969,7 @@ TMPSTATIC bool mc_vmdo_makefunction(mcstate_t* state, mcbasicarray_t* constants)
         return false;
     }
     constanttype = mc_value_gettype(*constant);
-    if(constanttype != MC_OBJ_FUNCSCRIPT)
+    if(constanttype != MC_VAL_FUNCSCRIPT)
     {
         tname = mc_valtype_getname(constanttype);
         mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "%s is not a function", tname);
@@ -17117,20 +16992,20 @@ TMPSTATIC bool mc_vmdo_makefunction(mcstate_t* state, mcbasicarray_t* constants)
     return true;
 }
 
-TMPSTATIC bool mc_vmdo_docmpvalue(mcstate_t* state, mcopcode_t opcode)
+TMPSTATIC inline bool mc_vmdo_docmpvalue(mcstate_t* state, mcopcode_t opcode)
 {
     bool ok;
     bool isoverloaded;
     const char* lefttname;
     const char* righttname;
-    mcvalcmpstate_t cres;
+    mcvalcmpresult_t cres;
     mcvalue_t res;
     mcvalue_t left;
     mcvalue_t right;
     right = mc_vm_stackpop(state);
     left = mc_vm_stackpop(state);
     isoverloaded = false;
-    ok = mc_vm_tryoverloadoperator(state, left, right, MC_OPCODE_COMPARE, &isoverloaded);
+    ok = mc_vmdo_tryoverloadoperator(state, left, right, MC_OPCODE_COMPARE, &isoverloaded);
     if(!ok)
     {
         return false;
@@ -17157,7 +17032,7 @@ TMPSTATIC bool mc_vmdo_docmpvalue(mcstate_t* state, mcopcode_t opcode)
     return true;
 }
 
-TMPSTATIC bool mc_vmdo_docmpvalgreater(mcstate_t* state, mcopcode_t opcode)
+TMPSTATIC inline bool mc_vmdo_docmpvalgreater(mcstate_t* state, mcopcode_t opcode)
 {
     bool resval;
     mcfloat_t comparisonres;
@@ -17199,7 +17074,7 @@ TMPSTATIC bool mc_vmdo_docmpvalgreater(mcstate_t* state, mcopcode_t opcode)
     return true;
 }
 
-TMPSTATIC bool mc_vmdo_makearray(mcstate_t* state)
+TMPSTATIC inline bool mc_vmdo_makearray(mcstate_t* state)
 {
     bool ok;
     int i;
@@ -17228,7 +17103,7 @@ TMPSTATIC bool mc_vmdo_makearray(mcstate_t* state)
     return true;
 }
 
-TMPSTATIC bool mc_vmdo_makemapstart(mcstate_t* state)
+TMPSTATIC inline bool mc_vmdo_makemapstart(mcstate_t* state)
 {
     uint16_t count;
     mcvalue_t mapobj;
@@ -17242,14 +17117,14 @@ TMPSTATIC bool mc_vmdo_makemapstart(mcstate_t* state)
     return true;
 }
 
-TMPSTATIC bool mc_vmdo_makemapend(mcstate_t* state)
+TMPSTATIC inline bool mc_vmdo_makemapend(mcstate_t* state)
 {
     bool ok;
     int i;
     uint16_t kvpcount;
     uint16_t itemscount;
     const char* keytypename;
-    mcobjtype_t keytype;
+    mcvaltype_t keytype;
     mcvalue_t key;
     mcvalue_t val;
     mcvalue_t mapobj;
@@ -17283,15 +17158,9 @@ TMPSTATIC bool mc_vmdo_makemapend(mcstate_t* state)
 TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcbasicarray_t* constants)
 {
     bool ok;
-    bool checktime;
     int fri;
-    int elapsedms;
     int recoverframeix;
-    unsigned timecheckinterval;
-    unsigned timecheckcounter;
-    mcfloat_t maxexectimems;
     mcopcode_t opcode;
-    mctimer_t timer;
     mcvmframe_t createdframe;
     mcvalue_t errobj;
     mcvmframe_t* frame;
@@ -17320,22 +17189,6 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
     fprintf(stderr, "**executing function**\n");
     state->running = true;
     state->lastpopped = mc_value_makenull();
-    checktime = false;
-    maxexectimems = 0;
-    #if 0
-    if(state->config)
-    #endif
-    {
-        checktime = state->config.havemaxexectime;
-        maxexectimems = state->config.maxexecutiontime;
-    }
-    timecheckinterval = 1000;
-    timecheckcounter = 0;
-    memset(&timer, 0, sizeof(mctimer_t));
-    if(checktime)
-    {
-        timer = mc_timer_start();
-    }
     while(state->currframe->bcposition < state->currframe->bcsize)
     {
         opcode = mc_callframe_readopcode(state->currframe);
@@ -17416,11 +17269,11 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     mcfloat_t val;
                     const char* opertname;
                     mcvalue_t res;
-                    mcobjtype_t opertype;
+                    mcvaltype_t opertype;
                     mcvalue_t operand;
                     operand = mc_vm_stackpop(state);
                     opertype = mc_value_gettype(operand);
-                    if(opertype == MC_OBJ_NUMBER)
+                    if(opertype == MC_VAL_NUMBER)
                     {
                         val = mc_value_getnumber(operand);
                         res = mc_value_makenumber(-val);
@@ -17429,7 +17282,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     else
                     {
                         overloadfound = false;
-                        ok = mc_vm_tryoverloadoperator(state, operand, mc_value_makenull(), MC_OPCODE_MINUS, &overloadfound);
+                        ok = mc_vmdo_tryoverloadoperator(state, operand, mc_value_makenull(), MC_OPCODE_MINUS, &overloadfound);
                         if(!ok)
                         {
                             goto err;
@@ -17443,20 +17296,53 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     }
                 }
                 break;
+            case MC_OPCODE_BINNOT:
+                {
+                    bool overloadfound;
+                    int64_t val;
+                    const char* opertname;
+                    mcvalue_t res;
+                    mcvaltype_t opertype;
+                    mcvalue_t operand;
+                    operand = mc_vm_stackpop(state);
+                    opertype = mc_value_gettype(operand);
+                    if(opertype == MC_VAL_NUMBER)
+                    {
+                        val = mc_value_getnumber(operand);
+                        res = mc_value_makenumber(~val);
+                        mc_vm_stackpush(state, res);
+                    }
+                    else
+                    {
+                        overloadfound = false;
+                        ok = mc_vmdo_tryoverloadoperator(state, operand, mc_value_makenull(), MC_OPCODE_BINNOT, &overloadfound);
+                        if(!ok)
+                        {
+                            goto err;
+                        }
+                        if(!overloadfound)
+                        {
+                            opertname = mc_valtype_getname(opertype);
+                            mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Invalid operand type for BINNOT, got %s", opertname);
+                            goto err;
+                        }
+                    }
+                }
+                break;
             case MC_OPCODE_BANG:
                 {
                     bool overloadfound;
                     mcvalue_t res;
                     mcvalue_t operand;
-                    mcobjtype_t type;
+                    mcvaltype_t type;
                     operand = mc_vm_stackpop(state);
                     type = mc_value_gettype(operand);
-                    if(type == MC_OBJ_BOOL)
+                    if(type == MC_VAL_BOOL)
                     {
                         res = mc_value_makebool(!mc_value_getbool(operand));
                         mc_vm_stackpush(state, res);
                     }
-                    else if(type == MC_OBJ_NULL)
+                    else if(type == MC_VAL_NULL)
                     {
                         res = mc_value_makebool(true);
                         mc_vm_stackpush(state, res);
@@ -17464,7 +17350,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     else
                     {
                         overloadfound = false;
-                        ok = mc_vm_tryoverloadoperator(state, operand, mc_value_makenull(), MC_OPCODE_BANG, &overloadfound);
+                        ok = mc_vmdo_tryoverloadoperator(state, operand, mc_value_makenull(), MC_OPCODE_BANG, &overloadfound);
                         if(!ok)
                         {
                             goto err;
@@ -17585,7 +17471,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     mcvalue_t callee;
                     nargs = mc_callframe_readuint8(state->currframe);
                     callee = mc_vm_stackget(state, nargs);
-                    ok = mc_vm_callobject(state, callee, nargs);
+                    ok = mc_vmdo_callobject(state, callee, nargs);
                     if(!ok)
                     {
                         goto err;
@@ -17704,6 +17590,14 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     mc_vm_stackpush(state, obj);
                 }
                 break;
+            case MC_OPCODE_GETDOTINDEX:
+                {
+                    if(!mc_vmdo_getdotindex(state))
+                    {
+                        goto err;
+                    }
+                }
+                break;
             case MC_OPCODE_GETINDEX:
                 {
                     if(!mc_vmdo_getindexfull(state))
@@ -17733,19 +17627,19 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     int len;
                     const char* tname;
                     mcvalue_t val;
-                    mcobjtype_t type;
+                    mcvaltype_t type;
                     val = mc_vm_stackpop(state);
                     len = 0;
                     type = mc_value_gettype(val);
-                    if(type == MC_OBJ_ARRAY)
+                    if(type == MC_VAL_ARRAY)
                     {
                         len = mc_valarray_getlength(val);
                     }
-                    else if(type == MC_OBJ_MAP)
+                    else if(type == MC_VAL_MAP)
                     {
                         len = mc_valmap_getlength(val);
                     }
-                    else if(type == MC_OBJ_STRING)
+                    else if(type == MC_VAL_STRING)
                     {
                         len = mc_valstring_getlength(val);
                     }
@@ -17784,25 +17678,11 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                 }
                 break;
         }
-        if(checktime)
-        {
-            timecheckcounter++;
-            if(timecheckcounter > timecheckinterval)
-            {
-                elapsedms = (int)mc_timer_getelapsedms(&timer);
-                if(elapsedms > maxexectimems)
-                {
-                    mc_state_pusherrorf(state, MC_ERROR_TIMEOUT, mc_callframe_getpos(state->currframe), "Execution took more than %1.17g ms", maxexectimems);
-                    goto err;
-                }
-                timecheckcounter = 0;
-            }
-        }
     err:
-        if(mc_errlist_size(&state->errors) > 0)
+        if(state->errors.count > 0)
         {
             err = mc_errlist_getlast(&state->errors);
-            if(err->type == MC_ERROR_RUNTIME && mc_errlist_size(&state->errors) == 1)
+            if(err->type == MC_ERROR_RUNTIME && state->errors.count == 1)
             {
                 recoverframeix = -1;
                 for(fri = state->framecount - 1; fri >= 0; fri--)
@@ -17853,7 +17733,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
     }
 
 end:
-    if(mc_errlist_size(&state->errors) > 0)
+    if(state->errors.count > 0)
     {
         err = mc_errlist_getlast(&state->errors);
         if(!err->traceback)
@@ -17867,7 +17747,7 @@ end:
     }
     mc_vm_rungc(state, constants);
     state->running = false;
-    return mc_errlist_size(&state->errors) == 0;
+    return state->errors.count == 0;
 }
 
 
@@ -18059,6 +17939,96 @@ void mc_cli_installargv(mcstate_t* state, int argc, char** argv, int beginat)
     mc_state_setglobalconstant(state, "ARGV", argvobj);
 }
 
+void mc_cli_installbuiltins(mcstate_t* state)
+{
+    static struct
+    {
+        const char* name;
+        mcnativefn_t fn;
+    } nativefunctions[] = {
+        { "maketestdict", mc_scriptfn_maketestdict },
+        { "squarearray", mc_scriptfn_squarearray },
+        { "lengthof", mc_scriptfn_lengthof },
+        { "binnot", mc_scriptfn_binnot},
+        { "ord", mc_scriptfn_ord},
+        { "println", mc_scriptfn_println },
+        { "print", mc_scriptfn_print },
+        { "readfile", mc_scriptfn_filereadfile },
+        { "writefile", mc_scriptfn_filewritefile },
+        { "arrayfirst", mc_scriptfn_arrayfirst },
+        { "arraylast", mc_scriptfn_arraylast },
+        { "arrayrest", mc_scriptfn_arrayrest },
+        { "arrayjoin", mc_scriptfn_arrayjoin},
+        { "arraypush", mc_scriptfn_arraypush },
+        { "remove", mc_scriptfn_remove },
+        { "removeat", mc_scriptfn_removeat },
+        { "tostring", mc_scriptfn_tostring },
+        { "tonum", mc_scriptfn_tonum },
+        { "range", mc_scriptfn_range },
+        { "keys", mc_scriptfn_keys },
+        { "values", mc_scriptfn_values },
+        { "copy", mc_scriptfn_copy },
+        { "deepcopy", mc_scriptfn_copydeep },
+        { "chr", mc_scriptfn_chr },
+        { "reverse", mc_scriptfn_reverse },
+        { "array", mc_scriptfn_array },
+        { "error", mc_scriptfn_error },
+        { "crash", mc_scriptfn_crash },
+        { "assert", mc_scriptfn_assert },
+        { "randomseed", mc_scriptfn_randseed },
+        { "random", mc_scriptfn_random },
+        { "slice", mc_scriptfn_slice },
+
+        /* Custom */
+        { "indexof", mc_scriptfn_index },
+        { "left", mc_scriptfn_left },
+        { "right", mc_scriptfn_right },
+        { "replace", mc_scriptfn_replace },
+        { "replacefirst", mc_scriptfn_replacefirst },
+        { "trim", mc_scriptfn_trim },
+
+        /* Type checks */
+        { "isstring", mc_scriptfn_isstring },
+        { "isarray", mc_scriptfn_isarray },
+        { "ismap", mc_scriptfn_ismap },
+        { "isnumber", mc_scriptfn_isnumber },
+        { "isbool", mc_scriptfn_isbool },
+        { "isnull", mc_scriptfn_isnull },
+        { "isfunction", mc_scriptfn_isfunction },
+        { "isexternal", mc_scriptfn_isexternal },
+        { "iserror", mc_scriptfn_iserror },
+        { "isnativefunction", mc_scriptfn_isnativefunction },
+
+        /* Math */
+        { "sqrt", mc_scriptfn_sqrt },
+        { "pow", mc_scriptfn_pow },
+        { "sin", mc_scriptfn_sin },
+        { "cos", mc_scriptfn_cos },
+        { "tan", mc_scriptfn_tan },
+        { "log", mc_scriptfn_log },
+        { "ceil", mc_scriptfn_ceil },
+        { "floor", mc_scriptfn_floor },
+        { "abs", mc_scriptfn_abs },
+        {NULL, NULL}
+    };
+    int i;
+    for(i=0; nativefunctions[i].name != NULL; i++)
+    {
+        mc_state_setnativefunction(state, nativefunctions[i].name, nativefunctions[i].fn, NULL, 0);
+    }
+}
+
+/*
+TODO:
+kind-of ruby-ish. so sue me.
+to add:
+File.read: data = File.read("somefile"[, how-much-in-bytes])
+File.write: File.write("somefile", arrayjoin(somestuff, "\n"))
+File.exists
+...
+
+*/
+
 void mc_cli_installjsondummy(mcstate_t* state)
 {
     mcvalue_t jmap;
@@ -18081,6 +18051,15 @@ void mc_cli_installfauxjavascript(mcstate_t* state)
     mc_cli_installjsconsole(state);
 }
 
+void mc_cli_installfileio(mcstate_t* state)
+{
+    mcvalue_t map;
+    map = mc_value_makemap(state);
+    mc_valmap_setvalstring(map, "read", mc_value_makefuncnative(state, "read", mc_scriptfn_filereadfile, NULL, 0));
+    mc_valmap_setvalstring(map, "write", mc_value_makefuncnative(state, "write", mc_scriptfn_filewritefile, NULL, 0));
+    mc_state_setglobalconstant(state, "File", map);
+}
+
 void mc_cli_installotherstuff(mcstate_t* state)
 {
     mc_state_setglobalconstant(state, "test", mc_value_makenumber(42));
@@ -18088,13 +18067,99 @@ void mc_cli_installotherstuff(mcstate_t* state)
     mc_state_setnativefunction(state, "test_check_args", mc_scriptfn_testcheckargs, NULL, 0);
     mc_state_setnativefunction(state, "vec2_add", mc_scriptfn_vec2add, NULL, 0);
     mc_state_setnativefunction(state, "vec2_sub", mc_scriptfn_vec2sub, NULL, 0);
+    mc_cli_installfileio(state);
+}
+
+#define printtypesize(typ) \
+    mc_cli_printtypesize(#typ, sizeof(typ))
+
+void mc_cli_printtypesize(const char* name, size_t sz)
+{
+    printf("%ld\t%s\n", sz, name);
+}
+
+void mc_cli_printtypesizes()
+{
+    printtypesize(mcgenericdict_t);
+    printtypesize(mcvaldict_t);
+    printtypesize(mcbasicarray_t);
+    printtypesize(mcptrarray_t);
+    printtypesize(mcprintconfig_t);
+    printtypesize(mcprinter_t);
+    printtypesize(mcerror_t);
+    printtypesize(mctraceback_t);
+    printtypesize(mcastcompiledfile_t);
+    printtypesize(mcastexpression_t);
+    printtypesize(mccompiledprogram_t);
+    printtypesize(mcstate_t);
+    printtypesize(mcgcmemory_t);
+    printtypesize(mcglobalstore_t);
+    printtypesize(mcobjdata_t);
+    printtypesize(mcerrlist_t);
+    printtypesize(mcastparser_t);
+    printtypesize(mcconfig_t);
+    printtypesize(mcastsymtable_t);
+    printtypesize(mcastcompiler_t);
+    printtypesize(mcastsymbol_t);
+    printtypesize(mcvalue_t);
+    printtypesize(mcvalcmpresult_t);
+    printtypesize(mcastlocation_t);
+    printtypesize(mcasttoken_t);
+    printtypesize(mcastcodeblock_t);
+    printtypesize(mcastliteralmap_t);
+    printtypesize(mcastliteralarray_t);
+    printtypesize(mcastliteralstring_t);
+    printtypesize(mcastexprprefix_t);
+    printtypesize(mcastexprinfix_t);
+    printtypesize(mcastifcase_t);
+    printtypesize(mcastliteralfunction_t);
+    printtypesize(mcastexprcall_t);
+    printtypesize(mcastexprindex_t);
+    printtypesize(mcastexprassign_t);
+    printtypesize(mcastexprlogical_t);
+    printtypesize(mcastexprternary_t);
+    printtypesize(mcastident_t);
+    printtypesize(mcastfuncparam_t);
+    printtypesize(mcastexprdefine_t);
+    printtypesize(mcastexprstmtif_t);
+    printtypesize(mcastexprstmtwhile_t);
+    printtypesize(mcastexprstmtforeach_t);
+    printtypesize(mcastexprstmtforloop_t);
+    printtypesize(mcastexprstmtimport_t);
+    printtypesize(mcastexprstmtrecover_t);
+    printtypesize(mcobjfuncscript_t);
+    printtypesize(mcobjfuncnative_t);
+    printtypesize(mcobjuserdata_t);
+    printtypesize(mcobjerror_t);
+    printtypesize(mcobjstring_t);
+    printtypesize(mcopdefinition_t);
+    printtypesize(mcastscopeblock_t);
+    printtypesize(mcastscopefile_t);
+    printtypesize(mcastscopecomp_t);
+    printtypesize(mcgcobjdatapool_t);
+    printtypesize(mcastlexer_t);
+    printtypesize(mcastlexprevinfo_t);
+    printtypesize(mcvmframe_t);
+    printtypesize(mctraceitem_t);
+    printtypesize(module_t);
+    printtypesize(mcstoddiyfp_t);
+    printtypesize(mcstoddiyfpconv_t);
+    printtypesize(mcvalunion_t);
+    printtypesize(mcobjunion_t);
+    printtypesize(mcexprunion_t);
+    printtypesize(mcfuncfvunion_t);
+    printtypesize(mcfuncnameunion_t);
+    printtypesize(mcstringstoreunion_t);
+
 }
 
 static optlongflags_t longopts[] =
 {
     {"help", 'h', OPTPARSE_NONE, "this help"},
+    {"printsizes", 't', OPTPARSE_NONE, "print type sizes"},
     {"eval", 'e', OPTPARSE_REQUIRED, "evaluate a single line of code"},
     {"dumpast", 'a', OPTPARSE_NONE, "dump AST after parsing"},
+    {"dumpbc", 'd', OPTPARSE_NONE, "dump bytecode after compiling"},
     {0, 0, (optargtype_t)0, NULL}
 };
 
@@ -18138,6 +18203,15 @@ int main(int argc, char* argv[])
         {
             state->config.dumpast = true;
         }
+        else if(co == 'd')
+        {
+            state->config.dumpbytecode = true;
+        }
+        else if(co == 't')
+        {
+            mc_cli_printtypesizes();
+            goto finished;
+        }
     }
     /*
     * IMPORTANT:
@@ -18165,6 +18239,7 @@ int main(int argc, char* argv[])
     }
     fprintf(stderr, "nargc=%d\n", nargc);
     mc_cli_installargv(state, nargc, nargv, 0);
+    mc_cli_installbuiltins(state);
     mc_cli_installotherstuff(state);
     mc_cli_installfauxjavascript(state);
     if(evalcode != NULL)
@@ -18188,6 +18263,7 @@ int main(int argc, char* argv[])
             ok = false;
         }
     }
+    finished:
     mc_state_destroy(state);
     return (ok ? 0 : 1);
 }

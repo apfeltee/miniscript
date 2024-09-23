@@ -1,5 +1,5 @@
 import "mtestb"
-import "module_dir/submc"
+import "modules/submc"
 
 {
     var block_scope_var = 2;

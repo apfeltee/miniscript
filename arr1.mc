@@ -1,7 +1,7 @@
 
 var a = ["red", "green", "blue"];
 a[2] = "magenta"
-println("a:count=", len(a));
+println("a:count=", lengthof(a));
 println("a      =", a);
 arraypush(a, "yellow", "purple", 42, 889);
 println("a now  =", a);

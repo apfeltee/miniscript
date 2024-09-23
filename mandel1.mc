@@ -7,7 +7,7 @@ function main()
     bottom_edge = -300
     x_step      =    7
     y_step      =   15
-    max_iter    =  500
+    max_iter    =  100
     y0 = top_edge
     while(y0 > bottom_edge)
     {

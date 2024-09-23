@@ -20,7 +20,7 @@ const trailing_comma_array = [
     3,
 ]
 
-assert(len(trailing_comma_array) == 3)
+assert(lengthof(trailing_comma_array) == 3)
 
 const trailing_comma_dict = {
     a: 1,
@@ -28,7 +28,7 @@ const trailing_comma_dict = {
     c: 3,
 }
 
-assert(len(trailing_comma_dict) == 3)
+assert(lengthof(trailing_comma_dict) == 3)
 
 // tests a case where sp is incremented over already freed objects
 // and gc tries to mark them
@@ -137,7 +137,7 @@ function block_test() {
 assert(block_test() == 1)
 
 const big_array = array(1000)
-assert(len(big_array) == 1000)
+assert(lengthof(big_array) == 1000)
 
 function return_no_semicolon() { return }
 
@@ -336,7 +336,7 @@ assert("a" + "b" == "ab")
     for (var i = 0; i < n; i++) {
         str += "x"
     }
-    assert(len(str) == n)
+    assert(lengthof(str) == n)
     for (var i = 0; i < n; i++) {
         assert(str[i] == "x")
     }
