@@ -67,9 +67,9 @@ THE SOFTWARE.
 
 
 #define MC_CONF_DEBUG 0
-#define MC_CONF_VMVALSTACKSIZE 1024
-#define MC_CONF_VMMAXGLOBALS MC_CONF_VMVALSTACKSIZE
-#define MC_CONF_VMMAXFRAMES (MC_CONF_VMVALSTACKSIZE * 8)
+#define MC_CONF_VMVALSTACKSIZE 32
+#define MC_CONF_VMMAXGLOBALS 1024
+#define MC_CONF_VMMAXFRAMES (MC_CONF_VMVALSTACKSIZE)
 #define MC_CONF_VMTHISSTACKSIZE MC_CONF_VMVALSTACKSIZE
 #define MC_CONF_NATIVEFUNCMAXDATA 24
 #define MC_CONF_STRINGMAXSTACKSIZE 24
@@ -1001,15 +1001,17 @@ struct mcstate_t
     mcerrlist_t errors;
     mcgcmemory_t* mem;
     mcglobalstore_t* vmglobalstore;
-    mcvalue_t globals[MC_CONF_VMMAXGLOBALS];
-    int globals_count;
+    mcvalue_t globalvalstack[MC_CONF_VMMAXGLOBALS];
+    //mcvallist_t* globalvalstack;
+    int globalvalcount;
     //mcvalue_t valuestack[MC_CONF_VMVALSTACKSIZE];
     mcvallist_t* valuestack;
     int vsposition;
     //mcvalue_t valthisstack[MC_CONF_VMTHISSTACKSIZE];
     mcvallist_t* valthisstack;
     int thisstpos;
-    mcvmframe_t framestack[MC_CONF_VMMAXFRAMES];
+    //mcvmframe_t framestack[MC_CONF_VMMAXFRAMES];
+    mcframelist_t* framestack;
     int framecount;
     mcvalue_t lastpopped;
     mcvmframe_t* currframe;
@@ -1154,7 +1156,6 @@ void* mc_allocator_realloc(mcstate_t* state, void* ptr, size_t size)
     (void)state;
     return realloc(ptr, size);
 }
-
 
 void mc_allocator_free(mcstate_t* state, void* ptr)
 {
@@ -1443,16 +1444,6 @@ MCINLINE mcfloat_t mc_mathutil_mod(mcfloat_t dnleft, mcfloat_t dnright)
     return fmod(dnleft, dnright);
 }
 
-void mc_vallist_setempty(mcvallist_t* list)
-{
-    if((list->listcapacity > 0) && (list->listitems != NULL))
-    {
-        memset(list->listitems, 0, sizeof(mcvalue_t) * list->listcapacity);
-    }
-    list->listcount = 0;
-    list->listcapacity = 0;
-}
-
 mcvallist_t* mc_vallist_make(mcstate_t* state, size_t initialsize)
 {
     mcvallist_t* list;
@@ -1461,10 +1452,9 @@ mcvallist_t* mc_vallist_make(mcstate_t* state, size_t initialsize)
     list->listcount = 0;
     list->listcapacity = 0;
     list->listitems = NULL;
-    mc_vallist_setempty(list);
     if(initialsize > 0)
     {
-        mc_vallist_ensurecapacity(list, initialsize, mc_value_makenull());
+        mc_vallist_ensurecapacity(list, initialsize, mc_value_makenull(), true);
     }
     return list;
 }
@@ -1499,11 +1489,11 @@ mcvalue_t mc_vallist_get(mcvallist_t* list, size_t idx)
 mcvalue_t mc_vallist_set(mcvallist_t* list, size_t idx, mcvalue_t val)
 {
     size_t need;
+    //need = MC_GROW_CAPACITY(list->listcapacity);
     need = idx + 1;
-    //mc_vallist_ensuresize(list, need);
     if(((idx == 0) || (list->listcapacity == 0)) || (idx >= list->listcapacity))
     {
-        mc_vallist_ensurecapacity(list, need, mc_value_makenull());
+        mc_vallist_ensurecapacity(list, need, mc_value_makenull(), false);
     }
     list->listitems[idx] = val;
     return list->listitems[idx];
@@ -1512,63 +1502,49 @@ mcvalue_t mc_vallist_set(mcvallist_t* list, size_t idx, mcvalue_t val)
 void mc_vallist_push(mcvallist_t* list, mcvalue_t value)
 {
     size_t oldcap;
-    if(list->listcapacity < list->listcount + 1)
-    {
-        oldcap = list->listcapacity;
-        list->listcapacity = MC_GROW_CAPACITY(oldcap);
-        if(list->listitems == NULL)
+    #if 1
+        if(list->listcapacity < list->listcount + 1)
         {
-            list->listitems = (mcvalue_t*)mc_allocator_malloc(list->pstate, sizeof(mcvalue_t) * list->listcapacity);
+            oldcap = list->listcapacity;
+            list->listcapacity = MC_GROW_CAPACITY(oldcap);
+            if(list->listitems == NULL)
+            {
+                list->listitems = (mcvalue_t*)mc_allocator_malloc(list->pstate, sizeof(mcvalue_t) * list->listcapacity);
+            }
+            else
+            {
+                list->listitems = (mcvalue_t*)mc_allocator_realloc(list->pstate, list->listitems, sizeof(mcvalue_t) * list->listcapacity);
+            }
         }
-        else
-        {
-            list->listitems = (mcvalue_t*)mc_allocator_realloc(list->pstate, list->listitems, sizeof(mcvalue_t) * list->listcapacity);
-        }
-    }
+    #endif
     list->listitems[list->listcount] = value;
     list->listcount++;
 }
 
-void mc_vallist_ensuresize(mcvallist_t* list, size_t size)
-{
-    mc_vallist_ensurecapacity(list, size, mc_value_makenull());
-    if(list->listcount < size)
-    {
-        list->listcount = size;
-    }
-}
-
-void mc_vallist_ensurecapacity(mcvallist_t* list, size_t needsize, mcvalue_t fillval)
+void mc_vallist_ensurecapacity(mcvallist_t* list, size_t needsize, mcvalue_t fillval, bool first)
 {
     size_t i;
+    size_t ncap;
     size_t oldcap;
     if(list->listcapacity < needsize)
     {
         oldcap = list->listcapacity;
-        list->listcapacity = needsize;
+        //ncap = needsize;
+        ncap = (list->listcount + needsize + 15) / 16 * 16;
+        list->listcapacity = ncap;
         if(list->listitems == NULL)
         {
-            list->listitems = (mcvalue_t*)mc_allocator_malloc(list->pstate, sizeof(mcvalue_t) * needsize);
+            list->listitems = (mcvalue_t*)mc_allocator_malloc(list->pstate, sizeof(mcvalue_t) * ncap);
         }
         else
         {
-            list->listitems = (mcvalue_t*)mc_allocator_realloc(list->pstate, list->listitems, sizeof(mcvalue_t) * needsize);
+            list->listitems = (mcvalue_t*)mc_allocator_realloc(list->pstate, list->listitems, sizeof(mcvalue_t) * ncap);
         }
-        for(i = oldcap; i < needsize; i++)
+        for(i = oldcap; i < ncap; i++)
         {
             list->listitems[i] = fillval;
         }
     }
-}
-
-void mc_framelist_setempty(mcframelist_t* list)
-{
-    if((list->listcapacity > 0) && (list->listitems != NULL))
-    {
-        memset(list->listitems, 0, sizeof(mcvmframe_t) * list->listcapacity);
-    }
-    list->listcount = 0;
-    list->listcapacity = 0;
 }
 
 mcframelist_t* mc_framelist_make(mcstate_t* state, size_t initialsize)
@@ -1580,10 +1556,9 @@ mcframelist_t* mc_framelist_make(mcstate_t* state, size_t initialsize)
     list->listcount = 0;
     list->listcapacity = 0;
     list->listitems = NULL;
-    mc_framelist_setempty(list);
     if(initialsize > 0)
     {
-        mc_framelist_ensurecapacity(list, initialsize, nullframe);
+        mc_framelist_ensurecapacity(list, initialsize, nullframe, true);
     }
     return list;
 }
@@ -1611,15 +1586,23 @@ void mc_framelist_destroy(mcframelist_t* list)
     }
 }
 
-mcvmframe_t mc_framelist_get(mcframelist_t* list, size_t idx)
+mcvmframe_t* mc_framelist_get(mcframelist_t* list, size_t idx)
 {
-    return list->listitems[idx];
+    return &list->listitems[idx];
 }
 
-mcvmframe_t mc_framelist_set(mcframelist_t* list, size_t idx, mcvmframe_t val)
+mcvmframe_t* mc_framelist_set(mcframelist_t* list, size_t idx, mcvmframe_t val)
 {
+    size_t need;
+    mcvmframe_t nullframe = {};
+    //need = MC_GROW_CAPACITY(list->listcapacity);
+    need = idx + 1;
+    if(((idx == 0) || (list->listcapacity == 0)) || (idx >= list->listcapacity))
+    {
+        mc_framelist_ensurecapacity(list, need, nullframe, false);
+    }
     list->listitems[idx] = val;
-    return list->listitems[idx];
+    return &list->listitems[idx];
 }
 
 void mc_framelist_push(mcframelist_t* list, mcvmframe_t value)
@@ -1642,33 +1625,27 @@ void mc_framelist_push(mcframelist_t* list, mcvmframe_t value)
     list->listcount++;
 }
 
-void mc_framelist_ensuresize(mcframelist_t* list, size_t size)
-{
-    mcvmframe_t nullframe = {};
-    mc_framelist_ensurecapacity(list, size, nullframe);
-    if(list->listcount < size)
-    {
-        list->listcount = size;
-    }
-}
 
-void mc_framelist_ensurecapacity(mcframelist_t* list, size_t needsize, mcvmframe_t fillval)
+void mc_framelist_ensurecapacity(mcframelist_t* list, size_t needsize, mcvmframe_t fillval, bool first)
 {
     size_t i;
+    size_t ncap;
     size_t oldcap;
     if(list->listcapacity < needsize)
     {
         oldcap = list->listcapacity;
-        list->listcapacity = needsize;
+        //ncap = needsize;
+        ncap = (list->listcount + needsize + 15) / 16 * 16;
+        list->listcapacity = ncap;
         if(list->listitems == NULL)
         {
-            list->listitems = (mcvmframe_t*)mc_allocator_malloc(list->pstate, sizeof(mcvmframe_t) * needsize);
+            list->listitems = (mcvmframe_t*)mc_allocator_malloc(list->pstate, sizeof(mcvmframe_t) * ncap);
         }
         else
         {
-            list->listitems = (mcvmframe_t*)mc_allocator_realloc(list->pstate, list->listitems, sizeof(mcvmframe_t) * needsize);
+            list->listitems = (mcvmframe_t*)mc_allocator_realloc(list->pstate, list->listitems, sizeof(mcvmframe_t) * ncap);
         }
-        for(i = oldcap; i < needsize; i++)
+        for(i = oldcap; i < ncap; i++)
         {
             list->listitems[i] = fillval;
         }
@@ -3840,7 +3817,7 @@ mcerror_t* mc_errlist_getlast(mcerrlist_t* errors)
 
 /* containerend utilsend */
 
-mcvalue_t mc_object_makedatafrom(mcvaltype_t type, mcobjdata_t* data)
+MCINLINE mcvalue_t mc_object_makedatafrom(mcvaltype_t type, mcobjdata_t* data)
 {
     mcvalue_t object;
     object.type = type;
@@ -3850,16 +3827,16 @@ mcvalue_t mc_object_makedatafrom(mcvaltype_t type, mcobjdata_t* data)
     return object;
 }
 
-mcvalue_t mc_value_makeempty(mcvaltype_t t)
+MCINLINE mcvalue_t mc_value_makeempty(mcvaltype_t t)
 {
-    mcvalue_t o;
-    memset(&o, 0, sizeof(mcvalue_t));
+    mcvalue_t o = {};
+    //memset(&o, 0, sizeof(mcvalue_t));
     o.type = t;
     o.isallocated = false;
     return o;
 }
 
-mcvalue_t mc_value_makenumber(mcfloat_t val)
+MCINLINE mcvalue_t mc_value_makenumber(mcfloat_t val)
 {
     mcvalue_t o;
     o = mc_value_makeempty(MC_VAL_NUMBER);
@@ -3867,7 +3844,7 @@ mcvalue_t mc_value_makenumber(mcfloat_t val)
     return o;
 }
 
-mcvalue_t mc_value_makebool(bool val)
+MCINLINE mcvalue_t mc_value_makebool(bool val)
 {
     mcvalue_t o;
     o = mc_value_makeempty(MC_VAL_BOOL);
@@ -3875,7 +3852,7 @@ mcvalue_t mc_value_makebool(bool val)
     return o;
 }
 
-mcvalue_t mc_value_makenull(void)
+MCINLINE mcvalue_t mc_value_makenull(void)
 {
     mcvalue_t o;
     o = mc_value_makeempty(MC_VAL_NULL);
@@ -12168,6 +12145,7 @@ mcstate_t* mc_state_make(void)
     mc_state_setdefaultconfig(state);
     state->valuestack = mc_vallist_make(state, MC_CONF_VMVALSTACKSIZE);
     state->valthisstack = mc_vallist_make(state, MC_CONF_VMTHISSTACKSIZE);
+    state->framestack = mc_framelist_make(state, MC_CONF_VMMAXFRAMES);
     mc_errlist_init(&state->errors);
     state->mem = mc_gcmemory_make(state);
     if(!state->mem)
@@ -12209,6 +12187,8 @@ void mc_state_deinit(mcstate_t* state)
     mc_printer_destroy(state->stdoutprinter);
     mc_printer_destroy(state->stderrprinter);
     mc_vallist_destroy(state->valuestack);
+    mc_framelist_destroy(state->framestack);
+    mc_vallist_destroy(state->valthisstack);
 }
 
 void mc_state_reset(mcstate_t* state)
@@ -16407,7 +16387,7 @@ bool mc_traceback_vmpush(mctraceback_t* traceback, mcstate_t* state)
     mcvmframe_t* frame;
     for(i = state->framecount - 1; i >= 0; i--)
     {
-        frame = &state->framestack[i];
+        frame = mc_framelist_get(state->framestack, i);
         ok = mc_traceback_push(traceback, mc_value_functiongetname(frame->function), mc_callframe_getpos(frame));
         if(!ok)
         {
@@ -16470,7 +16450,7 @@ bool mc_vm_init(mcstate_t* state)
 {
     int i;
     mcvalue_t keyobj;
-    state->globals_count = 0;
+    state->globalvalcount = 0;
     state->vsposition = 0;
     state->thisstpos = 0;
     state->framecount = 0;
@@ -16653,29 +16633,33 @@ bool mc_vm_haserrors(mcstate_t* state)
 
 bool mc_vm_setglobalbyindex(mcstate_t* state, int ix, mcvalue_t val)
 {
+    #if 1
     if(ix >= MC_CONF_VMMAXGLOBALS)
     {
         MC_ASSERT(false);
         mc_errlist_push(&state->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Global write out of range");
         return false;
     }
-    state->globals[ix] = val;
-    if(ix >= state->globals_count)
+    #endif
+    state->globalvalstack[ix] = val;
+    if(ix >= state->globalvalcount)
     {
-        state->globals_count = ix + 1;
+        state->globalvalcount = ix + 1;
     }
     return true;
 }
 
 mcvalue_t mc_vm_getglobalbyindex(mcstate_t* state, int ix)
 {
+    #if 1
     if(ix >= MC_CONF_VMMAXGLOBALS)
     {
         MC_ASSERT(false);
         mc_errlist_push(&state->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Global read out of range");
         return mc_value_makenull();
     }
-    return state->globals[ix];
+    #endif
+    return state->globalvalstack[ix];
 }
 
 void mc_vm_setstackpos(mcstate_t* state, int nsp)
@@ -16687,9 +16671,7 @@ void mc_vm_setstackpos(mcstate_t* state, int nsp)
         /* to avoid gcing freed objects */
         count = nsp - state->vsposition;
         bytescount = count * sizeof(mcvalue_t);
-        //memset(state->valuestack + state->vsposition, 0, bytescount);
-        //mc_vallist_set(state->valuestack, state->vsposition);
-        
+        //memset(state->valuestack->listitems + state->vsposition, 0, bytescount);
     }
     state->vsposition = nsp;
 }
@@ -16782,8 +16764,8 @@ mcvalue_t mc_vm_thisstackget(mcstate_t* vm, int nthitem)
 bool mc_vm_pushframe(mcstate_t* vm, mcvmframe_t frame)
 {
     mcobjfuncscript_t* framefunction;
-    vm->framestack[vm->framecount] = frame;
-    vm->currframe = &vm->framestack[vm->framecount];
+    mc_framelist_set(vm->framestack, vm->framecount, frame);
+    vm->currframe = mc_framelist_get(vm->framestack, vm->framecount);
     vm->framecount++;
     framefunction = mc_value_functiongetscriptfunction(frame.function);
     mc_vm_setstackpos(vm, frame.basepointer + framefunction->numlocals);
@@ -16805,7 +16787,7 @@ bool mc_vm_popframe(mcstate_t* vm)
         vm->currframe = NULL;
         return false;
     }
-    vm->currframe = &vm->framestack[vm->framecount - 1];
+    vm->currframe = mc_framelist_get(vm->framestack, vm->framecount - 1);
     return true;
 }
 
@@ -16816,10 +16798,10 @@ void mc_vm_rungc(mcstate_t* vm, mcbasicarray_t* constants)
     mc_state_gcunmarkall(vm);
     mc_state_gcmarkobjlist(mc_globalstore_getdata(vm->vmglobalstore), mc_globalstore_getcount(vm->vmglobalstore));
     mc_state_gcmarkobjlist((mcvalue_t*)mc_basicarray_data(constants), mc_basicarray_count(constants));
-    mc_state_gcmarkobjlist(vm->globals, vm->globals_count);
+    mc_state_gcmarkobjlist(vm->globalvalstack, vm->globalvalcount);
     for(i = 0; i < vm->framecount; i++)
     {
-        frame = &vm->framestack[i];
+        frame = mc_framelist_get(vm->framestack, i);
         mc_state_gcmarkobject(frame->function);
     }
     mc_state_gcmarkobjlist(vm->valuestack->listitems, vm->vsposition);
@@ -16844,9 +16826,11 @@ MCINLINE bool mc_vmdo_callobject(mcstate_t* vm, mcvalue_t callee, int nargs)
         calleefunction = mc_value_functiongetscriptfunction(callee);
         if(nargs != calleefunction->numargs)
         {
+            #if 1
             mc_errlist_addf(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(vm->currframe), "Invalid number of arguments to \"%s\", expected %d, got %d",
                               mc_value_functiongetname(callee), calleefunction->numargs, nargs);
             return false;
+            #endif
         }
         ok = mc_callframe_init(&calleeframe, callee, vm->vsposition - nargs);
         if(!ok)
@@ -17851,7 +17835,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcbasicarray
                     uint16_t ix;
                     mcvalue_t global;
                     ix = mc_callframe_readuint16(state->currframe);
-                    global = state->globals[ix];
+                    global = state->globalvalstack[ix];
                     mc_vm_stackpush(state, global);
                 }
                 mc_vmmac_break();
@@ -18076,7 +18060,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcbasicarray
                 recoverframeix = -1;
                 for(fri = state->framecount - 1; fri >= 0; fri--)
                 {
-                    frame = &state->framestack[fri];
+                    frame = mc_framelist_get(state->framestack, fri);
                     if(frame->recoverip >= 0 && !frame->isrecovering)
                     {
                         recoverframeix = fri;
