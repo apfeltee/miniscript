@@ -69,7 +69,7 @@ THE SOFTWARE.
 #define MC_CONF_DEBUG 0
 #define MC_CONF_VMVALSTACKSIZE 1024
 #define MC_CONF_VMMAXGLOBALS MC_CONF_VMVALSTACKSIZE
-#define MC_CONF_VMMAXFRAMES MC_CONF_VMVALSTACKSIZE
+#define MC_CONF_VMMAXFRAMES (MC_CONF_VMVALSTACKSIZE * 8)
 #define MC_CONF_VMTHISSTACKSIZE MC_CONF_VMVALSTACKSIZE
 #define MC_CONF_NATIVEFUNCMAXDATA 24
 #define MC_CONF_STRINGMAXSTACKSIZE 24
@@ -488,6 +488,7 @@ typedef union mcfuncfvunion_t mcfuncfvunion_t;
 typedef union mcfuncnameunion_t mcfuncnameunion_t;
 typedef union mcstringstoreunion_t mcstringstoreunion_t;
 typedef struct /**/mcvallist_t mcvallist_t;
+typedef struct /**/mcframelist_t mcframelist_t;
 
 typedef mcvalue_t (*mcnativefn_t)(mcstate_t*, void*, int, mcvalue_t*);
 typedef unsigned long (*mcitemhashfn_t)(void*);
@@ -498,7 +499,13 @@ typedef void (*mcitemdeinitfn_t)(void*);
 typedef mcastexpression_t* (*mcastrightassocparsefn_t)(mcastparser_t*);
 typedef mcastexpression_t* (*mcleftassocparsefn_t)(mcastparser_t*, mcastexpression_t*);
 
-
+struct mcframelist_t
+{
+    mcstate_t* pstate;
+    size_t listcapacity;
+    size_t listcount;
+    mcvmframe_t* listitems;
+};
 
 struct mcvallist_t
 {
@@ -999,7 +1006,8 @@ struct mcstate_t
     //mcvalue_t valuestack[MC_CONF_VMVALSTACKSIZE];
     mcvallist_t* valuestack;
     int vsposition;
-    mcvalue_t valthisstack[MC_CONF_VMTHISSTACKSIZE];
+    //mcvalue_t valthisstack[MC_CONF_VMTHISSTACKSIZE];
+    mcvallist_t* valthisstack;
     int thisstpos;
     mcvmframe_t framestack[MC_CONF_VMMAXFRAMES];
     int framecount;
@@ -1132,7 +1140,7 @@ extern int vsnprintf (char* destb, size_t maxlen, const char* fmt, va_list va);
 #endif
 
 /* endheader */
-static mcastlocation_t srcposinvalid = { NULL, -1, -1 };
+const mcastlocation_t srcposinvalid = { NULL, -1, -1 };
 
 
 void* mc_allocator_malloc(mcstate_t* state, size_t size)
@@ -1545,6 +1553,120 @@ void mc_vallist_ensurecapacity(mcvallist_t* list, size_t needsize, mcvalue_t fil
         else
         {
             list->listitems = (mcvalue_t*)mc_allocator_realloc(list->pstate, list->listitems, sizeof(mcvalue_t) * needsize);
+        }
+        for(i = oldcap; i < needsize; i++)
+        {
+            list->listitems[i] = fillval;
+        }
+    }
+}
+
+void mc_framelist_setempty(mcframelist_t* list)
+{
+    if((list->listcapacity > 0) && (list->listitems != NULL))
+    {
+        memset(list->listitems, 0, sizeof(mcvmframe_t) * list->listcapacity);
+    }
+    list->listcount = 0;
+    list->listcapacity = 0;
+}
+
+mcframelist_t* mc_framelist_make(mcstate_t* state, size_t initialsize)
+{
+    mcframelist_t* list;
+    mcvmframe_t nullframe = {};
+    list = (mcframelist_t*)mc_allocator_malloc(state, sizeof(mcframelist_t));
+    list->pstate = state;
+    list->listcount = 0;
+    list->listcapacity = 0;
+    list->listitems = NULL;
+    mc_framelist_setempty(list);
+    if(initialsize > 0)
+    {
+        mc_framelist_ensurecapacity(list, initialsize, nullframe);
+    }
+    return list;
+}
+
+
+size_t mc_framelist_count(mcframelist_t* list)
+{
+    return list->listcount;
+}
+
+size_t mc_framelist_capacity(mcframelist_t* list)
+{
+    return list->listcount;
+}
+
+void mc_framelist_destroy(mcframelist_t* list)
+{
+    mcstate_t* state;
+    state = list->pstate;
+    if(list != NULL)
+    {
+        mc_allocator_free(state, list->listitems);
+        mc_allocator_free(state, list);
+        list = NULL;
+    }
+}
+
+mcvmframe_t mc_framelist_get(mcframelist_t* list, size_t idx)
+{
+    return list->listitems[idx];
+}
+
+mcvmframe_t mc_framelist_set(mcframelist_t* list, size_t idx, mcvmframe_t val)
+{
+    list->listitems[idx] = val;
+    return list->listitems[idx];
+}
+
+void mc_framelist_push(mcframelist_t* list, mcvmframe_t value)
+{
+    size_t oldcap;
+    if(list->listcapacity < list->listcount + 1)
+    {
+        oldcap = list->listcapacity;
+        list->listcapacity = MC_GROW_CAPACITY(oldcap);
+        if(list->listitems == NULL)
+        {
+            list->listitems = (mcvmframe_t*)mc_allocator_malloc(list->pstate, sizeof(mcvmframe_t) * list->listcapacity);
+        }
+        else
+        {
+            list->listitems = (mcvmframe_t*)mc_allocator_realloc(list->pstate, list->listitems, sizeof(mcvmframe_t) * list->listcapacity);
+        }
+    }
+    list->listitems[list->listcount] = value;
+    list->listcount++;
+}
+
+void mc_framelist_ensuresize(mcframelist_t* list, size_t size)
+{
+    mcvmframe_t nullframe = {};
+    mc_framelist_ensurecapacity(list, size, nullframe);
+    if(list->listcount < size)
+    {
+        list->listcount = size;
+    }
+}
+
+void mc_framelist_ensurecapacity(mcframelist_t* list, size_t needsize, mcvmframe_t fillval)
+{
+    size_t i;
+    size_t oldcap;
+    if(list->listcapacity < needsize)
+    {
+        oldcap = list->listcapacity;
+        list->listcapacity = needsize;
+        if(list->listitems == NULL)
+        {
+            list->listitems = (mcvmframe_t*)mc_allocator_malloc(list->pstate, sizeof(mcvmframe_t) * needsize);
+        }
+        else
+        {
+            list->listitems = (mcvmframe_t*)mc_allocator_realloc(list->pstate, list->listitems, sizeof(mcvmframe_t) * needsize);
         }
         for(i = oldcap; i < needsize; i++)
         {
@@ -12045,6 +12167,7 @@ mcstate_t* mc_state_make(void)
     memset(state, 0, sizeof(mcstate_t));
     mc_state_setdefaultconfig(state);
     state->valuestack = mc_vallist_make(state, MC_CONF_VMVALSTACKSIZE);
+    state->valthisstack = mc_vallist_make(state, MC_CONF_VMTHISSTACKSIZE);
     mc_errlist_init(&state->errors);
     state->mem = mc_gcmemory_make(state);
     if(!state->mem)
@@ -16580,12 +16703,6 @@ void mc_vm_stackpush(mcstate_t* vm, mcvalue_t obj)
     (void)frame;
     (void)currentfunction;
 #if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
-    if(vm->vsposition >= MC_CONF_VMVALSTACKSIZE)
-    {
-        MC_ASSERT(false);
-        mc_errlist_push(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(vm->currframe), "Stack overflow");
-        return;
-    }
     if(vm->currframe)
     {
         frame = vm->currframe;
@@ -16632,28 +16749,12 @@ mcvalue_t mc_vm_stackget(mcstate_t* vm, int nthitem)
 {
     int ix;
     ix = vm->vsposition - 1 - nthitem;
-#if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
-    if(ix < 0 || ix >= MC_CONF_VMVALSTACKSIZE)
-    {
-        mc_errlist_addf(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(vm->currframe), "Invalid stack index: %d", nthitem);
-        MC_ASSERT(false);
-        return mc_value_makenull();
-    }
-#endif
     return mc_vallist_get(vm->valuestack, ix);
 }
 
 void mc_vm_thisstackpush(mcstate_t* vm, mcvalue_t obj)
 {
-#if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
-    if(vm->thisstpos >= MC_CONF_VMTHISSTACKSIZE)
-    {
-        MC_ASSERT(false);
-        mc_errlist_push(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(vm->currframe), "this stack overflow");
-        return;
-    }
-#endif
-    vm->valthisstack[vm->thisstpos] = obj;
+    mc_vallist_set(vm->valthisstack, vm->thisstpos, obj);
     vm->thisstpos++;
 }
 
@@ -16668,32 +16769,19 @@ mcvalue_t mc_vm_thisstackpop(mcstate_t* vm)
     }
 #endif
     vm->thisstpos--;
-    return vm->valthisstack[vm->thisstpos];
+    return mc_vallist_get(vm->valthisstack, vm->thisstpos);
 }
 
 mcvalue_t mc_vm_thisstackget(mcstate_t* vm, int nthitem)
 {
     int ix;
     ix = vm->thisstpos - 1 - nthitem;
-#if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
-    if(ix < 0 || ix >= MC_CONF_VMTHISSTACKSIZE)
-    {
-        mc_errlist_addf(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(vm->currframe), "Invalid this stack index: %d", nthitem);
-        MC_ASSERT(false);
-        return mc_value_makenull();
-    }
-#endif
-    return vm->valthisstack[ix];
+    return mc_vallist_get(vm->valthisstack, ix);
 }
 
 bool mc_vm_pushframe(mcstate_t* vm, mcvmframe_t frame)
 {
     mcobjfuncscript_t* framefunction;
-    if(vm->framecount >= MC_CONF_VMMAXFRAMES)
-    {
-        MC_ASSERT(false);
-        return false;
-    }
     vm->framestack[vm->framecount] = frame;
     vm->currframe = &vm->framestack[vm->framecount];
     vm->framecount++;
@@ -16735,7 +16823,7 @@ void mc_vm_rungc(mcstate_t* vm, mcbasicarray_t* constants)
         mc_state_gcmarkobject(frame->function);
     }
     mc_state_gcmarkobjlist(vm->valuestack->listitems, vm->vsposition);
-    mc_state_gcmarkobjlist(vm->valthisstack, vm->thisstpos);
+    mc_state_gcmarkobjlist(vm->valthisstack->listitems, vm->thisstpos);
     mc_state_gcmarkobject(vm->lastpopped);
     mc_state_gcmarkobjlist(vm->operoverloadkeys, MC_OPCODE_MAX);
     mc_state_gcsweep(vm);
