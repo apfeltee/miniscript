@@ -1,4 +1,5 @@
 
+
 function main()
 {
     left_edge   = -420

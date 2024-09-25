@@ -12,6 +12,7 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <limits.h>
+#include <inttypes.h>
 #include <ctype.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -66,63 +67,6 @@ THE SOFTWARE.
 
 
 #define MC_CONF_DEBUG 0
-
-#if 0
-    #define TMPSTATIC static inline  __attribute__((always_inline))
-    #define TMPSEMISTATIC static inline
-#else
-    #if 1
-        #if 0
-            #define TMPSTATIC
-            #define TMPSEMISTATIC
-        #else
-            #define TMPSTATIC static
-            #define TMPSEMISTATIC static
-        #endif
-    #else
-        #if defined(__STRICT_ANSI__)
-            #define TMPSTATIC static
-            #define TMPSEMISTATIC static
-        #else
-            #define TMPSTATIC static inline
-            #define TMPSEMISTATIC static
-        #endif
-    #endif
-#endif
-
-#define TMPUNUSED
-
-#ifdef _MSC_VER
-    #define __attribute__(x)
-#endif
-
-#ifdef COLLECTIONS_DEBUG
-    #define COLLECTIONS_ASSERT(x) assert(x)
-#else
-    #define COLLECTIONS_ASSERT(x)
-#endif
-
-#define MC_UTIL_STREQ(a, b) (strcmp((a), (b)) == 0)
-#define MC_UTIL_STRNEQ(a, b, n) (strncmp((a), (b), (n)) == 0)
-#define MC_UTIL_STATICARRAYSIZE(array) ((int)(sizeof(array) / sizeof(array[0])))
-
-#if 1
-    #define MC_UTIL_CMPFLOAT(a, b) (fabs((a) - (b)) < DBL_EPSILON)
-#else
-    #define MC_UTIL_CMPFLOAT(a, b) ((a) == (b))
-#endif
-
-#if 0
-    #if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
-        #define MC_ASSERT(x) assert((x))
-    #else
-        #define MC_ASSERT(x) ((void)0)
-    #endif
-#else
-        #define MC_ASSERT(x)
-#endif
-
-
 #define MC_CONF_VMVALSTACKSIZE 1024
 #define MC_CONF_VMMAXGLOBALS MC_CONF_VMVALSTACKSIZE
 #define MC_CONF_VMMAXFRAMES MC_CONF_VMVALSTACKSIZE
@@ -138,6 +82,38 @@ THE SOFTWARE.
 #define MC_CONF_VALDICTINVALIDIX UINT_MAX
 #define MC_CONF_GENERICDICTINITSIZE 32
 
+#ifdef _MSC_VER
+    #define __attribute__(x)
+#endif
+
+#if defined(__STRICT_ANSI__)
+    #define MCINLINE __attribute__((always_inline))
+#else
+    #define MCINLINE inline __attribute__((always_inline))
+#endif
+
+#define MC_UTIL_STREQ(a, b) (strcmp((a), (b)) == 0)
+#define MC_UTIL_STRNEQ(a, b, n) (strncmp((a), (b), (n)) == 0)
+#define MC_UTIL_STATICARRAYSIZE(array) ((int)(sizeof(array) / sizeof(array[0])))
+#define MC_UTIL_FABS(n) fabs(n)
+
+#if 1
+    #define MC_UTIL_CMPFLOAT(a, b) (MC_UTIL_FABS((a) - (b)) < DBL_EPSILON)
+#else
+    #define MC_UTIL_CMPFLOAT(a, b) ((a) == (b))
+#endif
+
+#if 0
+    #if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
+        #define MC_ASSERT(x) assert((x))
+    #else
+        #define MC_ASSERT(x) ((void)0)
+    #endif
+#else
+        #define MC_ASSERT(x)
+#endif
+
+
 #if defined(__GNUC__)
     #define mc_util_likely(x)   (__builtin_expect(!!(x), 1))
     #define mc_util_unlikely(x) (__builtin_expect(!!(x), 0))
@@ -147,6 +123,12 @@ THE SOFTWARE.
 #endif
 
 #define mc_value_gettype(v) (v).type
+
+#define MC_GROW_CAPACITY(capacity) (((capacity) < 8) ? 8 : ((capacity) * 2))
+
+typedef double mcfloat_t;
+typedef uint8_t mcinternopcode_t;
+
 
 enum mcerrtype_t
 {
@@ -313,7 +295,7 @@ enum mcastexprtype_t
 
 enum mcopcode_t
 {
-    MC_OPCODE_NONE = 0,
+    MC_OPCODE_HALT = 42,
     MC_OPCODE_CONSTANT,
     MC_OPCODE_ADD,
     MC_OPCODE_POP,
@@ -417,10 +399,6 @@ enum mcastprecedence_t
     MC_ASTPREC_HIGHEST
 };
 
-typedef double mcfloat_t;
-typedef uint8_t mcinternopcode_t;
-
-
 typedef enum mcerrtype_t mcerrtype_t;
 typedef enum mcvaltype_t mcvaltype_t;
 typedef enum mcasttoktype_t mcasttoktype_t;
@@ -509,6 +487,7 @@ typedef union mcexprunion_t mcexprunion_t;
 typedef union mcfuncfvunion_t mcfuncfvunion_t;
 typedef union mcfuncnameunion_t mcfuncnameunion_t;
 typedef union mcstringstoreunion_t mcstringstoreunion_t;
+typedef struct /**/mcvallist_t mcvallist_t;
 
 typedef mcvalue_t (*mcnativefn_t)(mcstate_t*, void*, int, mcvalue_t*);
 typedef unsigned long (*mcitemhashfn_t)(void*);
@@ -518,6 +497,16 @@ typedef void* (*mcitemcopyfn_t)(void*);
 typedef void (*mcitemdeinitfn_t)(void*);
 typedef mcastexpression_t* (*mcastrightassocparsefn_t)(mcastparser_t*);
 typedef mcastexpression_t* (*mcleftassocparsefn_t)(mcastparser_t*, mcastexpression_t*);
+
+
+
+struct mcvallist_t
+{
+    mcstate_t* pstate;
+    size_t listcapacity;
+    size_t listcount;
+    mcvalue_t* listitems;
+};
 
 struct mcstoddiyfp_t
 {
@@ -977,13 +966,13 @@ struct mcastparser_t
 struct mcvmframe_t
 {
     mcvalue_t function;
-    int bcposition;
-    int basepointer;
+    int64_t bcposition;
+    int64_t basepointer;
     mcastlocation_t* framesrcposlist;
     uint8_t* bytecode;
-    int sourcebcpos;
-    int bcsize;
-    int recoverip;
+    int64_t sourcebcpos;
+    int64_t bcsize;
+    int64_t recoverip;
     bool isrecovering;
 };
 
@@ -1008,6 +997,7 @@ struct mcstate_t
     mcvalue_t globals[MC_CONF_VMMAXGLOBALS];
     int globals_count;
     mcvalue_t valuestack[MC_CONF_VMVALSTACKSIZE];
+    //mcvallist_t* valuestack;
     int vsposition;
     mcvalue_t valthisstack[MC_CONF_VMTHISSTACKSIZE];
     int thisstpos;
@@ -1020,6 +1010,7 @@ struct mcstate_t
     mcptrarray_t* files;
     mcastcompiler_t* compiler;
     mcprinter_t* stdoutprinter;
+    mcprinter_t* stderrprinter;
 };
 
 struct mcglobalstore_t
@@ -1130,18 +1121,136 @@ struct mcastcompiler_t
     mcgenericdict_t* stringconstposdict;
 };
 
-#include "prot.inc"
+#if 1
+    #include "prot.inc"
+#else
+    #include "tmp.h"
+#endif
 
 #if defined(__STRICT_ANSI__)
 extern int vsnprintf (char* destb, size_t maxlen, const char* fmt, va_list va);
 #endif
 
 /* endheader */
-
-
 static mcastlocation_t srcposinvalid = { NULL, -1, -1 };
 
-TMPSTATIC size_t mc_util_strlen(const char* str)
+
+void* mc_allocator_malloc(mcstate_t* state, size_t size)
+{
+    (void)state;
+    return malloc(size);
+}
+
+void* mc_allocator_realloc(mcstate_t* state, void* ptr, size_t size)
+{
+    (void)state;
+    return realloc(ptr, size);
+}
+
+
+void mc_allocator_free(mcstate_t* state, void* ptr)
+{
+    (void)state;
+    free(ptr);
+}
+
+char* mc_util_readhandle(FILE* hnd, size_t* dlen)
+{
+    long rawtold;
+    /*
+    * the value returned by ftell() may not necessarily be the same as
+    * the amount that can be read.
+    * since we only ever read a maximum of $toldlen, there will
+    * be no memory trashing.
+    */
+    size_t toldlen;
+    size_t actuallen;
+    char* buf;
+    if(fseek(hnd, 0, SEEK_END) == -1)
+    {
+        return NULL;
+    }
+    if((rawtold = ftell(hnd)) == -1)
+    {
+        return NULL;
+    }
+    toldlen = rawtold;
+    if(fseek(hnd, 0, SEEK_SET) == -1)
+    {
+        return NULL;
+    }
+    buf = (char*)malloc(toldlen + 1);
+    memset(buf, 0, toldlen+1);
+    if(buf != NULL)
+    {
+        actuallen = fread(buf, sizeof(char), toldlen, hnd);
+        /*
+        // optionally, read remainder:
+        size_t tmplen;
+        if(actuallen < toldlen)
+        {
+            tmplen = actuallen;
+            actuallen += fread(buf+tmplen, sizeof(char), actuallen-toldlen, hnd);
+            ...
+        }
+        // unlikely to be necessary, so not implemented.
+        */
+        if(dlen != NULL)
+        {
+            *dlen = actuallen;
+        }
+        return buf;
+    }
+    return NULL;
+}
+
+char* mc_util_readfile(const char* filename, size_t* dlen)
+{
+    char* b;
+    FILE* fh;
+    if((fh = fopen(filename, "rb")) == NULL)
+    {
+        return NULL;
+    }
+    b = mc_util_readhandle(fh, dlen);
+    fclose(fh);
+    return b;
+}
+
+
+char* mc_fsutil_fileread(mcstate_t* state, const char* filename, size_t* flen)
+{
+    (void)state;
+    return mc_util_readfile(filename, flen);
+}
+
+size_t mc_fsutil_filewrite(mcstate_t* state, const char* path, const char* string, size_t stringsize)
+{
+    size_t written;
+    FILE* fp;
+    (void)state;
+    fp = fopen(path, "w");
+    if(!fp)
+    {
+        return 0;
+    }
+    written = fwrite(string, 1, stringsize, fp);
+    fclose(fp);
+    return written;
+}
+
+bool mc_fsutil_fileexists(mcstate_t* state, const char* filename)
+{
+    struct stat st;
+    (void)state;
+    if(stat(filename, &st) == -1)
+    {
+        return false;
+    }
+    return true;
+}
+
+size_t mc_util_strlen(const char* str)
 {
     size_t len;
     if(str == NULL)
@@ -1154,10 +1263,10 @@ TMPSTATIC size_t mc_util_strlen(const char* str)
     return len;
 }
 
-TMPSTATIC char* mc_util_strndup(mcstate_t* state, const char* string, size_t n)
+char* mc_util_strndup(mcstate_t* state, const char* string, size_t n)
 {
     char* outputstring;
-    outputstring = (char*)mc_allocator_alloc(state, n + 1);
+    outputstring = (char*)mc_allocator_malloc(state, n + 1);
     if(!outputstring)
     {
         return NULL;
@@ -1167,7 +1276,7 @@ TMPSTATIC char* mc_util_strndup(mcstate_t* state, const char* string, size_t n)
     return outputstring;
 }
 
-TMPSTATIC char* mc_util_strdup(mcstate_t* state, const char* string)
+char* mc_util_strdup(mcstate_t* state, const char* string)
 {
     if(!string)
     {
@@ -1177,7 +1286,7 @@ TMPSTATIC char* mc_util_strdup(mcstate_t* state, const char* string)
 }
 
 
-TMPSTATIC unsigned long mc_util_hashdata(const void* ptr, size_t len)
+unsigned long mc_util_hashdata(const void* ptr, size_t len)
 {
     /* djb2 */
     size_t i;
@@ -1194,7 +1303,7 @@ TMPSTATIC unsigned long mc_util_hashdata(const void* ptr, size_t len)
     return hash;
 }
 
-TMPSTATIC unsigned long mc_util_hashdouble(mcfloat_t val)
+unsigned long mc_util_hashdouble(mcfloat_t val)
 {
     /* djb2 */
     unsigned long hash;
@@ -1206,7 +1315,7 @@ TMPSTATIC unsigned long mc_util_hashdouble(mcfloat_t val)
     return hash;
 }
 
-TMPSTATIC unsigned int mc_util_upperpowoftwo(unsigned int v)
+unsigned int mc_util_upperpowoftwo(unsigned int v)
 {
     v--;
     v |= v >> 1;
@@ -1220,7 +1329,7 @@ TMPSTATIC unsigned int mc_util_upperpowoftwo(unsigned int v)
 
 #include "stod.h"
 
-double mc_util_strtod(const char* str, size_t slen, char** endptr)
+mcfloat_t mc_util_strtod(const char* str, size_t slen, char** endptr)
 {
     const unsigned char* p;
     const unsigned char* end; 
@@ -1237,52 +1346,8 @@ double mc_util_strtod(const char* str, size_t slen, char** endptr)
     return stod_strtod(&p, end, true);
 }
 
-TMPSTATIC void* mc_allocator_alloc(mcstate_t* state, size_t size)
-{
-    (void)state;
-    return malloc(size);
-}
-
-TMPSTATIC void mc_allocator_free(mcstate_t* state, void* ptr)
-{
-    (void)state;
-    free(ptr);
-}
-
-TMPSTATIC char* mc_fsutil_fileread(mcstate_t* state, const char* filename, size_t* flen)
-{
-    (void)state;
-    return mc_util_readfile(filename, flen);
-}
-
-TMPSTATIC size_t mc_fsutil_filewrite(mcstate_t* state, const char* path, const char* string, size_t stringsize)
-{
-    size_t written;
-    FILE* fp;
-    (void)state;
-    fp = fopen(path, "w");
-    if(!fp)
-    {
-        return 0;
-    }
-    written = fwrite(string, 1, stringsize, fp);
-    fclose(fp);
-    return written;
-}
-
-TMPSTATIC bool mc_fsutil_fileexists(mcstate_t* state, const char* filename)
-{
-    struct stat st;
-    (void)state;
-    if(stat(filename, &st) == -1)
-    {
-        return false;
-    }
-    return true;
-}
-
 typedef uint32_t mcshiftint_t;
-TMPSTATIC inline mcfloat_t mc_mathutil_binshiftleft(mcfloat_t dnleft, mcfloat_t dnright)
+MCINLINE mcfloat_t mc_mathutil_binshiftleft(mcfloat_t dnleft, mcfloat_t dnright)
 {
     int64_t sileft;
     int64_t siright;
@@ -1300,7 +1365,7 @@ TMPSTATIC inline mcfloat_t mc_mathutil_binshiftleft(mcfloat_t dnleft, mcfloat_t 
     return (mcfloat_t)(ivleft << ivright);
 }
 
-TMPSTATIC inline mcfloat_t mc_mathutil_binshiftright(mcfloat_t dnleft, mcfloat_t dnright)
+MCINLINE mcfloat_t mc_mathutil_binshiftright(mcfloat_t dnleft, mcfloat_t dnright)
 {
     int64_t sileft;
     int64_t siright;
@@ -1318,7 +1383,7 @@ TMPSTATIC inline mcfloat_t mc_mathutil_binshiftright(mcfloat_t dnleft, mcfloat_t
     return (mcfloat_t)(ivleft >> ivright);
 }
 
-TMPSTATIC inline mcfloat_t mc_mathutil_binor(mcfloat_t dnleft, mcfloat_t dnright)
+MCINLINE mcfloat_t mc_mathutil_binor(mcfloat_t dnleft, mcfloat_t dnright)
 {
     int64_t ivleft;
     int64_t ivright;
@@ -1327,7 +1392,7 @@ TMPSTATIC inline mcfloat_t mc_mathutil_binor(mcfloat_t dnleft, mcfloat_t dnright
     return (mcfloat_t)(ivleft | ivright);
 }
 
-TMPSTATIC inline mcfloat_t mc_mathutil_binand(mcfloat_t dnleft, mcfloat_t dnright)
+MCINLINE mcfloat_t mc_mathutil_binand(mcfloat_t dnleft, mcfloat_t dnright)
 {
     int64_t ivleft;
     int64_t ivright;
@@ -1336,7 +1401,7 @@ TMPSTATIC inline mcfloat_t mc_mathutil_binand(mcfloat_t dnleft, mcfloat_t dnrigh
     return (mcfloat_t)(ivleft & ivright);
 }
 
-TMPSTATIC inline mcfloat_t mc_mathutil_binxor(mcfloat_t dnleft, mcfloat_t dnright)
+MCINLINE mcfloat_t mc_mathutil_binxor(mcfloat_t dnleft, mcfloat_t dnright)
 {
     int64_t ivleft;
     int64_t ivright;
@@ -1345,36 +1410,144 @@ TMPSTATIC inline mcfloat_t mc_mathutil_binxor(mcfloat_t dnleft, mcfloat_t dnrigh
     return (mcfloat_t)(ivleft ^ ivright);
 }
 
-TMPSTATIC inline mcfloat_t mc_mathutil_add(mcfloat_t dnleft, mcfloat_t dnright)
+MCINLINE mcfloat_t mc_mathutil_add(mcfloat_t dnleft, mcfloat_t dnright)
 {
     return dnleft + dnright;
 }
 
-TMPSTATIC inline mcfloat_t mc_mathutil_sub(mcfloat_t dnleft, mcfloat_t dnright)
+MCINLINE mcfloat_t mc_mathutil_sub(mcfloat_t dnleft, mcfloat_t dnright)
 {
     return dnleft - dnright;
 }
 
-TMPSTATIC inline mcfloat_t mc_mathutil_mult(mcfloat_t dnleft, mcfloat_t dnright)
+MCINLINE mcfloat_t mc_mathutil_mult(mcfloat_t dnleft, mcfloat_t dnright)
 {
     return dnleft * dnright;
 }
 
-TMPSTATIC inline mcfloat_t mc_mathutil_div(mcfloat_t dnleft, mcfloat_t dnright)
+MCINLINE mcfloat_t mc_mathutil_div(mcfloat_t dnleft, mcfloat_t dnright)
 {
     return dnleft / dnright;
 }
 
-TMPSTATIC inline mcfloat_t mc_mathutil_mod(mcfloat_t dnleft, mcfloat_t dnright)
+MCINLINE mcfloat_t mc_mathutil_mod(mcfloat_t dnleft, mcfloat_t dnright)
 {
     return fmod(dnleft, dnright);
 }
 
-TMPSTATIC mcgenericdict_t* mc_genericdict_make(mcstate_t* state, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
+void mc_vallist_setempty(mcvallist_t* list)
+{
+    if((list->listcapacity > 0) && (list->listitems != NULL))
+    {
+        memset(list->listitems, 0, sizeof(mcvalue_t) * list->listcapacity);
+    }
+    list->listcount = 0;
+    list->listcapacity = 0;
+}
+
+mcvallist_t* mc_vallist_make(mcstate_t* state)
+{
+    mcvallist_t* list;
+    list = (mcvallist_t*)mc_allocator_malloc(state, sizeof(mcvallist_t));
+    list->pstate = state;
+    list->listcount = 0;
+    list->listcapacity = 0;
+    list->listitems = NULL;
+    mc_vallist_setempty(list);
+    return list;
+}
+
+
+size_t mc_vallist_count(mcvallist_t* list)
+{
+    return list->listcount;
+}
+
+size_t mc_vallist_capacity(mcvallist_t* list)
+{
+    return list->listcount;
+}
+
+void mc_vallist_destroy(mcvallist_t* list)
+{
+    mcstate_t* state;
+    state = list->pstate;
+    if(list != NULL)
+    {
+        mc_allocator_free(state, list->listitems);
+        mc_allocator_free(state, list);
+        list = NULL;
+    }
+}
+
+mcvalue_t mc_vallist_get(mcvallist_t* list, size_t idx)
+{
+    return list->listitems[idx];
+}
+
+mcvalue_t mc_vallist_set(mcvallist_t* list, size_t idx, mcvalue_t val)
+{
+    list->listitems[idx] = val;
+    return list->listitems[idx];
+}
+
+void mc_vallist_push(mcvallist_t* list, mcvalue_t value)
+{
+    size_t oldcap;
+    if(list->listcapacity < list->listcount + 1)
+    {
+        oldcap = list->listcapacity;
+        list->listcapacity = MC_GROW_CAPACITY(oldcap);
+        if(list->listitems == NULL)
+        {
+            list->listitems = (mcvalue_t*)mc_allocator_malloc(list->pstate, sizeof(mcvalue_t) * list->listcapacity);
+        }
+        else
+        {
+            list->listitems = (mcvalue_t*)mc_allocator_realloc(list->pstate, list->listitems, sizeof(mcvalue_t) * list->listcapacity);
+        }
+    }
+    list->listitems[list->listcount] = value;
+    list->listcount++;
+}
+
+void mc_vallist_ensuresize(mcvallist_t* list, size_t size)
+{
+    mc_vallist_ensurecapacity(list, size, mc_value_makenull());
+    if(list->listcount < size)
+    {
+        list->listcount = size;
+    }
+}
+
+void mc_vallist_ensurecapacity(mcvallist_t* list, size_t needsize, mcvalue_t fillval)
+{
+    size_t i;
+    size_t oldcap;
+    if(list->listcapacity < needsize)
+    {
+        oldcap = list->listcapacity;
+        list->listcapacity = needsize;
+        if(list->listitems == NULL)
+        {
+            list->listitems = (mcvalue_t*)mc_allocator_malloc(list->pstate, sizeof(mcvalue_t) * needsize);
+        }
+        else
+        {
+            list->listitems = (mcvalue_t*)mc_allocator_realloc(list->pstate, list->listitems, sizeof(mcvalue_t) * needsize);
+        }
+        for(i = oldcap; i < needsize; i++)
+        {
+            list->listitems[i] = fillval;
+        }
+    }
+}
+
+mcgenericdict_t* mc_genericdict_make(mcstate_t* state, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
 {
     bool ok;
     mcgenericdict_t* dict;
-    dict = (mcgenericdict_t*)mc_allocator_alloc(state, sizeof(mcgenericdict_t));
+    dict = (mcgenericdict_t*)mc_allocator_malloc(state, sizeof(mcgenericdict_t));
     if(dict == NULL)
     {
         return NULL;
@@ -1389,7 +1562,7 @@ TMPSTATIC mcgenericdict_t* mc_genericdict_make(mcstate_t* state, mcitemcopyfn_t 
     return dict;
 }
 
-TMPSTATIC void mc_genericdict_destroy(mcgenericdict_t* dict)
+void mc_genericdict_destroy(mcgenericdict_t* dict)
 {
     mcstate_t* state;
     if(!dict)
@@ -1401,7 +1574,7 @@ TMPSTATIC void mc_genericdict_destroy(mcgenericdict_t* dict)
     mc_allocator_free(state, dict);
 }
 
-TMPSTATIC void mc_genericdict_destroyitemsanddict(mcgenericdict_t* dict)
+void mc_genericdict_destroyitemsanddict(mcgenericdict_t* dict)
 {
     unsigned int i;
     if(!dict)
@@ -1418,7 +1591,7 @@ TMPSTATIC void mc_genericdict_destroyitemsanddict(mcgenericdict_t* dict)
     mc_genericdict_destroy(dict);
 }
 
-TMPSTATIC mcgenericdict_t* mc_genericdict_copy(mcgenericdict_t* dict)
+mcgenericdict_t* mc_genericdict_copy(mcgenericdict_t* dict)
 {
     bool ok;
     int i;
@@ -1457,12 +1630,12 @@ TMPSTATIC mcgenericdict_t* mc_genericdict_copy(mcgenericdict_t* dict)
     return dictcopy;
 }
 
-TMPSTATIC bool mc_genericdict_set(mcgenericdict_t* dict, const char* key, void* value)
+bool mc_genericdict_set(mcgenericdict_t* dict, const char* key, void* value)
 {
     return mc_genericdict_setinternal(dict, key, NULL, value);
 }
 
-TMPSTATIC void* mc_genericdict_get(mcgenericdict_t* dict, const char* key)
+void* mc_genericdict_get(mcgenericdict_t* dict, const char* key)
 {
     bool found;
     unsigned int itemix;
@@ -1479,7 +1652,7 @@ TMPSTATIC void* mc_genericdict_get(mcgenericdict_t* dict, const char* key)
     return dict->values[itemix];
 }
 
-TMPSTATIC void* mc_genericdict_getvalueat(mcgenericdict_t* dict, unsigned int ix)
+void* mc_genericdict_getvalueat(mcgenericdict_t* dict, unsigned int ix)
 {
     if(ix >= dict->count)
     {
@@ -1488,7 +1661,7 @@ TMPSTATIC void* mc_genericdict_getvalueat(mcgenericdict_t* dict, unsigned int ix
     return dict->values[ix];
 }
 
-TMPSTATIC const char* mc_genericdict_getkeyat(mcgenericdict_t* dict, unsigned int ix)
+const char* mc_genericdict_getkeyat(mcgenericdict_t* dict, unsigned int ix)
 {
     if(ix >= dict->count)
     {
@@ -1497,7 +1670,7 @@ TMPSTATIC const char* mc_genericdict_getkeyat(mcgenericdict_t* dict, unsigned in
     return dict->keys[ix];
 }
 
-TMPSTATIC int mc_genericdict_count(mcgenericdict_t* dict)
+int mc_genericdict_count(mcgenericdict_t* dict)
 {
     if(!dict)
     {
@@ -1506,7 +1679,7 @@ TMPSTATIC int mc_genericdict_count(mcgenericdict_t* dict)
     return dict->count;
 }
 
-TMPUNUSED bool mc_genericdict_remove(mcgenericdict_t* dict, const char* key)
+bool mc_genericdict_remove(mcgenericdict_t* dict, const char* key)
 {
     bool found;
     unsigned int x;
@@ -1557,7 +1730,7 @@ TMPUNUSED bool mc_genericdict_remove(mcgenericdict_t* dict, const char* key)
     return true;
 }
 
-TMPSTATIC bool mc_genericdict_init(mcgenericdict_t* dict, mcstate_t* state, unsigned int initialcapacity, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
+bool mc_genericdict_init(mcgenericdict_t* dict, mcstate_t* state, unsigned int initialcapacity, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
 {
     unsigned int i;
     dict->pstate = state;
@@ -1571,11 +1744,11 @@ TMPSTATIC bool mc_genericdict_init(mcgenericdict_t* dict, mcstate_t* state, unsi
     dict->itemcapacity = (unsigned int)(initialcapacity * 0.7f);
     dict->funccopyfn = copyfn;
     dict->funcdestroyfn = dfn;
-    dict->cells = (unsigned int*)mc_allocator_alloc(dict->pstate, dict->cellcapacity * sizeof(*dict->cells));
-    dict->keys = (char**)mc_allocator_alloc(dict->pstate, dict->itemcapacity * sizeof(*dict->keys));
-    dict->values = (void**)mc_allocator_alloc(dict->pstate, dict->itemcapacity * sizeof(*dict->values));
-    dict->cellindices = (unsigned int*)mc_allocator_alloc(dict->pstate, dict->itemcapacity * sizeof(*dict->cellindices));
-    dict->hashes = (long unsigned int*)mc_allocator_alloc(dict->pstate, dict->itemcapacity * sizeof(*dict->hashes));
+    dict->cells = (unsigned int*)mc_allocator_malloc(dict->pstate, dict->cellcapacity * sizeof(*dict->cells));
+    dict->keys = (char**)mc_allocator_malloc(dict->pstate, dict->itemcapacity * sizeof(*dict->keys));
+    dict->values = (void**)mc_allocator_malloc(dict->pstate, dict->itemcapacity * sizeof(*dict->values));
+    dict->cellindices = (unsigned int*)mc_allocator_malloc(dict->pstate, dict->itemcapacity * sizeof(*dict->cellindices));
+    dict->hashes = (long unsigned int*)mc_allocator_malloc(dict->pstate, dict->itemcapacity * sizeof(*dict->hashes));
     if(dict->cells == NULL || dict->keys == NULL || dict->values == NULL || dict->cellindices == NULL || dict->hashes == NULL)
     {
         goto error;
@@ -1594,7 +1767,7 @@ error:
     return false;
 }
 
-TMPSTATIC void mc_genericdict_deinit(mcgenericdict_t* dict, bool freekeys)
+void mc_genericdict_deinit(mcgenericdict_t* dict, bool freekeys)
 {
     unsigned int i;
     if(freekeys)
@@ -1619,7 +1792,7 @@ TMPSTATIC void mc_genericdict_deinit(mcgenericdict_t* dict, bool freekeys)
     dict->hashes = NULL;
 }
 
-TMPSTATIC unsigned int mc_genericdict_getcellindex(mcgenericdict_t* dict, const char* key, unsigned long hash, bool* outfound)
+unsigned int mc_genericdict_getcellindex(mcgenericdict_t* dict, const char* key, unsigned long hash, bool* outfound)
 {
     unsigned int i;
     unsigned int ix;
@@ -1653,7 +1826,7 @@ TMPSTATIC unsigned int mc_genericdict_getcellindex(mcgenericdict_t* dict, const 
 }
 
 
-TMPSEMISTATIC bool mc_genericdict_growandrehash(mcgenericdict_t* dict)
+bool mc_genericdict_growandrehash(mcgenericdict_t* dict)
 {
     bool ok;
     unsigned int i;
@@ -1681,7 +1854,7 @@ TMPSEMISTATIC bool mc_genericdict_growandrehash(mcgenericdict_t* dict)
     return true;
 }
 
-TMPSTATIC bool mc_genericdict_setinternal(mcgenericdict_t* dict, const char* ckey, char* mkey, void* value)
+bool mc_genericdict_setinternal(mcgenericdict_t* dict, const char* ckey, char* mkey, void* value)
 {
     bool ok;
     bool found;
@@ -1728,7 +1901,7 @@ TMPSTATIC bool mc_genericdict_setinternal(mcgenericdict_t* dict, const char* cke
     return true;
 }
 
-TMPSTATIC bool mc_valdict_init(mcvaldict_t* dict, mcstate_t* state, size_t ktsz, size_t vtsz, unsigned int initialcapacity)
+bool mc_valdict_init(mcvaldict_t* dict, mcstate_t* state, size_t ktsz, size_t vtsz, unsigned int initialcapacity)
 {
     unsigned int i;
     dict->pstate = state;
@@ -1744,11 +1917,11 @@ TMPSTATIC bool mc_valdict_init(mcvaldict_t* dict, mcstate_t* state, size_t ktsz,
     dict->itemcapacity = (unsigned int)(initialcapacity * 0.7f);
     dict->funckeyequalsfn = NULL;
     dict->funchashfn = NULL;
-    dict->cells = (unsigned int*)mc_allocator_alloc(dict->pstate, dict->cellcapacity * sizeof(*dict->cells));
-    dict->keys = (void*)mc_allocator_alloc(dict->pstate, dict->itemcapacity * ktsz);
-    dict->values = (void*)mc_allocator_alloc(dict->pstate, dict->itemcapacity * vtsz);
-    dict->cellindices = (unsigned int*)mc_allocator_alloc(dict->pstate, dict->itemcapacity * sizeof(*dict->cellindices));
-    dict->hashes = (long unsigned int*)mc_allocator_alloc(dict->pstate, dict->itemcapacity * sizeof(*dict->hashes));
+    dict->cells = (unsigned int*)mc_allocator_malloc(dict->pstate, dict->cellcapacity * sizeof(*dict->cells));
+    dict->keys = (void*)mc_allocator_malloc(dict->pstate, dict->itemcapacity * ktsz);
+    dict->values = (void*)mc_allocator_malloc(dict->pstate, dict->itemcapacity * vtsz);
+    dict->cellindices = (unsigned int*)mc_allocator_malloc(dict->pstate, dict->itemcapacity * sizeof(*dict->cellindices));
+    dict->hashes = (long unsigned int*)mc_allocator_malloc(dict->pstate, dict->itemcapacity * sizeof(*dict->hashes));
     if(dict->cells == NULL || dict->keys == NULL || dict->values == NULL || dict->cellindices == NULL || dict->hashes == NULL)
     {
         goto error;
@@ -1767,7 +1940,7 @@ error:
     return false;
 }
 
-TMPSTATIC void mc_valdict_deinit(mcvaldict_t* dict)
+void mc_valdict_deinit(mcvaldict_t* dict)
 {
     dict->keytypesize = 0;
     dict->valtypesize = 0;
@@ -1786,18 +1959,18 @@ TMPSTATIC void mc_valdict_deinit(mcvaldict_t* dict)
     dict->hashes = NULL;
 }
 
-TMPSTATIC mcvaldict_t* mc_valdict_make(mcstate_t* state, size_t ktsz, size_t vtsz)
+mcvaldict_t* mc_valdict_make(mcstate_t* state, size_t ktsz, size_t vtsz)
 {
     return mc_valdict_makecapacity(state, MC_CONF_GENERICDICTINITSIZE, ktsz, vtsz);
 }
 
-TMPSTATIC mcvaldict_t* mc_valdict_makecapacity(mcstate_t* state, unsigned int mincapacity, size_t ktsz, size_t vtsz)
+mcvaldict_t* mc_valdict_makecapacity(mcstate_t* state, unsigned int mincapacity, size_t ktsz, size_t vtsz)
 {
     bool ok;
     unsigned int capacity;
     mcvaldict_t* dict;
     capacity = mc_util_upperpowoftwo(mincapacity * 2);
-    dict = (mcvaldict_t*)mc_allocator_alloc(state, sizeof(mcvaldict_t));
+    dict = (mcvaldict_t*)mc_allocator_malloc(state, sizeof(mcvaldict_t));
     if(!dict)
     {
         return NULL;
@@ -1812,7 +1985,7 @@ TMPSTATIC mcvaldict_t* mc_valdict_makecapacity(mcstate_t* state, unsigned int mi
     return dict;
 }
 
-TMPSTATIC void mc_valdict_destroy(mcvaldict_t* dict)
+void mc_valdict_destroy(mcvaldict_t* dict)
 {
     mcstate_t* state;
     if(!dict)
@@ -1824,17 +1997,17 @@ TMPSTATIC void mc_valdict_destroy(mcvaldict_t* dict)
     mc_allocator_free(state, dict);
 }
 
-TMPSTATIC void mc_valdict_sethashfunction(mcvaldict_t* dict, mcitemhashfn_t hashfn)
+void mc_valdict_sethashfunction(mcvaldict_t* dict, mcitemhashfn_t hashfn)
 {
     dict->funchashfn = hashfn;
 }
 
-TMPSTATIC void mc_valdict_setequalsfunction(mcvaldict_t* dict, mcitemcomparefn_t equalsfn)
+void mc_valdict_setequalsfunction(mcvaldict_t* dict, mcitemcomparefn_t equalsfn)
 {
     dict->funckeyequalsfn = equalsfn;
 }
 
-TMPSTATIC bool mc_valdict_setkv(mcvaldict_t* dict, void* key, void* value)
+bool mc_valdict_setkv(mcvaldict_t* dict, void* key, void* value)
 {
     bool ok;
     bool found;
@@ -1870,7 +2043,7 @@ TMPSTATIC bool mc_valdict_setkv(mcvaldict_t* dict, void* key, void* value)
     return true;
 }
 
-TMPSTATIC void* mc_valdict_get(mcvaldict_t* dict, void* key)
+void* mc_valdict_get(mcvaldict_t* dict, void* key)
 {
     bool found;
     unsigned int itemix;
@@ -1891,7 +2064,7 @@ TMPSTATIC void* mc_valdict_get(mcvaldict_t* dict, void* key)
     return mc_valdict_getvalueat(dict, itemix);
 }
 
-TMPSTATIC void* mc_valdict_getkeyat(mcvaldict_t* dict, unsigned int ix)
+void* mc_valdict_getkeyat(mcvaldict_t* dict, unsigned int ix)
 {
     if(ix >= dict->count)
     {
@@ -1900,7 +2073,7 @@ TMPSTATIC void* mc_valdict_getkeyat(mcvaldict_t* dict, unsigned int ix)
     return (char*)dict->keys + (dict->keytypesize * ix);
 }
 
-TMPSTATIC void* mc_valdict_getvalueat(mcvaldict_t* dict, unsigned int ix)
+void* mc_valdict_getvalueat(mcvaldict_t* dict, unsigned int ix)
 {
     if(ix >= dict->count)
     {
@@ -1909,12 +2082,12 @@ TMPSTATIC void* mc_valdict_getvalueat(mcvaldict_t* dict, unsigned int ix)
     return (char*)dict->values + (dict->valtypesize * ix);
 }
 
-TMPUNUSED unsigned int mc_valdict_getcapacity(mcvaldict_t* dict)
+unsigned int mc_valdict_getcapacity(mcvaldict_t* dict)
 {
     return dict->itemcapacity;
 }
 
-TMPSTATIC bool mc_valdict_setvalueat(mcvaldict_t* dict, unsigned int ix, void* value)
+bool mc_valdict_setvalueat(mcvaldict_t* dict, unsigned int ix, void* value)
 {
     size_t offset;
     if(ix >= dict->count)
@@ -1926,7 +2099,7 @@ TMPSTATIC bool mc_valdict_setvalueat(mcvaldict_t* dict, unsigned int ix, void* v
     return true;
 }
 
-TMPSTATIC int mc_valdict_count(mcvaldict_t* dict)
+int mc_valdict_count(mcvaldict_t* dict)
 {
     if(!dict)
     {
@@ -1935,7 +2108,7 @@ TMPSTATIC int mc_valdict_count(mcvaldict_t* dict)
     return dict->count;
 }
 
-TMPUNUSED bool mc_valdict_removebykey(mcvaldict_t* dict, void* key)
+bool mc_valdict_removebykey(mcvaldict_t* dict, void* key)
 {
     bool found;
     unsigned int x;
@@ -1989,7 +2162,7 @@ TMPUNUSED bool mc_valdict_removebykey(mcvaldict_t* dict, void* key)
     return true;
 }
 
-TMPSTATIC void mc_valdict_clear(mcvaldict_t* dict)
+void mc_valdict_clear(mcvaldict_t* dict)
 {
     unsigned int i;
     dict->count = 0;
@@ -1999,7 +2172,7 @@ TMPSTATIC void mc_valdict_clear(mcvaldict_t* dict)
     }
 }
 
-TMPSTATIC unsigned int mc_valdict_getcellindex(mcvaldict_t* dict, void* key, unsigned long hash, bool* outfound)
+unsigned int mc_valdict_getcellindex(mcvaldict_t* dict, void* key, unsigned long hash, bool* outfound)
 {
     bool areequal;
     unsigned int i;
@@ -2034,7 +2207,7 @@ TMPSTATIC unsigned int mc_valdict_getcellindex(mcvaldict_t* dict, void* key, uns
     return MC_CONF_VALDICTINVALIDIX;
 }
 
-TMPSEMISTATIC bool mc_valdict_growandrehash(mcvaldict_t* dict)
+bool mc_valdict_growandrehash(mcvaldict_t* dict)
 {
     bool ok;
     mcvaldict_t newdict;
@@ -2066,7 +2239,7 @@ TMPSEMISTATIC bool mc_valdict_growandrehash(mcvaldict_t* dict)
     return true;
 }
 
-TMPSTATIC bool mc_valdict_setkeyat(mcvaldict_t* dict, unsigned int ix, void* key)
+bool mc_valdict_setkeyat(mcvaldict_t* dict, unsigned int ix, void* key)
 {
     size_t offset;
     if(ix >= dict->count)
@@ -2078,7 +2251,7 @@ TMPSTATIC bool mc_valdict_setkeyat(mcvaldict_t* dict, unsigned int ix, void* key
     return true;
 }
 
-TMPSTATIC bool mc_valdict_keysareequal(mcvaldict_t* dict, void* a, void* b)
+bool mc_valdict_keysareequal(mcvaldict_t* dict, void* a, void* b)
 {
     if(dict->funckeyequalsfn)
     {
@@ -2087,7 +2260,7 @@ TMPSTATIC bool mc_valdict_keysareequal(mcvaldict_t* dict, void* a, void* b)
     return memcmp(a, b, dict->keytypesize) == 0;
 }
 
-TMPSTATIC unsigned long mc_valdict_hashkey(mcvaldict_t* dict, void* key)
+unsigned long mc_valdict_hashkey(mcvaldict_t* dict, void* key)
 {
     if(dict->funchashfn)
     {
@@ -2096,16 +2269,16 @@ TMPSTATIC unsigned long mc_valdict_hashkey(mcvaldict_t* dict, void* key)
     return mc_util_hashdata(key, dict->keytypesize);
 }
 
-TMPSTATIC mcbasicarray_t* mc_basicarray_make(mcstate_t* state, size_t tsz)
+mcbasicarray_t* mc_basicarray_make(mcstate_t* state, size_t tsz)
 {
     return mc_basicarray_makecapacity(state, 32, tsz);
 }
 
-TMPSTATIC mcbasicarray_t* mc_basicarray_makecapacity(mcstate_t* state, unsigned int capacity, size_t tsz)
+mcbasicarray_t* mc_basicarray_makecapacity(mcstate_t* state, unsigned int capacity, size_t tsz)
 {
     bool ok;
     mcbasicarray_t* arr;
-    arr = (mcbasicarray_t*)mc_allocator_alloc(state, sizeof(mcbasicarray_t));
+    arr = (mcbasicarray_t*)mc_allocator_malloc(state, sizeof(mcbasicarray_t));
     if(!arr)
     {
         return NULL;
@@ -2121,7 +2294,7 @@ TMPSTATIC mcbasicarray_t* mc_basicarray_makecapacity(mcstate_t* state, unsigned 
     return arr;
 }
 
-TMPSTATIC void mc_basicarray_destroy(mcbasicarray_t* arr)
+void mc_basicarray_destroy(mcbasicarray_t* arr)
 {
     mcstate_t* state;
     if(!arr)
@@ -2133,10 +2306,10 @@ TMPSTATIC void mc_basicarray_destroy(mcbasicarray_t* arr)
     mc_allocator_free(state, arr);
 }
 
-TMPSTATIC mcbasicarray_t* mc_basicarray_copy(mcbasicarray_t* arr)
+mcbasicarray_t* mc_basicarray_copy(mcbasicarray_t* arr)
 {
     mcbasicarray_t* copy;
-    copy = (mcbasicarray_t*)mc_allocator_alloc(arr->pstate, sizeof(mcbasicarray_t));
+    copy = (mcbasicarray_t*)mc_allocator_malloc(arr->pstate, sizeof(mcbasicarray_t));
     if(!copy)
     {
         return NULL;
@@ -2148,7 +2321,7 @@ TMPSTATIC mcbasicarray_t* mc_basicarray_copy(mcbasicarray_t* arr)
     copy->caplocked = arr->caplocked;
     if(arr->allocdata)
     {
-        copy->allocdata = (unsigned char*)mc_allocator_alloc(arr->pstate, arr->capacity * arr->typesize);
+        copy->allocdata = (unsigned char*)mc_allocator_malloc(arr->pstate, arr->capacity * arr->typesize);
         if(!copy->allocdata)
         {
             mc_allocator_free(arr->pstate, copy);
@@ -2165,19 +2338,19 @@ TMPSTATIC mcbasicarray_t* mc_basicarray_copy(mcbasicarray_t* arr)
     return copy;
 }
 
-TMPSTATIC bool mc_basicarray_push(mcbasicarray_t* arr, void* value)
+bool mc_basicarray_push(mcbasicarray_t* arr, void* value)
 {
     unsigned int newcapacity;
     unsigned char* newdata;
     if(arr->count >= arr->capacity)
     {
-        COLLECTIONS_ASSERT(!arr->caplocked);
+        MC_ASSERT(!arr->caplocked);
         if(arr->caplocked)
         {
             return false;
         }
         newcapacity = arr->capacity > 0 ? arr->capacity * 2 : 1;
-        newdata = (unsigned char*)mc_allocator_alloc(arr->pstate, newcapacity * arr->typesize);
+        newdata = (unsigned char*)mc_allocator_malloc(arr->pstate, newcapacity * arr->typesize);
         if(!newdata)
         {
             return false;
@@ -2196,7 +2369,7 @@ TMPSTATIC bool mc_basicarray_push(mcbasicarray_t* arr, void* value)
     return true;
 }
 
-TMPUNUSED bool mc_basicarray_addn(mcbasicarray_t* arr, void* values, int n)
+bool mc_basicarray_addn(mcbasicarray_t* arr, void* values, int n)
 {
     bool ok;
     int i;
@@ -2217,13 +2390,13 @@ TMPUNUSED bool mc_basicarray_addn(mcbasicarray_t* arr, void* values, int n)
     return true;
 }
 
-TMPUNUSED bool mc_basicarray_addarray(mcbasicarray_t* dest, mcbasicarray_t* source)
+bool mc_basicarray_addarray(mcbasicarray_t* dest, mcbasicarray_t* source)
 {
     bool ok;
     int i;
     int destbeforecount;
     void* item;
-    COLLECTIONS_ASSERT(dest->typesize == source->typesize);
+    MC_ASSERT(dest->typesize == source->typesize);
     if(dest->typesize != source->typesize)
     {
         return false;
@@ -2242,7 +2415,7 @@ TMPUNUSED bool mc_basicarray_addarray(mcbasicarray_t* dest, mcbasicarray_t* sour
     return true;
 }
 
-TMPSTATIC bool mc_basicarray_pop(mcbasicarray_t* arr, void* outvalue)
+bool mc_basicarray_pop(mcbasicarray_t* arr, void* outvalue)
 {
     void* res;
     if(arr->count <= 0)
@@ -2258,7 +2431,7 @@ TMPSTATIC bool mc_basicarray_pop(mcbasicarray_t* arr, void* outvalue)
     return true;
 }
 
-TMPSTATIC void* mc_basicarray_top(mcbasicarray_t* arr)
+void* mc_basicarray_top(mcbasicarray_t* arr)
 {
     if(arr->count <= 0)
     {
@@ -2267,12 +2440,12 @@ TMPSTATIC void* mc_basicarray_top(mcbasicarray_t* arr)
     return mc_basicarray_get(arr, arr->count - 1);
 }
 
-TMPSTATIC bool mc_basicarray_set(mcbasicarray_t* arr, unsigned int ix, void* value)
+bool mc_basicarray_set(mcbasicarray_t* arr, unsigned int ix, void* value)
 {
     size_t offset;
     if(ix >= arr->count)
     {
-        COLLECTIONS_ASSERT(false);
+        MC_ASSERT(false);
         return false;
     }
     offset = ix * arr->typesize;
@@ -2280,7 +2453,7 @@ TMPSTATIC bool mc_basicarray_set(mcbasicarray_t* arr, unsigned int ix, void* val
     return true;
 }
 
-TMPUNUSED bool mc_basicarray_setn(mcbasicarray_t* arr, unsigned int ix, void* values, int n)
+bool mc_basicarray_setn(mcbasicarray_t* arr, unsigned int ix, void* values, int n)
 {
     bool ok;
     int i;
@@ -2310,31 +2483,31 @@ TMPUNUSED bool mc_basicarray_setn(mcbasicarray_t* arr, unsigned int ix, void* va
     return true;
 }
 
-TMPSTATIC inline void* mc_basicarray_get(mcbasicarray_t* arr, unsigned int ix)
+MCINLINE void* mc_basicarray_get(mcbasicarray_t* arr, unsigned int ix)
 {
     size_t offset;
     if(ix >= arr->count)
     {
-        COLLECTIONS_ASSERT(false);
+        MC_ASSERT(false);
         return NULL;
     }
     offset = ix * arr->typesize;
     return arr->data + offset;
 }
 
-TMPSTATIC inline void* mc_basicarray_getconst(mcbasicarray_t* arr, unsigned int ix)
+MCINLINE void* mc_basicarray_getconst(mcbasicarray_t* arr, unsigned int ix)
 {
     size_t offset;
     if(ix >= arr->count)
     {
-        COLLECTIONS_ASSERT(false);
+        MC_ASSERT(false);
         return NULL;
     }
     offset = ix * arr->typesize;
     return arr->data + offset;
 }
 
-TMPSTATIC inline int mc_basicarray_count(mcbasicarray_t* arr)
+MCINLINE int mc_basicarray_count(mcbasicarray_t* arr)
 {
     if(!arr)
     {
@@ -2343,12 +2516,12 @@ TMPSTATIC inline int mc_basicarray_count(mcbasicarray_t* arr)
     return arr->count;
 }
 
-TMPUNUSED inline unsigned int mc_basicarray_getcapacity(mcbasicarray_t* arr)
+MCINLINE unsigned int mc_basicarray_getcapacity(mcbasicarray_t* arr)
 {
     return arr->capacity;
 }
 
-TMPSTATIC bool mc_basicarray_removeat(mcbasicarray_t* arr, unsigned int ix)
+bool mc_basicarray_removeat(mcbasicarray_t* arr, unsigned int ix)
 {
     size_t tomovebytes;
     void* dest;
@@ -2377,7 +2550,7 @@ TMPSTATIC bool mc_basicarray_removeat(mcbasicarray_t* arr, unsigned int ix)
     return true;
 }
 
-TMPSTATIC bool mc_basicarray_removeitem(mcbasicarray_t* arr, void* ptr)
+bool mc_basicarray_removeitem(mcbasicarray_t* arr, void* ptr)
 {
     int ix;
     ix = mc_basicarray_getindex(arr, ptr);
@@ -2388,12 +2561,12 @@ TMPSTATIC bool mc_basicarray_removeitem(mcbasicarray_t* arr, void* ptr)
     return mc_basicarray_removeat(arr, ix);
 }
 
-TMPSTATIC void mc_basicarray_clear(mcbasicarray_t* arr)
+void mc_basicarray_clear(mcbasicarray_t* arr)
 {
     arr->count = 0;
 }
 
-TMPUNUSED void mc_basicarray_clearanddeinititems(mcbasicarray_t* arr, mcitemdeinitfn_t deinit_fn)
+void mc_basicarray_clearanddeinititems(mcbasicarray_t* arr, mcitemdeinitfn_t deinit_fn)
 {
     int i;
     void* item;
@@ -2405,12 +2578,12 @@ TMPUNUSED void mc_basicarray_clearanddeinititems(mcbasicarray_t* arr, mcitemdein
     arr->count = 0;
 }
 
-TMPSTATIC void mc_basicarray_lockcapacity(mcbasicarray_t* arr)
+void mc_basicarray_lockcapacity(mcbasicarray_t* arr)
 {
     arr->caplocked = true;
 }
 
-TMPSTATIC int mc_basicarray_getindex(mcbasicarray_t* arr, void* ptr)
+int mc_basicarray_getindex(mcbasicarray_t* arr, void* ptr)
 {
     int i;
     for(i = 0; i < mc_basicarray_count(arr); i++)
@@ -2423,27 +2596,27 @@ TMPSTATIC int mc_basicarray_getindex(mcbasicarray_t* arr, void* ptr)
     return -1;
 }
 
-TMPSTATIC bool mc_basicarray_contains(mcbasicarray_t* arr, void* ptr)
+bool mc_basicarray_contains(mcbasicarray_t* arr, void* ptr)
 {
     return mc_basicarray_getindex(arr, ptr) >= 0;
 }
 
-TMPSTATIC void* mc_basicarray_data(mcbasicarray_t* arr)
+void* mc_basicarray_data(mcbasicarray_t* arr)
 {
     return arr->data;
 }
 
-TMPUNUSED void* mc_basicarray_constdata(mcbasicarray_t* arr)
+void* mc_basicarray_constdata(mcbasicarray_t* arr)
 {
     return arr->data;
 }
 
-TMPSTATIC void mc_basicarray_orphandata(mcbasicarray_t* arr)
+void mc_basicarray_orphandata(mcbasicarray_t* arr)
 {
     mc_basicarray_initcapacity(arr, arr->pstate, 0, arr->typesize);
 }
 
-TMPSTATIC bool mc_basicarray_reverse(mcbasicarray_t* arr)
+bool mc_basicarray_reverse(mcbasicarray_t* arr)
 {
     int aix;
     int count;
@@ -2456,7 +2629,7 @@ TMPSTATIC bool mc_basicarray_reverse(mcbasicarray_t* arr)
     {
         return true;
     }
-    temp = (void*)mc_allocator_alloc(arr->pstate, arr->typesize);
+    temp = (void*)mc_allocator_malloc(arr->pstate, arr->typesize);
     if(!temp)
     {
         return false;
@@ -2475,12 +2648,12 @@ TMPSTATIC bool mc_basicarray_reverse(mcbasicarray_t* arr)
     return true;
 }
 
-TMPSTATIC bool mc_basicarray_initcapacity(mcbasicarray_t* arr, mcstate_t* state, unsigned int capacity, size_t tsz)
+bool mc_basicarray_initcapacity(mcbasicarray_t* arr, mcstate_t* state, unsigned int capacity, size_t tsz)
 {
     arr->pstate = state;
     if(capacity > 0)
     {
-        arr->allocdata = (unsigned char*)mc_allocator_alloc(arr->pstate, capacity * tsz);
+        arr->allocdata = (unsigned char*)mc_allocator_malloc(arr->pstate, capacity * tsz);
         arr->data = arr->allocdata;
         if(!arr->allocdata)
         {
@@ -2499,21 +2672,21 @@ TMPSTATIC bool mc_basicarray_initcapacity(mcbasicarray_t* arr, mcstate_t* state,
     return true;
 }
 
-TMPSTATIC void mc_basicarray_deinit(mcbasicarray_t* arr)
+void mc_basicarray_deinit(mcbasicarray_t* arr)
 {
     mc_allocator_free(arr->pstate, arr->allocdata);
 }
 
-TMPSTATIC mcptrarray_t* mc_ptrarray_make(mcstate_t* state)
+mcptrarray_t* mc_ptrarray_make(mcstate_t* state)
 {
     return mc_ptrarray_makecapacity(state, 0);
 }
 
-TMPSTATIC mcptrarray_t* mc_ptrarray_makecapacity(mcstate_t* state, unsigned int capacity)
+mcptrarray_t* mc_ptrarray_makecapacity(mcstate_t* state, unsigned int capacity)
 {
     bool ok;
     mcptrarray_t* ptrarr;
-    ptrarr = (mcptrarray_t*)mc_allocator_alloc(state, sizeof(mcptrarray_t));
+    ptrarr = (mcptrarray_t*)mc_allocator_malloc(state, sizeof(mcptrarray_t));
     if(!ptrarr)
     {
         return NULL;
@@ -2528,7 +2701,7 @@ TMPSTATIC mcptrarray_t* mc_ptrarray_makecapacity(mcstate_t* state, unsigned int 
     return ptrarr;
 }
 
-TMPSTATIC void mc_ptrarray_destroy(mcptrarray_t* arr, mcitemdestroyfn_t dfn)
+void mc_ptrarray_destroy(mcptrarray_t* arr, mcitemdestroyfn_t dfn)
 {
     /* todo: destroy and copy in make fn */
     if(arr == NULL)
@@ -2546,7 +2719,7 @@ TMPSTATIC void mc_ptrarray_destroy(mcptrarray_t* arr, mcitemdestroyfn_t dfn)
     mc_allocator_free(arr->pstate, arr);
 }
 
-TMPSTATIC mcptrarray_t* mc_ptrarray_copy(mcptrarray_t* arr, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
+mcptrarray_t* mc_ptrarray_copy(mcptrarray_t* arr, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
 {
     bool ok;
     int i;
@@ -2582,12 +2755,12 @@ err:
     return NULL;
 }
 
-TMPSTATIC bool mc_ptrarray_push(mcptrarray_t* arr, void* ptr)
+bool mc_ptrarray_push(mcptrarray_t* arr, void* ptr)
 {
     return mc_basicarray_push(&arr->innerbarray, &ptr);
 }
 
-TMPSTATIC void* mc_ptrarray_get(mcptrarray_t* arr, unsigned int ix)
+void* mc_ptrarray_get(mcptrarray_t* arr, unsigned int ix)
 {
     void* res;
     res = mc_basicarray_get(&arr->innerbarray, ix);
@@ -2598,7 +2771,7 @@ TMPSTATIC void* mc_ptrarray_get(mcptrarray_t* arr, unsigned int ix)
     return *(void**)res;
 }
 
-TMPSTATIC void* mc_ptrarray_pop(mcptrarray_t* arr)
+void* mc_ptrarray_pop(mcptrarray_t* arr)
 {
     int ix;
     void* res;
@@ -2608,7 +2781,7 @@ TMPSTATIC void* mc_ptrarray_pop(mcptrarray_t* arr)
     return res;
 }
 
-TMPSTATIC void* mc_ptrarray_top(mcptrarray_t* arr)
+void* mc_ptrarray_top(mcptrarray_t* arr)
 {
     int count;
     count = mc_ptrarray_count(arr);
@@ -2619,7 +2792,7 @@ TMPSTATIC void* mc_ptrarray_top(mcptrarray_t* arr)
     return mc_ptrarray_get(arr, count - 1);
 }
 
-TMPSTATIC int mc_ptrarray_count(mcptrarray_t* arr)
+int mc_ptrarray_count(mcptrarray_t* arr)
 {
     if(!arr)
     {
@@ -2628,17 +2801,17 @@ TMPSTATIC int mc_ptrarray_count(mcptrarray_t* arr)
     return mc_basicarray_count(&arr->innerbarray);
 }
 
-TMPSTATIC bool mc_ptrarray_removeat(mcptrarray_t* arr, unsigned int ix)
+bool mc_ptrarray_removeat(mcptrarray_t* arr, unsigned int ix)
 {
     return mc_basicarray_removeat(&arr->innerbarray, ix);
 }
 
-TMPSTATIC void mc_ptrarray_clear(mcptrarray_t* arr)
+void mc_ptrarray_clear(mcptrarray_t* arr)
 {
     mc_basicarray_clear(&arr->innerbarray);
 }
 
-TMPSTATIC void mc_ptrarray_clearanddestroy(mcptrarray_t* arr, mcitemdestroyfn_t dfn)
+void mc_ptrarray_clearanddestroy(mcptrarray_t* arr, mcitemdestroyfn_t dfn)
 {
     int i;
     void* item;
@@ -2650,12 +2823,12 @@ TMPSTATIC void mc_ptrarray_clearanddestroy(mcptrarray_t* arr, mcitemdestroyfn_t 
     mc_ptrarray_clear(arr);
 }
 
-TMPUNUSED void mc_ptrarray_lockcapacity(mcptrarray_t* arr)
+void mc_ptrarray_lockcapacity(mcptrarray_t* arr)
 {
     mc_basicarray_lockcapacity(&arr->innerbarray);
 }
 
-TMPSTATIC int mc_ptrarray_getindex(mcptrarray_t* arr, void* ptr)
+int mc_ptrarray_getindex(mcptrarray_t* arr, void* ptr)
 {
     int i;
     for(i = 0; i < mc_ptrarray_count(arr); i++)
@@ -2668,12 +2841,12 @@ TMPSTATIC int mc_ptrarray_getindex(mcptrarray_t* arr, void* ptr)
     return -1;
 }
 
-TMPUNUSED bool mc_ptrarray_contains(mcptrarray_t* arr, void* item)
+bool mc_ptrarray_contains(mcptrarray_t* arr, void* item)
 {
     return mc_ptrarray_getindex(arr, item) >= 0;
 }
 
-TMPUNUSED void* mc_ptrarray_getaddr(mcptrarray_t* arr, unsigned int ix)
+void* mc_ptrarray_getaddr(mcptrarray_t* arr, unsigned int ix)
 {
     void* res;
     res = mc_basicarray_get(&arr->innerbarray, ix);
@@ -2684,22 +2857,37 @@ TMPUNUSED void* mc_ptrarray_getaddr(mcptrarray_t* arr, unsigned int ix)
     return res;
 }
 
-TMPUNUSED void* mc_ptrarray_data(mcptrarray_t* arr)
+void* mc_ptrarray_data(mcptrarray_t* arr)
 {
     return mc_basicarray_data(&arr->innerbarray);
 }
 
-TMPUNUSED void mc_ptrarray_reverse(mcptrarray_t* arr)
+void mc_ptrarray_reverse(mcptrarray_t* arr)
 {
     mc_basicarray_reverse(&arr->innerbarray);
 }
 
-TMPSTATIC mcprinter_t* mc_printer_make(mcstate_t* state, FILE* ofh)
+mcprinter_t* mc_printer_make(mcstate_t* state, FILE* ofh)
 {
     return mc_printer_make_with_capacity(state, 1, ofh);
 }
 
-TMPSTATIC bool mc_printer_init(mcprinter_t* pr, mcstate_t* state, size_t capacity, FILE* ofh, bool onstack)
+mcprinter_t* mc_printer_make_with_capacity(mcstate_t* state, unsigned int capacity, FILE* ofh)
+{
+    mcprinter_t* pr;
+    pr = (mcprinter_t*)mc_allocator_malloc(state, sizeof(mcprinter_t));
+    if(pr == NULL)
+    {
+        return NULL;
+    }
+    if(!mc_printer_init(pr, state, capacity, ofh, false))
+    {
+        return NULL;
+    }
+    return pr;
+}
+
+bool mc_printer_init(mcprinter_t* pr, mcstate_t* state, size_t capacity, FILE* ofh, bool onstack)
 {
     memset(pr, 0, sizeof(mcprinter_t));
     pr->pstate = state;
@@ -2716,7 +2904,7 @@ TMPSTATIC bool mc_printer_init(mcprinter_t* pr, mcstate_t* state, size_t capacit
     {
         return true;
     }
-    pr->data = (char*)mc_allocator_alloc(state, capacity);
+    pr->data = (char*)mc_allocator_malloc(state, capacity);
     if(pr->data == NULL)
     {
         mc_allocator_free(state, pr);
@@ -2728,22 +2916,7 @@ TMPSTATIC bool mc_printer_init(mcprinter_t* pr, mcstate_t* state, size_t capacit
     return true;
 }
 
-TMPSTATIC mcprinter_t* mc_printer_make_with_capacity(mcstate_t* state, unsigned int capacity, FILE* ofh)
-{
-    mcprinter_t* pr;
-    pr = (mcprinter_t*)mc_allocator_alloc(state, sizeof(mcprinter_t));
-    if(pr == NULL)
-    {
-        return NULL;
-    }
-    if(!mc_printer_init(pr, state, capacity, ofh, false))
-    {
-        return NULL;
-    }
-    return pr;
-}
-
-TMPSTATIC void mc_printer_destroy(mcprinter_t* pr)
+void mc_printer_destroy(mcprinter_t* pr)
 {
     if(pr == NULL)
     {
@@ -2753,14 +2926,13 @@ TMPSTATIC void mc_printer_destroy(mcprinter_t* pr)
     {
         mc_allocator_free(pr->pstate, pr->data);
     }
-    if(pr->onstack)
+    if(!pr->onstack)
     {
-        return;
+        mc_allocator_free(pr->pstate, pr);
     }
-    mc_allocator_free(pr->pstate, pr);
 }
 
-TMPUNUSED void mc_printer_clear(mcprinter_t* pr)
+void mc_printer_clear(mcprinter_t* pr)
 {
     if(pr->destfile == NULL)
     {
@@ -2773,7 +2945,7 @@ TMPUNUSED void mc_printer_clear(mcprinter_t* pr)
     }
 }
 
-TMPSTATIC bool mc_printer_putlen(mcprinter_t* pr, const char* str, size_t len)
+bool mc_printer_putlen(mcprinter_t* pr, const char* str, size_t len)
 {
     bool ok;
     size_t needcap;
@@ -2809,19 +2981,19 @@ TMPSTATIC bool mc_printer_putlen(mcprinter_t* pr, const char* str, size_t len)
     return true;
 }
 
-TMPSTATIC bool mc_printer_puts(mcprinter_t* pr, const char* str)
+bool mc_printer_puts(mcprinter_t* pr, const char* str)
 {
     return mc_printer_putlen(pr, str, mc_util_strlen(str));
 }
 
-TMPSTATIC bool mc_printer_putchar(mcprinter_t* pr, int b)
+bool mc_printer_putchar(mcprinter_t* pr, int b)
 {
     char ch;
     ch = b;
     return mc_printer_putlen(pr, &ch, 1);
 }
 
-TMPSEMISTATIC bool mc_printer_printf(mcprinter_t* pr, const char* fmt, ...)
+bool mc_printer_printf(mcprinter_t* pr, const char* fmt, ...)
 {
     bool ok;
     int resz;
@@ -2949,7 +3121,7 @@ void mc_printer_printescapedstring(mcprinter_t* pr, const char* str, size_t len)
     mc_printer_puts(pr, "\"");
 }
 
-TMPSTATIC const char* mc_printer_getstring(mcprinter_t* pr)
+const char* mc_printer_getstring(mcprinter_t* pr)
 {
     if(pr->failed)
     {
@@ -2962,7 +3134,7 @@ TMPSTATIC const char* mc_printer_getstring(mcprinter_t* pr)
     return pr->data;
 }
 
-TMPUNUSED size_t mc_printer_getlength(mcprinter_t* pr)
+size_t mc_printer_getlength(mcprinter_t* pr)
 {
     if(pr->failed)
     {
@@ -2975,7 +3147,7 @@ TMPUNUSED size_t mc_printer_getlength(mcprinter_t* pr)
     return pr->len;
 }
 
-TMPSTATIC char* mc_printer_getstringanddestroy(mcprinter_t* pr, size_t* lendest)
+char* mc_printer_getstringanddestroy(mcprinter_t* pr, size_t* lendest)
 {
     char* res;
     if(pr->failed)
@@ -2997,19 +3169,19 @@ TMPSTATIC char* mc_printer_getstringanddestroy(mcprinter_t* pr, size_t* lendest)
     return res;
 }
 
-TMPSTATIC bool mc_printer_failed(mcprinter_t* pr)
+bool mc_printer_failed(mcprinter_t* pr)
 {
     return pr->failed;
 }
 
-TMPSTATIC bool mc_printer_grow(mcprinter_t* pr, size_t newcapacity)
+bool mc_printer_grow(mcprinter_t* pr, size_t newcapacity)
 {
     char* ndata;
     if(pr->destfile != NULL)
     {
         return true;
     }
-    ndata = (char*)mc_allocator_alloc(pr->pstate, newcapacity);
+    ndata = (char*)mc_allocator_malloc(pr->pstate, newcapacity);
     if(ndata == NULL)
     {
         pr->failed = true;
@@ -3023,12 +3195,277 @@ TMPSTATIC bool mc_printer_grow(mcprinter_t* pr, size_t newcapacity)
     return true;
 }
 
-#define mc_printer_printobject(pr, val) \
-    mc_printer_printobject_actual((val).type, pr, val)
+#define mc_printer_printvalue(pr, val) \
+    mc_printer_printvalue_actual((val).type, pr, val)
 
-TMPSEMISTATIC void mc_printer_printobject_actual(int vt, mcprinter_t* pr, mcvalue_t obj)
+void mc_printer_printnumberfloat(mcprinter_t* pr, mcfloat_t flt)
 {
-    mcvaltype_t type = mc_value_gettype(obj);
+    int64_t inum;
+    //mc_printer_printf(pr, "%1.10g", flt);
+    inum = (int64_t)flt;
+    if(flt == inum)
+    {
+        #if 1
+            mc_printer_printf(pr, "%" PRIiFAST64 "", inum);
+        #else
+            mc_printer_printf(pr, "%ld", inum);
+        #endif
+    }
+    else
+    {
+        mc_printer_printf(pr, "%g", flt);
+    }
+}
+
+bool mc_printutil_bcreadoperands(mcopdefinition_t* def, const uint8_t* instr, uint64_t outoperands[2])
+{
+    int i;
+    int offset;
+    int operandwidth;
+    uint64_t operand;
+    offset = 0;
+    for(i = 0; i < def->numoperands; i++)
+    {
+        operandwidth = def->operandwidths[i];
+        switch(operandwidth)
+        {
+            case 1:
+                {
+                    outoperands[i] = instr[offset];
+                }
+                break;
+            case 2:
+                {
+                    operand = 0;
+                    operand = operand | ((uint64_t)instr[offset] << 8);
+                    operand = operand | ((uint64_t)instr[offset + 1]);
+                    outoperands[i] = operand;
+                }
+                break;
+            case 4:
+                {
+                    operand = 0;
+                    operand = operand | ((uint64_t)instr[offset + 0] << 24);
+                    operand = operand | ((uint64_t)instr[offset + 1] << 16);
+                    operand = operand | ((uint64_t)instr[offset + 2] << 8);
+                    operand = operand | ((uint64_t)instr[offset + 3]);
+                    outoperands[i] = operand;
+                }
+                break;
+            case 8:
+                {
+                    operand = 0;
+                    operand = operand | ((uint64_t)instr[offset + 0] << 56);
+                    operand = operand | ((uint64_t)instr[offset + 1] << 48);
+                    operand = operand | ((uint64_t)instr[offset + 2] << 40);
+                    operand = operand | ((uint64_t)instr[offset + 3] << 32);
+                    operand = operand | ((uint64_t)instr[offset + 4] << 24);
+                    operand = operand | ((uint64_t)instr[offset + 5] << 16);
+                    operand = operand | ((uint64_t)instr[offset + 6] << 8);
+                    operand = operand | ((uint64_t)instr[offset + 7]);
+                    outoperands[i] = operand;
+                }
+                break;
+            default:
+                {
+                    MC_ASSERT(false);
+                    return false;
+                }
+                break;
+        }
+        offset += operandwidth;
+    }
+    return true;
+}
+
+void mc_printer_printbytecode(mcprinter_t* pr, uint8_t* code, mcastlocation_t* sposlist, size_t codesize, bool simple)
+{
+    bool ok;
+    int i;
+    uint8_t op;
+    unsigned pos;
+    mcfloat_t dval;
+    uint64_t operands[2];
+    mcastlocation_t srcpos;
+    mcopdefinition_t vdef;
+    mcopdefinition_t* def;
+    pos = 0;
+    while(pos < codesize)
+    {
+        op = code[pos];
+        def = mc_opdef_lookup(&vdef, op);
+        MC_ASSERT(def);
+        if(sposlist)
+        {
+            srcpos = sposlist[pos];
+            if(simple)
+            {
+                mc_printer_puts(pr, "<");
+            }
+            mc_printer_printf(pr, "@%d:%d %04d %s", srcpos.line, srcpos.column, pos, def->name);
+            if(simple)
+            {
+                mc_printer_puts(pr, ">");
+            }
+        }
+        else
+        {
+            mc_printer_printf(pr, "%04d %s", pos, def->name);
+        }
+        pos++;
+        ok = mc_printutil_bcreadoperands(def, code + pos, operands);
+        if(!ok)
+        {
+            return;
+        }
+        for(i = 0; i < def->numoperands; i++)
+        {
+            if(op == MC_OPCODE_NUMBER)
+            {
+                dval = mc_util_uint64todouble(operands[i]);
+                mc_printer_printf(pr, " %1.17g", dval);
+            }
+            else
+            {
+                mc_printer_printf(pr, " %llu", operands[i]);
+            }
+            pos += def->operandwidths[i];
+        }
+        if(simple)
+        {
+            mc_printer_puts(pr, ",");
+        }
+        else
+        {
+            mc_printer_puts(pr, "\n");
+        }
+    }
+}
+
+void mc_printer_printobjstring(mcprinter_t* pr, mcvalue_t obj)
+{
+    size_t len;
+    const char* str;
+    str = mc_valstring_getdata(obj);
+    len = mc_valstring_getlength(obj);
+    if(pr->config.quotstring)
+    {
+        mc_printer_printescapedstring(pr, str, len);
+    }
+    else
+    {
+        mc_printer_putlen(pr, str, len);
+    }
+}
+
+void mc_printer_printobjfuncscript(mcprinter_t* pr, mcvalue_t obj)
+{
+    const char* fname;
+    mcobjfuncscript_t* fn;
+    fn = mc_value_functiongetscriptfunction(obj);
+    fname = mc_value_functiongetname(obj);
+    mc_printer_printf(pr, "<scriptfunction '%s' locals=%d argc=%d fvc=%d", fname, fn->numlocals, fn->numargs, fn->freevalscount);
+    if(pr->config.verbosefunc)
+    {
+        mc_printer_puts(pr, " [");
+        mc_printer_printbytecode(pr, fn->compiledprogcode->bytecode, fn->compiledprogcode->progsrcposlist, fn->compiledprogcode->count, true);
+        mc_printer_puts(pr, " ]");
+    }
+    else
+    {
+    }
+    mc_printer_puts(pr, ">");
+}
+
+void mc_printer_printobjarray(mcprinter_t* pr, mcvalue_t obj)
+{
+    bool recursion;
+    size_t i;
+    size_t alen;
+    bool prevquot;
+    mcvalue_t iobj;
+    mcbasicarray_t* actualary;
+    mcbasicarray_t* otherary;
+    actualary = mc_valarray_getinternalarray(obj);
+    alen = mc_valarray_getlength(obj);
+    mc_printer_puts(pr, "[");
+    for(i = 0; i < alen; i++)
+    {
+        recursion = false;
+        iobj = mc_valarray_getvalueat(obj, i);
+        if(mc_value_gettype(iobj) == MC_VAL_ARRAY)
+        {
+            otherary = mc_valarray_getinternalarray(iobj);
+            if(otherary == actualary)
+            {
+                recursion = true;
+            }
+        }
+        prevquot = pr->config.quotstring;
+        pr->config.quotstring = true;
+        if(recursion)
+        {
+            mc_printer_puts(pr, "<recursion>");
+        }
+        else
+        {
+            mc_printer_printvalue(pr, iobj);
+        }
+        pr->config.quotstring = prevquot;
+        if(i < (alen - 1))
+        {
+            mc_printer_puts(pr, ", ");
+        }
+    }
+    mc_printer_puts(pr, "]");
+}
+
+void mc_printer_printobjmap(mcprinter_t* pr, mcvalue_t obj)
+{
+    bool prevquot;
+    size_t i;
+    size_t alen;
+    mcvalue_t key;
+    mcvalue_t val;
+    alen = mc_valmap_getlength(obj);
+    mc_printer_puts(pr, "{");
+    for(i = 0; i < alen; i++)
+    {
+        key = mc_valmap_getkeyat(obj, i);
+        val = mc_valmap_getvalueat(obj, i);
+        prevquot = pr->config.quotstring;
+        pr->config.quotstring = true;
+        mc_printer_printvalue(pr, key);
+        mc_printer_puts(pr, ": ");
+        mc_printer_printvalue(pr, val);
+        pr->config.quotstring = prevquot;
+        if(i < (alen - 1))
+        {
+            mc_printer_puts(pr, ", ");
+        }
+    }
+    mc_printer_puts(pr, "}");
+}
+
+void mc_printer_printobjerror(mcprinter_t* pr, mcvalue_t obj)
+{
+    mctraceback_t* traceback;
+    mc_printer_printf(pr, "ERROR: %s\n", mc_value_errorgetmessage(obj));
+    traceback = mc_value_errorgettraceback(obj);
+    MC_ASSERT(traceback);
+    if(traceback)
+    {
+        mc_printer_puts(pr, "Traceback:\n");
+        mc_printer_printtraceback(pr, traceback);
+    }
+}
+
+
+void mc_printer_printvalue_actual(int vt, mcprinter_t* pr, mcvalue_t obj)
+{
+    mcvaltype_t type;
+    (void)vt;
+    type = mc_value_gettype(obj);
     switch(type)
     {
         case MC_VAL_FREED:
@@ -3045,7 +3482,7 @@ TMPSEMISTATIC void mc_printer_printobject_actual(int vt, mcprinter_t* pr, mcvalu
             {
                 mcfloat_t number;
                 number = mc_value_getnumber(obj);
-                mc_printer_printf(pr, "%1.10g", number);
+                mc_printer_printnumberfloat(pr, number);
             }
             break;
         case MC_VAL_BOOL:
@@ -3101,7 +3538,7 @@ TMPSEMISTATIC void mc_printer_printobject_actual(int vt, mcprinter_t* pr, mcvalu
     }
 }
 
-TMPSTATIC mcastlocation_t mc_astlocation_make(mcastcompiledfile_t* file, int line, int column)
+mcastlocation_t mc_astlocation_make(mcastcompiledfile_t* file, int line, int column)
 {
     mcastlocation_t loc;
     loc.file = file;
@@ -3110,7 +3547,7 @@ TMPSTATIC mcastlocation_t mc_astlocation_make(mcastcompiledfile_t* file, int lin
     return loc;
 }
 
-TMPSEMISTATIC char* mc_util_stringallocfmt(mcstate_t* state, const char* format, ...)
+char* mc_util_stringallocfmt(mcstate_t* state, const char* format, ...)
 {
     int towrite;
     int written;
@@ -3121,7 +3558,7 @@ TMPSEMISTATIC char* mc_util_stringallocfmt(mcstate_t* state, const char* format,
     towrite = vsnprintf(NULL, 0, format, args);
     va_end(args);
     va_start(args, format);
-    res = (char*)mc_allocator_alloc(state, towrite + 1);
+    res = (char*)mc_allocator_malloc(state, towrite + 1);
     if(!res)
     {
         return NULL;
@@ -3132,7 +3569,7 @@ TMPSEMISTATIC char* mc_util_stringallocfmt(mcstate_t* state, const char* format,
     return res;
 }
 
-TMPSTATIC uint64_t mc_util_doubletouint64(mcfloat_t val)
+uint64_t mc_util_doubletouint64(mcfloat_t val)
 {
     union
     {
@@ -3143,7 +3580,7 @@ TMPSTATIC uint64_t mc_util_doubletouint64(mcfloat_t val)
     return temp.val_uint64;
 }
 
-TMPSTATIC mcfloat_t mc_util_uint64todouble(uint64_t val)
+mcfloat_t mc_util_uint64todouble(uint64_t val)
 {
     union
     {
@@ -3154,18 +3591,18 @@ TMPSTATIC mcfloat_t mc_util_uint64todouble(uint64_t val)
     return temp.val_double;
 }
 
-TMPSTATIC void mc_errlist_init(mcerrlist_t* errors)
+void mc_errlist_init(mcerrlist_t* errors)
 {
     memset(errors, 0, sizeof(mcerrlist_t));
     errors->count = 0;
 }
 
-TMPSTATIC void mc_errlist_deinit(mcerrlist_t* errors)
+void mc_errlist_deinit(mcerrlist_t* errors)
 {
     mc_errlist_clear(errors);
 }
 
-TMPSTATIC void mc_errlist_push(mcerrlist_t* errors, mcerrtype_t type, mcastlocation_t pos, const char* message)
+void mc_errlist_push(mcerrlist_t* errors, mcerrtype_t type, mcastlocation_t pos, const char* message)
 {
     int len;
     int tocopy;
@@ -3190,7 +3627,7 @@ TMPSTATIC void mc_errlist_push(mcerrlist_t* errors, mcerrtype_t type, mcastlocat
     errors->count++;
 }
 
-TMPSEMISTATIC void mc_errlist_addfv(mcerrlist_t* errors, mcerrtype_t type, mcastlocation_t pos, const char* format, va_list va)
+void mc_errlist_addfv(mcerrlist_t* errors, mcerrtype_t type, mcastlocation_t pos, const char* format, va_list va)
 {
     int towrite;
     int written;
@@ -3205,7 +3642,7 @@ TMPSEMISTATIC void mc_errlist_addfv(mcerrlist_t* errors, mcerrtype_t type, mcast
     mc_errlist_push(errors, type, pos, res);
 }
 
-TMPSEMISTATIC void mc_errlist_addf(mcerrlist_t* errors, mcerrtype_t type, mcastlocation_t pos, const char* format, ...)
+void mc_errlist_addf(mcerrlist_t* errors, mcerrtype_t type, mcastlocation_t pos, const char* format, ...)
 {
     va_list va;
     va_start(va, format);
@@ -3213,7 +3650,7 @@ TMPSEMISTATIC void mc_errlist_addf(mcerrlist_t* errors, mcerrtype_t type, mcastl
     va_end(va);
 }
 
-TMPSTATIC void mc_errlist_clear(mcerrlist_t* errors)
+void mc_errlist_clear(mcerrlist_t* errors)
 {
     int i;
     mcerror_t* error;
@@ -3228,7 +3665,7 @@ TMPSTATIC void mc_errlist_clear(mcerrlist_t* errors)
     errors->count = 0;
 }
 
-TMPSTATIC mcerror_t* mc_errlist_get(mcerrlist_t* errors, int ix)
+mcerror_t* mc_errlist_get(mcerrlist_t* errors, int ix)
 {
     if(ix >= errors->count)
     {
@@ -3238,7 +3675,7 @@ TMPSTATIC mcerror_t* mc_errlist_get(mcerrlist_t* errors, int ix)
 }
 
 
-TMPUNUSED const char* mc_util_errtypename(mcerrtype_t type)
+const char* mc_util_errtypename(mcerrtype_t type)
 {
     switch(type)
     {
@@ -3260,7 +3697,7 @@ TMPUNUSED const char* mc_util_errtypename(mcerrtype_t type)
     return "INVALID";
 }
 
-TMPSTATIC mcerror_t* mc_errlist_getlast(mcerrlist_t* errors)
+mcerror_t* mc_errlist_getlast(mcerrlist_t* errors)
 {
     if(errors->count <= 0)
     {
@@ -3271,7 +3708,7 @@ TMPSTATIC mcerror_t* mc_errlist_getlast(mcerrlist_t* errors)
 
 /* containerend utilsend */
 
-TMPSTATIC mcvalue_t mc_object_makedatafrom(mcvaltype_t type, mcobjdata_t* data)
+mcvalue_t mc_object_makedatafrom(mcvaltype_t type, mcobjdata_t* data)
 {
     mcvalue_t object;
     object.type = type;
@@ -3281,7 +3718,7 @@ TMPSTATIC mcvalue_t mc_object_makedatafrom(mcvaltype_t type, mcobjdata_t* data)
     return object;
 }
 
-TMPSTATIC mcvalue_t mc_value_makeempty(mcvaltype_t t)
+mcvalue_t mc_value_makeempty(mcvaltype_t t)
 {
     mcvalue_t o;
     memset(&o, 0, sizeof(mcvalue_t));
@@ -3290,7 +3727,7 @@ TMPSTATIC mcvalue_t mc_value_makeempty(mcvaltype_t t)
     return o;
 }
 
-TMPSTATIC mcvalue_t mc_value_makenumber(mcfloat_t val)
+mcvalue_t mc_value_makenumber(mcfloat_t val)
 {
     mcvalue_t o;
     o = mc_value_makeempty(MC_VAL_NUMBER);
@@ -3298,7 +3735,7 @@ TMPSTATIC mcvalue_t mc_value_makenumber(mcfloat_t val)
     return o;
 }
 
-TMPSTATIC mcvalue_t mc_value_makebool(bool val)
+mcvalue_t mc_value_makebool(bool val)
 {
     mcvalue_t o;
     o = mc_value_makeempty(MC_VAL_BOOL);
@@ -3306,14 +3743,14 @@ TMPSTATIC mcvalue_t mc_value_makebool(bool val)
     return o;
 }
 
-TMPSTATIC mcvalue_t mc_value_makenull(void)
+mcvalue_t mc_value_makenull(void)
 {
     mcvalue_t o;
     o = mc_value_makeempty(MC_VAL_NULL);
     return o;
 }
 
-TMPSTATIC mcvalue_t mc_value_makestrcapacity(mcstate_t* state, int capacity)
+mcvalue_t mc_value_makestrcapacity(mcstate_t* state, int capacity)
 {
     bool ok;
     mcobjdata_t* data;
@@ -3341,7 +3778,7 @@ TMPSTATIC mcvalue_t mc_value_makestrcapacity(mcstate_t* state, int capacity)
     return mc_object_makedatafrom(MC_VAL_STRING, data);
 }
 
-TMPUNUSED mcvalue_t mc_value_makestrformat(mcstate_t* state, const char* fmt, ...)
+mcvalue_t mc_value_makestrformat(mcstate_t* state, const char* fmt, ...)
 {
     int towrite;
     int written;
@@ -3366,7 +3803,7 @@ TMPUNUSED mcvalue_t mc_value_makestrformat(mcstate_t* state, const char* fmt, ..
     return res;
 }
 
-TMPSTATIC mcvalue_t mc_value_makestringlen(mcstate_t* state, const char* string, size_t len)
+mcvalue_t mc_value_makestringlen(mcstate_t* state, const char* string, size_t len)
 {
     bool ok;
     mcvalue_t res;
@@ -3383,12 +3820,12 @@ TMPSTATIC mcvalue_t mc_value_makestringlen(mcstate_t* state, const char* string,
     return res;
 }
 
-TMPSTATIC mcvalue_t mc_value_makestring(mcstate_t* state, const char* string)
+mcvalue_t mc_value_makestring(mcstate_t* state, const char* string)
 {
     return mc_value_makestringlen(state, string, mc_util_strlen(string));
 }
 
-TMPSTATIC mcvalue_t mc_value_makefuncnative(mcstate_t* state, const char* name, mcnativefn_t fn, void* data, int dlen)
+mcvalue_t mc_value_makefuncnative(mcstate_t* state, const char* name, mcnativefn_t fn, void* data, int dlen)
 {
     mcobjdata_t* obj;
     if(dlen > MC_CONF_NATIVEFUNCMAXDATA)
@@ -3414,12 +3851,12 @@ TMPSTATIC mcvalue_t mc_value_makefuncnative(mcstate_t* state, const char* name, 
     return mc_object_makedatafrom(MC_VAL_FUNCNATIVE, obj);
 }
 
-TMPSTATIC mcvalue_t mc_value_makearray(mcstate_t* state)
+mcvalue_t mc_value_makearray(mcstate_t* state)
 {
     return mc_value_makearraycapacity(state, 8);
 }
 
-TMPSTATIC mcvalue_t mc_value_makearraycapacity(mcstate_t* state, unsigned capacity)
+mcvalue_t mc_value_makearraycapacity(mcstate_t* state, unsigned capacity)
 {
     mcobjdata_t* data;
     data = mc_gcmemory_getdatafrompool(state, MC_VAL_ARRAY);
@@ -3441,12 +3878,12 @@ TMPSTATIC mcvalue_t mc_value_makearraycapacity(mcstate_t* state, unsigned capaci
     return mc_object_makedatafrom(MC_VAL_ARRAY, data);
 }
 
-TMPSTATIC mcvalue_t mc_value_makemap(mcstate_t* state)
+mcvalue_t mc_value_makemap(mcstate_t* state)
 {
     return mc_value_makemapcapacity(state, 32);
 }
 
-TMPSTATIC mcvalue_t mc_value_makemapcapacity(mcstate_t* state, unsigned capacity)
+mcvalue_t mc_value_makemapcapacity(mcstate_t* state, unsigned capacity)
 {
     mcobjdata_t* data;
     data = mc_gcmemory_getdatafrompool(state, MC_VAL_MAP);
@@ -3470,7 +3907,7 @@ TMPSTATIC mcvalue_t mc_value_makemapcapacity(mcstate_t* state, unsigned capacity
     return mc_object_makedatafrom(MC_VAL_MAP, data);
 }
 
-TMPSTATIC mcvalue_t mc_value_makeerror(mcstate_t* state, const char* error)
+mcvalue_t mc_value_makeerror(mcstate_t* state, const char* error)
 {
     char* errorstr;
     mcvalue_t res;
@@ -3488,7 +3925,7 @@ TMPSTATIC mcvalue_t mc_value_makeerror(mcstate_t* state, const char* error)
     return res;
 }
 
-TMPSTATIC mcvalue_t mc_value_makeerrornocopy(mcstate_t* state, char* error)
+mcvalue_t mc_value_makeerrornocopy(mcstate_t* state, char* error)
 {
     mcobjdata_t* data;
     data = mc_gcmemory_allocobjectdata(state);
@@ -3501,7 +3938,7 @@ TMPSTATIC mcvalue_t mc_value_makeerrornocopy(mcstate_t* state, char* error)
     return mc_object_makedatafrom(MC_VAL_ERROR, data);
 }
 
-TMPUNUSED mcvalue_t mc_value_makeerrorf(mcstate_t* state, const char* fmt, ...)
+mcvalue_t mc_value_makeerrorf(mcstate_t* state, const char* fmt, ...)
 {
     int towrite;
     int written;
@@ -3513,7 +3950,7 @@ TMPUNUSED mcvalue_t mc_value_makeerrorf(mcstate_t* state, const char* fmt, ...)
     towrite = vsnprintf(NULL, 0, fmt, args);
     va_end(args);
     va_start(args, fmt);
-    res = (char*)mc_allocator_alloc(state, towrite + 1);
+    res = (char*)mc_allocator_malloc(state, towrite + 1);
     if(!res)
     {
         return mc_value_makenull();
@@ -3530,7 +3967,7 @@ TMPUNUSED mcvalue_t mc_value_makeerrorf(mcstate_t* state, const char* fmt, ...)
     return resobj;
 }
 
-TMPSTATIC mcvalue_t mc_value_makefuncscript(mcstate_t* state, const char* name, mccompiledprogram_t* cres, bool ownsdt, int nlocals, int nargs, int fvc)
+mcvalue_t mc_value_makefuncscript(mcstate_t* state, const char* name, mccompiledprogram_t* cres, bool ownsdt, int nlocals, int nargs, int fvc)
 {
     mcobjdata_t* data;
     data = mc_gcmemory_allocobjectdata(state);
@@ -3556,7 +3993,7 @@ TMPSTATIC mcvalue_t mc_value_makefuncscript(mcstate_t* state, const char* name, 
     data->uvobj.valscriptfunc.numargs = nargs;
     if(fvc >= MC_UTIL_STATICARRAYSIZE(data->uvobj.valscriptfunc.ufv.freevalsstack))
     {
-        data->uvobj.valscriptfunc.ufv.freevalsallocated = (mcvalue_t*)mc_allocator_alloc(state, sizeof(mcvalue_t) * fvc);
+        data->uvobj.valscriptfunc.ufv.freevalsallocated = (mcvalue_t*)mc_allocator_malloc(state, sizeof(mcvalue_t) * fvc);
         if(!data->uvobj.valscriptfunc.ufv.freevalsallocated)
         {
             return mc_value_makenull();
@@ -3566,7 +4003,7 @@ TMPSTATIC mcvalue_t mc_value_makefuncscript(mcstate_t* state, const char* name, 
     return mc_object_makedatafrom(MC_VAL_FUNCSCRIPT, data);
 }
 
-TMPSTATIC mcvalue_t mc_value_makeuserobject(mcstate_t* state, void* data)
+mcvalue_t mc_value_makeuserobject(mcstate_t* state, void* data)
 {
     mcobjdata_t* obj;
     obj = mc_gcmemory_allocobjectdata(state);
@@ -3582,7 +4019,7 @@ TMPSTATIC mcvalue_t mc_value_makeuserobject(mcstate_t* state, void* data)
 
 #define mc_value_getallocateddata(object) (object).uval.odata
 
-TMPUNUSED void mc_value_deinit(mcvalue_t obj)
+void mc_value_deinit(mcvalue_t obj)
 {
     mcobjdata_t* data;
     if(mc_value_isallocated(obj))
@@ -3592,7 +4029,7 @@ TMPUNUSED void mc_value_deinit(mcvalue_t obj)
     }
 }
 
-TMPSTATIC void mc_objectdata_deinit(mcobjdata_t* data)
+void mc_objectdata_deinit(mcobjdata_t* data)
 {
     switch(data->type)
     {
@@ -3660,53 +4097,50 @@ TMPSTATIC void mc_objectdata_deinit(mcobjdata_t* data)
     data->type = MC_VAL_FREED;
 }
 
-TMPSTATIC bool mc_value_isallocated(mcvalue_t object)
+bool mc_value_isallocated(mcvalue_t object)
 {
     return object.isallocated;
 }
 
-TMPUNUSED mcgcmemory_t* mc_value_getmem(mcvalue_t obj)
+mcgcmemory_t* mc_value_getmem(mcvalue_t obj)
 {
     mcobjdata_t* data;
     data = mc_value_getallocateddata(obj);
     return data->mem;
 }
 
-TMPSTATIC const char* mc_valtype_getname(mcvaltype_t type)
+const char* mc_valtype_getname(mcvaltype_t type)
 {
     switch(type)
     {
         case MC_VAL_NONE:
-            return "NONE";
         case MC_VAL_FREED:
-            return "NONE";
-        case MC_VAL_NUMBER:
-            return "NUMBER";
-        case MC_VAL_BOOL:
-            return "BOOL";
-        case MC_VAL_STRING:
-            return "STRING";
         case MC_VAL_NULL:
-            return "NULL";
+            return "null";
+        case MC_VAL_NUMBER:
+            return "number";
+        case MC_VAL_BOOL:
+            return "boolean";
+        case MC_VAL_STRING:
+            return "string";
         case MC_VAL_FUNCNATIVE:
-            return "NATIVE_FUNCTION";
-        case MC_VAL_ARRAY:
-            return "ARRAY";
-        case MC_VAL_MAP:
-            return "MAP";
         case MC_VAL_FUNCSCRIPT:
-            return "FUNCTION";
+            return "function";
+        case MC_VAL_ARRAY:
+            return "array";
+        case MC_VAL_MAP:
+            return "object";
         case MC_VAL_EXTERNAL:
-            return "EXTERNAL";
+            return "extern";
         case MC_VAL_ERROR:
-            return "ERROR";
+            return "error";
         case MC_VAL_ANY:
-            return "ANY";
+            return "any";
     }
-    return "NONE";
+    return "invalid";
 }
 
-TMPSTATIC char* mc_valtype_getunionname(mcstate_t* state, mcvaltype_t type)
+char* mc_valtype_getunionname(mcstate_t* state, mcvaltype_t type)
 {
     bool inbetween;
     mcprinter_t* res;
@@ -3747,7 +4181,7 @@ TMPSTATIC char* mc_valtype_getunionname(mcstate_t* state, mcvaltype_t type)
     return mc_printer_getstringanddestroy(res, NULL);
 }
 
-TMPSTATIC mcvalue_t mc_value_copydeep(mcstate_t* state, mcvalue_t obj)
+mcvalue_t mc_value_copydeep(mcstate_t* state, mcvalue_t obj)
 {
     mcvalue_t res;
     mcvaldict_t* copies;
@@ -3761,7 +4195,7 @@ TMPSTATIC mcvalue_t mc_value_copydeep(mcstate_t* state, mcvalue_t obj)
     return res;
 }
 
-TMPSTATIC mcvalue_t mc_value_copyflat(mcstate_t* state, mcvalue_t obj)
+mcvalue_t mc_value_copyflat(mcstate_t* state, mcvalue_t obj)
 {
     bool ok;
     mcvalue_t copy;
@@ -3865,7 +4299,7 @@ TMPSTATIC mcvalue_t mc_value_copyflat(mcstate_t* state, mcvalue_t obj)
     return copy;
 }
 
-TMPSTATIC bool mc_value_compare(mcvalue_t a, mcvalue_t b, mcvalcmpresult_t* cres)
+bool mc_value_compare(mcvalue_t a, mcvalue_t b, mcvalcmpresult_t* cres)
 {
     const char* astring;
     const char* bstring;
@@ -3892,7 +4326,7 @@ TMPSTATIC bool mc_value_compare(mcvalue_t a, mcvalue_t b, mcvalcmpresult_t* cres
     {
         dnleft = mc_value_getnumber(a);
         dnright = mc_value_getnumber(b);
-        cres->result = ((float)dnleft) - ((float)dnright);
+        cres->result = (dnleft - dnright);
         return true;
     }
     if(atype == btype && atype == MC_VAL_STRING)
@@ -3927,7 +4361,7 @@ TMPSTATIC bool mc_value_compare(mcvalue_t a, mcvalue_t b, mcvalcmpresult_t* cres
 }
 
 
-TMPSTATIC bool mc_value_equals(mcvalue_t a, mcvalue_t b)
+bool mc_value_equals(mcvalue_t a, mcvalue_t b)
 {
     bool ok;
     mcvalcmpresult_t cres;
@@ -3944,7 +4378,7 @@ TMPSTATIC bool mc_value_equals(mcvalue_t a, mcvalue_t b)
     return MC_UTIL_CMPFLOAT(cres.result, 0);
 }
 
-TMPSTATIC mcobjuserdata_t* mc_valuserobject_getdata(mcvalue_t object)
+mcobjuserdata_t* mc_valuserobject_getdata(mcvalue_t object)
 {
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_EXTERNAL);
@@ -3952,7 +4386,7 @@ TMPSTATIC mcobjuserdata_t* mc_valuserobject_getdata(mcvalue_t object)
     return &data->uvobj.valuserobject;
 }
 
-TMPSTATIC bool mc_valuserobject_setdestroyfunction(mcvalue_t object, mcitemdestroyfn_t dfn)
+bool mc_valuserobject_setdestroyfunction(mcvalue_t object, mcitemdestroyfn_t dfn)
 {
     mcobjuserdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_EXTERNAL);
@@ -3965,7 +4399,7 @@ TMPSTATIC bool mc_valuserobject_setdestroyfunction(mcvalue_t object, mcitemdestr
     return true;
 }
 
-TMPSTATIC bool mc_value_getbool(mcvalue_t obj)
+bool mc_value_getbool(mcvalue_t obj)
 {
     if(mc_value_isnumber(obj))
     {
@@ -3974,7 +4408,7 @@ TMPSTATIC bool mc_value_getbool(mcvalue_t obj)
     return obj.uval.valbool;
 }
 
-TMPSTATIC mcfloat_t mc_value_getnumber(mcvalue_t obj)
+mcfloat_t mc_value_getnumber(mcvalue_t obj)
 {
     if(mc_value_isnumber(obj))
     {
@@ -3987,13 +4421,13 @@ TMPSTATIC mcfloat_t mc_value_getnumber(mcvalue_t obj)
     return obj.uval.valnumber;
 }
 
-TMPSTATIC inline const char* mc_valstring_getdata(mcvalue_t object)
+MCINLINE const char* mc_valstring_getdata(mcvalue_t object)
 {
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_STRING);
     return mc_valstring_getdataintern(object);
 }
 
-TMPSTATIC int mc_valstring_getlength(mcvalue_t object)
+int mc_valstring_getlength(mcvalue_t object)
 {
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_STRING);
@@ -4001,7 +4435,7 @@ TMPSTATIC int mc_valstring_getlength(mcvalue_t object)
     return data->uvobj.valstring.length;
 }
 
-TMPSTATIC void mc_string_setlength(mcvalue_t object, int len)
+void mc_string_setlength(mcvalue_t object, int len)
 {
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_STRING);
@@ -4009,7 +4443,7 @@ TMPSTATIC void mc_string_setlength(mcvalue_t object, int len)
     data->uvobj.valstring.length = len;
 }
 
-TMPUNUSED int mc_valstring_getcapacity(mcvalue_t object)
+int mc_valstring_getcapacity(mcvalue_t object)
 {
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_STRING);
@@ -4017,13 +4451,13 @@ TMPUNUSED int mc_valstring_getcapacity(mcvalue_t object)
     return data->uvobj.valstring.capacity;
 }
 
-TMPSTATIC inline char* mc_valstring_getmutabledata(mcvalue_t object)
+MCINLINE char* mc_valstring_getmutabledata(mcvalue_t object)
 {
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_STRING);
     return mc_valstring_getdataintern(object);
 }
 
-TMPSTATIC bool mc_valstring_append(mcvalue_t obj, const char* src, int len)
+bool mc_valstring_append(mcvalue_t obj, const char* src, int len)
 {
     int capacity;
     int currentlen;
@@ -4047,7 +4481,7 @@ TMPSTATIC bool mc_valstring_append(mcvalue_t obj, const char* src, int len)
     return true;
 }
 
-TMPSTATIC unsigned long mc_valstring_gethash(mcvalue_t obj)
+unsigned long mc_valstring_gethash(mcvalue_t obj)
 {
     size_t len;
     const char* str;
@@ -4067,7 +4501,7 @@ TMPSTATIC unsigned long mc_valstring_gethash(mcvalue_t obj)
     return data->uvobj.valstring.hash;
 }
 
-TMPSTATIC mcobjfuncscript_t* mc_value_functiongetscriptfunction(mcvalue_t object)
+mcobjfuncscript_t* mc_value_functiongetscriptfunction(mcvalue_t object)
 {
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_FUNCSCRIPT);
@@ -4075,13 +4509,13 @@ TMPSTATIC mcobjfuncscript_t* mc_value_functiongetscriptfunction(mcvalue_t object
     return &data->uvobj.valscriptfunc;
 }
 
-TMPSTATIC inline mcobjfuncnative_t* mc_value_functiongetnativefunction(mcvalue_t obj)
+MCINLINE mcobjfuncnative_t* mc_value_functiongetnativefunction(mcvalue_t obj)
 {
     mcobjdata_t* data = mc_value_getallocateddata(obj);
     return &data->uvobj.valnativefunc;
 }
 
-TMPSTATIC const char* mc_value_functiongetname(mcvalue_t obj)
+const char* mc_value_functiongetname(mcvalue_t obj)
 {
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(obj) == MC_VAL_FUNCSCRIPT);
@@ -4098,7 +4532,7 @@ TMPSTATIC const char* mc_value_functiongetname(mcvalue_t obj)
     return data->uvobj.valscriptfunc.unamev.fconstname;
 }
 
-TMPSTATIC mcvalue_t mc_value_functiongetfreevalat(mcvalue_t obj, int ix)
+mcvalue_t mc_value_functiongetfreevalat(mcvalue_t obj, int ix)
 {
     mcobjdata_t* data;
     mcobjfuncscript_t* fun;
@@ -4122,7 +4556,7 @@ TMPSTATIC mcvalue_t mc_value_functiongetfreevalat(mcvalue_t obj, int ix)
     return fun->ufv.freevalsstack[ix];
 }
 
-TMPSTATIC void mc_value_functionsetfreevalat(mcvalue_t obj, int ix, mcvalue_t val)
+void mc_value_functionsetfreevalat(mcvalue_t obj, int ix, mcvalue_t val)
 {
     mcobjdata_t* data;
     mcobjfuncscript_t* fun;
@@ -4149,7 +4583,7 @@ TMPSTATIC void mc_value_functionsetfreevalat(mcvalue_t obj, int ix, mcvalue_t va
     }
 }
 
-TMPUNUSED mcvalue_t* mc_value_functiongetfreevals(mcvalue_t obj)
+mcvalue_t* mc_value_functiongetfreevals(mcvalue_t obj)
 {
     mcobjdata_t* data;
     mcobjfuncscript_t* fun;
@@ -4168,7 +4602,7 @@ TMPUNUSED mcvalue_t* mc_value_functiongetfreevals(mcvalue_t obj)
     return fun->ufv.freevalsstack;
 }
 
-TMPSTATIC const char* mc_value_errorgetmessage(mcvalue_t object)
+const char* mc_value_errorgetmessage(mcvalue_t object)
 {
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_ERROR);
@@ -4176,7 +4610,7 @@ TMPSTATIC const char* mc_value_errorgetmessage(mcvalue_t object)
     return data->uvobj.valerror.message;
 }
 
-TMPSTATIC void mc_value_errorsettraceback(mcvalue_t object, mctraceback_t* traceback)
+void mc_value_errorsettraceback(mcvalue_t object, mctraceback_t* traceback)
 {
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_ERROR);
@@ -4189,7 +4623,7 @@ TMPSTATIC void mc_value_errorsettraceback(mcvalue_t object, mctraceback_t* trace
     data->uvobj.valerror.traceback = traceback;
 }
 
-TMPSTATIC mctraceback_t* mc_value_errorgettraceback(mcvalue_t object)
+mctraceback_t* mc_value_errorgettraceback(mcvalue_t object)
 {
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_ERROR);
@@ -4197,7 +4631,7 @@ TMPSTATIC mctraceback_t* mc_value_errorgettraceback(mcvalue_t object)
     return data->uvobj.valerror.traceback;
 }
 
-TMPSTATIC bool mc_valuserobject_setdata(mcvalue_t object, void* extdata)
+bool mc_valuserobject_setdata(mcvalue_t object, void* extdata)
 {
     mcobjuserdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_EXTERNAL);
@@ -4210,7 +4644,7 @@ TMPSTATIC bool mc_valuserobject_setdata(mcvalue_t object, void* extdata)
     return true;
 }
 
-TMPSTATIC bool mc_valuserobject_setcopyfunction(mcvalue_t object, mcitemcopyfn_t copyfn)
+bool mc_valuserobject_setcopyfunction(mcvalue_t object, mcitemcopyfn_t copyfn)
 {
     mcobjuserdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_EXTERNAL);
@@ -4223,7 +4657,7 @@ TMPSTATIC bool mc_valuserobject_setcopyfunction(mcvalue_t object, mcitemcopyfn_t
     return true;
 }
 
-TMPSTATIC mcvalue_t mc_valarray_getvalueat(mcvalue_t object, int ix)
+mcvalue_t mc_valarray_getvalueat(mcvalue_t object, int ix)
 {
     mcvalue_t* res;
     mcbasicarray_t* array;
@@ -4241,7 +4675,7 @@ TMPSTATIC mcvalue_t mc_valarray_getvalueat(mcvalue_t object, int ix)
     return *res;
 }
 
-TMPSTATIC bool mc_valarray_setvalueat(mcvalue_t object, int ix, mcvalue_t val)
+bool mc_valarray_setvalueat(mcvalue_t object, int ix, mcvalue_t val)
 {
     int len;
     int toadd;
@@ -4264,7 +4698,7 @@ TMPSTATIC bool mc_valarray_setvalueat(mcvalue_t object, int ix, mcvalue_t val)
     return mc_basicarray_set(array, ix, &val);
 }
 
-TMPSTATIC bool mc_valarray_push(mcvalue_t object, mcvalue_t val)
+bool mc_valarray_push(mcvalue_t object, mcvalue_t val)
 {
     mcbasicarray_t* array;
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_ARRAY);
@@ -4272,7 +4706,7 @@ TMPSTATIC bool mc_valarray_push(mcvalue_t object, mcvalue_t val)
     return mc_basicarray_push(array, &val);
 }
 
-TMPSTATIC int mc_valarray_getlength(mcvalue_t object)
+int mc_valarray_getlength(mcvalue_t object)
 {
     mcbasicarray_t* array;
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_ARRAY);
@@ -4280,14 +4714,28 @@ TMPSTATIC int mc_valarray_getlength(mcvalue_t object)
     return mc_basicarray_count(array);
 }
 
-TMPSTATIC bool mc_valarray_removevalueat(mcvalue_t object, int ix)
+mcvalue_t mc_valarray_pop(mcvalue_t object)
+{
+    mcvalue_t dest;
+    mcbasicarray_t* array;
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_ARRAY);
+    array = mc_valarray_getinternalarray(object);
+    if(mc_basicarray_pop(array, &dest))
+    {
+        return dest;
+    }
+    return mc_value_makenull();
+}
+
+
+bool mc_valarray_removevalueat(mcvalue_t object, int ix)
 {
     mcbasicarray_t* array;
     array = mc_valarray_getinternalarray(object);
     return mc_basicarray_removeat(array, ix);
 }
 
-TMPSTATIC int mc_valmap_getlength(mcvalue_t object)
+int mc_valmap_getlength(mcvalue_t object)
 {
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
@@ -4295,7 +4743,7 @@ TMPSTATIC int mc_valmap_getlength(mcvalue_t object)
     return mc_valdict_count(data->uvobj.valmap);
 }
 
-TMPSTATIC mcvalue_t mc_valmap_getkeyat(mcvalue_t object, int ix)
+mcvalue_t mc_valmap_getkeyat(mcvalue_t object, int ix)
 {
     mcvalue_t* res;
     mcobjdata_t* data;
@@ -4309,7 +4757,7 @@ TMPSTATIC mcvalue_t mc_valmap_getkeyat(mcvalue_t object, int ix)
     return *res;
 }
 
-TMPSTATIC mcvalue_t mc_valmap_getvalueat(mcvalue_t object, int ix)
+mcvalue_t mc_valmap_getvalueat(mcvalue_t object, int ix)
 {
     mcvalue_t* res;
     mcobjdata_t* data;
@@ -4323,7 +4771,7 @@ TMPSTATIC mcvalue_t mc_valmap_getvalueat(mcvalue_t object, int ix)
     return *res;
 }
 
-TMPUNUSED bool mc_valmap_setvalueat(mcvalue_t object, int ix, mcvalue_t val)
+bool mc_valmap_setvalueat(mcvalue_t object, int ix, mcvalue_t val)
 {
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
@@ -4335,7 +4783,7 @@ TMPUNUSED bool mc_valmap_setvalueat(mcvalue_t object, int ix, mcvalue_t val)
     return mc_valdict_setvalueat(data->uvobj.valmap, ix, &val);
 }
 
-TMPSTATIC mcvalue_t mc_valmap_getkvpairat(mcstate_t* state, mcvalue_t object, int ix)
+mcvalue_t mc_valmap_getkvpairat(mcstate_t* state, mcvalue_t object, int ix)
 {
     mcvalue_t key;
     mcvalue_t val;
@@ -4371,7 +4819,7 @@ TMPSTATIC mcvalue_t mc_valmap_getkvpairat(mcstate_t* state, mcvalue_t object, in
     return res;
 }
 
-TMPSTATIC bool mc_valmap_setvalue(mcvalue_t object, mcvalue_t key, mcvalue_t val)
+bool mc_valmap_setvalue(mcvalue_t object, mcvalue_t key, mcvalue_t val)
 {
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
@@ -4379,7 +4827,7 @@ TMPSTATIC bool mc_valmap_setvalue(mcvalue_t object, mcvalue_t key, mcvalue_t val
     return mc_valdict_setkv(data->uvobj.valmap, &key, &val);
 }
 
-TMPSTATIC bool mc_valmap_setvalstring(mcvalue_t object, const char* strkey, mcvalue_t val)
+bool mc_valmap_setvalstring(mcvalue_t object, const char* strkey, mcvalue_t val)
 {
     mcstate_t* state;
     mcvalue_t vkey;
@@ -4388,7 +4836,7 @@ TMPSTATIC bool mc_valmap_setvalstring(mcvalue_t object, const char* strkey, mcva
     return mc_valmap_setvalue(object, vkey, val);
 }
 
-TMPSTATIC mcvalue_t mc_valmap_getvalue(mcvalue_t object, mcvalue_t key)
+mcvalue_t mc_valmap_getvalue(mcvalue_t object, mcvalue_t key)
 {
     mcvalue_t* res;
     mcobjdata_t* data;
@@ -4402,7 +4850,7 @@ TMPSTATIC mcvalue_t mc_valmap_getvalue(mcvalue_t object, mcvalue_t key)
     return *res;
 }
 
-TMPUNUSED bool mc_valmap_haskey(mcvalue_t object, mcvalue_t key)
+bool mc_valmap_haskey(mcvalue_t object, mcvalue_t key)
 {
     mcvalue_t* res;
     mcobjdata_t* data;
@@ -4412,7 +4860,7 @@ TMPUNUSED bool mc_valmap_haskey(mcvalue_t object, mcvalue_t key)
     return res != NULL;
 }
 
-TMPSEMISTATIC mcvalue_t mc_value_copydeepfuncscript(mcstate_t* state, mcvalue_t obj, mcvaldict_t* copies)
+mcvalue_t mc_value_copydeepfuncscript(mcstate_t* state, mcvalue_t obj, mcvaldict_t* copies)
 {
     bool ok;
     int i;
@@ -4428,13 +4876,13 @@ TMPSEMISTATIC mcvalue_t mc_value_copydeepfuncscript(mcstate_t* state, mcvalue_t 
     bytecodecopy = NULL;
     srcpositionscopy = NULL;
     comprescopy = NULL;
-    bytecodecopy = (uint8_t*)mc_allocator_alloc(state, sizeof(uint8_t) * function->compiledprogcode->count);
+    bytecodecopy = (uint8_t*)mc_allocator_malloc(state, sizeof(uint8_t) * function->compiledprogcode->count);
     if(!bytecodecopy)
     {
         return mc_value_makenull();
     }
     memcpy(bytecodecopy, function->compiledprogcode->bytecode, sizeof(uint8_t) * function->compiledprogcode->count);
-    srcpositionscopy = (mcastlocation_t*)mc_allocator_alloc(state, sizeof(mcastlocation_t) * function->compiledprogcode->count);
+    srcpositionscopy = (mcastlocation_t*)mc_allocator_malloc(state, sizeof(mcastlocation_t) * function->compiledprogcode->count);
     if(!srcpositionscopy)
     {
         mc_allocator_free(state, bytecodecopy);
@@ -4465,7 +4913,7 @@ TMPSEMISTATIC mcvalue_t mc_value_copydeepfuncscript(mcstate_t* state, mcvalue_t 
     functioncopy = mc_value_functiongetscriptfunction(copy);
     if(mc_objfunction_freevalsareallocated(function))
     {
-        functioncopy->ufv.freevalsallocated = (mcvalue_t*)mc_allocator_alloc(state, sizeof(mcvalue_t) * function->freevalscount);
+        functioncopy->ufv.freevalsallocated = (mcvalue_t*)mc_allocator_malloc(state, sizeof(mcvalue_t) * function->freevalscount);
         if(!functioncopy->ufv.freevalsallocated)
         {
             return mc_value_makenull();
@@ -4485,7 +4933,7 @@ TMPSEMISTATIC mcvalue_t mc_value_copydeepfuncscript(mcstate_t* state, mcvalue_t 
     return copy;
 }
 
-TMPSEMISTATIC mcvalue_t mc_value_copydeeparray(mcstate_t* state, mcvalue_t obj, mcvaldict_t* copies)
+mcvalue_t mc_value_copydeeparray(mcstate_t* state, mcvalue_t obj, mcvaldict_t* copies)
 {
     bool ok;
     int i;
@@ -4521,7 +4969,7 @@ TMPSEMISTATIC mcvalue_t mc_value_copydeeparray(mcstate_t* state, mcvalue_t obj, 
     return copy;
 }
 
-TMPSEMISTATIC mcvalue_t mc_value_copydeepmap(mcstate_t* state, mcvalue_t obj, mcvaldict_t* copies)
+mcvalue_t mc_value_copydeepmap(mcstate_t* state, mcvalue_t obj, mcvaldict_t* copies)
 {
     bool ok;
     int i;
@@ -4563,7 +5011,7 @@ TMPSEMISTATIC mcvalue_t mc_value_copydeepmap(mcstate_t* state, mcvalue_t obj, mc
     return copy;
 }
 
-TMPSEMISTATIC mcvalue_t mc_value_copydeepintern(mcstate_t* state, mcvalue_t obj, mcvaldict_t* copies)
+mcvalue_t mc_value_copydeepintern(mcstate_t* state, mcvalue_t obj, mcvaldict_t* copies)
 {
     mcvaltype_t type;
     mcvalue_t copy;
@@ -4632,7 +5080,7 @@ TMPSEMISTATIC mcvalue_t mc_value_copydeepintern(mcstate_t* state, mcvalue_t obj,
     return copy;
 }
 
-TMPSTATIC bool mc_value_equalswrapped(mcvalue_t* aptr, mcvalue_t* bptr)
+bool mc_value_equalswrapped(mcvalue_t* aptr, mcvalue_t* bptr)
 {
     mcvalue_t a;
     mcvalue_t b;
@@ -4641,7 +5089,7 @@ TMPSTATIC bool mc_value_equalswrapped(mcvalue_t* aptr, mcvalue_t* bptr)
     return mc_value_equals(a, b);
 }
 
-TMPSTATIC unsigned long mc_value_hash(mcvalue_t* objptr)
+unsigned long mc_value_hash(mcvalue_t* objptr)
 {
     bool bval;
     mcfloat_t dval;
@@ -4676,7 +5124,7 @@ TMPSTATIC unsigned long mc_value_hash(mcvalue_t* objptr)
     return 0;
 }
 
-TMPSTATIC mcbasicarray_t* mc_valarray_getinternalarray(mcvalue_t object)
+mcbasicarray_t* mc_valarray_getinternalarray(mcvalue_t object)
 {
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_ARRAY);
@@ -4684,17 +5132,17 @@ TMPSTATIC mcbasicarray_t* mc_valarray_getinternalarray(mcvalue_t object)
     return data->uvobj.valarray;
 }
 
-TMPSTATIC bool mc_value_isnumber(mcvalue_t o)
+bool mc_value_isnumber(mcvalue_t o)
 {
     return (o.type == MC_VAL_NUMBER || o.type == MC_VAL_BOOL);
 }
 
-TMPSTATIC bool mc_objfunction_freevalsareallocated(mcobjfuncscript_t* fun)
+bool mc_objfunction_freevalsareallocated(mcobjfuncscript_t* fun)
 {
     return fun->freevalscount >= MC_UTIL_STATICARRAYSIZE(fun->ufv.freevalsstack);
 }
 
-TMPSTATIC inline char* mc_valstring_getdataintern(mcvalue_t object)
+MCINLINE char* mc_valstring_getdataintern(mcvalue_t object)
 {
     mcobjdata_t* data;
     data = mc_value_getallocateddata(object);
@@ -4706,7 +5154,7 @@ TMPSTATIC inline char* mc_valstring_getdataintern(mcvalue_t object)
     return data->uvobj.valstring.ustrstore.actualonstack;
 }
 
-TMPSTATIC bool mc_valstring_reservecapacity(mcobjdata_t* data, int capacity)
+bool mc_valstring_reservecapacity(mcobjdata_t* data, int capacity)
 {
     char* newvalue;
     mcobjstring_t* string;
@@ -4731,7 +5179,7 @@ TMPSTATIC bool mc_valstring_reservecapacity(mcobjdata_t* data, int capacity)
         string->isallocated = false;
         return true;
     }
-    newvalue = (char*)mc_allocator_alloc(data->pstate, capacity + 1);
+    newvalue = (char*)mc_allocator_malloc(data->pstate, capacity + 1);
     if(!newvalue)
     {
         return false;
@@ -4746,10 +5194,10 @@ TMPSTATIC bool mc_valstring_reservecapacity(mcobjdata_t* data, int capacity)
     return true;
 }
 
-TMPSTATIC mcastscopecomp_t* mc_astcompscope_make(mcstate_t* state, mcastscopecomp_t* outer)
+mcastscopecomp_t* mc_astcompscope_make(mcstate_t* state, mcastscopecomp_t* outer)
 {
     mcastscopecomp_t* scope;
-    scope = (mcastscopecomp_t*)mc_allocator_alloc(state, sizeof(mcastscopecomp_t));
+    scope = (mcastscopecomp_t*)mc_allocator_malloc(state, sizeof(mcastscopecomp_t));
     if(!scope)
     {
         return NULL;
@@ -4783,7 +5231,7 @@ err:
     return NULL;
 }
 
-TMPSTATIC void mc_astcompscope_destroy(mcastscopecomp_t* scope)
+void mc_astcompscope_destroy(mcastscopecomp_t* scope)
 {
     mcstate_t* state;
     state = scope->pstate;
@@ -4794,7 +5242,7 @@ TMPSTATIC void mc_astcompscope_destroy(mcastscopecomp_t* scope)
     mc_allocator_free(state, scope);
 }
 
-TMPSTATIC mccompiledprogram_t* mc_astcompscope_orphanresult(mcastscopecomp_t* scope)
+mccompiledprogram_t* mc_astcompscope_orphanresult(mcastscopecomp_t* scope)
 {
     mccompiledprogram_t* res;
     res = mc_astcompresult_make(scope->pstate, (uint8_t*)mc_basicarray_data(scope->bytecode), (mcastlocation_t*)mc_basicarray_data(scope->scopesrcposlist), mc_basicarray_count(scope->bytecode));
@@ -4807,10 +5255,10 @@ TMPSTATIC mccompiledprogram_t* mc_astcompscope_orphanresult(mcastscopecomp_t* sc
     return res;
 }
 
-TMPSTATIC mccompiledprogram_t* mc_astcompresult_make(mcstate_t* state, uint8_t* bytecode, mcastlocation_t* srcposlist, int count)
+mccompiledprogram_t* mc_astcompresult_make(mcstate_t* state, uint8_t* bytecode, mcastlocation_t* srcposlist, int count)
 {
     mccompiledprogram_t* res;
-    res = (mccompiledprogram_t*)mc_allocator_alloc(state, sizeof(mccompiledprogram_t));
+    res = (mccompiledprogram_t*)mc_allocator_malloc(state, sizeof(mccompiledprogram_t));
     if(!res)
     {
         return NULL;
@@ -4823,7 +5271,7 @@ TMPSTATIC mccompiledprogram_t* mc_astcompresult_make(mcstate_t* state, uint8_t* 
     return res;
 }
 
-TMPSTATIC void mc_astcompresult_destroy(mccompiledprogram_t* res)
+void mc_astcompresult_destroy(mccompiledprogram_t* res)
 {
     mcstate_t* state;
     if(!res)
@@ -4836,7 +5284,7 @@ TMPSTATIC void mc_astcompresult_destroy(mccompiledprogram_t* res)
     mc_allocator_free(state, res);
 }
 
-TMPSTATIC bool mc_lexer_init(mcastlexer_t* lex, mcstate_t* state, mcerrlist_t* errs, const char* input, mcastcompiledfile_t* file)
+bool mc_lexer_init(mcastlexer_t* lex, mcstate_t* state, mcerrlist_t* errs, const char* input, mcastcompiledfile_t* file)
 {
     bool ok;
     lex->pstate = state;
@@ -4875,27 +5323,27 @@ TMPSTATIC bool mc_lexer_init(mcastlexer_t* lex, mcstate_t* state, mcerrlist_t* e
     return true;
 }
 
-TMPSTATIC bool mc_lexer_failed(mcastlexer_t* lex)
+bool mc_lexer_failed(mcastlexer_t* lex)
 {
     return lex->failed;
 }
 
-TMPSTATIC void mc_lexer_conttplstring(mcastlexer_t* lex)
+void mc_lexer_conttplstring(mcastlexer_t* lex)
 {
     lex->continuetplstring = true;
 }
 
-TMPSTATIC bool mc_lexer_currtokenis(mcastlexer_t* lex, mcasttoktype_t type)
+bool mc_lexer_currtokenis(mcastlexer_t* lex, mcasttoktype_t type)
 {
     return lex->currtoken.type == type;
 }
 
-TMPSTATIC bool mc_lexer_peektokenis(mcastlexer_t* lex, mcasttoktype_t type)
+bool mc_lexer_peektokenis(mcastlexer_t* lex, mcasttoktype_t type)
 {
     return lex->peektoken.type == type;
 }
 
-TMPSTATIC bool mc_lexer_nexttoken(mcastlexer_t* lex)
+bool mc_lexer_nexttoken(mcastlexer_t* lex)
 {
     lex->prevtoken = lex->currtoken;
     lex->currtoken = lex->peektoken;
@@ -4903,7 +5351,7 @@ TMPSTATIC bool mc_lexer_nexttoken(mcastlexer_t* lex)
     return !lex->failed;
 }
 
-TMPSTATIC bool mc_lexer_previoustoken(mcastlexer_t* lex)
+bool mc_lexer_previoustoken(mcastlexer_t* lex)
 {
     if(lex->prevtoken.type == MC_TOK_INVALID)
     {
@@ -4920,7 +5368,7 @@ TMPSTATIC bool mc_lexer_previoustoken(mcastlexer_t* lex)
     return true;
 }
 
-TMPSTATIC mcasttoken_t mc_lexer_nexttokinternal(mcastlexer_t* lex)
+mcasttoken_t mc_lexer_nexttokinternal(mcastlexer_t* lex)
 {
     char c;
     mcasttoken_t outtok;
@@ -5322,7 +5770,7 @@ TMPSTATIC mcasttoken_t mc_lexer_nexttokinternal(mcastlexer_t* lex)
     return outtok;
 }
 
-TMPSTATIC bool mc_lexer_expectcurrent(mcastlexer_t* lex, mcasttoktype_t type)
+bool mc_lexer_expectcurrent(mcastlexer_t* lex, mcasttoktype_t type)
 {
     const char* actualtypestr;
     const char* expectedtypestr;
@@ -5340,7 +5788,7 @@ TMPSTATIC bool mc_lexer_expectcurrent(mcastlexer_t* lex, mcasttoktype_t type)
     return true;
 }
 
-TMPSTATIC bool mc_lexer_readchar(mcastlexer_t* lex)
+bool mc_lexer_readchar(mcastlexer_t* lex)
 {
     bool ok; 
     if(lex->nextposition >= lex->inputlength)
@@ -5371,7 +5819,7 @@ TMPSTATIC bool mc_lexer_readchar(mcastlexer_t* lex)
     return true;
 }
 
-TMPSTATIC char mc_lexer_peekchar(mcastlexer_t* lex)
+char mc_lexer_peekchar(mcastlexer_t* lex)
 {
     if(lex->nextposition >= lex->inputlength)
     {
@@ -5380,17 +5828,17 @@ TMPSTATIC char mc_lexer_peekchar(mcastlexer_t* lex)
     return lex->inputsource[lex->nextposition];
 }
 
-TMPSTATIC bool mc_lexer_charisletter(char ch)
+bool mc_lexer_charisletter(char ch)
 {
     return ('a' <= ch && ch <= 'z') || ('A' <= ch && ch <= 'Z') || ch == '_';
 }
 
-TMPSTATIC bool mc_lexer_charisdigit(char ch)
+bool mc_lexer_charisdigit(char ch)
 {
     return ch >= '0' && ch <= '9';
 }
 
-TMPSTATIC bool mc_lexer_charisoneof(char ch, const char* allowed, int allowedlen)
+bool mc_lexer_charisoneof(char ch, const char* allowed, int allowedlen)
 {
     int i;
     for(i = 0; i < allowedlen; i++)
@@ -5403,7 +5851,7 @@ TMPSTATIC bool mc_lexer_charisoneof(char ch, const char* allowed, int allowedlen
     return false;
 }
 
-TMPSTATIC const char* mc_lexer_scanident(mcastlexer_t* lex, int* outlen)
+const char* mc_lexer_scanident(mcastlexer_t* lex, int* outlen)
 {
     int len;
     int position;
@@ -5427,7 +5875,7 @@ end:
     return lex->inputsource + position;
 }
 
-TMPSTATIC const char* mc_lexer_scannumber(mcastlexer_t* lex, int* outlen)
+const char* mc_lexer_scannumber(mcastlexer_t* lex, int* outlen)
 {
     int len;
     int position;
@@ -5442,7 +5890,7 @@ TMPSTATIC const char* mc_lexer_scannumber(mcastlexer_t* lex, int* outlen)
     return lex->inputsource + position;
 }
 
-TMPSTATIC const char* mc_lexer_scanstring(mcastlexer_t* lex, char delimiter, bool istemplate, bool* outtemplatefound, int* outlen)
+const char* mc_lexer_scanstring(mcastlexer_t* lex, char delimiter, bool istemplate, bool* outtemplatefound, int* outlen)
 {
     bool escaped;
     int len;
@@ -5477,7 +5925,7 @@ TMPSTATIC const char* mc_lexer_scanstring(mcastlexer_t* lex, char delimiter, boo
     return lex->inputsource + position;
 }
 
-TMPSTATIC mcasttoktype_t mc_lexer_lookupident(const char* ident, int len)
+mcasttoktype_t mc_lexer_lookupident(const char* ident, int len)
 {
     int i;
     int klen;
@@ -5516,7 +5964,7 @@ TMPSTATIC mcasttoktype_t mc_lexer_lookupident(const char* ident, int len)
     return MC_TOK_IDENT;
 }
 
-TMPSTATIC void mc_lexer_skipspace(mcastlexer_t* lex)
+void mc_lexer_skipspace(mcastlexer_t* lex)
 {
     char ch;
     ch = lex->ch;
@@ -5527,7 +5975,7 @@ TMPSTATIC void mc_lexer_skipspace(mcastlexer_t* lex)
     }
 }
 
-TMPSTATIC bool mc_lexer_addline(mcastlexer_t* lex, int offset)
+bool mc_lexer_addline(mcastlexer_t* lex, int offset)
 {
     bool ok;
     size_t linelen;
@@ -5569,12 +6017,12 @@ TMPSTATIC bool mc_lexer_addline(mcastlexer_t* lex, int offset)
     return true;
 }
 
-TMPSTATIC mcastcompiledfile_t* mc_compiledfile_make(mcstate_t* state, const char* path)
+mcastcompiledfile_t* mc_compiledfile_make(mcstate_t* state, const char* path)
 {
     size_t len;
     const char* lastslashpos;
     mcastcompiledfile_t* file;
-    file = (mcastcompiledfile_t*)mc_allocator_alloc(state, sizeof(mcastcompiledfile_t));
+    file = (mcastcompiledfile_t*)mc_allocator_malloc(state, sizeof(mcastcompiledfile_t));
     if(!file)
     {
         return NULL;
@@ -5611,7 +6059,7 @@ error:
     return NULL;
 }
 
-TMPSTATIC void mc_compiledfile_destroy(mcastcompiledfile_t* file)
+void mc_compiledfile_destroy(mcastcompiledfile_t* file)
 {
     int i;
     void* item;
@@ -5632,10 +6080,10 @@ TMPSTATIC void mc_compiledfile_destroy(mcastcompiledfile_t* file)
     mc_allocator_free(state, file);
 }
 
-TMPSTATIC mcastcompiler_t* mc_compiler_make(mcstate_t* state, mcconfig_t* config, mcgcmemory_t* mem, mcerrlist_t* errors, mcptrarray_t* files, mcglobalstore_t* gstore)
+mcastcompiler_t* mc_compiler_make(mcstate_t* state, mcconfig_t* config, mcgcmemory_t* mem, mcerrlist_t* errors, mcptrarray_t* files, mcglobalstore_t* gstore)
 {
     bool ok;
-    mcastcompiler_t* comp = (mcastcompiler_t*)mc_allocator_alloc(state, sizeof(mcastcompiler_t));
+    mcastcompiler_t* comp = (mcastcompiler_t*)mc_allocator_malloc(state, sizeof(mcastcompiler_t));
     if(!comp)
     {
         return NULL;
@@ -5650,7 +6098,7 @@ TMPSTATIC mcastcompiler_t* mc_compiler_make(mcstate_t* state, mcconfig_t* config
     return comp;
 }
 
-TMPSTATIC void mc_compiler_destroy(mcastcompiler_t* comp)
+void mc_compiler_destroy(mcastcompiler_t* comp)
 {
     mcstate_t* state;
     if(!comp)
@@ -5662,7 +6110,7 @@ TMPSTATIC void mc_compiler_destroy(mcastcompiler_t* comp)
     mc_allocator_free(state, comp);
 }
 
-TMPSTATIC mccompiledprogram_t* mc_compiler_compilesource(mcastcompiler_t* comp, const char* code)
+mccompiledprogram_t* mc_compiler_compilesource(mcastcompiler_t* comp, const char* code)
 {
     bool ok;
     mcastcompiler_t compshallowcopy;
@@ -5690,6 +6138,7 @@ TMPSTATIC mccompiledprogram_t* mc_compiler_compilesource(mcastcompiler_t* comp, 
     {
         goto err;
     }
+    mc_compiler_emit(comp, MC_OPCODE_HALT, 0, 0);
     /* might've changed */
     compscope = mc_compiler_getcompilationscope(comp);
     MC_ASSERT(compscope->outer == NULL);
@@ -5708,7 +6157,7 @@ err:
 }
 
 
-TMPSTATIC mcastsymtable_t* mc_compiler_getsymtable(mcastcompiler_t* comp)
+mcastsymtable_t* mc_compiler_getsymtable(mcastcompiler_t* comp)
 {
     mcastscopefile_t* filescope = (mcastscopefile_t*)mc_ptrarray_top(comp->filescopelist);
     if(!filescope)
@@ -5719,7 +6168,7 @@ TMPSTATIC mcastsymtable_t* mc_compiler_getsymtable(mcastcompiler_t* comp)
     return filescope->filesymtab;
 }
 
-TMPSTATIC void mc_compiler_setsymtable(mcastcompiler_t* comp, mcastsymtable_t* table)
+void mc_compiler_setsymtable(mcastcompiler_t* comp, mcastsymtable_t* table)
 {
     mcastscopefile_t* filescope = (mcastscopefile_t*)mc_ptrarray_top(comp->filescopelist);
     if(!filescope)
@@ -5730,12 +6179,12 @@ TMPSTATIC void mc_compiler_setsymtable(mcastcompiler_t* comp, mcastsymtable_t* t
     filescope->filesymtab = table;
 }
 
-TMPSTATIC mcbasicarray_t* mc_compiler_getconstants(mcastcompiler_t* comp)
+mcbasicarray_t* mc_compiler_getconstants(mcastcompiler_t* comp)
 {
     return comp->constants;
 }
 
-TMPSTATIC bool mc_compiler_init(mcastcompiler_t* comp, mcstate_t* state, mcconfig_t* cfg, mcgcmemory_t* mem, mcerrlist_t* errors, mcptrarray_t* files, mcglobalstore_t* gstor)
+bool mc_compiler_init(mcastcompiler_t* comp, mcstate_t* state, mcconfig_t* cfg, mcgcmemory_t* mem, mcerrlist_t* errors, mcptrarray_t* files, mcglobalstore_t* gstor)
 {
     bool ok;
     memset(comp, 0, sizeof(mcastcompiler_t));
@@ -5787,7 +6236,7 @@ err:
     return false;
 }
 
-TMPSTATIC void mc_compiler_deinit(mcastcompiler_t* comp)
+void mc_compiler_deinit(mcastcompiler_t* comp)
 {
     int i;
     int* val;
@@ -5816,7 +6265,7 @@ TMPSTATIC void mc_compiler_deinit(mcastcompiler_t* comp)
     memset(comp, 0, sizeof(mcastcompiler_t));
 }
 
-TMPSTATIC bool mc_compiler_initshallowcopy(mcastcompiler_t* copy, mcastcompiler_t* src)
+bool mc_compiler_initshallowcopy(mcastcompiler_t* copy, mcastcompiler_t* src)
 {
     bool ok;
     int i;
@@ -5869,7 +6318,7 @@ TMPSTATIC bool mc_compiler_initshallowcopy(mcastcompiler_t* copy, mcastcompiler_
     {
         key = mc_genericdict_getkeyat(src->stringconstposdict, i);
         val = (int*)mc_genericdict_getvalueat(src->stringconstposdict, i);
-        valcopy = (int*)mc_allocator_alloc(src->pstate, sizeof(int));
+        valcopy = (int*)mc_allocator_malloc(src->pstate, sizeof(int));
         if(!valcopy)
         {
             goto err;
@@ -5920,20 +6369,15 @@ mcopdefinition_t* mc_parser_makedef(mcopdefinition_t* dest, const char* name, in
 #define makecase(dest, opc, name, opnum, opa1, opa2) \
     case opc: \
     { \
-        return mc_parser_makedef(&def, name, opnum, opa1, opa2); \
+        return mc_parser_makedef(def, name, opnum, opa1, opa2); \
     } \
     break;
 
-TMPSTATIC mcopdefinition_t* mc_opdef_lookup(mcinternopcode_t op)
+mcopdefinition_t* mc_opdef_lookup(mcopdefinition_t* def, mcinternopcode_t op)
 {
-    static mcopdefinition_t def;
-    if(op <= MC_OPCODE_NONE || op >= MC_OPCODE_MAX)
-    {
-        return NULL;
-    }
     switch(op)
     {
-        makecase(def, MC_OPCODE_NONE, "none", 0, 0, 0);
+        makecase(def, MC_OPCODE_HALT, "halt", 0, 0, 0);
         makecase(def, MC_OPCODE_CONSTANT, "pushconst", 1, 2, 0);
         makecase(def, MC_OPCODE_ADD, "add", 0, 0, 0);
         makecase(def, MC_OPCODE_POP, "pop", 0, 0, 0);
@@ -5988,17 +6432,23 @@ TMPSTATIC mcopdefinition_t* mc_opdef_lookup(mcinternopcode_t op)
         makecase(def, MC_OPCODE_LSHIFT, "bin.lshift", 0, 0, 0);
         makecase(def, MC_OPCODE_RSHIFT, "bin.rshift", 0, 0, 0);
         makecase(def, MC_OPCODE_MAX, "INVALID_MAX", 0, 0, 0);
+        default:
+            {
+                return NULL; 
+            }
+            break;
     }
-    return &def;
+    return def;
 }
 #undef makecase
 
-TMPSTATIC const char* mc_opdef_getname(mcinternopcode_t op)
+const char* mc_opdef_getname(mcinternopcode_t op)
 {
-    return mc_opdef_lookup(op)->name;
+    mcopdefinition_t def;
+    return mc_opdef_lookup(&def, op)->name;
 }
 
-TMPSTATIC mcastexpression_t* mc_astexpr_makeident(mcstate_t* state, mcastident_t* ident)
+mcastexpression_t* mc_astexpr_makeident(mcstate_t* state, mcastident_t* ident)
 {
     mcastexpression_t* res;
     res = mc_astexpr_makeexpression(state, MC_EXPR_IDENT);
@@ -6010,7 +6460,7 @@ TMPSTATIC mcastexpression_t* mc_astexpr_makeident(mcstate_t* state, mcastident_t
     return res;
 }
 
-TMPSTATIC mcastexpression_t* mc_astexpr_makeliteralnumber(mcstate_t* state, mcfloat_t val)
+mcastexpression_t* mc_astexpr_makeliteralnumber(mcstate_t* state, mcfloat_t val)
 {
     mcastexpression_t* res;
     res = mc_astexpr_makeexpression(state, MC_EXPR_NUMBERLITERAL);
@@ -6022,7 +6472,7 @@ TMPSTATIC mcastexpression_t* mc_astexpr_makeliteralnumber(mcstate_t* state, mcfl
     return res;
 }
 
-TMPSTATIC mcastexpression_t* mc_astexpr_makeliteralbool(mcstate_t* state, bool val)
+mcastexpression_t* mc_astexpr_makeliteralbool(mcstate_t* state, bool val)
 {
     mcastexpression_t* res;
     res = mc_astexpr_makeexpression(state, MC_EXPR_BOOLLITERAL);
@@ -6034,7 +6484,7 @@ TMPSTATIC mcastexpression_t* mc_astexpr_makeliteralbool(mcstate_t* state, bool v
     return res;
 }
 
-TMPSTATIC mcastexpression_t* mc_astexpr_makeliteralstring(mcstate_t* state, char* value, size_t len)
+mcastexpression_t* mc_astexpr_makeliteralstring(mcstate_t* state, char* value, size_t len)
 {
     mcastexpression_t* res;
     res = mc_astexpr_makeexpression(state, MC_EXPR_STRINGLITERAL);
@@ -6047,7 +6497,7 @@ TMPSTATIC mcastexpression_t* mc_astexpr_makeliteralstring(mcstate_t* state, char
     return res;
 }
 
-TMPSTATIC mcastexpression_t* mc_astexpr_makeliteralnull(mcstate_t* state)
+mcastexpression_t* mc_astexpr_makeliteralnull(mcstate_t* state)
 {
     mcastexpression_t* res;
     res = mc_astexpr_makeexpression(state, MC_EXPR_NULLLITERAL);
@@ -6058,7 +6508,7 @@ TMPSTATIC mcastexpression_t* mc_astexpr_makeliteralnull(mcstate_t* state)
     return res;
 }
 
-TMPSTATIC mcastexpression_t* mc_astexpr_makeliteralarray(mcstate_t* state, mcptrarray_t* values)
+mcastexpression_t* mc_astexpr_makeliteralarray(mcstate_t* state, mcptrarray_t* values)
 {
     mcastexpression_t* res;
     res = mc_astexpr_makeexpression(state, MC_EXPR_ARRAYLITERAL);
@@ -6070,7 +6520,7 @@ TMPSTATIC mcastexpression_t* mc_astexpr_makeliteralarray(mcstate_t* state, mcptr
     return res;
 }
 
-TMPSTATIC mcastexpression_t* mc_astexpr_makeliteralmap(mcstate_t* state, mcptrarray_t* keys, mcptrarray_t* values)
+mcastexpression_t* mc_astexpr_makeliteralmap(mcstate_t* state, mcptrarray_t* keys, mcptrarray_t* values)
 {
     mcastexpression_t* res;
     res = mc_astexpr_makeexpression(state, MC_EXPR_MAPLITERAL);
@@ -6083,7 +6533,7 @@ TMPSTATIC mcastexpression_t* mc_astexpr_makeliteralmap(mcstate_t* state, mcptrar
     return res;
 }
 
-TMPSTATIC mcastexpression_t* mc_astexpr_makeprefixexpr(mcstate_t* state, mcastmathoptype_t op, mcastexpression_t* right)
+mcastexpression_t* mc_astexpr_makeprefixexpr(mcstate_t* state, mcastmathoptype_t op, mcastexpression_t* right)
 {
     mcastexpression_t* res;
     res = mc_astexpr_makeexpression(state, MC_EXPR_PREFIX);
@@ -6096,7 +6546,7 @@ TMPSTATIC mcastexpression_t* mc_astexpr_makeprefixexpr(mcstate_t* state, mcastma
     return res;
 }
 
-TMPSTATIC mcastexpression_t* mc_astexpr_makeinfixexpr(mcstate_t* state, mcastmathoptype_t op, mcastexpression_t* left, mcastexpression_t* right)
+mcastexpression_t* mc_astexpr_makeinfixexpr(mcstate_t* state, mcastmathoptype_t op, mcastexpression_t* left, mcastexpression_t* right)
 {
     mcastexpression_t* res;
     res = mc_astexpr_makeexpression(state, MC_EXPR_INFIX);
@@ -6110,7 +6560,7 @@ TMPSTATIC mcastexpression_t* mc_astexpr_makeinfixexpr(mcstate_t* state, mcastmat
     return res;
 }
 
-TMPSTATIC mcastexpression_t* mc_astexpr_makeliteralfunction(mcstate_t* state, mcptrarray_t* params, mcastcodeblock_t* body)
+mcastexpression_t* mc_astexpr_makeliteralfunction(mcstate_t* state, mcptrarray_t* params, mcastcodeblock_t* body)
 {
     mcastexpression_t* res;
     res = mc_astexpr_makeexpression(state, MC_EXPR_FUNCTIONLITERAL);
@@ -6124,7 +6574,7 @@ TMPSTATIC mcastexpression_t* mc_astexpr_makeliteralfunction(mcstate_t* state, mc
     return res;
 }
 
-TMPSTATIC mcastexpression_t* mc_astexpr_makecallexpr(mcstate_t* state, mcastexpression_t* function, mcptrarray_t* args)
+mcastexpression_t* mc_astexpr_makecallexpr(mcstate_t* state, mcastexpression_t* function, mcptrarray_t* args)
 {
     mcastexpression_t* res;
     res = mc_astexpr_makeexpression(state, MC_EXPR_CALL);
@@ -6137,7 +6587,7 @@ TMPSTATIC mcastexpression_t* mc_astexpr_makecallexpr(mcstate_t* state, mcastexpr
     return res;
 }
 
-TMPSTATIC mcastexpression_t* mc_astexpr_makeindexexpr(mcstate_t* state, mcastexpression_t* left, mcastexpression_t* index, bool isdot)
+mcastexpression_t* mc_astexpr_makeindexexpr(mcstate_t* state, mcastexpression_t* left, mcastexpression_t* index, bool isdot)
 {
     mcastexpression_t* res;
     res = mc_astexpr_makeexpression(state, MC_EXPR_INDEX);
@@ -6151,7 +6601,7 @@ TMPSTATIC mcastexpression_t* mc_astexpr_makeindexexpr(mcstate_t* state, mcastexp
     return res;
 }
 
-TMPSTATIC mcastexpression_t* mc_astexpr_makeassignexpr(mcstate_t* state, mcastexpression_t* dest, mcastexpression_t* source, bool is_postfix)
+mcastexpression_t* mc_astexpr_makeassignexpr(mcstate_t* state, mcastexpression_t* dest, mcastexpression_t* source, bool is_postfix)
 {
     mcastexpression_t* res;
     res = mc_astexpr_makeexpression(state, MC_EXPR_ASSIGN);
@@ -6165,7 +6615,7 @@ TMPSTATIC mcastexpression_t* mc_astexpr_makeassignexpr(mcstate_t* state, mcastex
     return res;
 }
 
-TMPSTATIC mcastexpression_t* mc_astexpr_makelogicalexpr(mcstate_t* state, mcastmathoptype_t op, mcastexpression_t* left, mcastexpression_t* right)
+mcastexpression_t* mc_astexpr_makelogicalexpr(mcstate_t* state, mcastmathoptype_t op, mcastexpression_t* left, mcastexpression_t* right)
 {
     mcastexpression_t* res;
     res = mc_astexpr_makeexpression(state, MC_EXPR_LOGICAL);
@@ -6179,7 +6629,7 @@ TMPSTATIC mcastexpression_t* mc_astexpr_makelogicalexpr(mcstate_t* state, mcastm
     return res;
 }
 
-TMPSTATIC mcastexpression_t* mc_astexpr_maketernaryexpr(mcstate_t* state, mcastexpression_t* test, mcastexpression_t* ift, mcastexpression_t* iffalse)
+mcastexpression_t* mc_astexpr_maketernaryexpr(mcstate_t* state, mcastexpression_t* test, mcastexpression_t* ift, mcastexpression_t* iffalse)
 {
     mcastexpression_t* res;
     res = mc_astexpr_makeexpression(state, MC_EXPR_TERNARY);
@@ -6193,7 +6643,7 @@ TMPSTATIC mcastexpression_t* mc_astexpr_maketernaryexpr(mcstate_t* state, mcaste
     return res;
 }
 
-TMPSEMISTATIC void mc_astexpr_destroy(mcastexpression_t* expr)
+void mc_astexpr_destroy(mcastexpression_t* expr)
 {
     if(!expr)
     {
@@ -6362,7 +6812,7 @@ TMPSEMISTATIC void mc_astexpr_destroy(mcastexpression_t* expr)
     mc_allocator_free(expr->pstate, expr);
 }
 
-TMPSEMISTATIC mcastexpression_t* mc_astexpr_copy(mcastexpression_t* expr)
+mcastexpression_t* mc_astexpr_copy(mcastexpression_t* expr)
 {
     mcastexpression_t* res;
     if(!expr)
@@ -6851,7 +7301,7 @@ TMPSEMISTATIC mcastexpression_t* mc_astexpr_copy(mcastexpression_t* expr)
     return res;
 }
 
-TMPSTATIC mcastexpression_t* mc_astexpr_makedefineexpr(mcstate_t* state, mcastident_t* name, mcastexpression_t* value, bool assignable)
+mcastexpression_t* mc_astexpr_makedefineexpr(mcstate_t* state, mcastident_t* name, mcastexpression_t* value, bool assignable)
 {
     mcastexpression_t* res;
     res = mc_astexpr_makeexpression(state, MC_EXPR_STMTDEFINE);
@@ -6865,7 +7315,7 @@ TMPSTATIC mcastexpression_t* mc_astexpr_makedefineexpr(mcstate_t* state, mcastid
     return res;
 }
 
-TMPSTATIC mcastexpression_t* mc_astexpr_makeifexpr(mcstate_t* state, mcptrarray_t* cases, mcastcodeblock_t* alternative)
+mcastexpression_t* mc_astexpr_makeifexpr(mcstate_t* state, mcptrarray_t* cases, mcastcodeblock_t* alternative)
 {
     mcastexpression_t* res;
     res = mc_astexpr_makeexpression(state, MC_EXPR_STMTIF);
@@ -6878,7 +7328,7 @@ TMPSTATIC mcastexpression_t* mc_astexpr_makeifexpr(mcstate_t* state, mcptrarray_
     return res;
 }
 
-TMPSTATIC mcastexpression_t* mc_astexpr_makereturnexpr(mcstate_t* state, mcastexpression_t* value)
+mcastexpression_t* mc_astexpr_makereturnexpr(mcstate_t* state, mcastexpression_t* value)
 {
     mcastexpression_t* res;
     res = mc_astexpr_makeexpression(state, MC_EXPR_STMTRETURN);
@@ -6890,7 +7340,7 @@ TMPSTATIC mcastexpression_t* mc_astexpr_makereturnexpr(mcstate_t* state, mcastex
     return res;
 }
 
-TMPSTATIC mcastexpression_t* mc_astexpr_makeexprstmt(mcstate_t* state, mcastexpression_t* value)
+mcastexpression_t* mc_astexpr_makeexprstmt(mcstate_t* state, mcastexpression_t* value)
 {
     mcastexpression_t* res;
     res = mc_astexpr_makeexpression(state, MC_EXPR_STMTEXPRESSION);
@@ -6902,7 +7352,7 @@ TMPSTATIC mcastexpression_t* mc_astexpr_makeexprstmt(mcstate_t* state, mcastexpr
     return res;
 }
 
-TMPSTATIC mcastexpression_t* mc_astexpr_makewhileexpr(mcstate_t* state, mcastexpression_t* test, mcastcodeblock_t* body)
+mcastexpression_t* mc_astexpr_makewhileexpr(mcstate_t* state, mcastexpression_t* test, mcastcodeblock_t* body)
 {
     mcastexpression_t* res;
     res = mc_astexpr_makeexpression(state, MC_EXPR_STMTLOOPWHILE);
@@ -6915,7 +7365,7 @@ TMPSTATIC mcastexpression_t* mc_astexpr_makewhileexpr(mcstate_t* state, mcastexp
     return res;
 }
 
-TMPSTATIC mcastexpression_t* mc_astexpr_makebreakexpr(mcstate_t* state)
+mcastexpression_t* mc_astexpr_makebreakexpr(mcstate_t* state)
 {
     mcastexpression_t* res;
     res = mc_astexpr_makeexpression(state, MC_EXPR_STMTBREAK);
@@ -6926,7 +7376,7 @@ TMPSTATIC mcastexpression_t* mc_astexpr_makebreakexpr(mcstate_t* state)
     return res;
 }
 
-TMPSTATIC mcastexpression_t* mc_astexpr_makeforeachexpr(mcstate_t* state, mcastident_t* iterator, mcastexpression_t* source, mcastcodeblock_t* body)
+mcastexpression_t* mc_astexpr_makeforeachexpr(mcstate_t* state, mcastident_t* iterator, mcastexpression_t* source, mcastcodeblock_t* body)
 {
     mcastexpression_t* res;
     res = mc_astexpr_makeexpression(state, MC_EXPR_STMTLOOPFOREACH);
@@ -6940,7 +7390,7 @@ TMPSTATIC mcastexpression_t* mc_astexpr_makeforeachexpr(mcstate_t* state, mcasti
     return res;
 }
 
-TMPSTATIC mcastexpression_t* mc_astexpr_makeforloopexpr(mcstate_t* state, mcastexpression_t* init, mcastexpression_t* test, mcastexpression_t* update, mcastcodeblock_t* body)
+mcastexpression_t* mc_astexpr_makeforloopexpr(mcstate_t* state, mcastexpression_t* init, mcastexpression_t* test, mcastexpression_t* update, mcastcodeblock_t* body)
 {
     mcastexpression_t* res;
     res = mc_astexpr_makeexpression(state, MC_EXPR_STMTLOOPFORCLASSIC);
@@ -6955,7 +7405,7 @@ TMPSTATIC mcastexpression_t* mc_astexpr_makeforloopexpr(mcstate_t* state, mcaste
     return res;
 }
 
-TMPSTATIC mcastexpression_t* mc_astexpr_makecontinueexpr(mcstate_t* state)
+mcastexpression_t* mc_astexpr_makecontinueexpr(mcstate_t* state)
 {
     mcastexpression_t* res;
     res = mc_astexpr_makeexpression(state, MC_EXPR_STMTCONTINUE);
@@ -6966,7 +7416,7 @@ TMPSTATIC mcastexpression_t* mc_astexpr_makecontinueexpr(mcstate_t* state)
     return res;
 }
 
-TMPSTATIC mcastexpression_t* mc_astexpr_makeblockexpr(mcstate_t* state, mcastcodeblock_t* block)
+mcastexpression_t* mc_astexpr_makeblockexpr(mcstate_t* state, mcastcodeblock_t* block)
 {
     mcastexpression_t* res;
     res = mc_astexpr_makeexpression(state, MC_EXPR_STMTBLOCK);
@@ -6978,7 +7428,7 @@ TMPSTATIC mcastexpression_t* mc_astexpr_makeblockexpr(mcstate_t* state, mcastcod
     return res;
 }
 
-TMPSTATIC mcastexpression_t* mc_astexpr_makeimportexpr(mcstate_t* state, char* path)
+mcastexpression_t* mc_astexpr_makeimportexpr(mcstate_t* state, char* path)
 {
     mcastexpression_t* res;
     res = mc_astexpr_makeexpression(state, MC_EXPR_STMTIMPORT);
@@ -6990,7 +7440,7 @@ TMPSTATIC mcastexpression_t* mc_astexpr_makeimportexpr(mcstate_t* state, char* p
     return res;
 }
 
-TMPSTATIC mcastexpression_t* mc_astexpr_makerecoverexpr(mcstate_t* state, mcastident_t* eid, mcastcodeblock_t* body)
+mcastexpression_t* mc_astexpr_makerecoverexpr(mcstate_t* state, mcastident_t* eid, mcastcodeblock_t* body)
 {
     mcastexpression_t* res;
     res = mc_astexpr_makeexpression(state, MC_EXPR_STMTRECOVER);
@@ -7003,10 +7453,10 @@ TMPSTATIC mcastexpression_t* mc_astexpr_makerecoverexpr(mcstate_t* state, mcasti
     return res;
 }
 
-TMPSTATIC mcastcodeblock_t* mc_astcodeblock_make(mcstate_t* state, mcptrarray_t* statements)
+mcastcodeblock_t* mc_astcodeblock_make(mcstate_t* state, mcptrarray_t* statements)
 {
     mcastcodeblock_t* block;
-    block = (mcastcodeblock_t*)mc_allocator_alloc(state, sizeof(mcastcodeblock_t));
+    block = (mcastcodeblock_t*)mc_allocator_malloc(state, sizeof(mcastcodeblock_t));
     if(!block)
     {
         return NULL;
@@ -7016,7 +7466,7 @@ TMPSTATIC mcastcodeblock_t* mc_astcodeblock_make(mcstate_t* state, mcptrarray_t*
     return block;
 }
 
-TMPSTATIC void mc_astcodeblock_destroy(mcastcodeblock_t* block)
+void mc_astcodeblock_destroy(mcastcodeblock_t* block)
 {
     if(!block)
     {
@@ -7026,7 +7476,7 @@ TMPSTATIC void mc_astcodeblock_destroy(mcastcodeblock_t* block)
     mc_allocator_free(block->pstate, block);
 }
 
-TMPSTATIC mcastcodeblock_t* mc_astcodeblock_copy(mcastcodeblock_t* block)
+mcastcodeblock_t* mc_astcodeblock_copy(mcastcodeblock_t* block)
 {
     mcastcodeblock_t* res;
     mcptrarray_t* statementscopy;
@@ -7048,10 +7498,10 @@ TMPSTATIC mcastcodeblock_t* mc_astcodeblock_copy(mcastcodeblock_t* block)
     return res;
 }
 
-TMPSTATIC mcastfuncparam_t* mc_astfuncparam_make(mcstate_t* state, mcastident_t* ident)
+mcastfuncparam_t* mc_astfuncparam_make(mcstate_t* state, mcastident_t* ident)
 {
     mcastfuncparam_t* res;
-    res = (mcastfuncparam_t*)mc_allocator_alloc(state, sizeof(mcastfuncparam_t));
+    res = (mcastfuncparam_t*)mc_allocator_malloc(state, sizeof(mcastfuncparam_t));
     if(!res)
     {
         return NULL;
@@ -7066,10 +7516,10 @@ TMPSTATIC mcastfuncparam_t* mc_astfuncparam_make(mcstate_t* state, mcastident_t*
     return res;
 }
 
-TMPSTATIC mcastfuncparam_t* mc_astfuncparam_copy(mcastfuncparam_t* param)
+mcastfuncparam_t* mc_astfuncparam_copy(mcastfuncparam_t* param)
 {
     mcastfuncparam_t* res;
-    res = (mcastfuncparam_t*)mc_allocator_alloc(param->pstate, sizeof(mcastfuncparam_t));
+    res = (mcastfuncparam_t*)mc_allocator_malloc(param->pstate, sizeof(mcastfuncparam_t));
     if(!res)
     {
         return NULL;
@@ -7084,7 +7534,7 @@ TMPSTATIC mcastfuncparam_t* mc_astfuncparam_copy(mcastfuncparam_t* param)
     return res;
 }
 
-TMPSTATIC void mc_astfuncparam_destroy(mcastfuncparam_t* param)
+void mc_astfuncparam_destroy(mcastfuncparam_t* param)
 {
     if(!param)
     {
@@ -7094,9 +7544,9 @@ TMPSTATIC void mc_astfuncparam_destroy(mcastfuncparam_t* param)
     mc_allocator_free(param->pstate, param);
 }
 
-TMPSTATIC mcastident_t* mc_astident_make(mcstate_t* state, mcasttoken_t tok)
+mcastident_t* mc_astident_make(mcstate_t* state, mcasttoken_t tok)
 {
-    mcastident_t* res = (mcastident_t*)mc_allocator_alloc(state, sizeof(mcastident_t));
+    mcastident_t* res = (mcastident_t*)mc_allocator_malloc(state, sizeof(mcastident_t));
     if(!res)
     {
         return NULL;
@@ -7112,9 +7562,9 @@ TMPSTATIC mcastident_t* mc_astident_make(mcstate_t* state, mcasttoken_t tok)
     return res;
 }
 
-TMPSTATIC mcastident_t* mc_astident_copy(mcastident_t* ident)
+mcastident_t* mc_astident_copy(mcastident_t* ident)
 {
-    mcastident_t* res = (mcastident_t*)mc_allocator_alloc(ident->pstate, sizeof(mcastident_t));
+    mcastident_t* res = (mcastident_t*)mc_allocator_malloc(ident->pstate, sizeof(mcastident_t));
     if(!res)
     {
         return NULL;
@@ -7130,7 +7580,7 @@ TMPSTATIC mcastident_t* mc_astident_copy(mcastident_t* ident)
     return res;
 }
 
-TMPSTATIC void mc_astident_destroy(mcastident_t* ident)
+void mc_astident_destroy(mcastident_t* ident)
 {
     if(!ident)
     {
@@ -7142,10 +7592,10 @@ TMPSTATIC void mc_astident_destroy(mcastident_t* ident)
     mc_allocator_free(ident->pstate, ident);
 }
 
-TMPSTATIC mcastifcase_t* mc_astifcase_make(mcstate_t* state, mcastexpression_t* test, mcastcodeblock_t* consequence)
+mcastifcase_t* mc_astifcase_make(mcstate_t* state, mcastexpression_t* test, mcastcodeblock_t* consequence)
 {
     mcastifcase_t* res;
-    res = (mcastifcase_t*)mc_allocator_alloc(state, sizeof(mcastifcase_t));
+    res = (mcastifcase_t*)mc_allocator_malloc(state, sizeof(mcastifcase_t));
     if(!res)
     {
         return NULL;
@@ -7156,7 +7606,7 @@ TMPSTATIC mcastifcase_t* mc_astifcase_make(mcstate_t* state, mcastexpression_t* 
     return res;
 }
 
-TMPSTATIC void mc_astifcase_destroy(mcastifcase_t* cond)
+void mc_astifcase_destroy(mcastifcase_t* cond)
 {
     if(!cond)
     {
@@ -7167,7 +7617,7 @@ TMPSTATIC void mc_astifcase_destroy(mcastifcase_t* cond)
     mc_allocator_free(cond->pstate, cond);
 }
 
-TMPSTATIC mcastifcase_t* mc_astifcase_copy(mcastifcase_t* ifcase)
+mcastifcase_t* mc_astifcase_copy(mcastifcase_t* ifcase)
 {
     mcastexpression_t* testcopy;
     mcastcodeblock_t* consequencecopy;
@@ -7202,9 +7652,9 @@ err:
     return NULL;
 }
 
-TMPSTATIC mcastexpression_t* mc_astexpr_makeexpression(mcstate_t* state, mcastexprtype_t type)
+mcastexpression_t* mc_astexpr_makeexpression(mcstate_t* state, mcastexprtype_t type)
 {
-    mcastexpression_t* res = (mcastexpression_t*)mc_allocator_alloc(state, sizeof(mcastexpression_t));
+    mcastexpression_t* res = (mcastexpression_t*)mc_allocator_malloc(state, sizeof(mcastexpression_t));
     if(!res)
     {
         return NULL;
@@ -7215,10 +7665,10 @@ TMPSTATIC mcastexpression_t* mc_astexpr_makeexpression(mcstate_t* state, mcastex
     return res;
 }
 
-TMPSTATIC mcastparser_t* mc_astparser_make(mcstate_t* state, mcconfig_t* config, mcerrlist_t* errors)
+mcastparser_t* mc_astparser_make(mcstate_t* state, mcconfig_t* config, mcerrlist_t* errors)
 {
     mcastparser_t* parser;
-    parser = (mcastparser_t*)mc_allocator_alloc(state, sizeof(mcastparser_t));
+    parser = (mcastparser_t*)mc_allocator_malloc(state, sizeof(mcastparser_t));
     if(!parser)
     {
         return NULL;
@@ -7289,7 +7739,7 @@ TMPSTATIC mcastparser_t* mc_astparser_make(mcstate_t* state, mcconfig_t* config,
     return parser;
 }
 
-TMPSTATIC void mc_astparser_destroy(mcastparser_t* parser)
+void mc_astparser_destroy(mcastparser_t* parser)
 {
     if(!parser)
     {
@@ -7298,7 +7748,7 @@ TMPSTATIC void mc_astparser_destroy(mcastparser_t* parser)
     mc_allocator_free(parser->pstate, parser);
 }
 
-TMPSTATIC mcptrarray_t* mc_astparser_parseall(mcastparser_t* parser, const char* input, mcastcompiledfile_t* file)
+mcptrarray_t* mc_astparser_parseall(mcastparser_t* parser, const char* input, mcastcompiledfile_t* file)
 {
     bool ok;
     mcastexpression_t* expr;
@@ -7345,7 +7795,7 @@ err:
     return NULL;
 }
 
-TMPSTATIC mcastexpression_t* mc_astparser_parsestatement(mcastparser_t* p)
+mcastexpression_t* mc_astparser_parsestatement(mcastparser_t* p)
 {
     mcastlocation_t pos;
     mcastexpression_t* res;
@@ -7436,7 +7886,7 @@ TMPSTATIC mcastexpression_t* mc_astparser_parsestatement(mcastparser_t* p)
     return res;
 }
 
-TMPSEMISTATIC mcastexpression_t* mc_parser_parsevarletstmt(mcastparser_t* p)
+mcastexpression_t* mc_parser_parsevarletstmt(mcastparser_t* p)
 {
     bool assignable;
     mcastident_t* nameident;
@@ -7492,7 +7942,7 @@ err:
     return NULL;
 }
 
-TMPSEMISTATIC mcastexpression_t* mc_parser_parseifstmt(mcastparser_t* p)
+mcastexpression_t* mc_parser_parseifstmt(mcastparser_t* p)
 {
     bool ok;
     mcptrarray_t* cases;
@@ -7598,7 +8048,7 @@ err:
     return NULL;
 }
 
-TMPSEMISTATIC mcastexpression_t* mc_parser_parsereturnstmt(mcastparser_t* p)
+mcastexpression_t* mc_parser_parsereturnstmt(mcastparser_t* p)
 {
     mcastexpression_t* res;
     mcastexpression_t* expr;
@@ -7621,7 +8071,7 @@ TMPSEMISTATIC mcastexpression_t* mc_parser_parsereturnstmt(mcastparser_t* p)
     return res;
 }
 
-TMPSEMISTATIC mcastexpression_t* mc_parser_parseexprstmt(mcastparser_t* p)
+mcastexpression_t* mc_parser_parseexprstmt(mcastparser_t* p)
 {
     mcastexpression_t* res;
     mcastexpression_t* expr;
@@ -7651,7 +8101,7 @@ TMPSEMISTATIC mcastexpression_t* mc_parser_parseexprstmt(mcastparser_t* p)
     return res;
 }
 
-TMPSEMISTATIC mcastexpression_t* mc_parser_parseloopwhilestmt(mcastparser_t* p)
+mcastexpression_t* mc_parser_parseloopwhilestmt(mcastparser_t* p)
 {
     mcastexpression_t* res;
     mcastexpression_t* test;
@@ -7691,19 +8141,19 @@ err:
     return NULL;
 }
 
-TMPSEMISTATIC mcastexpression_t* mc_parser_parsebreakstmt(mcastparser_t* p)
+mcastexpression_t* mc_parser_parsebreakstmt(mcastparser_t* p)
 {
     mc_lexer_nexttoken(&p->lexer);
     return mc_astexpr_makebreakexpr(p->pstate);
 }
 
-TMPSEMISTATIC mcastexpression_t* mc_parser_parsecontinuestmt(mcastparser_t* p)
+mcastexpression_t* mc_parser_parsecontinuestmt(mcastparser_t* p)
 {
     mc_lexer_nexttoken(&p->lexer);
     return mc_astexpr_makecontinueexpr(p->pstate);
 }
 
-TMPSEMISTATIC mcastexpression_t* mc_parser_parseblockstmt(mcastparser_t* p)
+mcastexpression_t* mc_parser_parseblockstmt(mcastparser_t* p)
 {
     mcastcodeblock_t* block;
     mcastexpression_t* res;
@@ -7721,7 +8171,7 @@ TMPSEMISTATIC mcastexpression_t* mc_parser_parseblockstmt(mcastparser_t* p)
     return res;
 }
 
-TMPSEMISTATIC mcastexpression_t* mc_parser_parseimportstmt(mcastparser_t* p)
+mcastexpression_t* mc_parser_parseimportstmt(mcastparser_t* p)
 {
     char* processedname;
     mcastexpression_t* res;
@@ -7746,7 +8196,7 @@ TMPSEMISTATIC mcastexpression_t* mc_parser_parseimportstmt(mcastparser_t* p)
     return res;
 }
 
-TMPSEMISTATIC mcastexpression_t* mc_parser_parserecoverstmt(mcastparser_t* p)
+mcastexpression_t* mc_parser_parserecoverstmt(mcastparser_t* p)
 {
     mcastexpression_t* res;
     mcastident_t* eid;
@@ -7791,7 +8241,7 @@ err:
     return NULL;
 }
 
-TMPSEMISTATIC mcastexpression_t* mc_parser_parseloopforstmt(mcastparser_t* p)
+mcastexpression_t* mc_parser_parseloopforstmt(mcastparser_t* p)
 {
     mc_lexer_nexttoken(&p->lexer);
     if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LPAREN))
@@ -7806,7 +8256,7 @@ TMPSEMISTATIC mcastexpression_t* mc_parser_parseloopforstmt(mcastparser_t* p)
     return mc_parser_parseloopforclassicstmt(p);
 }
 
-TMPSTATIC mcastexpression_t* mc_parser_parseloopforeachstmt(mcastparser_t* p)
+mcastexpression_t* mc_parser_parseloopforeachstmt(mcastparser_t* p)
 {
     mcastexpression_t* res;
     mcastexpression_t* source;
@@ -7854,7 +8304,7 @@ err:
     return NULL;
 }
 
-TMPSTATIC mcastexpression_t* mc_parser_parseloopforclassicstmt(mcastparser_t* p)
+mcastexpression_t* mc_parser_parseloopforclassicstmt(mcastparser_t* p)
 {
     mcastexpression_t* res;
     mcastexpression_t* init;
@@ -7929,7 +8379,7 @@ err:
 }
 
 
-TMPSTATIC mcastcodeblock_t* mc_parser_parsecodeblock(mcastparser_t* p)
+mcastcodeblock_t* mc_parser_parsecodeblock(mcastparser_t* p)
 {
     bool ok;
     mcastcodeblock_t* res;
@@ -7984,7 +8434,7 @@ err:
     return NULL;
 }
 
-TMPSTATIC mcastexpression_t* mc_parser_parseexpression(mcastparser_t* p, mcastprecedence_t prec)
+mcastexpression_t* mc_parser_parseexpression(mcastparser_t* p, mcastprecedence_t prec)
 {
     char* literal;
     mcastlocation_t pos;
@@ -8032,7 +8482,7 @@ TMPSTATIC mcastexpression_t* mc_parser_parseexpression(mcastparser_t* p, mcastpr
     return leftexpr;
 }
 
-TMPSTATIC mcastexpression_t* mc_parser_parseident(mcastparser_t* p)
+mcastexpression_t* mc_parser_parseident(mcastparser_t* p)
 {
     mcastident_t* ident;
     mcastexpression_t* res;
@@ -8051,7 +8501,7 @@ TMPSTATIC mcastexpression_t* mc_parser_parseident(mcastparser_t* p)
     return res;
 }
 
-TMPSTATIC mcastexpression_t* mc_parser_parseliteralnumber(mcastparser_t* p)
+mcastexpression_t* mc_parser_parseliteralnumber(mcastparser_t* p)
 {
     mcfloat_t number;
     long parsedlen;
@@ -8075,7 +8525,7 @@ TMPSTATIC mcastexpression_t* mc_parser_parseliteralnumber(mcastparser_t* p)
     return mc_astexpr_makeliteralnumber(p->pstate, number);
 }
 
-TMPSTATIC mcastexpression_t* mc_parser_parseliteralbool(mcastparser_t* p)
+mcastexpression_t* mc_parser_parseliteralbool(mcastparser_t* p)
 {
     mcastexpression_t* res;
     res = mc_astexpr_makeliteralbool(p->pstate, p->lexer.currtoken.type == MC_TOK_TRUE);
@@ -8083,7 +8533,7 @@ TMPSTATIC mcastexpression_t* mc_parser_parseliteralbool(mcastparser_t* p)
     return res;
 }
 
-TMPSTATIC mcastexpression_t* mc_parser_parseliteralstring(mcastparser_t* p)
+mcastexpression_t* mc_parser_parseliteralstring(mcastparser_t* p)
 {
     size_t len;
     char* processedliteral;
@@ -8105,7 +8555,7 @@ TMPSTATIC mcastexpression_t* mc_parser_parseliteralstring(mcastparser_t* p)
     return res;
 }
 
-TMPSTATIC mcastexpression_t* mc_parser_parseliteraltemplatestring(mcastparser_t* p)
+mcastexpression_t* mc_parser_parseliteraltemplatestring(mcastparser_t* p)
 {
     size_t len;
     char* processedliteral;
@@ -8199,13 +8649,13 @@ err:
     return NULL;
 }
 
-TMPSTATIC mcastexpression_t* mc_parser_parseliteralnull(mcastparser_t* p)
+mcastexpression_t* mc_parser_parseliteralnull(mcastparser_t* p)
 {
     mc_lexer_nexttoken(&p->lexer);
     return mc_astexpr_makeliteralnull(p->pstate);
 }
 
-TMPSTATIC mcastexpression_t* mc_parser_parseliteralarray(mcastparser_t* p)
+mcastexpression_t* mc_parser_parseliteralarray(mcastparser_t* p)
 {
     mcptrarray_t* array;
     mcastexpression_t* res;
@@ -8223,7 +8673,7 @@ TMPSTATIC mcastexpression_t* mc_parser_parseliteralarray(mcastparser_t* p)
     return res;
 }
 
-TMPSTATIC mcastexpression_t* mc_parser_parseliteralmap(mcastparser_t* p)
+mcastexpression_t* mc_parser_parseliteralmap(mcastparser_t* p)
 {
     bool ok;
     size_t len;
@@ -8324,7 +8774,7 @@ err:
     return NULL;
 }
 
-TMPSTATIC mcastexpression_t* mc_parser_parseprefixexpr(mcastparser_t* p)
+mcastexpression_t* mc_parser_parseprefixexpr(mcastparser_t* p)
 {
     mcastmathoptype_t op;
     mcastexpression_t* res;
@@ -8345,7 +8795,7 @@ TMPSTATIC mcastexpression_t* mc_parser_parseprefixexpr(mcastparser_t* p)
     return res;
 }
 
-TMPSTATIC mcastexpression_t* mc_parser_parseinfixexpr(mcastparser_t* p, mcastexpression_t* left)
+mcastexpression_t* mc_parser_parseinfixexpr(mcastparser_t* p, mcastexpression_t* left)
 {
     mcastmathoptype_t op;
     mcastprecedence_t prec;
@@ -8368,7 +8818,7 @@ TMPSTATIC mcastexpression_t* mc_parser_parseinfixexpr(mcastparser_t* p, mcastexp
     return res;
 }
 
-TMPSTATIC mcastexpression_t* mc_parser_parsegroupedexpr(mcastparser_t* p)
+mcastexpression_t* mc_parser_parsegroupedexpr(mcastparser_t* p)
 {
     mcastexpression_t* expr;
     mc_lexer_nexttoken(&p->lexer);
@@ -8383,7 +8833,7 @@ TMPSTATIC mcastexpression_t* mc_parser_parsegroupedexpr(mcastparser_t* p)
 }
 
 
-TMPSTATIC bool mc_parser_parsefuncparams(mcastparser_t* p, mcptrarray_t* outparams)
+bool mc_parser_parsefuncparams(mcastparser_t* p, mcptrarray_t* outparams)
 {
     bool ok;
     mcastident_t* ident;
@@ -8444,7 +8894,7 @@ TMPSTATIC bool mc_parser_parsefuncparams(mcastparser_t* p, mcptrarray_t* outpara
     return true;
 }
 
-TMPSTATIC mcastexpression_t* mc_parser_parseliteralfunction(mcastparser_t* p)
+mcastexpression_t* mc_parser_parseliteralfunction(mcastparser_t* p)
 {
     bool ok;
     mcptrarray_t* params;
@@ -8482,7 +8932,7 @@ err:
     return NULL;
 }
 
-TMPSEMISTATIC mcastexpression_t* mc_parser_parsefunctionstmt(mcastparser_t* p)
+mcastexpression_t* mc_parser_parsefunctionstmt(mcastparser_t* p)
 {
     mcastident_t* nameident;
     mcastexpression_t* res;
@@ -8526,7 +8976,7 @@ err:
 }
 
 
-TMPSTATIC mcastexpression_t* mc_parser_parsecallexpr(mcastparser_t* p, mcastexpression_t* left)
+mcastexpression_t* mc_parser_parsecallexpr(mcastparser_t* p, mcastexpression_t* left)
 {
     mcptrarray_t* args;
     mcastexpression_t* res;
@@ -8546,7 +8996,7 @@ TMPSTATIC mcastexpression_t* mc_parser_parsecallexpr(mcastparser_t* p, mcastexpr
     return res;
 }
 
-TMPSTATIC mcptrarray_t* mc_parser_parseexprlist(mcastparser_t* p, mcasttoktype_t starttoken, mcasttoktype_t endtoken, bool trailingcommaallowed)
+mcptrarray_t* mc_parser_parseexprlist(mcastparser_t* p, mcasttoktype_t starttoken, mcasttoktype_t endtoken, bool trailingcommaallowed)
 {
     bool ok;
     mcptrarray_t* res;
@@ -8603,7 +9053,7 @@ err:
     return NULL;
 }
 
-TMPSTATIC mcastexpression_t* mc_parser_parseindexexpr(mcastparser_t* p, mcastexpression_t* left)
+mcastexpression_t* mc_parser_parseindexexpr(mcastparser_t* p, mcastexpression_t* left)
 {
     mcastexpression_t* res;
     mcastexpression_t* index;
@@ -8628,7 +9078,7 @@ TMPSTATIC mcastexpression_t* mc_parser_parseindexexpr(mcastparser_t* p, mcastexp
     return res;
 }
 
-TMPSTATIC mcastexpression_t* mc_parser_parseassignexpr(mcastparser_t* p, mcastexpression_t* left)
+mcastexpression_t* mc_parser_parseassignexpr(mcastparser_t* p, mcastexpression_t* left)
 {
     mcastlocation_t pos;
     mcastmathoptype_t op;
@@ -8696,7 +9146,7 @@ err:
     return NULL;
 }
 
-TMPSTATIC mcastexpression_t* mc_parser_parselogicalexpr(mcastparser_t* p, mcastexpression_t* left)
+mcastexpression_t* mc_parser_parselogicalexpr(mcastparser_t* p, mcastexpression_t* left)
 {
     mcastmathoptype_t op;
     mcastprecedence_t prec;
@@ -8719,7 +9169,7 @@ TMPSTATIC mcastexpression_t* mc_parser_parselogicalexpr(mcastparser_t* p, mcaste
     return res;
 }
 
-TMPSTATIC mcastexpression_t* mc_parser_parseternaryexpr(mcastparser_t* p, mcastexpression_t* left)
+mcastexpression_t* mc_parser_parseternaryexpr(mcastparser_t* p, mcastexpression_t* left)
 {
     mcastexpression_t* res;
     mcastexpression_t* ift;
@@ -8752,7 +9202,7 @@ TMPSTATIC mcastexpression_t* mc_parser_parseternaryexpr(mcastparser_t* p, mcaste
     return res;
 }
 
-TMPSTATIC mcastexpression_t* mc_parser_parseincdecprefixexpr(mcastparser_t* p)
+mcastexpression_t* mc_parser_parseincdecprefixexpr(mcastparser_t* p)
 {
     mcastlocation_t pos;
     mcastmathoptype_t op;
@@ -8809,7 +9259,7 @@ err:
     return NULL;
 }
 
-TMPSTATIC mcastexpression_t* mc_parser_parseincdecpostfixexpr(mcastparser_t* p, mcastexpression_t* left)
+mcastexpression_t* mc_parser_parseincdecpostfixexpr(mcastparser_t* p, mcastexpression_t* left)
 {
     mcastlocation_t pos;
     mcastmathoptype_t op;
@@ -8856,7 +9306,7 @@ err:
     return NULL;
 }
 
-TMPSTATIC mcastexpression_t* mc_parser_parsedotexpression(mcastparser_t* p, mcastexpression_t* left)
+mcastexpression_t* mc_parser_parsedotexpression(mcastparser_t* p, mcastexpression_t* left)
 {
     size_t len;
     char* str;
@@ -8886,7 +9336,7 @@ TMPSTATIC mcastexpression_t* mc_parser_parsedotexpression(mcastparser_t* p, mcas
     return res;
 }
 
-TMPSTATIC mcastprecedence_t mc_parser_getprecedence(mcasttoktype_t tk)
+mcastprecedence_t mc_parser_getprecedence(mcasttoktype_t tk)
 {
     switch(tk)
     {
@@ -8947,7 +9397,7 @@ TMPSTATIC mcastprecedence_t mc_parser_getprecedence(mcasttoktype_t tk)
     return MC_ASTPREC_LOWEST;
 }
 
-TMPSTATIC mcastmathoptype_t mc_parser_tokentomathop(mcasttoktype_t tk)
+mcastmathoptype_t mc_parser_tokentomathop(mcasttoktype_t tk)
 {
     switch(tk)
     {
@@ -9027,7 +9477,7 @@ TMPSTATIC mcastmathoptype_t mc_parser_tokentomathop(mcasttoktype_t tk)
 
 }
 
-TMPSTATIC char mc_parser_getescapechar(char c)
+char mc_parser_getescapechar(char c)
 {
     switch(c)
     {
@@ -9055,12 +9505,12 @@ TMPSTATIC char mc_parser_getescapechar(char c)
     return c;
 }
 
-TMPSTATIC char* mc_parser_processandcopystring(mcstate_t* state, const char* input, size_t len)
+char* mc_parser_processandcopystring(mcstate_t* state, const char* input, size_t len)
 {
     size_t ini;
     size_t outi;
     char* output;
-    output = (char*)mc_allocator_alloc(state, len + 1);
+    output = (char*)mc_allocator_malloc(state, len + 1);
     if(!output)
     {
         return NULL;
@@ -9092,7 +9542,7 @@ error:
     return NULL;
 }
 
-TMPSTATIC mcastexpression_t* mc_parser_makefunccallexpr(mcstate_t* state, mcastexpression_t* expr, const char* fname)
+mcastexpression_t* mc_parser_makefunccallexpr(mcstate_t* state, mcastexpression_t* expr, const char* fname)
 {
     bool ok;
     mcasttoken_t fntoken;
@@ -9140,7 +9590,7 @@ TMPSTATIC mcastexpression_t* mc_parser_makefunccallexpr(mcstate_t* state, mcaste
     return ce;
 }
 
-TMPSEMISTATIC mcastexpression_t* mc_optimizer_optexpression(mcastexpression_t* expr)
+mcastexpression_t* mc_optimizer_optexpression(mcastexpression_t* expr)
 {
     switch(expr->type)
     {
@@ -9154,7 +9604,7 @@ TMPSEMISTATIC mcastexpression_t* mc_optimizer_optexpression(mcastexpression_t* e
     return NULL;
 }
 
-TMPSTATIC mcastexpression_t* mc_optimizer_optinfixexpr(mcastexpression_t* expr)
+mcastexpression_t* mc_optimizer_optinfixexpr(mcastexpression_t* expr)
 {
     bool leftisnumeric;
     bool rightisnumeric;
@@ -9307,7 +9757,7 @@ TMPSTATIC mcastexpression_t* mc_optimizer_optinfixexpr(mcastexpression_t* expr)
     return res;
 }
 
-TMPSTATIC mcastexpression_t* mc_optimizer_optprefixexpr(mcastexpression_t* expr)
+mcastexpression_t* mc_optimizer_optprefixexpr(mcastexpression_t* expr)
 {
     mcastexpression_t* res;
     mcastexpression_t* right;
@@ -9346,15 +9796,16 @@ TMPSTATIC mcastexpression_t* mc_optimizer_optprefixexpr(mcastexpression_t* expr)
         } \
     } while(0)
 
-TMPSTATIC int mc_compiler_gencode(mcinternopcode_t op, int operandscount, const uint64_t* operands, mcbasicarray_t* res)
+int mc_compiler_gencode(mcinternopcode_t op, int operandscount, const uint64_t* operands, mcbasicarray_t* res)
 {
     bool ok;
     int i;
     int width;
     int instrlen;
     uint8_t val;
+    mcopdefinition_t vdef;
     mcopdefinition_t* def;
-    def = mc_opdef_lookup(op);
+    def = mc_opdef_lookup(&vdef, op);
     if(!def)
     {
         return 0;
@@ -9419,7 +9870,7 @@ TMPSTATIC int mc_compiler_gencode(mcinternopcode_t op, int operandscount, const 
 #undef APPEND_BYTE
 
 
-TMPSTATIC int mc_compiler_emit(mcastcompiler_t* comp, mcinternopcode_t op, int operandscount, uint64_t* operands)
+int mc_compiler_emit(mcastcompiler_t* comp, mcinternopcode_t op, int operandscount, uint64_t* operands)
 {
     bool ok;
     int i;
@@ -9449,12 +9900,12 @@ TMPSTATIC int mc_compiler_emit(mcastcompiler_t* comp, mcinternopcode_t op, int o
     return ip;
 }
 
-TMPSTATIC mcastscopecomp_t* mc_compiler_getcompilationscope(mcastcompiler_t* comp)
+mcastscopecomp_t* mc_compiler_getcompilationscope(mcastcompiler_t* comp)
 {
     return comp->compilationscope;
 }
 
-TMPSTATIC bool mc_compiler_pushcompilationscope(mcastcompiler_t* comp)
+bool mc_compiler_pushcompilationscope(mcastcompiler_t* comp)
 {
     mcastscopecomp_t* nscope;
     mcastscopecomp_t* currentscope;
@@ -9468,7 +9919,7 @@ TMPSTATIC bool mc_compiler_pushcompilationscope(mcastcompiler_t* comp)
     return true;
 }
 
-TMPSTATIC void mc_compiler_popcompilationscope(mcastcompiler_t* comp)
+void mc_compiler_popcompilationscope(mcastcompiler_t* comp)
 {
     mcastscopecomp_t* currentscope;
     currentscope = mc_compiler_getcompilationscope(comp);
@@ -9477,7 +9928,7 @@ TMPSTATIC void mc_compiler_popcompilationscope(mcastcompiler_t* comp)
     mc_astcompscope_destroy(currentscope);
 }
 
-TMPSTATIC bool mc_compiler_pushsymtable(mcastcompiler_t* comp, int globaloffset)
+bool mc_compiler_pushsymtable(mcastcompiler_t* comp, int globaloffset)
 {
     mcastscopefile_t* filescope;
     mcastsymtable_t* currenttable;
@@ -9497,7 +9948,7 @@ TMPSTATIC bool mc_compiler_pushsymtable(mcastcompiler_t* comp, int globaloffset)
     return true;
 }
 
-TMPSTATIC void mc_compiler_popsymtable(mcastcompiler_t* comp)
+void mc_compiler_popsymtable(mcastcompiler_t* comp)
 {
     mcastscopefile_t* filescope;
     mcastsymtable_t* currenttable;
@@ -9517,19 +9968,20 @@ TMPSTATIC void mc_compiler_popsymtable(mcastcompiler_t* comp)
     mc_symtable_destroy(currenttable);
 }
 
-TMPSTATIC mcinternopcode_t mc_compiler_getlastopcode(mcastcompiler_t* comp)
+mcinternopcode_t mc_compiler_getlastopcode(mcastcompiler_t* comp)
 {
     mcastscopecomp_t* currentscope;
     currentscope = mc_compiler_getcompilationscope(comp);
     return currentscope->lastopcode;
 }
 
-TMPSTATIC bool mc_compiler_docompilesource(mcastcompiler_t* comp, const char* code)
+bool mc_compiler_docompilesource(mcastcompiler_t* comp, const char* code)
 {
     bool ok;
-    mcprinter_t pr;
+    mcstate_t* state;
     mcptrarray_t* statements;
     mcastscopefile_t* filescope;
+    state = comp->pstate;
     filescope = (mcastscopefile_t*)mc_ptrarray_top(comp->filescopelist);
     MC_ASSERT(filescope);
     statements = mc_astparser_parseall(filescope->parser, code, filescope->file);
@@ -9538,35 +9990,27 @@ TMPSTATIC bool mc_compiler_docompilesource(mcastcompiler_t* comp, const char* co
         /* errors are added by parser */
         return false;
     }
-
-    if(comp->pstate->config.dumpast || comp->pstate->config.dumpbytecode)
-    {
-        mc_printer_init(&pr, comp->pstate, 0, stderr, true);
-    }
     if(comp->pstate->config.dumpast)
     {
-        pr.config.quotstring = true;
+        state->stderrprinter->config.quotstring = true;
         fprintf(stderr, "---AST dump begin---\n");
-        mc_astprint_stmtlist(&pr, statements);
+        mc_astprint_stmtlist(state->stderrprinter, statements);
         fprintf(stderr, "\n---AST dump end---\n");
+        state->stderrprinter->config.quotstring = false;
     }
     ok = mc_compiler_compilestmtlist(comp, statements);
     mc_ptrarray_destroy(statements, (mcitemdestroyfn_t)mc_astexpr_destroy);
     if(comp->pstate->config.dumpbytecode)
     {
-        mc_printer_printbytecode(&pr,
-            mc_basicarray_data(comp->compilationscope->bytecode),
-            mc_basicarray_data(comp->compilationscope->scopesrcposlist),
+        mc_printer_printbytecode(state->stderrprinter,
+            (uint8_t*)mc_basicarray_data(comp->compilationscope->bytecode),
+            (mcastlocation_t*)mc_basicarray_data(comp->compilationscope->scopesrcposlist),
             mc_basicarray_count(comp->compilationscope->bytecode), false);
-    }
-    if(comp->pstate->config.dumpast || comp->pstate->config.dumpbytecode)
-    {
-        mc_printer_destroy(&pr);
     }
     return ok;
 }
 
-TMPSEMISTATIC bool mc_compiler_compilestmtlist(mcastcompiler_t* comp, mcptrarray_t* statements)
+bool mc_compiler_compilestmtlist(mcastcompiler_t* comp, mcptrarray_t* statements)
 {
     bool ok;
     int i;
@@ -9584,7 +10028,7 @@ TMPSEMISTATIC bool mc_compiler_compilestmtlist(mcastcompiler_t* comp, mcptrarray
     return ok;
 }
 
-TMPSTATIC bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_t* importstmt)
+bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_t* importstmt)
 {
     bool ok;
     bool result;
@@ -9753,7 +10197,7 @@ end:
     return result;
 }
 
-TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpression_t* expr)
+bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpression_t* expr)
 {
     bool ok;
     int ip;
@@ -10384,7 +10828,7 @@ TMPSEMISTATIC bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpr
     return true;
 }
 
-TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexpression_t* expr)
+bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexpression_t* expr)
 {
     bool ok;
     bool res;
@@ -10420,7 +10864,7 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
                 mcastexpression_t* left;
                 mcastexpression_t* right;
                 rearrange = false;
-                op = MC_OPCODE_NONE;
+                op = MC_OPCODE_HALT;
                 switch(expr->uexpr.exprinfix.op)
                 {
                     case MC_MATHOP_PLUS:
@@ -10565,7 +11009,7 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
                     {
                         goto error;
                     }
-                    posval = (int*)mc_allocator_alloc(comp->pstate, sizeof(int));
+                    posval = (int*)mc_allocator_malloc(comp->pstate, sizeof(int));
                     if(!posval)
                     {
                         goto error;
@@ -10669,7 +11113,7 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
                 {
                     goto error;
                 }
-                op = MC_OPCODE_NONE;
+                op = MC_OPCODE_HALT;
                 switch(expr->uexpr.exprprefix.op)
                 {
                     case MC_MATHOP_MINUS:
@@ -10703,7 +11147,7 @@ TMPSEMISTATIC bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexp
                 symbol = mc_symtable_resolve(symtab, ident->value);
                 if(!symbol)
                 {
-                    #if 1
+                    #if 0
                         mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, ident->pos, "compilation: failed to resolve symbol \"%s\"", ident->value);
                         goto error;
                     #else
@@ -11077,7 +11521,7 @@ end:
     return res;
 }
 
-TMPSEMISTATIC bool mc_compiler_compilecodeblock(mcastcompiler_t* comp, mcastcodeblock_t* block)
+bool mc_compiler_compilecodeblock(mcastcompiler_t* comp, mcastcodeblock_t* block)
 {
     bool ok;
     int i;
@@ -11120,7 +11564,7 @@ TMPSEMISTATIC bool mc_compiler_compilecodeblock(mcastcompiler_t* comp, mcastcode
     return true;
 }
 
-TMPSTATIC int mc_compiler_addconstant(mcastcompiler_t* comp, mcvalue_t obj)
+int mc_compiler_addconstant(mcastcompiler_t* comp, mcvalue_t obj)
 {
     bool ok;
     int pos;
@@ -11133,7 +11577,7 @@ TMPSTATIC int mc_compiler_addconstant(mcastcompiler_t* comp, mcvalue_t obj)
     return pos;
 }
 
-TMPSTATIC void mc_compiler_changeuint16operand(mcastcompiler_t* comp, int ip, uint16_t operand)
+void mc_compiler_changeuint16operand(mcastcompiler_t* comp, int ip, uint16_t operand)
 {
     uint8_t hi;
     uint8_t lo;
@@ -11150,14 +11594,14 @@ TMPSTATIC void mc_compiler_changeuint16operand(mcastcompiler_t* comp, int ip, ui
     mc_basicarray_set(bytecode, ip + 1, &lo);
 }
 
-TMPSTATIC bool mc_compiler_lastopcodeis(mcastcompiler_t* comp, mcinternopcode_t op)
+bool mc_compiler_lastopcodeis(mcastcompiler_t* comp, mcinternopcode_t op)
 {
     mcinternopcode_t lastopcode;
     lastopcode = mc_compiler_getlastopcode(comp);
     return lastopcode == op;
 }
 
-TMPSTATIC bool mc_compiler_readsymbol(mcastcompiler_t* comp, mcastsymbol_t* symbol)
+bool mc_compiler_readsymbol(mcastcompiler_t* comp, mcastsymbol_t* symbol)
 {
     int ip;
     uint64_t opbuf[10];
@@ -11193,7 +11637,7 @@ TMPSTATIC bool mc_compiler_readsymbol(mcastcompiler_t* comp, mcastsymbol_t* symb
     return ip >= 0;
 }
 
-TMPSTATIC bool mc_compiler_storesymbol(mcastcompiler_t* comp, mcastsymbol_t* symbol, bool define)
+bool mc_compiler_storesymbol(mcastcompiler_t* comp, mcastsymbol_t* symbol, bool define)
 {
     int ip;
     uint64_t opbuf[10];
@@ -11232,14 +11676,14 @@ TMPSTATIC bool mc_compiler_storesymbol(mcastcompiler_t* comp, mcastsymbol_t* sym
     return ip >= 0;
 }
 
-TMPSTATIC bool mc_compiler_pushbreakip(mcastcompiler_t* comp, int ip)
+bool mc_compiler_pushbreakip(mcastcompiler_t* comp, int ip)
 {
     mcastscopecomp_t* compscope;
     compscope = mc_compiler_getcompilationscope(comp);
     return mc_basicarray_push(compscope->ipstackbreak, &ip);
 }
 
-TMPSTATIC void mc_compiler_popbreakip(mcastcompiler_t* comp)
+void mc_compiler_popbreakip(mcastcompiler_t* comp)
 {
     mcastscopecomp_t* compscope;
     compscope = mc_compiler_getcompilationscope(comp);
@@ -11251,7 +11695,7 @@ TMPSTATIC void mc_compiler_popbreakip(mcastcompiler_t* comp)
     mc_basicarray_pop(compscope->ipstackbreak, NULL);
 }
 
-TMPSTATIC int mc_compiler_getbreakip(mcastcompiler_t* comp)
+int mc_compiler_getbreakip(mcastcompiler_t* comp)
 {
     int* res;
     mcastscopecomp_t* compscope;
@@ -11264,14 +11708,14 @@ TMPSTATIC int mc_compiler_getbreakip(mcastcompiler_t* comp)
     return *res;
 }
 
-TMPSTATIC bool mc_compiler_pushcontinueip(mcastcompiler_t* comp, int ip)
+bool mc_compiler_pushcontinueip(mcastcompiler_t* comp, int ip)
 {
     mcastscopecomp_t* compscope;
     compscope = mc_compiler_getcompilationscope(comp);
     return mc_basicarray_push(compscope->ipstackcontinue, &ip);
 }
 
-TMPSTATIC void mc_compiler_popcontinueip(mcastcompiler_t* comp)
+void mc_compiler_popcontinueip(mcastcompiler_t* comp)
 {
     mcastscopecomp_t* compscope;
     compscope = mc_compiler_getcompilationscope(comp);
@@ -11283,7 +11727,7 @@ TMPSTATIC void mc_compiler_popcontinueip(mcastcompiler_t* comp)
     mc_basicarray_pop(compscope->ipstackcontinue, NULL);
 }
 
-TMPSTATIC int mc_compiler_getcontinueip(mcastcompiler_t* comp)
+int mc_compiler_getcontinueip(mcastcompiler_t* comp)
 {
     int* res;
     mcastscopecomp_t* compscope;
@@ -11297,31 +11741,31 @@ TMPSTATIC int mc_compiler_getcontinueip(mcastcompiler_t* comp)
     return *res;
 }
 
-TMPSTATIC int mc_compiler_getip(mcastcompiler_t* comp)
+int mc_compiler_getip(mcastcompiler_t* comp)
 {
     mcastscopecomp_t* compscope;
     compscope = mc_compiler_getcompilationscope(comp);
     return mc_basicarray_count(compscope->bytecode);
 }
 
-TMPSTATIC mcbasicarray_t* mc_compiler_getsrcpositions(mcastcompiler_t* comp)
+mcbasicarray_t* mc_compiler_getsrcpositions(mcastcompiler_t* comp)
 {
     mcastscopecomp_t* compscope;
     compscope = mc_compiler_getcompilationscope(comp);
     return compscope->scopesrcposlist;
 }
 
-TMPSTATIC mcbasicarray_t* mc_compiler_getbytecode(mcastcompiler_t* comp)
+mcbasicarray_t* mc_compiler_getbytecode(mcastcompiler_t* comp)
 {
     mcastscopecomp_t* compscope;
     compscope = mc_compiler_getcompilationscope(comp);
     return compscope->bytecode;
 }
 
-TMPSTATIC mcastscopefile_t* mc_compiler_filescopemake(mcastcompiler_t* comp, mcastcompiledfile_t* file)
+mcastscopefile_t* mc_compiler_filescopemake(mcastcompiler_t* comp, mcastcompiledfile_t* file)
 {
     mcastscopefile_t* filescope;
-    filescope = (mcastscopefile_t*)mc_allocator_alloc(comp->pstate, sizeof(mcastscopefile_t));
+    filescope = (mcastscopefile_t*)mc_allocator_malloc(comp->pstate, sizeof(mcastscopefile_t));
     if(!filescope)
     {
         return NULL;
@@ -11346,7 +11790,7 @@ err:
     return NULL;
 }
 
-TMPSTATIC void mc_compiler_filescopedestroy(mcastscopefile_t* scope)
+void mc_compiler_filescopedestroy(mcastscopefile_t* scope)
 {
     int i;
     void* name;
@@ -11360,7 +11804,7 @@ TMPSTATIC void mc_compiler_filescopedestroy(mcastscopefile_t* scope)
     mc_allocator_free(scope->pstate, scope);
 }
 
-TMPSTATIC bool mc_compiler_filescopepush(mcastcompiler_t* comp, const char* filepath)
+bool mc_compiler_filescopepush(mcastcompiler_t* comp, const char* filepath)
 {
     bool ok;
     int globaloffset;
@@ -11411,7 +11855,7 @@ TMPSTATIC bool mc_compiler_filescopepush(mcastcompiler_t* comp, const char* file
     return true;
 }
 
-TMPSTATIC void mc_compiler_filescopepop(mcastcompiler_t* comp)
+void mc_compiler_filescopepop(mcastcompiler_t* comp)
 {
     int poppednumdefs;
     mcastsymtable_t* poppedst;
@@ -11442,15 +11886,15 @@ TMPSTATIC void mc_compiler_filescopepop(mcastcompiler_t* comp)
     }
 }
 
-TMPSTATIC void mc_compiler_setcompilationscope(mcastcompiler_t* comp, mcastscopecomp_t* scope)
+void mc_compiler_setcompilationscope(mcastcompiler_t* comp, mcastscopecomp_t* scope)
 {
     comp->compilationscope = scope;
 }
 
-TMPSTATIC module_t* mc_module_make(mcstate_t* state, const char* name)
+module_t* mc_module_make(mcstate_t* state, const char* name)
 {
     module_t* module;
-    module = (module_t*)mc_allocator_alloc(state, sizeof(module_t));
+    module = (module_t*)mc_allocator_malloc(state, sizeof(module_t));
     if(!module)
     {
         return NULL;
@@ -11472,13 +11916,13 @@ TMPSTATIC module_t* mc_module_make(mcstate_t* state, const char* name)
     return module;
 }
 
-TMPSTATIC const char* mc_module_findfile(mcstate_t* state, const char* filename)
+const char* mc_module_findfile(mcstate_t* state, const char* filename)
 {
     (void)state;
     return filename;
 }
 
-TMPSTATIC void mc_module_destroy(module_t* module)
+void mc_module_destroy(module_t* module)
 {
     if(!module)
     {
@@ -11489,10 +11933,10 @@ TMPSTATIC void mc_module_destroy(module_t* module)
     mc_allocator_free(module->pstate, module);
 }
 
-TMPSTATIC module_t* mc_module_copy(module_t* src)
+module_t* mc_module_copy(module_t* src)
 {
     module_t* copy;
-    copy = (module_t*)mc_allocator_alloc(src->pstate, sizeof(module_t));
+    copy = (module_t*)mc_allocator_malloc(src->pstate, sizeof(module_t));
     if(!copy)
     {
         return NULL;
@@ -11514,7 +11958,7 @@ TMPSTATIC module_t* mc_module_copy(module_t* src)
     return copy;
 }
 
-TMPSTATIC const char* mc_util_getmodulename(const char* path)
+const char* mc_util_getmodulename(const char* path)
 {
     const char* lastslashpos;
     lastslashpos = strrchr(path, '/');
@@ -11525,7 +11969,7 @@ TMPSTATIC const char* mc_util_getmodulename(const char* path)
     return path;
 }
 
-TMPSTATIC bool mc_module_addsymbol(module_t* module, mcastsymbol_t* symbol)
+bool mc_module_addsymbol(module_t* module, mcastsymbol_t* symbol)
 {
     bool ok;
     mcastsymbol_t* modulesymbol;
@@ -11556,7 +12000,7 @@ TMPSTATIC bool mc_module_addsymbol(module_t* module, mcastsymbol_t* symbol)
     return true;
 }
 
-TMPSTATIC mcastsymbol_t* mc_compiler_defsymbol(mcastcompiler_t* comp, mcastlocation_t pos, const char* name, bool assignable, bool canshadow)
+mcastsymbol_t* mc_compiler_defsymbol(mcastcompiler_t* comp, mcastlocation_t pos, const char* name, bool assignable, bool canshadow)
 {
     mcastsymbol_t* symbol;
     mcastsymbol_t* currentsymbol;
@@ -11580,7 +12024,7 @@ TMPSTATIC mcastsymbol_t* mc_compiler_defsymbol(mcastcompiler_t* comp, mcastlocat
     return symbol;
 }
 
-TMPSTATIC mcstate_t* mc_state_make(void)
+mcstate_t* mc_state_make(void)
 {
     mcstate_t* state;
     state = (mcstate_t*)malloc(sizeof(mcstate_t));
@@ -11613,6 +12057,7 @@ TMPSTATIC mcstate_t* mc_state_make(void)
         goto err;
     }
     state->stdoutprinter = mc_printer_make(state, stdout);
+    state->stderrprinter = mc_printer_make(state, stderr);
     return state;
 err:
     mc_state_deinit(state);
@@ -11620,23 +12065,25 @@ err:
     return NULL;
 }
 
-
-TMPSTATIC void mc_state_deinit(mcstate_t* state)
+void mc_state_deinit(mcstate_t* state)
 {
     mc_compiler_destroy(state->compiler);
     mc_globalstore_destroy(state->vmglobalstore);
     mc_gcmemory_destroy(state->mem);
     mc_ptrarray_destroy(state->files, (mcitemdestroyfn_t)mc_compiledfile_destroy);
     mc_errlist_deinit(&state->errors);
+    mc_printer_destroy(state->stdoutprinter);
+    mc_printer_destroy(state->stderrprinter);
+
 }
 
-TMPSTATIC void mc_state_reset(mcstate_t* state)
+void mc_state_reset(mcstate_t* state)
 {
     mc_state_clearerrors(state);
     mc_vm_reset(state);
 }
 
-TMPSTATIC void mc_state_setdefaultconfig(mcstate_t* state)
+void mc_state_setdefaultconfig(mcstate_t* state)
 {
     memset(&state->config, 0, sizeof(mcconfig_t));
     state->config.replmode = false;
@@ -11645,23 +12092,23 @@ TMPSTATIC void mc_state_setdefaultconfig(mcstate_t* state)
     state->config.fatalcomplaints = false;
 }
 
-TMPSTATIC void mc_state_destroy(mcstate_t* state)
+void mc_state_destroy(mcstate_t* state)
 {
     if(!state)
     {
         return;
     }
-    mc_printer_destroy(state->stdoutprinter);
     mc_state_deinit(state);
+
     mc_allocator_free(state, state);
 }
 
-TMPSTATIC void mc_state_freeallocated(mcstate_t* state, void* ptr)
+void mc_state_freeallocated(mcstate_t* state, void* ptr)
 {
     mc_allocator_free(state, ptr);
 }
 
-TMPSTATIC void mc_state_printerrors(mcstate_t* state)
+void mc_state_printerrors(mcstate_t* state)
 {
     int i;
     int ecnt;
@@ -11677,7 +12124,7 @@ TMPSTATIC void mc_state_printerrors(mcstate_t* state)
     }
 }
 
-TMPSTATIC mccompiledprogram_t* mc_state_compilesource(mcstate_t* state, const char* code)
+mccompiledprogram_t* mc_state_compilesource(mcstate_t* state, const char* code)
 {
     mccompiledprogram_t* compres;
     mc_state_clearerrors(state);
@@ -11692,7 +12139,7 @@ err:
     return NULL;
 }
 
-TMPSTATIC mcvalue_t mc_program_execute(mcstate_t* state, mccompiledprogram_t* program)
+mcvalue_t mc_program_execute(mcstate_t* state, mccompiledprogram_t* program)
 {
     bool ok;
     mcvalue_t res;
@@ -11721,7 +12168,7 @@ TMPSTATIC mcvalue_t mc_program_execute(mcstate_t* state, mccompiledprogram_t* pr
     return res;
 }
 
-TMPSTATIC void mc_program_destroy(mccompiledprogram_t* program)
+void mc_program_destroy(mccompiledprogram_t* program)
 {
     if(!program)
     {
@@ -11730,7 +12177,7 @@ TMPSTATIC void mc_program_destroy(mccompiledprogram_t* program)
     mc_astcompresult_destroy(program);
 }
 
-TMPUNUSED mcvalue_t mc_state_execcode(mcstate_t* state, const char* code)
+mcvalue_t mc_state_execcode(mcstate_t* state, const char* code)
 {
     bool ok;
     mcvalue_t res;
@@ -11760,7 +12207,7 @@ err:
 }
 
 
-TMPUNUSED mcvalue_t mc_state_callfunctionbyname(mcstate_t* state, const char* fname, int argc, mcvalue_t* args)
+mcvalue_t mc_state_callfunctionbyname(mcstate_t* state, const char* fname, int argc, mcvalue_t* args)
 {
     mcvalue_t res;
     mcvalue_t callee;
@@ -11778,27 +12225,27 @@ TMPUNUSED mcvalue_t mc_state_callfunctionbyname(mcstate_t* state, const char* fn
     return res;
 }
 
-TMPSTATIC bool mc_state_haserrors(mcstate_t* state)
+bool mc_state_haserrors(mcstate_t* state)
 {
     return mc_state_errorcount(state) > 0;
 }
 
-TMPSTATIC int mc_state_errorcount(mcstate_t* state)
+int mc_state_errorcount(mcstate_t* state)
 {
     return state->errors.count;
 }
 
-TMPSTATIC void mc_state_clearerrors(mcstate_t* state)
+void mc_state_clearerrors(mcstate_t* state)
 {
     mc_errlist_clear(&state->errors);
 }
 
-TMPSTATIC mcerror_t* mc_state_geterror(mcstate_t* state, int index)
+mcerror_t* mc_state_geterror(mcstate_t* state, int index)
 {
     return (mcerror_t*)mc_errlist_get(&state->errors, index);
 }
 
-TMPSTATIC bool mc_state_setnativefunction(mcstate_t* state, const char* name, mcnativefn_t fn, void* data, size_t dlen)
+bool mc_state_setnativefunction(mcstate_t* state, const char* name, mcnativefn_t fn, void* data, size_t dlen)
 {
     mcvalue_t obj;
     obj = mc_value_makefuncnative(state, name, fn, data, dlen);
@@ -11809,12 +12256,12 @@ TMPSTATIC bool mc_state_setnativefunction(mcstate_t* state, const char* name, mc
     return mc_state_setglobalconstant(state, name, obj);
 }
 
-TMPSTATIC bool mc_state_setglobalconstant(mcstate_t* state, const char* name, mcvalue_t obj)
+bool mc_state_setglobalconstant(mcstate_t* state, const char* name, mcvalue_t obj)
 {
     return mc_globalstore_setnamed(state->vmglobalstore, name, obj);
 }
 
-TMPSTATIC mcvalue_t mc_state_getglobalobjectbyname(mcstate_t* state, const char* name)
+mcvalue_t mc_state_getglobalobjectbyname(mcstate_t* state, const char* name)
 {
     bool ok;
     mcvalue_t res;
@@ -11850,12 +12297,12 @@ TMPSTATIC mcvalue_t mc_state_getglobalobjectbyname(mcstate_t* state, const char*
     return res;
 }
 
-TMPSTATIC void mc_state_pusherrorfv(mcstate_t* state, mcerrtype_t type, mcastlocation_t pos, const char* fmt, va_list va)
+void mc_state_pusherrorfv(mcstate_t* state, mcerrtype_t type, mcastlocation_t pos, const char* fmt, va_list va)
 {
     mc_errlist_addfv(&state->errors, type, pos, fmt, va);
 }
 
-TMPSEMISTATIC void mc_state_pusherrorf(mcstate_t* state, mcerrtype_t type, mcastlocation_t pos, const char* fmt, ...)
+void mc_state_pusherrorf(mcstate_t* state, mcerrtype_t type, mcastlocation_t pos, const char* fmt, ...)
 {
     va_list va;
     va_start(va, fmt);
@@ -11863,7 +12310,7 @@ TMPSEMISTATIC void mc_state_pusherrorf(mcstate_t* state, mcerrtype_t type, mcast
     va_end(va);
 }
 
-static void mc_state_complainv(mcstate_t *state, mcastlocation_t pos, const char *fmt, va_list va)
+void mc_state_complainv(mcstate_t *state, mcastlocation_t pos, const char *fmt, va_list va)
 {
     int ncol;
     int nline;
@@ -11886,7 +12333,7 @@ static void mc_state_complainv(mcstate_t *state, mcastlocation_t pos, const char
     fprintf(stderr, "\n");
 }
 
-static void mc_state_complain(mcstate_t *state, mcastlocation_t pos, const char *fmt, ...)
+void mc_state_complain(mcstate_t *state, mcastlocation_t pos, const char *fmt, ...)
 {
     va_list va;
     va_start(va, fmt);
@@ -11894,7 +12341,7 @@ static void mc_state_complain(mcstate_t *state, mcastlocation_t pos, const char 
     va_end(va);
 }
 
-TMPSEMISTATIC void mc_state_setruntimeerrorf(mcstate_t* state, const char* fmt, ...)
+void mc_state_setruntimeerrorf(mcstate_t* state, const char* fmt, ...)
 {
     va_list va;
     va_start(va, fmt);
@@ -11903,26 +12350,26 @@ TMPSEMISTATIC void mc_state_setruntimeerrorf(mcstate_t* state, const char* fmt, 
 }
 
 
-TMPSTATIC bool mc_value_isnumeric(mcvalue_t obj)
+bool mc_value_isnumeric(mcvalue_t obj)
 {
     mcvaltype_t type;
     type = mc_value_gettype(obj);
     return type == MC_VAL_NUMBER || type == MC_VAL_BOOL;
 }
 
-TMPSTATIC bool mc_value_isnull(mcvalue_t obj)
+bool mc_value_isnull(mcvalue_t obj)
 {
     return mc_value_gettype(obj) == MC_VAL_NULL;
 }
 
-TMPSTATIC bool mc_value_iscallable(mcvalue_t obj)
+bool mc_value_iscallable(mcvalue_t obj)
 {
     mcvaltype_t type;
     type = mc_value_gettype(obj);
     return type == MC_VAL_FUNCNATIVE || type == MC_VAL_FUNCSCRIPT;
 }
 
-TMPSTATIC const char* mc_util_objtypename(mcvaltype_t type)
+const char* mc_util_objtypename(mcvaltype_t type)
 {
     switch(type)
     {
@@ -11958,12 +12405,12 @@ TMPSTATIC const char* mc_util_objtypename(mcvaltype_t type)
     return "NONE";
 }
 
-TMPSTATIC const char* mc_error_getmessage(mcerror_t* error)
+const char* mc_error_getmessage(mcerror_t* error)
 {
     return error->message;
 }
 
-TMPSTATIC const char* mc_error_getfilepath(mcerror_t* error)
+const char* mc_error_getfilepath(mcerror_t* error)
 {
     if(!error->pos.file)
     {
@@ -11972,7 +12419,7 @@ TMPSTATIC const char* mc_error_getfilepath(mcerror_t* error)
     return error->pos.file->path;
 }
 
-TMPSTATIC const char* mc_error_getsourcelinecode(mcerror_t* error)
+const char* mc_error_getsourcelinecode(mcerror_t* error)
 {
     const char* line;
     mcptrarray_t* lines;
@@ -11989,7 +12436,7 @@ TMPSTATIC const char* mc_error_getsourcelinecode(mcerror_t* error)
     return line;
 }
 
-TMPSTATIC int mc_error_getsourcelinenumber(mcerror_t* error)
+int mc_error_getsourcelinenumber(mcerror_t* error)
 {
     if(error->pos.line < 0)
     {
@@ -11998,7 +12445,7 @@ TMPSTATIC int mc_error_getsourcelinenumber(mcerror_t* error)
     return error->pos.line + 1;
 }
 
-TMPSTATIC int mc_error_getsourcecolumn(mcerror_t* error)
+int mc_error_getsourcecolumn(mcerror_t* error)
 {
     if(error->pos.column < 0)
     {
@@ -12007,7 +12454,7 @@ TMPSTATIC int mc_error_getsourcecolumn(mcerror_t* error)
     return error->pos.column + 1;
 }
 
-TMPSTATIC mcerrtype_t mc_error_gettype(mcerror_t* error)
+mcerrtype_t mc_error_gettype(mcerror_t* error)
 {
     switch(error->type)
     {
@@ -12031,12 +12478,12 @@ TMPSTATIC mcerrtype_t mc_error_gettype(mcerror_t* error)
     return MC_ERROR_NONE;
 }
 
-TMPSTATIC const char* mc_error_gettypestring(mcerror_t* error)
+const char* mc_error_gettypestring(mcerror_t* error)
 {
     return mc_util_errortypename(mc_error_gettype(error));
 }
 
-TMPSTATIC const char* mc_util_errortypename(mcerrtype_t type)
+const char* mc_util_errortypename(mcerrtype_t type)
 {
     switch(type)
     {
@@ -12058,7 +12505,7 @@ TMPSTATIC const char* mc_util_errortypename(mcerrtype_t type)
     return "NONE";
 }
 
-TMPSTATIC char* mc_error_serializetostring(mcstate_t* state, mcerror_t* err)
+char* mc_error_serializetostring(mcstate_t* state, mcerror_t* err)
 {
     int j;
     int colnum;
@@ -12106,17 +12553,17 @@ TMPSTATIC char* mc_error_serializetostring(mcstate_t* state, mcerror_t* err)
     return mc_printer_getstringanddestroy(pr, NULL);
 }
 
-TMPSTATIC mctraceback_t* mc_error_gettraceback(mcerror_t* error)
+mctraceback_t* mc_error_gettraceback(mcerror_t* error)
 {
     return (mctraceback_t*)error->traceback;
 }
 
-TMPUNUSED int mc_traceback_getdepth(mctraceback_t* traceback)
+int mc_traceback_getdepth(mctraceback_t* traceback)
 {
     return mc_basicarray_count(traceback->items);
 }
 
-TMPUNUSED const char* mc_traceback_getsourcefilepath(mctraceback_t* traceback, int depth)
+const char* mc_traceback_getsourcefilepath(mctraceback_t* traceback, int depth)
 {
     mctraceitem_t* item;
     item = (mctraceitem_t*)mc_basicarray_get(traceback->items, depth);
@@ -12127,7 +12574,7 @@ TMPUNUSED const char* mc_traceback_getsourcefilepath(mctraceback_t* traceback, i
     return mc_traceitem_getsourcefilepath(item);
 }
 
-TMPUNUSED const char* mc_traceback_getsourcelinecode(mctraceback_t* traceback, int depth)
+const char* mc_traceback_getsourcelinecode(mctraceback_t* traceback, int depth)
 {
     mctraceitem_t* item;
     item = (mctraceitem_t*)mc_basicarray_get(traceback->items, depth);
@@ -12138,7 +12585,7 @@ TMPUNUSED const char* mc_traceback_getsourcelinecode(mctraceback_t* traceback, i
     return mc_traceitem_getsourceline(item);
 }
 
-TMPUNUSED int mc_traceback_getsourcelinenumber(mctraceback_t* traceback, int depth)
+int mc_traceback_getsourcelinenumber(mctraceback_t* traceback, int depth)
 {
     mctraceitem_t* item;
     item = (mctraceitem_t*)mc_basicarray_get(traceback->items, depth);
@@ -12149,7 +12596,7 @@ TMPUNUSED int mc_traceback_getsourcelinenumber(mctraceback_t* traceback, int dep
     return item->pos.line;
 }
 
-TMPUNUSED int mc_traceback_getsourcecolumn(mctraceback_t* traceback, int depth)
+int mc_traceback_getsourcecolumn(mctraceback_t* traceback, int depth)
 {
     mctraceitem_t* item;
     item = (mctraceitem_t*)mc_basicarray_get(traceback->items, depth);
@@ -12160,7 +12607,7 @@ TMPUNUSED int mc_traceback_getsourcecolumn(mctraceback_t* traceback, int depth)
     return item->pos.column;
 }
 
-TMPUNUSED const char* mc_traceback_getfunctionname(mctraceback_t* traceback, int depth)
+const char* mc_traceback_getfunctionname(mctraceback_t* traceback, int depth)
 {
     mctraceitem_t* item;
     item = (mctraceitem_t*)mc_basicarray_get(traceback->items, depth);
@@ -12172,7 +12619,7 @@ TMPUNUSED const char* mc_traceback_getfunctionname(mctraceback_t* traceback, int
 }
 
 
-TMPSTATIC void mc_astprint_stmtlist(mcprinter_t* pr, mcptrarray_t* statements)
+void mc_astprint_stmtlist(mcprinter_t* pr, mcptrarray_t* statements)
 {
     int i;
     int count;
@@ -12189,7 +12636,7 @@ TMPSTATIC void mc_astprint_stmtlist(mcprinter_t* pr, mcptrarray_t* statements)
     }
 }
 
-TMPSEMISTATIC void mc_astprint_expression(mcprinter_t* pr, mcastexpression_t* expr)
+void mc_astprint_expression(mcprinter_t* pr, mcastexpression_t* expr)
 {
     bool prevquot;
     switch(expr->type)
@@ -12516,7 +12963,7 @@ TMPSEMISTATIC void mc_astprint_expression(mcprinter_t* pr, mcastexpression_t* ex
     }
 }
 
-TMPSTATIC void mc_astprint_codeblock(mcprinter_t* pr, mcastcodeblock_t* expr)
+void mc_astprint_codeblock(mcprinter_t* pr, mcastcodeblock_t* expr)
 {
     int i;
     mcastexpression_t* istmt;
@@ -12530,7 +12977,7 @@ TMPSTATIC void mc_astprint_codeblock(mcprinter_t* pr, mcastcodeblock_t* expr)
     mc_printer_puts(pr, " }");
 }
 
-TMPSTATIC const char* mc_util_mathopstring(mcastmathoptype_t op)
+const char* mc_util_mathopstring(mcastmathoptype_t op)
 {
     switch(op)
     {
@@ -12596,7 +13043,7 @@ TMPSTATIC const char* mc_util_mathopstring(mcastmathoptype_t op)
     #endif
 #endif
 
-TMPUNUSED bool mc_argcheck_checkactual(mcstate_t* state, bool generateerror, int argc, mcvalue_t* args, int expectedargc, const mcvaltype_t* expectedtypes)
+bool mc_argcheck_checkactual(mcstate_t* state, bool generateerror, int argc, mcvalue_t* args, int expectedargc, const mcvaltype_t* expectedtypes)
 {
     int i;
     char* expectedtypestr;
@@ -12637,7 +13084,7 @@ TMPUNUSED bool mc_argcheck_checkactual(mcstate_t* state, bool generateerror, int
 }
 
 
-TMPUNUSED mcvalue_t mc_scriptfn_binnot(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_binnot(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     mcfloat_t dn;
     int64_t iv;
@@ -12650,7 +13097,7 @@ TMPUNUSED mcvalue_t mc_scriptfn_binnot(mcstate_t* state, void* data, int argc, m
     return mc_value_makenumber(iv);
 }
 
-TMPUNUSED mcvalue_t mc_scriptfn_ord(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_ord(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     char ch;
     size_t len;
@@ -12670,7 +13117,7 @@ TMPUNUSED mcvalue_t mc_scriptfn_ord(mcstate_t* state, void* data, int argc, mcva
     return mc_value_makenumber(ch);
 }
 
-TMPUNUSED mcvalue_t mc_scriptfn_arrayjoin(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_arrayjoin(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     bool havejoinee;
     int i;
@@ -12701,12 +13148,12 @@ TMPUNUSED mcvalue_t mc_scriptfn_arrayjoin(mcstate_t* state, void* data, int argc
     for(i=0; i<alen; i++)
     {
         item = mc_valarray_getvalueat(array, i);
-        mc_printer_printobject(&pr, item);
+        mc_printer_printvalue(&pr, item);
         if(havejoinee)
         {
             if((i + 1) != alen)
             {
-                mc_printer_printobject(&pr, joinee);
+                mc_printer_printvalue(&pr, joinee);
             }
         }
     }
@@ -12725,7 +13172,7 @@ TMPUNUSED mcvalue_t mc_scriptfn_arrayjoin(mcstate_t* state, void* data, int argc
  * \param args The actual arguments
  * \return The index of the found string or -1 if it's not found.
  */
-TMPSTATIC mcvalue_t mc_scriptfn_index(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_index(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     int inplen;
     int searchlen;
@@ -12772,7 +13219,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_index(mcstate_t* state, void* data, int argc, mc
  * \param args The actual arguments
  * \return The section of the string from the left-hand side.
  */
-TMPSTATIC mcvalue_t mc_scriptfn_left(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_left(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     int inplen;
     int startpos;
@@ -12819,7 +13266,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_left(mcstate_t* state, void* data, int argc, mcv
  * \param args The actual arguments
  * \return The section of the string from the right-hand side.
  */
-TMPSTATIC mcvalue_t mc_scriptfn_right(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_right(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     int inplen;
     int startpos;
@@ -12868,7 +13315,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_right(mcstate_t* state, void* data, int argc, mc
  * \param args The actual arguments
  * \return The string with all occurances replaced.
  */
-TMPSTATIC mcvalue_t mc_scriptfn_replace(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_replace(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     size_t len;
     size_t newlen;
@@ -12941,7 +13388,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_replace(mcstate_t* state, void* data, int argc, 
  * \param args The actual arguments
  * \return The string with the first occurance of the replacement replaced.
  */
-TMPSTATIC mcvalue_t mc_scriptfn_replacefirst(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_replacefirst(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     size_t len;
     size_t newlen;
@@ -13001,7 +13448,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_replacefirst(mcstate_t* state, void* data, int a
  * \param args The actual arguments
  * \return Returns a string that has whitespace trimmed from the start and finish.
  */
-TMPSTATIC mcvalue_t mc_scriptfn_trim(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_trim(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     int i;
     int j;
@@ -13056,7 +13503,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_trim(mcstate_t* state, void* data, int argc, mcv
     return mc_value_makenull();
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_lengthof(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_lengthof(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     int len;
     mcvalue_t arg;
@@ -13088,7 +13535,26 @@ TMPSTATIC mcvalue_t mc_scriptfn_lengthof(mcstate_t* state, void* data, int argc,
     return mc_value_makenull();
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_arrayfirst(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+
+mcvalue_t mc_scriptfn_typeof(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    mcvalue_t arg;
+    mcvaltype_t type;
+    const char* ts;
+    (void)data;
+    (void)state;
+    (void)argc;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
+    {
+        return mc_value_makenull();
+    }
+    arg = args[0];
+    type = arg.type;
+    ts = mc_valtype_getname(type);
+    return mc_value_makestring(state, ts);
+}
+
+mcvalue_t mc_scriptfn_arrayfirst(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     mcvalue_t arg;
     (void)state;
@@ -13102,7 +13568,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_arrayfirst(mcstate_t* state, void* data, int arg
     return mc_valarray_getvalueat(arg, 0);
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_arraylast(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_arraylast(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     int len;
     mcvalue_t arg;
@@ -13118,7 +13584,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_arraylast(mcstate_t* state, void* data, int argc
     return mc_valarray_getvalueat(arg, len - 1);
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_arrayrest(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_arrayrest(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     bool ok;
     int i;
@@ -13156,7 +13622,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_arrayrest(mcstate_t* state, void* data, int argc
     return res;
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_reverse(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_reverse(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     bool ok;
     int i;
@@ -13216,7 +13682,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_reverse(mcstate_t* state, void* data, int argc, 
     return mc_value_makenull();
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_array(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_array(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     bool ok;
     int i;
@@ -13275,7 +13741,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_array(mcstate_t* state, void* data, int argc, mc
     return mc_value_makenull();
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_arraypush(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_arraypush(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     bool ok;
     int i;
@@ -13297,10 +13763,23 @@ TMPSTATIC mcvalue_t mc_scriptfn_arraypush(mcstate_t* state, void* data, int argc
     }
     len = mc_valarray_getlength(args[0]);
     return mc_value_makenumber(len);
-
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_externalfn(mcstate_t* state, void *data, int argc, mcvalue_t *args)
+mcvalue_t mc_scriptfn_arraypop(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    mcvalue_t val;
+    (void)state;
+    (void)argc;
+    (void)data;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY, MC_VAL_ANY))
+    {
+        return mc_value_makenull();
+    }
+    val = mc_valarray_pop(args[0]);
+    return val;
+}
+
+mcvalue_t mc_scriptfn_externalfn(mcstate_t* state, void *data, int argc, mcvalue_t *args)
 {
     int *test;
     (void)state;
@@ -13311,7 +13790,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_externalfn(mcstate_t* state, void *data, int arg
     return mc_value_makenull();
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_vec2add(mcstate_t *state, void *data, int argc, mcvalue_t *args)
+mcvalue_t mc_scriptfn_vec2add(mcstate_t *state, void *data, int argc, mcvalue_t *args)
 {
     mcfloat_t a_x;
     mcfloat_t a_y;
@@ -13343,7 +13822,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_vec2add(mcstate_t *state, void *data, int argc, 
     return res;
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_vec2sub(mcstate_t *state, void *data, int argc, mcvalue_t *args)
+mcvalue_t mc_scriptfn_vec2sub(mcstate_t *state, void *data, int argc, mcvalue_t *args)
 {
     mcfloat_t a_x;
     mcfloat_t a_y;
@@ -13371,7 +13850,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_vec2sub(mcstate_t *state, void *data, int argc, 
     return res;
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_testcheckargs(mcstate_t* state, void *data, int argc, mcvalue_t *args)
+mcvalue_t mc_scriptfn_testcheckargs(mcstate_t* state, void *data, int argc, mcvalue_t *args)
 {
     (void)state;
     (void)args;
@@ -13392,7 +13871,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_testcheckargs(mcstate_t* state, void *data, int 
 }
 
 
-TMPSTATIC mcvalue_t mc_scriptfn_maketestdict(mcstate_t *state, void *data, int argc, mcvalue_t *args)
+mcvalue_t mc_scriptfn_maketestdict(mcstate_t *state, void *data, int argc, mcvalue_t *args)
 {
     int i;
     int blen;
@@ -13430,7 +13909,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_maketestdict(mcstate_t *state, void *data, int a
     return res;
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_squarearray(mcstate_t *state, void *data, int argc, mcvalue_t *args)
+mcvalue_t mc_scriptfn_squarearray(mcstate_t *state, void *data, int argc, mcvalue_t *args)
 {
     int i;
     mcfloat_t num;
@@ -13452,7 +13931,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_squarearray(mcstate_t *state, void *data, int ar
     return res;
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_print(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_print(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     int i;
     mcvalue_t arg;
@@ -13462,12 +13941,12 @@ TMPSTATIC mcvalue_t mc_scriptfn_print(mcstate_t* state, void* data, int argc, mc
     for(i = 0; i < argc; i++)
     {
         arg = args[i];
-        mc_printer_printobject(pr, arg);
+        mc_printer_printvalue(pr, arg);
     }
     return mc_value_makenull();
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_println(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_println(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     mcvalue_t o;
     o = mc_scriptfn_print(state, data, argc, args);
@@ -13475,7 +13954,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_println(mcstate_t* state, void* data, int argc, 
     return o;
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_filewritefile(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_filewritefile(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     int slen;
     int written;
@@ -13495,7 +13974,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_filewritefile(mcstate_t* state, void* data, int 
     return mc_value_makenumber(written);
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_filereadfile(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_filereadfile(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     size_t flen;
     char* contents;
@@ -13519,7 +13998,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_filereadfile(mcstate_t* state, void* data, int a
     return res;
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_tostring(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_tostring(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     int reslen;
     const char* resstr;
@@ -13531,7 +14010,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_tostring(mcstate_t* state, void* data, int argc,
     (void)data;
     arg = args[0];
     mc_printer_init(&pr, state, 5, NULL, true);
-    mc_printer_printobject(&pr, arg);
+    mc_printer_printvalue(&pr, arg);
     if(mc_printer_failed(&pr))
     {
         mc_printer_destroy(&pr);
@@ -13544,7 +14023,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_tostring(mcstate_t* state, void* data, int argc,
     return res;
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_jsonstringify(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_jsonstringify(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     int reslen;
     const char* resstr;
@@ -13558,7 +14037,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_jsonstringify(mcstate_t* state, void* data, int 
     mc_printer_init(&pr, state, 5, NULL, true);
     pr.config.verbosefunc = false;
     pr.config.quotstring = true;
-    mc_printer_printobject(&pr, arg);
+    mc_printer_printvalue(&pr, arg);
     if(mc_printer_failed(&pr))
     {
         mc_printer_destroy(&pr);
@@ -13571,7 +14050,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_jsonstringify(mcstate_t* state, void* data, int 
     return res;
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_tonum(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_tonum(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     int stringlen;
     int parsedlen;
@@ -13625,7 +14104,28 @@ err:
     return mc_value_makenull();
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_chr(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+
+mcvalue_t mc_scriptfn_isnan(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    mcfloat_t val;
+    bool b;
+    (void)state;
+    (void)argc;
+    (void)data;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
+    {
+        return mc_value_makenull();
+    }
+    val = mc_value_getnumber(args[0]);
+    b = false;
+    if(val != val)
+    {
+        b = true;
+    }
+    return mc_value_makebool(b);
+}
+
+mcvalue_t mc_scriptfn_chr(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     mcfloat_t val;
     char c;
@@ -13641,7 +14141,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_chr(mcstate_t* state, void* data, int argc, mcva
     return mc_value_makestringlen(state, &c, 1);
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_range(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_range(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     bool ok;
     int i;
@@ -13710,7 +14210,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_range(mcstate_t* state, void* data, int argc, mc
     return res;
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_keys(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_keys(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     bool ok;
     int i;
@@ -13744,7 +14244,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_keys(mcstate_t* state, void* data, int argc, mcv
     return res;
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_values(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_values(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     bool ok;
     int i;
@@ -13778,7 +14278,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_values(mcstate_t* state, void* data, int argc, m
     return res;
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_copy(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_copy(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)state;
     (void)argc;
@@ -13790,7 +14290,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_copy(mcstate_t* state, void* data, int argc, mcv
     return mc_value_copyflat(state, args[0]);
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_copydeep(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_copydeep(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
     (void)state;
@@ -13802,7 +14302,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_copydeep(mcstate_t* state, void* data, int argc,
     return mc_value_copydeep(state, args[0]);
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_remove(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_remove(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     bool res;
     int i;
@@ -13833,7 +14333,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_remove(mcstate_t* state, void* data, int argc, m
     return mc_value_makebool(res);
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_removeat(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_removeat(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     bool res;
     int ix;
@@ -13863,7 +14363,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_removeat(mcstate_t* state, void* data, int argc,
     return mc_value_makebool(true);
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_error(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_error(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
     if(argc == 1 && args[0].type == MC_VAL_STRING)
@@ -13873,7 +14373,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_error(mcstate_t* state, void* data, int argc, mc
     return mc_value_makeerror(state, "");
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_crash(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_crash(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
     if(argc == 1 && args[0].type == MC_VAL_STRING)
@@ -13887,7 +14387,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_crash(mcstate_t* state, void* data, int argc, mc
     return mc_value_makenull();
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_assert(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_assert(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
     (void)state;
@@ -13904,7 +14404,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_assert(mcstate_t* state, void* data, int argc, m
     return mc_value_makebool(true);
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_randseed(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_randseed(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     int seed;
     (void)data;
@@ -13919,7 +14419,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_randseed(mcstate_t* state, void* data, int argc,
     return mc_value_makebool(true);
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_random(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_random(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     mcfloat_t min;
     mcfloat_t max;
@@ -13954,7 +14454,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_random(mcstate_t* state, void* data, int argc, m
     return mc_value_makenull();
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_slice(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_slice(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     bool ok;
     int i;
@@ -14041,7 +14541,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_slice(mcstate_t* state, void* data, int argc, mc
     return mc_value_makenull();
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_isstring(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_isstring(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
     (void)state;
@@ -14053,7 +14553,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_isstring(mcstate_t* state, void* data, int argc,
     return mc_value_makebool(args[0].type == MC_VAL_STRING);
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_isarray(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_isarray(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
     (void)state;
@@ -14065,7 +14565,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_isarray(mcstate_t* state, void* data, int argc, 
     return mc_value_makebool(args[0].type == MC_VAL_ARRAY);
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_ismap(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_ismap(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
     (void)state;
@@ -14077,7 +14577,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_ismap(mcstate_t* state, void* data, int argc, mc
     return mc_value_makebool(args[0].type == MC_VAL_MAP);
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_isnumber(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_isnumber(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
     (void)state;
@@ -14089,7 +14589,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_isnumber(mcstate_t* state, void* data, int argc,
     return mc_value_makebool(args[0].type == MC_VAL_NUMBER);
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_isbool(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_isbool(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
     (void)state;
@@ -14101,7 +14601,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_isbool(mcstate_t* state, void* data, int argc, m
     return mc_value_makebool(args[0].type == MC_VAL_BOOL);
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_isnull(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_isnull(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
     (void)state;
@@ -14113,7 +14613,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_isnull(mcstate_t* state, void* data, int argc, m
     return mc_value_makebool(mc_value_gettype(args[0]) == MC_VAL_NULL);
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_isfunction(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_isfunction(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
     (void)state;
@@ -14125,7 +14625,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_isfunction(mcstate_t* state, void* data, int arg
     return mc_value_makebool(mc_value_gettype(args[0]) == MC_VAL_FUNCSCRIPT);
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_isexternal(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_isexternal(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
     (void)state;
@@ -14137,7 +14637,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_isexternal(mcstate_t* state, void* data, int arg
     return mc_value_makebool(mc_value_gettype(args[0]) == MC_VAL_EXTERNAL);
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_iserror(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_iserror(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
     (void)state;
@@ -14149,7 +14649,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_iserror(mcstate_t* state, void* data, int argc, 
     return mc_value_makebool(mc_value_gettype(args[0]) == MC_VAL_ERROR);
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_isnativefunction(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_isnativefunction(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     (void)data;
     (void)state;
@@ -14161,7 +14661,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_isnativefunction(mcstate_t* state, void* data, i
     return mc_value_makebool(mc_value_gettype(args[0]) == MC_VAL_FUNCNATIVE);
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_sqrt(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_sqrt(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     mcfloat_t arg;
     mcfloat_t res;
@@ -14177,7 +14677,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_sqrt(mcstate_t* state, void* data, int argc, mcv
     return mc_value_makenumber(res);
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_pow(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_pow(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     mcfloat_t arg1;
     mcfloat_t arg2;
@@ -14195,7 +14695,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_pow(mcstate_t* state, void* data, int argc, mcva
     return mc_value_makenumber(res);
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_sin(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_sin(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     mcfloat_t arg;
     mcfloat_t res;
@@ -14211,7 +14711,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_sin(mcstate_t* state, void* data, int argc, mcva
     return mc_value_makenumber(res);
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_cos(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_cos(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     mcfloat_t arg;
     mcfloat_t res;
@@ -14227,7 +14727,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_cos(mcstate_t* state, void* data, int argc, mcva
     return mc_value_makenumber(res);
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_tan(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_tan(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     mcfloat_t arg;
     mcfloat_t res;
@@ -14243,7 +14743,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_tan(mcstate_t* state, void* data, int argc, mcva
     return mc_value_makenumber(res);
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_log(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_log(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     mcfloat_t arg;
     mcfloat_t res;
@@ -14259,7 +14759,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_log(mcstate_t* state, void* data, int argc, mcva
     return mc_value_makenumber(res);
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_ceil(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_ceil(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     mcfloat_t arg;
     mcfloat_t res;
@@ -14275,7 +14775,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_ceil(mcstate_t* state, void* data, int argc, mcv
     return mc_value_makenumber(res);
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_floor(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_floor(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     mcfloat_t arg;
     mcfloat_t res;
@@ -14291,7 +14791,7 @@ TMPSTATIC mcvalue_t mc_scriptfn_floor(mcstate_t* state, void* data, int argc, mc
     return mc_value_makenumber(res);
 }
 
-TMPSTATIC mcvalue_t mc_scriptfn_abs(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptfn_abs(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
     mcfloat_t arg;
     mcfloat_t res;
@@ -14303,11 +14803,11 @@ TMPSTATIC mcvalue_t mc_scriptfn_abs(mcstate_t* state, void* data, int argc, mcva
         return mc_value_makenull();
     }
     arg = mc_value_getnumber(args[0]);
-    res = fabs(arg);
+    res = MC_UTIL_FABS(arg);
     return mc_value_makenumber(res);
 }
 
-TMPSTATIC mcptrarray_t* mc_util_splitstring(mcstate_t* state, const char* str, const char* delimiter)
+mcptrarray_t* mc_util_splitstring(mcstate_t* state, const char* str, const char* delimiter)
 {
     bool ok;
     int i;
@@ -14367,7 +14867,7 @@ err:
     return NULL;
 }
 
-TMPSTATIC char* mc_util_joinstringarray(mcstate_t* state, mcptrarray_t* items, const char* with)
+char* mc_util_joinstringarray(mcstate_t* state, mcptrarray_t* items, const char* with)
 {
     int i;
     char* item;
@@ -14389,7 +14889,7 @@ TMPSTATIC char* mc_util_joinstringarray(mcstate_t* state, mcptrarray_t* items, c
     return mc_printer_getstringanddestroy(res, NULL);
 }
 
-TMPSTATIC char* mc_util_canonpath(mcstate_t* state, const char* path)
+char* mc_util_canonpath(mcstate_t* state, const char* path)
 {
     int i;
     char* joined;
@@ -14436,17 +14936,17 @@ TMPSTATIC char* mc_util_canonpath(mcstate_t* state, const char* path)
     return joined;
 }
 
-TMPSTATIC bool mc_util_pathisabsolute(const char* path)
+bool mc_util_pathisabsolute(const char* path)
 {
     return path[0] == '/';
 }
 
-TMPSTATIC bool mc_util_strequal(const char* a, const char* b)
+bool mc_util_strequal(const char* a, const char* b)
 {
     return strcmp(a, b) == 0;
 }
 
-TMPSTATIC inline bool mc_callframe_init(mcvmframe_t* frame, mcvalue_t functionobj, int baseptr)
+MCINLINE bool mc_callframe_init(mcvmframe_t* frame, mcvalue_t functionobj, int baseptr)
 {
     mcobjfuncscript_t* function;
     if(mc_value_gettype(functionobj) != MC_VAL_FUNCSCRIPT)
@@ -14466,7 +14966,7 @@ TMPSTATIC inline bool mc_callframe_init(mcvmframe_t* frame, mcvalue_t functionob
     return true;
 }
 
-TMPSTATIC inline uint64_t mc_callframe_readuint64(mcvmframe_t* frame)
+MCINLINE uint64_t mc_callframe_readuint64(mcvmframe_t* frame)
 {
     uint64_t res;
     uint8_t* data;
@@ -14484,7 +14984,7 @@ TMPSTATIC inline uint64_t mc_callframe_readuint64(mcvmframe_t* frame)
     return res;
 }
 
-TMPSTATIC inline uint16_t mc_callframe_readuint16(mcvmframe_t* frame)
+MCINLINE uint16_t mc_callframe_readuint16(mcvmframe_t* frame)
 {
     uint8_t* data;
     data = frame->bytecode + frame->bcposition;
@@ -14492,7 +14992,7 @@ TMPSTATIC inline uint16_t mc_callframe_readuint16(mcvmframe_t* frame)
     return (data[0] << 8) | data[1];
 }
 
-TMPSTATIC inline uint8_t mc_callframe_readuint8(mcvmframe_t* frame)
+MCINLINE uint8_t mc_callframe_readuint8(mcvmframe_t* frame)
 {
     uint8_t* data;
     data = frame->bytecode + frame->bcposition;
@@ -14500,13 +15000,13 @@ TMPSTATIC inline uint8_t mc_callframe_readuint8(mcvmframe_t* frame)
     return data[0];
 }
 
-TMPSTATIC inline mcopcode_t mc_callframe_readopcode(mcvmframe_t* frame)
+MCINLINE mcopcode_t mc_callframe_readopcode(mcvmframe_t* frame)
 {
     frame->sourcebcpos = frame->bcposition;
     return (mcopcode_t)mc_callframe_readuint8(frame);
 }
 
-TMPSTATIC inline mcastlocation_t mc_callframe_getpos(mcvmframe_t* frame)
+MCINLINE mcastlocation_t mc_callframe_getpos(mcvmframe_t* frame)
 {
     if(frame->framesrcposlist)
     {
@@ -14515,10 +15015,10 @@ TMPSTATIC inline mcastlocation_t mc_callframe_getpos(mcvmframe_t* frame)
     return srcposinvalid;
 }
 
-TMPSTATIC mcgcmemory_t* mc_gcmemory_make(mcstate_t* state)
+mcgcmemory_t* mc_gcmemory_make(mcstate_t* state)
 {
     int i;
-    mcgcmemory_t* mem = (mcgcmemory_t*)mc_allocator_alloc(state, sizeof(mcgcmemory_t));
+    mcgcmemory_t* mem = (mcgcmemory_t*)mc_allocator_malloc(state, sizeof(mcgcmemory_t));
     if(!mem)
     {
         return NULL;
@@ -14554,7 +15054,7 @@ error:
     return NULL;
 }
 
-TMPSTATIC void mc_gcmemory_destroy(mcgcmemory_t* mem)
+void mc_gcmemory_destroy(mcgcmemory_t* mem)
 {
     int i;
     int j;
@@ -14592,7 +15092,7 @@ TMPSTATIC void mc_gcmemory_destroy(mcgcmemory_t* mem)
     mc_allocator_free(mem->pstate, mem);
 }
 
-TMPSTATIC mcobjdata_t* mc_gcmemory_allocobjectdata(mcstate_t* state)
+mcobjdata_t* mc_gcmemory_allocobjectdata(mcstate_t* state)
 {
     bool ok;
     mcobjdata_t* data;
@@ -14605,7 +15105,7 @@ TMPSTATIC mcobjdata_t* mc_gcmemory_allocobjectdata(mcstate_t* state)
     }
     else
     {
-        data = (mcobjdata_t*)mc_allocator_alloc(state, sizeof(mcobjdata_t));
+        data = (mcobjdata_t*)mc_allocator_malloc(state, sizeof(mcobjdata_t));
         if(!data)
         {
             return NULL;
@@ -14634,7 +15134,7 @@ TMPSTATIC mcobjdata_t* mc_gcmemory_allocobjectdata(mcstate_t* state)
     return data;
 }
 
-TMPSTATIC mcobjdata_t* mc_gcmemory_getdatafrompool(mcstate_t* state, mcvaltype_t type)
+mcobjdata_t* mc_gcmemory_getdatafrompool(mcstate_t* state, mcvaltype_t type)
 {
     bool ok;
     mcobjdata_t* data;
@@ -14664,7 +15164,7 @@ TMPSTATIC mcobjdata_t* mc_gcmemory_getdatafrompool(mcstate_t* state, mcvaltype_t
     return data;
 }
 
-TMPSTATIC void mc_state_gcunmarkall(mcstate_t* state)
+void mc_state_gcunmarkall(mcstate_t* state)
 {
     int i;
     mcobjdata_t* data;
@@ -14675,7 +15175,7 @@ TMPSTATIC void mc_state_gcunmarkall(mcstate_t* state)
     }
 }
 
-TMPSEMISTATIC void mc_state_gcmarkobjlist(mcvalue_t* objects, int count)
+void mc_state_gcmarkobjlist(mcvalue_t* objects, int count)
 {
     int i;
     mcvalue_t obj;
@@ -14686,7 +15186,7 @@ TMPSEMISTATIC void mc_state_gcmarkobjlist(mcvalue_t* objects, int count)
     }
 }
 
-TMPSEMISTATIC void mc_state_gcmarkobject(mcvalue_t obj)
+void mc_state_gcmarkobject(mcvalue_t obj)
 {
     int i;
     int len;
@@ -14778,7 +15278,7 @@ TMPSEMISTATIC void mc_state_gcmarkobject(mcvalue_t obj)
     }
 }
 
-TMPSTATIC void mc_state_gcsweep(mcstate_t* state)
+void mc_state_gcsweep(mcstate_t* state)
 {
     bool ok;
     int i;
@@ -14829,7 +15329,7 @@ TMPSTATIC void mc_state_gcsweep(mcstate_t* state)
     state->mem->allocssincesweep = 0;
 }
 
-TMPUNUSED bool mc_state_gcdisablefor(mcvalue_t obj)
+bool mc_state_gcdisablefor(mcvalue_t obj)
 {
     bool ok;
     mcobjdata_t* data;
@@ -14846,7 +15346,7 @@ TMPUNUSED bool mc_state_gcdisablefor(mcvalue_t obj)
     return ok;
 }
 
-TMPUNUSED void mc_state_gcenablefor(mcvalue_t obj)
+void mc_state_gcenablefor(mcvalue_t obj)
 {
     mcobjdata_t* data;
     if(!mc_value_isallocated(obj))
@@ -14857,12 +15357,12 @@ TMPUNUSED void mc_state_gcenablefor(mcvalue_t obj)
     mc_basicarray_removeitem(data->mem->gcobjlistremains, &obj);
 }
 
-TMPSTATIC int mc_state_gcshouldsweep(mcstate_t* state)
+int mc_state_gcshouldsweep(mcstate_t* state)
 {
     return state->mem->allocssincesweep > MC_CONF_GCMEMSWEEPINTERVAL;
 }
 
-TMPSTATIC mcgcobjdatapool_t* mc_state_gcgetpoolfortype(mcstate_t* state, mcvaltype_t type)
+mcgcobjdatapool_t* mc_state_gcgetpoolfortype(mcstate_t* state, mcvaltype_t type)
 {
     switch(type)
     {
@@ -14878,7 +15378,7 @@ TMPSTATIC mcgcobjdatapool_t* mc_state_gcgetpoolfortype(mcstate_t* state, mcvalty
     return NULL;
 }
 
-TMPSTATIC bool mc_state_gccandatabeputinpool(mcstate_t* state, mcobjdata_t* data)
+bool mc_state_gccandatabeputinpool(mcstate_t* state, mcobjdata_t* data)
 {
     mcvalue_t obj;
     mcgcobjdatapool_t* pool;
@@ -14925,10 +15425,10 @@ TMPSTATIC bool mc_state_gccandatabeputinpool(mcstate_t* state, mcobjdata_t* data
     return true;
 }
 
-TMPSTATIC mcglobalstore_t* mc_globalstore_make(mcstate_t* state)
+mcglobalstore_t* mc_globalstore_make(mcstate_t* state)
 {
     mcglobalstore_t* store;
-    store = (mcglobalstore_t*)mc_allocator_alloc(state, sizeof(mcglobalstore_t));
+    store = (mcglobalstore_t*)mc_allocator_malloc(state, sizeof(mcglobalstore_t));
     if(!store)
     {
         return NULL;
@@ -14951,7 +15451,7 @@ err:
     return NULL;
 }
 
-TMPSTATIC void mc_globalstore_destroy(mcglobalstore_t* store)
+void mc_globalstore_destroy(mcglobalstore_t* store)
 {
     if(!store)
     {
@@ -14962,12 +15462,12 @@ TMPSTATIC void mc_globalstore_destroy(mcglobalstore_t* store)
     mc_allocator_free(store->pstate, store);
 }
 
-TMPSTATIC mcastsymbol_t* mc_globalstore_getsymbol(mcglobalstore_t* store, const char* name)
+mcastsymbol_t* mc_globalstore_getsymbol(mcglobalstore_t* store, const char* name)
 {
     return (mcastsymbol_t*)mc_genericdict_get(store->symbols, name);
 }
 
-TMPSTATIC bool mc_globalstore_setnamed(mcglobalstore_t* store, const char* name, mcvalue_t object)
+bool mc_globalstore_setnamed(mcglobalstore_t* store, const char* name, mcvalue_t object)
 {
     bool ok;
     int ix;
@@ -15002,7 +15502,7 @@ err:
     return false;
 }
 
-TMPSTATIC mcvalue_t mc_globalstore_getatindex(mcglobalstore_t* store, int ix, bool* outok)
+mcvalue_t mc_globalstore_getatindex(mcglobalstore_t* store, int ix, bool* outok)
 {
     mcvalue_t* res;
     res = (mcvalue_t*)mc_basicarray_get(store->objects, ix);
@@ -15015,17 +15515,17 @@ TMPSTATIC mcvalue_t mc_globalstore_getatindex(mcglobalstore_t* store, int ix, bo
     return *res;
 }
 
-TMPSTATIC mcvalue_t* mc_globalstore_getdata(mcglobalstore_t* store)
+mcvalue_t* mc_globalstore_getdata(mcglobalstore_t* store)
 {
     return (mcvalue_t*)mc_basicarray_data(store->objects);
 }
 
-TMPSTATIC int mc_globalstore_getcount(mcglobalstore_t* store)
+int mc_globalstore_getcount(mcglobalstore_t* store)
 {
     return mc_basicarray_count(store->objects);
 }
 
-TMPSTATIC bool mc_value_ishashable(mcvalue_t obj)
+bool mc_value_ishashable(mcvalue_t obj)
 {
     mcvaltype_t type = mc_value_gettype(obj);
     switch(type)
@@ -15042,253 +15542,10 @@ TMPSTATIC bool mc_value_ishashable(mcvalue_t obj)
     return false;
 }
 
-TMPSTATIC bool mc_printutil_bcreadoperands(mcopdefinition_t* def, const uint8_t* instr, uint64_t outoperands[2])
-{
-    int i;
-    int offset;
-    int operandwidth;
-    uint64_t operand;
-    offset = 0;
-    for(i = 0; i < def->numoperands; i++)
-    {
-        operandwidth = def->operandwidths[i];
-        switch(operandwidth)
-        {
-            case 1:
-                {
-                    outoperands[i] = instr[offset];
-                }
-                break;
-            case 2:
-                {
-                    operand = 0;
-                    operand = operand | ((uint64_t)instr[offset] << 8);
-                    operand = operand | ((uint64_t)instr[offset + 1]);
-                    outoperands[i] = operand;
-                }
-                break;
-            case 4:
-                {
-                    operand = 0;
-                    operand = operand | ((uint64_t)instr[offset + 0] << 24);
-                    operand = operand | ((uint64_t)instr[offset + 1] << 16);
-                    operand = operand | ((uint64_t)instr[offset + 2] << 8);
-                    operand = operand | ((uint64_t)instr[offset + 3]);
-                    outoperands[i] = operand;
-                }
-                break;
-            case 8:
-                {
-                    operand = 0;
-                    operand = operand | ((uint64_t)instr[offset + 0] << 56);
-                    operand = operand | ((uint64_t)instr[offset + 1] << 48);
-                    operand = operand | ((uint64_t)instr[offset + 2] << 40);
-                    operand = operand | ((uint64_t)instr[offset + 3] << 32);
-                    operand = operand | ((uint64_t)instr[offset + 4] << 24);
-                    operand = operand | ((uint64_t)instr[offset + 5] << 16);
-                    operand = operand | ((uint64_t)instr[offset + 6] << 8);
-                    operand = operand | ((uint64_t)instr[offset + 7]);
-                    outoperands[i] = operand;
-                }
-                break;
-            default:
-                {
-                    MC_ASSERT(false);
-                    return false;
-                }
-                break;
-        }
-        offset += operandwidth;
-    }
-    return true;
-}
-
-TMPSTATIC void mc_printer_printbytecode(mcprinter_t* pr, uint8_t* code, mcastlocation_t* sposlist, size_t codesize, bool simple)
-{
-    bool ok;
-    int i;
-    uint8_t op;
-    unsigned pos;
-    mcfloat_t dval;
-    uint64_t operands[2];
-    mcastlocation_t srcpos;
-    mcopdefinition_t* def;
-    pos = 0;
-    while(pos < codesize)
-    {
-        op = code[pos];
-        def = mc_opdef_lookup(op);
-        MC_ASSERT(def);
-        if(sposlist)
-        {
-            srcpos = sposlist[pos];
-            if(simple)
-            {
-                mc_printer_puts(pr, "<");
-            }
-            mc_printer_printf(pr, "%d:%d %04d %s", srcpos.line, srcpos.column, pos, def->name);
-            if(simple)
-            {
-                mc_printer_puts(pr, ">");
-            }
-        }
-        else
-        {
-            mc_printer_printf(pr, "%04d %s", pos, def->name);
-        }
-        pos++;
-        ok = mc_printutil_bcreadoperands(def, code + pos, operands);
-        if(!ok)
-        {
-            return;
-        }
-        for(i = 0; i < def->numoperands; i++)
-        {
-            if(op == MC_OPCODE_NUMBER)
-            {
-                dval = mc_util_uint64todouble(operands[i]);
-                mc_printer_printf(pr, " %1.17g", dval);
-            }
-            else
-            {
-                mc_printer_printf(pr, " %llu", operands[i]);
-            }
-            pos += def->operandwidths[i];
-        }
-        if(simple)
-        {
-            mc_printer_puts(pr, ",");
-        }
-        else
-        {
-            mc_printer_puts(pr, "\n");
-        }
-    }
-}
-
-TMPSTATIC void mc_printer_printobjstring(mcprinter_t* pr, mcvalue_t obj)
-{
-    size_t len;
-    const char* str;
-    str = mc_valstring_getdata(obj);
-    len = mc_valstring_getlength(obj);
-    if(pr->config.quotstring)
-    {
-        mc_printer_printescapedstring(pr, str, len);
-    }
-    else
-    {
-        mc_printer_putlen(pr, str, len);
-    }
-}
-
-TMPSTATIC void mc_printer_printobjfuncscript(mcprinter_t* pr, mcvalue_t obj)
-{
-    const char* fname;
-    mcobjfuncscript_t* fn;
-    fn = mc_value_functiongetscriptfunction(obj);
-    fname = mc_value_functiongetname(obj);
-    mc_printer_printf(pr, "<scriptfunction '%s' locals=%d argc=%d fvc=%d", fname, fn->numlocals, fn->numargs, fn->freevalscount);
-    if(pr->config.verbosefunc)
-    {
-        mc_printer_puts(pr, " [");
-        mc_printer_printbytecode(pr, fn->compiledprogcode->bytecode, fn->compiledprogcode->progsrcposlist, fn->compiledprogcode->count, true);
-        mc_printer_puts(pr, " ]");
-    }
-    else
-    {
-    }
-    mc_printer_puts(pr, ">");
-}
-
-TMPSTATIC void mc_printer_printobjarray(mcprinter_t* pr, mcvalue_t obj)
-{
-    bool recursion;
-    size_t i;
-    size_t alen;
-    bool prevquot;
-    mcvalue_t iobj;
-    mcbasicarray_t* actualary;
-    mcbasicarray_t* otherary;
-    actualary = mc_valarray_getinternalarray(obj);
-    alen = mc_valarray_getlength(obj);
-    mc_printer_puts(pr, "[");
-    for(i = 0; i < alen; i++)
-    {
-        recursion = false;
-        iobj = mc_valarray_getvalueat(obj, i);
-        if(mc_value_gettype(iobj) == MC_VAL_ARRAY)
-        {
-            otherary = mc_valarray_getinternalarray(iobj);
-            if(otherary == actualary)
-            {
-                recursion = true;
-            }
-        }
-        prevquot = pr->config.quotstring;
-        pr->config.quotstring = true;
-        if(recursion)
-        {
-            mc_printer_puts(pr, "<recursion>");
-        }
-        else
-        {
-            mc_printer_printobject(pr, iobj);
-        }
-        pr->config.quotstring = prevquot;
-        if(i < (alen - 1))
-        {
-            mc_printer_puts(pr, ", ");
-        }
-    }
-    mc_printer_puts(pr, "]");
-}
-
-TMPSTATIC void mc_printer_printobjmap(mcprinter_t* pr, mcvalue_t obj)
-{
-    bool prevquot;
-    size_t i;
-    size_t alen;
-    mcvalue_t key;
-    mcvalue_t val;
-    alen = mc_valmap_getlength(obj);
-    mc_printer_puts(pr, "{");
-    for(i = 0; i < alen; i++)
-    {
-        key = mc_valmap_getkeyat(obj, i);
-        val = mc_valmap_getvalueat(obj, i);
-        prevquot = pr->config.quotstring;
-        pr->config.quotstring = true;
-        mc_printer_printobject(pr, key);
-        mc_printer_puts(pr, ": ");
-        mc_printer_printobject(pr, val);
-        pr->config.quotstring = prevquot;
-        if(i < (alen - 1))
-        {
-            mc_printer_puts(pr, ", ");
-        }
-    }
-    mc_printer_puts(pr, "}");
-}
-
-TMPSTATIC void mc_printer_printobjerror(mcprinter_t* pr, mcvalue_t obj)
-{
-    mctraceback_t* traceback;
-    mc_printer_printf(pr, "ERROR: %s\n", mc_value_errorgetmessage(obj));
-    traceback = mc_value_errorgettraceback(obj);
-    MC_ASSERT(traceback);
-    if(traceback)
-    {
-        mc_printer_puts(pr, "Traceback:\n");
-        mc_printer_printtraceback(pr, traceback);
-    }
-}
-
-
-TMPSTATIC mcastsymbol_t* mc_symbol_make(mcstate_t* state, const char* name, mcastsymtype_t type, int index, bool assignable)
+mcastsymbol_t* mc_symbol_make(mcstate_t* state, const char* name, mcastsymtype_t type, int index, bool assignable)
 {
     mcastsymbol_t* symbol;
-    symbol = (mcastsymbol_t*)mc_allocator_alloc(state, sizeof(mcastsymbol_t));
+    symbol = (mcastsymbol_t*)mc_allocator_malloc(state, sizeof(mcastsymbol_t));
     if(!symbol)
     {
         return NULL;
@@ -15307,7 +15564,7 @@ TMPSTATIC mcastsymbol_t* mc_symbol_make(mcstate_t* state, const char* name, mcas
     return symbol;
 }
 
-TMPSTATIC void mc_symbol_destroy(mcastsymbol_t* symbol)
+void mc_symbol_destroy(mcastsymbol_t* symbol)
 {
     if(!symbol)
     {
@@ -15317,16 +15574,16 @@ TMPSTATIC void mc_symbol_destroy(mcastsymbol_t* symbol)
     mc_allocator_free(symbol->pstate, symbol);
 }
 
-TMPSTATIC mcastsymbol_t* mc_symbol_copy(mcastsymbol_t* symbol)
+mcastsymbol_t* mc_symbol_copy(mcastsymbol_t* symbol)
 {
     return mc_symbol_make(symbol->pstate, symbol->name, symbol->type, symbol->index, symbol->assignable);
 }
 
-TMPSTATIC mcastsymtable_t* mc_symtable_make(mcstate_t* state, mcastsymtable_t* outer, mcglobalstore_t* gstore, int mgo)
+mcastsymtable_t* mc_symtable_make(mcstate_t* state, mcastsymtable_t* outer, mcglobalstore_t* gstore, int mgo)
 {
     bool ok;
     mcastsymtable_t* table;
-    table = (mcastsymtable_t*)mc_allocator_alloc(state, sizeof(mcastsymtable_t));
+    table = (mcastsymtable_t*)mc_allocator_malloc(state, sizeof(mcastsymtable_t));
     if(!table)
     {
         return NULL;
@@ -15363,7 +15620,7 @@ err:
     return NULL;
 }
 
-TMPSTATIC void mc_symtable_destroy(mcastsymtable_t* table)
+void mc_symtable_destroy(mcastsymtable_t* table)
 {
     mcstate_t* state;
     if(!table)
@@ -15382,10 +15639,10 @@ TMPSTATIC void mc_symtable_destroy(mcastsymtable_t* table)
     mc_allocator_free(state, table);
 }
 
-TMPSTATIC mcastsymtable_t* mc_symtable_copy(mcastsymtable_t* table)
+mcastsymtable_t* mc_symtable_copy(mcastsymtable_t* table)
 {
     mcastsymtable_t* copy;
-    copy = (mcastsymtable_t*)mc_allocator_alloc(table->pstate, sizeof(mcastsymtable_t));
+    copy = (mcastsymtable_t*)mc_allocator_malloc(table->pstate, sizeof(mcastsymtable_t));
     if(!copy)
     {
         return NULL;
@@ -15417,7 +15674,7 @@ err:
     return NULL;
 }
 
-TMPSTATIC bool mc_symtable_addmodsymbol(mcastsymtable_t* st, mcastsymbol_t* symbol)
+bool mc_symtable_addmodsymbol(mcastsymtable_t* st, mcastsymbol_t* symbol)
 {
     bool ok;
     mcastsymbol_t* copy;
@@ -15445,7 +15702,7 @@ TMPSTATIC bool mc_symtable_addmodsymbol(mcastsymtable_t* st, mcastsymbol_t* symb
     return true;
 }
 
-TMPSTATIC mcastsymbol_t* mc_symtable_define(mcastsymtable_t* table, const char* name, bool assignable)
+mcastsymbol_t* mc_symtable_define(mcastsymtable_t* table, const char* name, bool assignable)
 {
     bool ok;
     bool globalsymboladded;
@@ -15518,7 +15775,7 @@ TMPSTATIC mcastsymbol_t* mc_symtable_define(mcastsymtable_t* table, const char* 
     return symbol;
 }
 
-TMPSTATIC mcastsymbol_t* mc_symtable_defineanddestroyold(mcastsymtable_t* st, mcastsymbol_t* original)
+mcastsymbol_t* mc_symtable_defineanddestroyold(mcastsymtable_t* st, mcastsymbol_t* original)
 {
     bool ok;
     mcastsymbol_t* copy;
@@ -15548,7 +15805,7 @@ TMPSTATIC mcastsymbol_t* mc_symtable_defineanddestroyold(mcastsymtable_t* st, mc
     return symbol;
 }
 
-TMPSTATIC mcastsymbol_t* mc_symtable_definefunctionname(mcastsymtable_t* st, const char* name, bool assignable)
+mcastsymbol_t* mc_symtable_definefunctionname(mcastsymtable_t* st, const char* name, bool assignable)
 {
     bool ok;
     mcastsymbol_t* symbol;
@@ -15571,7 +15828,7 @@ TMPSTATIC mcastsymbol_t* mc_symtable_definefunctionname(mcastsymtable_t* st, con
     return symbol;
 }
 
-TMPSTATIC mcastsymbol_t* mc_symtable_definethis(mcastsymtable_t* st)
+mcastsymbol_t* mc_symtable_definethis(mcastsymtable_t* st)
 {
     bool ok;
     mcastsymbol_t* symbol;
@@ -15589,7 +15846,7 @@ TMPSTATIC mcastsymbol_t* mc_symtable_definethis(mcastsymtable_t* st)
     return symbol;
 }
 
-TMPSEMISTATIC mcastsymbol_t* mc_symtable_resolve(mcastsymtable_t* table, const char* name)
+mcastsymbol_t* mc_symtable_resolve(mcastsymtable_t* table, const char* name)
 {
     int i;
     mcastsymbol_t* symbol;
@@ -15631,7 +15888,7 @@ TMPSEMISTATIC mcastsymbol_t* mc_symtable_resolve(mcastsymtable_t* table, const c
     return symbol;
 }
 
-TMPSTATIC bool mc_symtable_isdefined(mcastsymtable_t* table, const char* name)
+bool mc_symtable_isdefined(mcastsymtable_t* table, const char* name)
 {
     /* todo: rename to something more obvious */
     mcastsymbol_t* symbol;
@@ -15650,7 +15907,7 @@ TMPSTATIC bool mc_symtable_isdefined(mcastsymtable_t* table, const char* name)
     return false;
 }
 
-TMPSTATIC bool mc_symtable_pushblockscope(mcastsymtable_t* table)
+bool mc_symtable_pushblockscope(mcastsymtable_t* table)
 {
     bool ok;
     int blockscopeoffset;
@@ -15680,7 +15937,7 @@ TMPSTATIC bool mc_symtable_pushblockscope(mcastsymtable_t* table)
     return true;
 }
 
-TMPSTATIC void mc_symtable_popblockscope(mcastsymtable_t* table)
+void mc_symtable_popblockscope(mcastsymtable_t* table)
 {
     mcastscopeblock_t* topscope;
     topscope = (mcastscopeblock_t*)mc_ptrarray_top(table->blockscopes);
@@ -15688,42 +15945,42 @@ TMPSTATIC void mc_symtable_popblockscope(mcastsymtable_t* table)
     mc_astblockscope_destroy(topscope);
 }
 
-TMPSTATIC mcastscopeblock_t* mc_symtable_getblockscope(mcastsymtable_t* table)
+mcastscopeblock_t* mc_symtable_getblockscope(mcastsymtable_t* table)
 {
     mcastscopeblock_t* topscope;
     topscope = (mcastscopeblock_t*)mc_ptrarray_top(table->blockscopes);
     return topscope;
 }
 
-TMPSTATIC bool mc_symtable_ismodglobalscope(mcastsymtable_t* table)
+bool mc_symtable_ismodglobalscope(mcastsymtable_t* table)
 {
     return table->outer == NULL;
 }
 
-TMPSTATIC bool mc_symtable_istopblockscope(mcastsymtable_t* table)
+bool mc_symtable_istopblockscope(mcastsymtable_t* table)
 {
     return mc_ptrarray_count(table->blockscopes) == 1;
 }
 
-TMPSTATIC bool mc_symtable_istopglobalscope(mcastsymtable_t* table)
+bool mc_symtable_istopglobalscope(mcastsymtable_t* table)
 {
     return mc_symtable_ismodglobalscope(table) && mc_symtable_istopblockscope(table);
 }
 
-TMPSTATIC int mc_symtable_getmodglobalsymcount(mcastsymtable_t* table)
+int mc_symtable_getmodglobalsymcount(mcastsymtable_t* table)
 {
     return mc_ptrarray_count(table->modglobalsymbols);
 }
 
-TMPSTATIC mcastsymbol_t* mc_symtable_getmodglobalsymat(mcastsymtable_t* table, int ix)
+mcastsymbol_t* mc_symtable_getmodglobalsymat(mcastsymtable_t* table, int ix)
 {
     return (mcastsymbol_t*)mc_ptrarray_get(table->modglobalsymbols, ix);
 }
 
-TMPSTATIC mcastscopeblock_t* mc_astblockscope_make(mcstate_t* state, int offset)
+mcastscopeblock_t* mc_astblockscope_make(mcstate_t* state, int offset)
 {
     mcastscopeblock_t* newscope;
-    newscope = (mcastscopeblock_t*)mc_allocator_alloc(state, sizeof(mcastscopeblock_t));
+    newscope = (mcastscopeblock_t*)mc_allocator_malloc(state, sizeof(mcastscopeblock_t));
     if(!newscope)
     {
         return NULL;
@@ -15741,16 +15998,16 @@ TMPSTATIC mcastscopeblock_t* mc_astblockscope_make(mcstate_t* state, int offset)
     return newscope;
 }
 
-TMPSTATIC void mc_astblockscope_destroy(mcastscopeblock_t* scope)
+void mc_astblockscope_destroy(mcastscopeblock_t* scope)
 {
     mc_genericdict_destroyitemsanddict(scope->store);
     mc_allocator_free(scope->pstate, scope);
 }
 
-TMPSTATIC mcastscopeblock_t* mc_astblockscope_copy(mcastscopeblock_t* scope)
+mcastscopeblock_t* mc_astblockscope_copy(mcastscopeblock_t* scope)
 {
     mcastscopeblock_t* copy;
-    copy = (mcastscopeblock_t*)mc_allocator_alloc(scope->pstate, sizeof(mcastscopeblock_t));
+    copy = (mcastscopeblock_t*)mc_allocator_malloc(scope->pstate, sizeof(mcastscopeblock_t));
     if(!copy)
     {
         return NULL;
@@ -15768,7 +16025,7 @@ TMPSTATIC mcastscopeblock_t* mc_astblockscope_copy(mcastscopeblock_t* scope)
     return copy;
 }
 
-TMPSTATIC bool mc_symtable_setsymbol(mcastsymtable_t* table, mcastsymbol_t* symbol)
+bool mc_symtable_setsymbol(mcastsymtable_t* table, mcastsymbol_t* symbol)
 {
     mcastscopeblock_t* topscope;
     mcastsymbol_t* existing;
@@ -15781,7 +16038,7 @@ TMPSTATIC bool mc_symtable_setsymbol(mcastsymtable_t* table, mcastsymbol_t* symb
     return mc_genericdict_set(topscope->store, symbol->name, symbol);
 }
 
-TMPSTATIC int mc_symtable_nextsymindex(mcastsymtable_t* table)
+int mc_symtable_nextsymindex(mcastsymtable_t* table)
 {
     int ix;
     mcastscopeblock_t* topscope;
@@ -15790,7 +16047,7 @@ TMPSTATIC int mc_symtable_nextsymindex(mcastsymtable_t* table)
     return ix;
 }
 
-TMPSTATIC int mc_symtable_getnumdefs(mcastsymtable_t* table)
+int mc_symtable_getnumdefs(mcastsymtable_t* table)
 {
     int i;
     int count;
@@ -15804,19 +16061,19 @@ TMPSTATIC int mc_symtable_getnumdefs(mcastsymtable_t* table)
     return count;
 }
 
-TMPSTATIC void mc_asttoken_init(mcasttoken_t* tok, mcasttoktype_t type, const char* literal, int len)
+void mc_asttoken_init(mcasttoken_t* tok, mcasttoktype_t type, const char* literal, int len)
 {
     tok->type = type;
     tok->literal = literal;
     tok->len = len;
 }
 
-TMPSTATIC char* mc_asttoken_dupliteralstring(mcstate_t* state, mcasttoken_t* tok)
+char* mc_asttoken_dupliteralstring(mcstate_t* state, mcasttoken_t* tok)
 {
     return mc_util_strndup(state, tok->literal, tok->len);
 }
 
-TMPSTATIC const char* mc_asttoken_typename(mcasttoktype_t type)
+const char* mc_asttoken_typename(mcasttoktype_t type)
 {
     switch(type)
     {
@@ -15954,10 +16211,10 @@ TMPSTATIC const char* mc_asttoken_typename(mcasttoktype_t type)
     return "ILLEGAL";
 }
 
-TMPSTATIC mctraceback_t* mc_traceback_make(mcstate_t* state)
+mctraceback_t* mc_traceback_make(mcstate_t* state)
 {
     mctraceback_t* traceback;
-    traceback = (mctraceback_t*)mc_allocator_alloc(state, sizeof(mctraceback_t));
+    traceback = (mctraceback_t*)mc_allocator_malloc(state, sizeof(mctraceback_t));
     if(!traceback)
     {
         return NULL;
@@ -15973,7 +16230,7 @@ TMPSTATIC mctraceback_t* mc_traceback_make(mcstate_t* state)
     return traceback;
 }
 
-TMPSTATIC void mc_traceback_destroy(mctraceback_t* traceback)
+void mc_traceback_destroy(mctraceback_t* traceback)
 {
     int i;
     mctraceitem_t* item;
@@ -15990,7 +16247,7 @@ TMPSTATIC void mc_traceback_destroy(mctraceback_t* traceback)
     mc_allocator_free(traceback->pstate, traceback);
 }
 
-TMPSTATIC bool mc_traceback_push(mctraceback_t* traceback, const char* fname, mcastlocation_t pos)
+bool mc_traceback_push(mctraceback_t* traceback, const char* fname, mcastlocation_t pos)
 {
     bool ok;
     mctraceitem_t item;
@@ -16009,7 +16266,7 @@ TMPSTATIC bool mc_traceback_push(mctraceback_t* traceback, const char* fname, mc
     return true;
 }
 
-TMPSTATIC bool mc_traceback_vmpush(mctraceback_t* traceback, mcstate_t* state)
+bool mc_traceback_vmpush(mctraceback_t* traceback, mcstate_t* state)
 {
     bool ok;
     int i;
@@ -16026,7 +16283,7 @@ TMPSTATIC bool mc_traceback_vmpush(mctraceback_t* traceback, mcstate_t* state)
     return true;
 }
 
-TMPSTATIC bool mc_printer_printtraceback(mcprinter_t* pr, mctraceback_t* traceback)
+bool mc_printer_printtraceback(mcprinter_t* pr, mctraceback_t* traceback)
 {
     int i;
     int depth;
@@ -16049,7 +16306,7 @@ TMPSTATIC bool mc_printer_printtraceback(mcprinter_t* pr, mctraceback_t* traceba
     return !mc_printer_failed(pr);
 }
 
-TMPSTATIC const char* mc_traceitem_getsourceline(mctraceitem_t* item)
+const char* mc_traceitem_getsourceline(mctraceitem_t* item)
 {
     const char* line;
     mcptrarray_t* lines;
@@ -16066,7 +16323,7 @@ TMPSTATIC const char* mc_traceitem_getsourceline(mctraceitem_t* item)
     return line;
 }
 
-TMPSTATIC const char* mc_traceitem_getsourcefilepath(mctraceitem_t* item)
+const char* mc_traceitem_getsourcefilepath(mctraceitem_t* item)
 {
     if(!item->pos.file)
     {
@@ -16075,7 +16332,7 @@ TMPSTATIC const char* mc_traceitem_getsourcefilepath(mctraceitem_t* item)
     return item->pos.file->path;
 }
 
-TMPSTATIC bool mc_vm_init(mcstate_t* state)
+bool mc_vm_init(mcstate_t* state)
 {
     int i;
     mcvalue_t keyobj;
@@ -16119,7 +16376,7 @@ TMPSTATIC bool mc_vm_init(mcstate_t* state)
         return false;
 }
 
-TMPSTATIC void mc_vm_reset(mcstate_t* state)
+void mc_vm_reset(mcstate_t* state)
 {
     state->vsposition = 0;
     state->thisstpos = 0;
@@ -16129,7 +16386,7 @@ TMPSTATIC void mc_vm_reset(mcstate_t* state)
     }
 }
 
-TMPSTATIC bool mc_vm_runexecfunc(mcstate_t* state, mccompiledprogram_t* comp_res, mcbasicarray_t* constants)
+bool mc_vm_runexecfunc(mcstate_t* state, mccompiledprogram_t* comp_res, mcbasicarray_t* constants)
 {
     bool res;
     int oldsp;
@@ -16158,7 +16415,7 @@ TMPSTATIC bool mc_vm_runexecfunc(mcstate_t* state, mccompiledprogram_t* comp_res
     return res;
 }
 
-TMPSTATIC mcvalue_t mc_vm_callvalue(mcstate_t* state, mcbasicarray_t* constants, mcvalue_t callee, int argc, mcvalue_t* args)
+mcvalue_t mc_vm_callvalue(mcstate_t* state, mcbasicarray_t* constants, mcvalue_t callee, int argc, mcvalue_t* args)
 {
     bool ok;
     int i;
@@ -16201,7 +16458,7 @@ TMPSTATIC mcvalue_t mc_vm_callvalue(mcstate_t* state, mcbasicarray_t* constants,
     return mc_value_makenull();
 }
 
-TMPSTATIC inline bool mc_vmdo_tryoverloadoperator(mcstate_t* state, mcvalue_t left, mcvalue_t right, mcinternopcode_t op, bool* outoverloadfound)
+MCINLINE bool mc_vmdo_tryoverloadoperator(mcstate_t* state, mcvalue_t left, mcvalue_t right, mcinternopcode_t op, bool* outoverloadfound)
 {
     int numoper;
     mcvalue_t key;
@@ -16250,17 +16507,17 @@ TMPSTATIC inline bool mc_vmdo_tryoverloadoperator(mcstate_t* state, mcvalue_t le
     return mc_vmdo_callobject(state, callee, numoper);
 }
 
-TMPSTATIC mcvalue_t mc_vm_getlastpopped(mcstate_t* state)
+mcvalue_t mc_vm_getlastpopped(mcstate_t* state)
 {
     return state->lastpopped;
 }
 
-TMPSTATIC bool mc_vm_haserrors(mcstate_t* state)
+bool mc_vm_haserrors(mcstate_t* state)
 {
     return state->errors.count > 0;
 }
 
-TMPSTATIC bool mc_vm_setglobalbyindex(mcstate_t* state, int ix, mcvalue_t val)
+bool mc_vm_setglobalbyindex(mcstate_t* state, int ix, mcvalue_t val)
 {
     if(ix >= MC_CONF_VMMAXGLOBALS)
     {
@@ -16276,7 +16533,7 @@ TMPSTATIC bool mc_vm_setglobalbyindex(mcstate_t* state, int ix, mcvalue_t val)
     return true;
 }
 
-TMPSTATIC mcvalue_t mc_vm_getglobalbyindex(mcstate_t* state, int ix)
+mcvalue_t mc_vm_getglobalbyindex(mcstate_t* state, int ix)
 {
     if(ix >= MC_CONF_VMMAXGLOBALS)
     {
@@ -16287,7 +16544,7 @@ TMPSTATIC mcvalue_t mc_vm_getglobalbyindex(mcstate_t* state, int ix)
     return state->globals[ix];
 }
 
-TMPSTATIC void mc_vm_setstackpos(mcstate_t* state, int nsp)
+void mc_vm_setstackpos(mcstate_t* state, int nsp)
 {
     int count;
     size_t bytescount;
@@ -16301,7 +16558,7 @@ TMPSTATIC void mc_vm_setstackpos(mcstate_t* state, int nsp)
     state->vsposition = nsp;
 }
 
-TMPSTATIC void mc_vm_stackpush(mcstate_t* vm, mcvalue_t obj)
+void mc_vm_stackpush(mcstate_t* vm, mcvalue_t obj)
 {
     int numlocals;
     mcvmframe_t* frame;
@@ -16328,7 +16585,7 @@ TMPSTATIC void mc_vm_stackpush(mcstate_t* vm, mcvalue_t obj)
     vm->vsposition++;
 }
 
-TMPSTATIC mcvalue_t mc_vm_stackpop(mcstate_t* vm)
+mcvalue_t mc_vm_stackpop(mcstate_t* vm)
 {
     int numlocals;
     mcvalue_t res;
@@ -16358,7 +16615,7 @@ TMPSTATIC mcvalue_t mc_vm_stackpop(mcstate_t* vm)
     return res;
 }
 
-TMPSTATIC mcvalue_t mc_vm_stackget(mcstate_t* vm, int nthitem)
+mcvalue_t mc_vm_stackget(mcstate_t* vm, int nthitem)
 {
     int ix;
     ix = vm->vsposition - 1 - nthitem;
@@ -16373,7 +16630,7 @@ TMPSTATIC mcvalue_t mc_vm_stackget(mcstate_t* vm, int nthitem)
     return vm->valuestack[ix];
 }
 
-TMPSTATIC void mc_vm_thisstackpush(mcstate_t* vm, mcvalue_t obj)
+void mc_vm_thisstackpush(mcstate_t* vm, mcvalue_t obj)
 {
 #if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
     if(vm->thisstpos >= MC_CONF_VMTHISSTACKSIZE)
@@ -16387,7 +16644,7 @@ TMPSTATIC void mc_vm_thisstackpush(mcstate_t* vm, mcvalue_t obj)
     vm->thisstpos++;
 }
 
-TMPSTATIC mcvalue_t mc_vm_thisstackpop(mcstate_t* vm)
+mcvalue_t mc_vm_thisstackpop(mcstate_t* vm)
 {
 #if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
     if(vm->thisstpos == 0)
@@ -16401,7 +16658,7 @@ TMPSTATIC mcvalue_t mc_vm_thisstackpop(mcstate_t* vm)
     return vm->valthisstack[vm->thisstpos];
 }
 
-TMPSTATIC mcvalue_t mc_vm_thisstackget(mcstate_t* vm, int nthitem)
+mcvalue_t mc_vm_thisstackget(mcstate_t* vm, int nthitem)
 {
     int ix;
     ix = vm->thisstpos - 1 - nthitem;
@@ -16416,7 +16673,7 @@ TMPSTATIC mcvalue_t mc_vm_thisstackget(mcstate_t* vm, int nthitem)
     return vm->valthisstack[ix];
 }
 
-TMPSTATIC bool mc_vm_pushframe(mcstate_t* vm, mcvmframe_t frame)
+bool mc_vm_pushframe(mcstate_t* vm, mcvmframe_t frame)
 {
     mcobjfuncscript_t* framefunction;
     if(vm->framecount >= MC_CONF_VMMAXFRAMES)
@@ -16432,7 +16689,7 @@ TMPSTATIC bool mc_vm_pushframe(mcstate_t* vm, mcvmframe_t frame)
     return true;
 }
 
-TMPSTATIC bool mc_vm_popframe(mcstate_t* vm)
+bool mc_vm_popframe(mcstate_t* vm)
 {
     mc_vm_setstackpos(vm, vm->currframe->basepointer - 1);
     if(vm->framecount <= 0)
@@ -16451,7 +16708,7 @@ TMPSTATIC bool mc_vm_popframe(mcstate_t* vm)
     return true;
 }
 
-TMPSTATIC void mc_vm_rungc(mcstate_t* vm, mcbasicarray_t* constants)
+void mc_vm_rungc(mcstate_t* vm, mcbasicarray_t* constants)
 {
     int i;
     mcvmframe_t* frame;
@@ -16471,7 +16728,7 @@ TMPSTATIC void mc_vm_rungc(mcstate_t* vm, mcbasicarray_t* constants)
     mc_state_gcsweep(vm);
 }
 
-TMPSTATIC inline bool mc_vmdo_callobject(mcstate_t* vm, mcvalue_t callee, int nargs)
+MCINLINE bool mc_vmdo_callobject(mcstate_t* vm, mcvalue_t callee, int nargs)
 {
     bool ok;
     const char* calleetypename;
@@ -16523,7 +16780,7 @@ TMPSTATIC inline bool mc_vmdo_callobject(mcstate_t* vm, mcvalue_t callee, int na
     return true;
 }
 
-TMPSTATIC mcvalue_t mc_vm_callnativefunction(mcstate_t* vm, mcvalue_t callee, mcastlocation_t srcpos, int argc, mcvalue_t* args)
+mcvalue_t mc_vm_callnativefunction(mcstate_t* vm, mcvalue_t callee, mcastlocation_t srcpos, int argc, mcvalue_t* args)
 {
     mcvaltype_t restype;
     mcvalue_t res;
@@ -16561,7 +16818,7 @@ TMPSTATIC mcvalue_t mc_vm_callnativefunction(mcstate_t* vm, mcvalue_t callee, mc
     return res;
 }
 
-TMPSTATIC bool mc_vm_checkassign(mcstate_t* state, mcvalue_t oldvalue, mcvalue_t nvalue)
+bool mc_vm_checkassign(mcstate_t* state, mcvalue_t oldvalue, mcvalue_t nvalue)
 {
     mcvaltype_t nvaluetype;
     mcvaltype_t oldvaluetype;
@@ -16583,7 +16840,7 @@ TMPSTATIC bool mc_vm_checkassign(mcstate_t* state, mcvalue_t oldvalue, mcvalue_t
     return true;
 }
 
-TMPSTATIC inline bool mc_vmdo_opaddstring(mcstate_t* state, mcvalue_t valleft, mcvalue_t valright, mcvaltype_t righttype, mcopcode_t opcode)
+MCINLINE bool mc_vmdo_opaddstring(mcstate_t* state, mcvalue_t valleft, mcvalue_t valright, mcvaltype_t righttype, mcopcode_t opcode)
 {
     bool ok;
     int leftlen;
@@ -16630,7 +16887,7 @@ TMPSTATIC inline bool mc_vmdo_opaddstring(mcstate_t* state, mcvalue_t valleft, m
     return true;
 }
 
-TMPSTATIC inline bool mc_vmdo_math(mcstate_t* state, mcopcode_t opcode)
+MCINLINE bool mc_vmdo_math(mcstate_t* state, mcopcode_t opcode)
 {
     bool ok;
     bool overloadfound;
@@ -16733,7 +16990,7 @@ TMPSTATIC inline bool mc_vmdo_math(mcstate_t* state, mcopcode_t opcode)
     return true;
 }
 
-TMPSTATIC inline bool mc_vmdo_getindexpartial(mcstate_t* state, mcvalue_t left, mcvaltype_t lefttype, mcvalue_t index, mcvaltype_t indextype)
+MCINLINE bool mc_vmdo_getindexpartial(mcstate_t* state, mcvalue_t left, mcvaltype_t lefttype, mcvalue_t index, mcvaltype_t indextype)
 {
     int leftlen;
     int ix;
@@ -16794,7 +17051,7 @@ TMPSTATIC inline bool mc_vmdo_getindexpartial(mcstate_t* state, mcvalue_t left, 
     return true;
 }
 
-TMPSTATIC inline bool mc_vmdo_getindexfull(mcstate_t* state)
+MCINLINE bool mc_vmdo_getindexfull(mcstate_t* state)
 {
     mcvaltype_t lefttype;
     mcvaltype_t indextype;
@@ -16813,7 +17070,7 @@ bool mc_vm_findclassfor(mcstate_t* state)
     return false;
 }
 
-TMPSTATIC inline bool mc_vmdo_getdotindex(mcstate_t* state)
+MCINLINE bool mc_vmdo_getdotindex(mcstate_t* state)
 {
     mcvaltype_t lefttype;
     mcvaltype_t indextype;
@@ -16830,7 +17087,7 @@ TMPSTATIC inline bool mc_vmdo_getdotindex(mcstate_t* state)
     return mc_vmdo_getindexpartial(state, left, lefttype, index, indextype);
 }
 
-TMPSTATIC inline bool mc_vmdo_setindexpartial(mcstate_t* state, mcvalue_t left, mcvaltype_t lefttype, mcvalue_t index, mcvaltype_t indextype, mcvalue_t nvalue)
+MCINLINE bool mc_vmdo_setindexpartial(mcstate_t* state, mcvalue_t left, mcvaltype_t lefttype, mcvalue_t index, mcvaltype_t indextype, mcvalue_t nvalue)
 {
     bool ok;
     int alen;
@@ -16878,7 +17135,7 @@ TMPSTATIC inline bool mc_vmdo_setindexpartial(mcstate_t* state, mcvalue_t left, 
     return true;
 }
 
-TMPSTATIC inline bool mc_vmdo_setindexfull(mcstate_t* state)
+MCINLINE bool mc_vmdo_setindexfull(mcstate_t* state)
 {
     mcvalue_t index;
     mcvalue_t left;
@@ -16893,7 +17150,7 @@ TMPSTATIC inline bool mc_vmdo_setindexfull(mcstate_t* state)
     return mc_vmdo_setindexpartial(state, left, lefttype, index, indextype, nvalue);
 }
 
-TMPSTATIC inline bool mc_vmdo_getvalueatfull(mcstate_t* state)
+MCINLINE bool mc_vmdo_getvalueatfull(mcstate_t* state)
 {
     int ix;
     int leftlen;
@@ -16948,7 +17205,7 @@ TMPSTATIC inline bool mc_vmdo_getvalueatfull(mcstate_t* state)
     return true;
 }
 
-TMPSTATIC inline bool mc_vmdo_makefunction(mcstate_t* state, mcbasicarray_t* constants)
+MCINLINE bool mc_vmdo_makefunction(mcstate_t* state, mcbasicarray_t* constants)
 {
     int i;
     uint8_t numfree;
@@ -16992,7 +17249,7 @@ TMPSTATIC inline bool mc_vmdo_makefunction(mcstate_t* state, mcbasicarray_t* con
     return true;
 }
 
-TMPSTATIC inline bool mc_vmdo_docmpvalue(mcstate_t* state, mcopcode_t opcode)
+MCINLINE bool mc_vmdo_docmpvalue(mcstate_t* state, mcopcode_t opcode)
 {
     bool ok;
     bool isoverloaded;
@@ -17006,6 +17263,7 @@ TMPSTATIC inline bool mc_vmdo_docmpvalue(mcstate_t* state, mcopcode_t opcode)
     left = mc_vm_stackpop(state);
     isoverloaded = false;
     ok = mc_vmdo_tryoverloadoperator(state, left, right, MC_OPCODE_COMPARE, &isoverloaded);
+    //fprintf(stderr, "docmpvalue: ok=%d isoverloaded=%d\n", ok, isoverloaded);
     if(!ok)
     {
         return false;
@@ -17032,7 +17290,7 @@ TMPSTATIC inline bool mc_vmdo_docmpvalue(mcstate_t* state, mcopcode_t opcode)
     return true;
 }
 
-TMPSTATIC inline bool mc_vmdo_docmpvalgreater(mcstate_t* state, mcopcode_t opcode)
+MCINLINE bool mc_vmdo_docmpvalgreater(mcstate_t* state, mcopcode_t opcode)
 {
     bool resval;
     mcfloat_t comparisonres;
@@ -17074,7 +17332,7 @@ TMPSTATIC inline bool mc_vmdo_docmpvalgreater(mcstate_t* state, mcopcode_t opcod
     return true;
 }
 
-TMPSTATIC inline bool mc_vmdo_makearray(mcstate_t* state)
+MCINLINE bool mc_vmdo_makearray(mcstate_t* state)
 {
     bool ok;
     int i;
@@ -17103,7 +17361,7 @@ TMPSTATIC inline bool mc_vmdo_makearray(mcstate_t* state)
     return true;
 }
 
-TMPSTATIC inline bool mc_vmdo_makemapstart(mcstate_t* state)
+MCINLINE bool mc_vmdo_makemapstart(mcstate_t* state)
 {
     uint16_t count;
     mcvalue_t mapobj;
@@ -17117,7 +17375,7 @@ TMPSTATIC inline bool mc_vmdo_makemapstart(mcstate_t* state)
     return true;
 }
 
-TMPSTATIC inline bool mc_vmdo_makemapend(mcstate_t* state)
+MCINLINE bool mc_vmdo_makemapend(mcstate_t* state)
 {
     bool ok;
     int i;
@@ -17155,16 +17413,38 @@ TMPSTATIC inline bool mc_vmdo_makemapend(mcstate_t* state)
     return true;
 }
 
-TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcbasicarray_t* constants)
+#if 1
+    #define mc_vmmac_break() \
+        goto readnextop
+#else
+    #define mc_vmmac_break() \
+        break
+#endif
+
+void mc_vmutil_getopinfo(mcopcode_t opc, const char** oname)
+{
+    mcopdefinition_t vdef;
+    mcopdefinition_t* def;
+    *oname = "!invalid!";
+    def = mc_opdef_lookup(&vdef, opc);
+    if(def != NULL)
+    {
+        *oname = def->name;
+    }
+}
+
+bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcbasicarray_t* constants)
 {
     bool ok;
     int fri;
     int recoverframeix;
-    mcopcode_t opcode;
+    int prevcode;
+    int opcode;
     mcvmframe_t createdframe;
     mcvalue_t errobj;
     mcvmframe_t* frame;
-    mcerror_t* err;
+    mcerror_t* err;    
+    const char* oname;
     mcobjfuncscript_t* functionfunction;
     if(state->running)
     {
@@ -17191,12 +17471,54 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
     state->lastpopped = mc_value_makenull();
     while(state->currframe->bcposition < state->currframe->bcsize)
     {
+        readnextop:
+        prevcode = opcode;
         opcode = mc_callframe_readopcode(state->currframe);
         #if 0
-            fprintf(stderr, "opcode=%d (%s)\n", opcode, mc_opdef_lookup(opcode)->name);
+            mc_vmutil_getopinfo(opcode, &oname);
+            fprintf(stderr, "opcode=%d (%s)\n", opcode, oname);
         #endif
         switch(opcode)
         {
+            default:
+                {
+                    const char* prevname;
+                    const char* thisname;
+                    mc_vmutil_getopinfo(opcode, &thisname);
+                    mc_vmutil_getopinfo(prevcode, &prevname);
+                    mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Unknown opcode: %d (%s) (previous opcode was %d (%s))", opcode, thisname, prevcode, prevname);
+                    MC_ASSERT(false);
+                    goto onexecerror;
+                }
+                break;
+            case MC_OPCODE_HALT:
+                {
+                    goto onexecfinish;
+                }
+                break;
+            case MC_OPCODE_RETURNVALUE:
+                {
+                    mcvalue_t res;
+                    res = mc_vm_stackpop(state);
+                    ok = mc_vm_popframe(state);
+                    if(!ok)
+                    {
+                        goto onexecfinish;
+                    }
+                    mc_vm_stackpush(state, res);
+                }
+                break;
+            case MC_OPCODE_RETURN:
+                {
+                    ok = mc_vm_popframe(state);
+                    mc_vm_stackpush(state, mc_value_makenull());
+                    if(!ok)
+                    {
+                        mc_vm_stackpop(state);
+                        goto onexecfinish;
+                    }
+                }
+                break;
             case MC_OPCODE_CONSTANT:
                 {
                     uint16_t constantix;
@@ -17206,11 +17528,11 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     if(!constant)
                     {
                         mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Constant at %d not found", constantix);
-                        goto err;
+                        goto onexecerror;
                     }
                     mc_vm_stackpush(state, *constant);
                 }
-                break;
+                mc_vmmac_break();
             case MC_OPCODE_ADD:
             case MC_OPCODE_SUB:
             case MC_OPCODE_MUL:
@@ -17224,34 +17546,34 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                 {
                     if(!mc_vmdo_math(state, opcode))
                     {
-                        goto err;
+                        goto onexecerror;
                     }
                 }
-                break;
+                mc_vmmac_break();
             case MC_OPCODE_POP:
                 {
                     mc_vm_stackpop(state);
                 }
-                break;
+                mc_vmmac_break();
             case MC_OPCODE_TRUE:
                 {
                     mc_vm_stackpush(state, mc_value_makebool(true));
                 }
-                break;
+                mc_vmmac_break();
             case MC_OPCODE_FALSE:
                 {
                     mc_vm_stackpush(state, mc_value_makebool(false));
                 }
-                break;
+                mc_vmmac_break();
             case MC_OPCODE_COMPARE:
             case MC_OPCODE_COMPAREEQ:
                 {
                     if(!mc_vmdo_docmpvalue(state, opcode))
                     {
-                        goto err;
+                        goto onexecerror;
                     }
                 }
-                break;
+                mc_vmmac_break();
             case MC_OPCODE_EQUAL:
             case MC_OPCODE_NOTEQUAL:
             case MC_OPCODE_GREATERTHAN:
@@ -17259,10 +17581,10 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                 {
                     if(!mc_vmdo_docmpvalgreater(state, opcode))
                     {
-                        goto err;
+                        goto onexecerror;
                     }
                 }
-                break;
+                mc_vmmac_break();
             case MC_OPCODE_MINUS:
                 {
                     bool overloadfound;
@@ -17285,17 +17607,17 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                         ok = mc_vmdo_tryoverloadoperator(state, operand, mc_value_makenull(), MC_OPCODE_MINUS, &overloadfound);
                         if(!ok)
                         {
-                            goto err;
+                            goto onexecerror;
                         }
                         if(!overloadfound)
                         {
                             opertname = mc_valtype_getname(opertype);
                             mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Invalid operand type for MINUS, got %s", opertname);
-                            goto err;
+                            goto onexecerror;
                         }
                     }
                 }
-                break;
+                mc_vmmac_break();
             case MC_OPCODE_BINNOT:
                 {
                     bool overloadfound;
@@ -17318,17 +17640,17 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                         ok = mc_vmdo_tryoverloadoperator(state, operand, mc_value_makenull(), MC_OPCODE_BINNOT, &overloadfound);
                         if(!ok)
                         {
-                            goto err;
+                            goto onexecerror;
                         }
                         if(!overloadfound)
                         {
                             opertname = mc_valtype_getname(opertype);
                             mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Invalid operand type for BINNOT, got %s", opertname);
-                            goto err;
+                            goto onexecerror;
                         }
                     }
                 }
-                break;
+                mc_vmmac_break();
             case MC_OPCODE_BANG:
                 {
                     bool overloadfound;
@@ -17353,7 +17675,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                         ok = mc_vmdo_tryoverloadoperator(state, operand, mc_value_makenull(), MC_OPCODE_BANG, &overloadfound);
                         if(!ok)
                         {
-                            goto err;
+                            goto onexecerror;
                         }
                         if(!overloadfound)
                         {
@@ -17362,14 +17684,14 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                         }
                     }
                 }
-                break;
+                mc_vmmac_break();
             case MC_OPCODE_JUMP:
                 {
                     uint16_t pos;
                     pos = mc_callframe_readuint16(state->currframe);
                     state->currframe->bcposition = pos;
                 }
-                break;
+                mc_vmmac_break();
             case MC_OPCODE_JUMPIFFALSE:
                 {
                     uint16_t pos;
@@ -17381,7 +17703,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                         state->currframe->bcposition = pos;
                     }
                 }
-                break;
+                mc_vmmac_break();
             case MC_OPCODE_JUMPIFTRUE:
                 {
                     uint16_t pos;
@@ -17393,12 +17715,12 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                         state->currframe->bcposition = pos;
                     }
                 }
-                break;
+                mc_vmmac_break();
             case MC_OPCODE_NULL:
                 {
                     mc_vm_stackpush(state, mc_value_makenull());
                 }
-                break;
+                mc_vmmac_break();
             case MC_OPCODE_DEFINEMODULEGLOBAL:
                 {
                     uint16_t ix;
@@ -17407,7 +17729,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     value = mc_vm_stackpop(state);
                     mc_vm_setglobalbyindex(state, ix, value);
                 }
-                break;
+                mc_vmmac_break();
             case MC_OPCODE_SETMODULEGLOBAL:
                 {
                     uint16_t ix;
@@ -17418,11 +17740,11 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     oldvalue= mc_vm_getglobalbyindex(state, ix);
                     if(!mc_vm_checkassign(state, oldvalue, nvalue))
                     {
-                        goto err;
+                        goto onexecerror;
                     }
                     mc_vm_setglobalbyindex(state, ix, nvalue);
                 }
-                break;
+                mc_vmmac_break();
             case MC_OPCODE_GETMODULEGLOBAL:
                 {
                     uint16_t ix;
@@ -17431,40 +17753,39 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     global = state->globals[ix];
                     mc_vm_stackpush(state, global);
                 }
-                break;
+                mc_vmmac_break();
             case MC_OPCODE_ARRAY:
                 {
                     if(!mc_vmdo_makearray(state))
                     {
-                        goto err;
+                        goto onexecerror;
                     }
                 }
-                break;
+                mc_vmmac_break();
             case MC_OPCODE_MAPSTART:
                 {
                     if(!mc_vmdo_makemapstart(state))
                     {
-                        goto err;
+                        goto onexecerror;
                     }
                 }
-                break;
+                mc_vmmac_break();
             case MC_OPCODE_MAPEND:
                 {
                     if(!mc_vmdo_makemapend(state))
                     {
-                        goto err;
+                        goto onexecerror;
                     }
                 }
-                break;
+                mc_vmmac_break();
             case MC_OPCODE_GETVALUEAT:
                 {
                     if(!mc_vmdo_getvalueatfull(state))
                     {
-                        goto err;
+                        goto onexecerror;
                     }
                 }
-                break;
-
+                mc_vmmac_break();
             case MC_OPCODE_CALL:
                 {
                     uint8_t nargs;
@@ -17474,40 +17795,17 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     ok = mc_vmdo_callobject(state, callee, nargs);
                     if(!ok)
                     {
-                        goto err;
+                        goto onexecerror;
                     }
                 }
-                break;
-            case MC_OPCODE_RETURNVALUE:
-                {
-                    mcvalue_t res;
-                    res = mc_vm_stackpop(state);
-                    ok = mc_vm_popframe(state);
-                    if(!ok)
-                    {
-                        goto end;
-                    }
-                    mc_vm_stackpush(state, res);
-                }
-                break;
-            case MC_OPCODE_RETURN:
-                {
-                    ok = mc_vm_popframe(state);
-                    mc_vm_stackpush(state, mc_value_makenull());
-                    if(!ok)
-                    {
-                        mc_vm_stackpop(state);
-                        goto end;
-                    }
-                }
-                break;
+                mc_vmmac_break();
             case MC_OPCODE_DEFINELOCAL:
                 {
                     uint8_t pos;
                     pos = mc_callframe_readuint8(state->currframe);
                     state->valuestack[state->currframe->basepointer + pos] = mc_vm_stackpop(state);
                 }
-                break;
+                mc_vmmac_break();
             case MC_OPCODE_SETLOCAL:
                 {
                     uint8_t pos;
@@ -17518,11 +17816,11 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     oldvalue = state->valuestack[state->currframe->basepointer + pos];
                     if(!mc_vm_checkassign(state, oldvalue, nvalue))
                     {
-                        goto err;
+                        goto onexecerror;
                     }
                     state->valuestack[state->currframe->basepointer + pos] = nvalue;
                 }
-                break;
+                mc_vmmac_break();
             case MC_OPCODE_GETLOCAL:
                 {
                     uint8_t pos;
@@ -17531,8 +17829,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     val = state->valuestack[state->currframe->basepointer + pos];
                     mc_vm_stackpush(state, val);
                 }
-                break;
-
+                mc_vmmac_break();
             case MC_OPCODE_GETGLOBALBUILTIN:
                 {
                     uint16_t ix;
@@ -17543,21 +17840,20 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     if(!ok)
                     {
                         mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Global value %d not found", ix);
-                        goto err;
+                        goto onexecerror;
                     }
                     mc_vm_stackpush(state, val);
                 }
-                break;
+                mc_vmmac_break();
 
             case MC_OPCODE_FUNCTION:
                 {
                     if(!mc_vmdo_makefunction(state, constants))
                     {
-                        goto err;
+                        goto onexecerror;
                     }
                 }
-                break;
-
+                mc_vmmac_break();
             case MC_OPCODE_GETFREE:
                 {
                     uint8_t freeix;
@@ -17566,7 +17862,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     val = mc_value_functiongetfreevalat(state->currframe->function, freeix);
                     mc_vm_stackpush(state, val);
                 }
-                break;
+                mc_vmmac_break();
             case MC_OPCODE_SETFREE:
                 {
                     uint8_t freeix;
@@ -17575,53 +17871,52 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     val = mc_vm_stackpop(state);
                     mc_value_functionsetfreevalat(state->currframe->function, freeix, val);
                 }
-                break;
+                mc_vmmac_break();
             case MC_OPCODE_CURRENTFUNCTION:
                 {
                     mcvalue_t currentfunction;
                     currentfunction = state->currframe->function;
                     mc_vm_stackpush(state, currentfunction);
                 }
-                break;
+                mc_vmmac_break();
             case MC_OPCODE_GETTHIS:
                 {
                     mcvalue_t obj;
                     obj = mc_vm_thisstackget(state, 0);
                     mc_vm_stackpush(state, obj);
                 }
-                break;
+                mc_vmmac_break();
             case MC_OPCODE_GETDOTINDEX:
                 {
                     if(!mc_vmdo_getdotindex(state))
                     {
-                        goto err;
+                        goto onexecerror;
                     }
                 }
-                break;
+                mc_vmmac_break();
             case MC_OPCODE_GETINDEX:
                 {
                     if(!mc_vmdo_getindexfull(state))
                     {
-                        goto err;
+                        goto onexecerror;
                     }
                 }
-                break;
+                mc_vmmac_break();
             case MC_OPCODE_SETINDEX:
                 {
                     if(!mc_vmdo_setindexfull(state))
                     {
-                        goto err;
+                        goto onexecerror;
                     }
                 }
-                break;
-
+                mc_vmmac_break();
             case MC_OPCODE_DUP:
                 {
                     mcvalue_t val;
                     val = mc_vm_stackget(state, 0);
                     mc_vm_stackpush(state, val);
                 }
-                break;
+                mc_vmmac_break();
             case MC_OPCODE_FOREACHLEN:
                 {
                     int len;
@@ -17647,11 +17942,11 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     {
                         tname = mc_valtype_getname(type);
                         mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Cannot get length of %s", tname);
-                        goto err;
+                        goto onexecerror;
                     }
                     mc_vm_stackpush(state, mc_value_makenumber(len));
                 }
-                break;
+                mc_vmmac_break();
             case MC_OPCODE_NUMBER:
                 {
                     uint64_t val;
@@ -17662,23 +17957,16 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                     obj = mc_value_makenumber(dval);
                     mc_vm_stackpush(state, obj);
                 }
-                break;
+                mc_vmmac_break();
             case MC_OPCODE_SETRECOVER:
                 {
                     uint16_t recip;
                     recip = mc_callframe_readuint16(state->currframe);
                     state->currframe->recoverip = recip;
                 }
-                break;
-            default:
-                {
-                    MC_ASSERT(false);
-                    mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Unknown opcode: 0x%x", opcode);
-                    goto err;
-                }
-                break;
+                mc_vmmac_break();
         }
-    err:
+    onexecerror:
         if(state->errors.count > 0)
         {
             err = mc_errlist_getlast(&state->errors);
@@ -17696,7 +17984,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
                 }
                 if(recoverframeix < 0)
                 {
-                    goto end;
+                    goto onexecfinish;
                 }
                 if(!err->traceback)
                 {
@@ -17723,7 +18011,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
             }
             else
             {
-                goto end;
+                goto onexecfinish;
             }
         }
         if(mc_state_gcshouldsweep(state))
@@ -17732,7 +18020,7 @@ TMPSTATIC bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mc
         }
     }
 
-end:
+onexecfinish:
     if(state->errors.count > 0)
     {
         err = mc_errlist_getlast(&state->errors);
@@ -17750,69 +18038,6 @@ end:
     return state->errors.count == 0;
 }
 
-
-char* mc_util_readhandle(FILE* hnd, size_t* dlen)
-{
-    long rawtold;
-    /*
-    * the value returned by ftell() may not necessarily be the same as
-    * the amount that can be read.
-    * since we only ever read a maximum of $toldlen, there will
-    * be no memory trashing.
-    */
-    size_t toldlen;
-    size_t actuallen;
-    char* buf;
-    if(fseek(hnd, 0, SEEK_END) == -1)
-    {
-        return NULL;
-    }
-    if((rawtold = ftell(hnd)) == -1)
-    {
-        return NULL;
-    }
-    toldlen = rawtold;
-    if(fseek(hnd, 0, SEEK_SET) == -1)
-    {
-        return NULL;
-    }
-    buf = (char*)malloc(toldlen + 1);
-    memset(buf, 0, toldlen+1);
-    if(buf != NULL)
-    {
-        actuallen = fread(buf, sizeof(char), toldlen, hnd);
-        /*
-        // optionally, read remainder:
-        size_t tmplen;
-        if(actuallen < toldlen)
-        {
-            tmplen = actuallen;
-            actuallen += fread(buf+tmplen, sizeof(char), actuallen-toldlen, hnd);
-            ...
-        }
-        // unlikely to be necessary, so not implemented.
-        */
-        if(dlen != NULL)
-        {
-            *dlen = actuallen;
-        }
-        return buf;
-    }
-    return NULL;
-}
-
-char* mc_util_readfile(const char* filename, size_t* dlen)
-{
-    char* b;
-    FILE* fh;
-    if((fh = fopen(filename, "rb")) == NULL)
-    {
-        return NULL;
-    }
-    b = mc_util_readhandle(fh, dlen);
-    fclose(fh);
-    return b;
-}
 
 void optprs_fprintmaybearg(FILE* out, const char* begin, const char* flagname, size_t flaglen, bool needval, bool maybeval, const char* delim)
 {
@@ -17949,6 +18174,7 @@ void mc_cli_installbuiltins(mcstate_t* state)
         { "maketestdict", mc_scriptfn_maketestdict },
         { "squarearray", mc_scriptfn_squarearray },
         { "lengthof", mc_scriptfn_lengthof },
+        { "typeof", mc_scriptfn_typeof },        
         { "binnot", mc_scriptfn_binnot},
         { "ord", mc_scriptfn_ord},
         { "println", mc_scriptfn_println },
@@ -17960,10 +18186,13 @@ void mc_cli_installbuiltins(mcstate_t* state)
         { "arrayrest", mc_scriptfn_arrayrest },
         { "arrayjoin", mc_scriptfn_arrayjoin},
         { "arraypush", mc_scriptfn_arraypush },
+        { "arraypop", mc_scriptfn_arraypop },
         { "remove", mc_scriptfn_remove },
         { "removeat", mc_scriptfn_removeat },
         { "tostring", mc_scriptfn_tostring },
         { "tonum", mc_scriptfn_tonum },
+        { "strtoint", mc_scriptfn_tonum },
+        { "isNaN", mc_scriptfn_isnan },
         { "range", mc_scriptfn_range },
         { "keys", mc_scriptfn_keys },
         { "values", mc_scriptfn_values },

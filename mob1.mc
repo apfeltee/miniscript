@@ -1,4 +1,6 @@
 
+// currently fails on i>4, because the stack isn't being correctly resized
+
 function A(k, plusone, minusone, minusanother, plusanother, plusnull)
 {
     var B = null;
