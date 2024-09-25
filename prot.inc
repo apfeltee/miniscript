@@ -56,7 +56,7 @@ inline mcfloat_t mc_mathutil_mult(mcfloat_t dnleft, mcfloat_t dnright);
 inline mcfloat_t mc_mathutil_div(mcfloat_t dnleft, mcfloat_t dnright);
 inline mcfloat_t mc_mathutil_mod(mcfloat_t dnleft, mcfloat_t dnright);
 void mc_vallist_setempty(mcvallist_t *list);
-mcvallist_t *mc_vallist_make(mcstate_t *state);
+mcvallist_t *mc_vallist_make(mcstate_t *state, size_t initialsize);
 size_t mc_vallist_count(mcvallist_t *list);
 size_t mc_vallist_capacity(mcvallist_t *list);
 void mc_vallist_destroy(mcvallist_t *list);

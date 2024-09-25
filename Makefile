@@ -24,7 +24,7 @@ WFLAGS = -Wall -Wextra -Wshadow -Wpointer-arith -Wstrict-prototypes $(unflags)
 
 CC = gcc  $(WFLAGS)
 #CFLAGS = $(INCFLAGS) -Ofast -march=native -flto -ffast-math -funroll-loops
-CFLAGS = $(INCFLAGS) -Og -g3 -ggdb3
+CFLAGS = $(INCFLAGS) -O0 -g3 -ggdb3
 LDFLAGS = -ldl -lm  -lreadline -lpthread
 target = run
 

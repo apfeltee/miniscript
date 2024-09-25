@@ -996,8 +996,8 @@ struct mcstate_t
     mcglobalstore_t* vmglobalstore;
     mcvalue_t globals[MC_CONF_VMMAXGLOBALS];
     int globals_count;
-    mcvalue_t valuestack[MC_CONF_VMVALSTACKSIZE];
-    //mcvallist_t* valuestack;
+    //mcvalue_t valuestack[MC_CONF_VMVALSTACKSIZE];
+    mcvallist_t* valuestack;
     int vsposition;
     mcvalue_t valthisstack[MC_CONF_VMTHISSTACKSIZE];
     int thisstpos;
@@ -1445,7 +1445,7 @@ void mc_vallist_setempty(mcvallist_t* list)
     list->listcapacity = 0;
 }
 
-mcvallist_t* mc_vallist_make(mcstate_t* state)
+mcvallist_t* mc_vallist_make(mcstate_t* state, size_t initialsize)
 {
     mcvallist_t* list;
     list = (mcvallist_t*)mc_allocator_malloc(state, sizeof(mcvallist_t));
@@ -1454,9 +1454,12 @@ mcvallist_t* mc_vallist_make(mcstate_t* state)
     list->listcapacity = 0;
     list->listitems = NULL;
     mc_vallist_setempty(list);
+    if(initialsize > 0)
+    {
+        mc_vallist_ensurecapacity(list, initialsize, mc_value_makenull());
+    }
     return list;
 }
-
 
 size_t mc_vallist_count(mcvallist_t* list)
 {
@@ -1487,6 +1490,13 @@ mcvalue_t mc_vallist_get(mcvallist_t* list, size_t idx)
 
 mcvalue_t mc_vallist_set(mcvallist_t* list, size_t idx, mcvalue_t val)
 {
+    size_t need;
+    need = idx + 1;
+    //mc_vallist_ensuresize(list, need);
+    if(((idx == 0) || (list->listcapacity == 0)) || (idx >= list->listcapacity))
+    {
+        mc_vallist_ensurecapacity(list, need, mc_value_makenull());
+    }
     list->listitems[idx] = val;
     return list->listitems[idx];
 }
@@ -12034,6 +12044,7 @@ mcstate_t* mc_state_make(void)
     }
     memset(state, 0, sizeof(mcstate_t));
     mc_state_setdefaultconfig(state);
+    state->valuestack = mc_vallist_make(state, MC_CONF_VMVALSTACKSIZE);
     mc_errlist_init(&state->errors);
     state->mem = mc_gcmemory_make(state);
     if(!state->mem)
@@ -12074,7 +12085,7 @@ void mc_state_deinit(mcstate_t* state)
     mc_errlist_deinit(&state->errors);
     mc_printer_destroy(state->stdoutprinter);
     mc_printer_destroy(state->stderrprinter);
-
+    mc_vallist_destroy(state->valuestack);
 }
 
 void mc_state_reset(mcstate_t* state)
@@ -16553,7 +16564,9 @@ void mc_vm_setstackpos(mcstate_t* state, int nsp)
         /* to avoid gcing freed objects */
         count = nsp - state->vsposition;
         bytescount = count * sizeof(mcvalue_t);
-        memset(state->valuestack + state->vsposition, 0, bytescount);
+        //memset(state->valuestack + state->vsposition, 0, bytescount);
+        //mc_vallist_set(state->valuestack, state->vsposition);
+        
     }
     state->vsposition = nsp;
 }
@@ -16581,7 +16594,7 @@ void mc_vm_stackpush(mcstate_t* vm, mcvalue_t obj)
         MC_ASSERT(vm->vsposition >= (frame->basepointer + numlocals));
     }
 #endif
-    vm->valuestack[vm->vsposition] = obj;
+    mc_vallist_set(vm->valuestack, vm->vsposition, obj);
     vm->vsposition++;
 }
 
@@ -16610,7 +16623,7 @@ mcvalue_t mc_vm_stackpop(mcstate_t* vm)
     }
 #endif
     vm->vsposition--;
-    res = vm->valuestack[vm->vsposition];
+    res = mc_vallist_get(vm->valuestack, vm->vsposition);
     vm->lastpopped = res;
     return res;
 }
@@ -16627,7 +16640,7 @@ mcvalue_t mc_vm_stackget(mcstate_t* vm, int nthitem)
         return mc_value_makenull();
     }
 #endif
-    return vm->valuestack[ix];
+    return mc_vallist_get(vm->valuestack, ix);
 }
 
 void mc_vm_thisstackpush(mcstate_t* vm, mcvalue_t obj)
@@ -16721,7 +16734,7 @@ void mc_vm_rungc(mcstate_t* vm, mcbasicarray_t* constants)
         frame = &vm->framestack[i];
         mc_state_gcmarkobject(frame->function);
     }
-    mc_state_gcmarkobjlist(vm->valuestack, vm->vsposition);
+    mc_state_gcmarkobjlist(vm->valuestack->listitems, vm->vsposition);
     mc_state_gcmarkobjlist(vm->valthisstack, vm->thisstpos);
     mc_state_gcmarkobject(vm->lastpopped);
     mc_state_gcmarkobjlist(vm->operoverloadkeys, MC_OPCODE_MAX);
@@ -16762,7 +16775,7 @@ MCINLINE bool mc_vmdo_callobject(mcstate_t* vm, mcvalue_t callee, int nargs)
     }
     else if(calleetype == MC_VAL_FUNCNATIVE)
     {
-        stackpos = vm->valuestack + vm->vsposition - nargs;
+        stackpos = vm->valuestack->listitems + vm->vsposition - nargs;
         res = mc_vm_callnativefunction(vm, callee, mc_callframe_getpos(vm->currframe), nargs, stackpos);
         if(mc_vm_haserrors(vm))
         {
@@ -17241,7 +17254,7 @@ MCINLINE bool mc_vmdo_makefunction(mcstate_t* state, mcbasicarray_t* constants)
     }
     for(i = 0; i < numfree; i++)
     {
-        freeval = state->valuestack[state->vsposition - numfree + i];
+        freeval = mc_vallist_get(state->valuestack, state->vsposition - numfree + i);
         mc_value_functionsetfreevalat(functionobj, i, freeval);
     }
     mc_vm_setstackpos(state, state->vsposition - numfree);
@@ -17346,7 +17359,7 @@ MCINLINE bool mc_vmdo_makearray(mcstate_t* state)
     {
         return false;
     }
-    items = state->valuestack + state->vsposition - count;
+    items = state->valuestack->listitems + state->vsposition - count;
     for(i = 0; i < count; i++)
     {
         item = items[i];
@@ -17390,7 +17403,7 @@ MCINLINE bool mc_vmdo_makemapend(mcstate_t* state)
     kvpcount = mc_callframe_readuint16(state->currframe);
     itemscount = kvpcount * 2;
     mapobj = mc_vm_thisstackpop(state);
-    kvpairs = state->valuestack + state->vsposition - itemscount;
+    kvpairs = state->valuestack->listitems + state->vsposition - itemscount;
     for(i = 0; i < itemscount; i += 2)
     {
         key = kvpairs[i];
@@ -17803,7 +17816,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcbasicarray
                 {
                     uint8_t pos;
                     pos = mc_callframe_readuint8(state->currframe);
-                    state->valuestack[state->currframe->basepointer + pos] = mc_vm_stackpop(state);
+                    mc_vallist_set(state->valuestack, state->currframe->basepointer + pos, mc_vm_stackpop(state));
                 }
                 mc_vmmac_break();
             case MC_OPCODE_SETLOCAL:
@@ -17813,12 +17826,12 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcbasicarray
                     mcvalue_t oldvalue;
                     pos = mc_callframe_readuint8(state->currframe);
                     nvalue = mc_vm_stackpop(state);
-                    oldvalue = state->valuestack[state->currframe->basepointer + pos];
+                    oldvalue = mc_vallist_get(state->valuestack, state->currframe->basepointer + pos);
                     if(!mc_vm_checkassign(state, oldvalue, nvalue))
                     {
                         goto onexecerror;
                     }
-                    state->valuestack[state->currframe->basepointer + pos] = nvalue;
+                    mc_vallist_set(state->valuestack, state->currframe->basepointer + pos, nvalue);
                 }
                 mc_vmmac_break();
             case MC_OPCODE_GETLOCAL:
@@ -17826,7 +17839,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcbasicarray
                     uint8_t pos;
                     mcvalue_t val;
                     pos = mc_callframe_readuint8(state->currframe);
-                    val = state->valuestack[state->currframe->basepointer + pos];
+                    val = mc_vallist_get(state->valuestack, state->currframe->basepointer + pos);
                     mc_vm_stackpush(state, val);
                 }
                 mc_vmmac_break();
