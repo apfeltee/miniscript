@@ -634,6 +634,7 @@ void mc_vm_rungc(mcstate_t *vm, mcbasicarray_t *constants);
 inline bool mc_vmdo_callobject(mcstate_t *vm, mcvalue_t callee, int nargs);
 mcvalue_t mc_vm_callnativefunction(mcstate_t *vm, mcvalue_t callee, mcastlocation_t srcpos, int argc, mcvalue_t *args);
 bool mc_vm_checkassign(mcstate_t *state, mcvalue_t oldvalue, mcvalue_t nvalue);
+bool mc_valstring_appendvalue(mcvalue_t destval, mcvalue_t val);
 inline bool mc_vmdo_opaddstring(mcstate_t *state, mcvalue_t valleft, mcvalue_t valright, mcvaltype_t righttype, mcopcode_t opcode);
 inline bool mc_vmdo_math(mcstate_t *state, mcopcode_t opcode);
 inline bool mc_vmdo_getindexpartial(mcstate_t *state, mcvalue_t left, mcvaltype_t lefttype, mcvalue_t index, mcvaltype_t indextype);

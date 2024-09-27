@@ -1,4 +1,5 @@
 
+// this behaves wildly differently when compiled with clang. but why??
 
 function Node(element)
 {
@@ -28,7 +29,7 @@ function LinkedList()
         {
             current = self.head;
             // iterate to the end of the list
-            while (current.next)
+            while(current.next)
             {
                 current = current.next;
             }
@@ -67,6 +68,10 @@ function LinkedList()
                 {
                     it++;
                     prev = curr;
+                    if(curr.next == null)
+                    {
+                        break;
+                    }
                     curr = curr.next;
                 }
                 // adding an element

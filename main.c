@@ -118,7 +118,7 @@ THE SOFTWARE.
 #endif
 
 
-#if defined(__GNUC__)
+#if 0 //defined(__GNUC__) || defined(__clang__)
     #define mc_util_likely(x)   (__builtin_expect(!!(x), 1))
     #define mc_util_unlikely(x) (__builtin_expect(!!(x), 0))
 #else
@@ -1488,7 +1488,10 @@ void mc_vallist_destroy(mcvallist_t* list)
 {
     mcstate_t* state;
     state = list->pstate;
-    fprintf(stderr, "vallist of '%s' use at end: count=%ld capacity=%ld\n", list->listname, list->listcount, list->listcapacity);
+    if(list->listname != NULL)
+    {
+        fprintf(stderr, "vallist of '%s' use at end: count=%ld capacity=%ld\n", list->listname, list->listcount, list->listcapacity);
+    }
     if(list != NULL)
     {
         mc_allocator_free(state, list->listitems);
@@ -12005,7 +12008,7 @@ mcastsymbol_t* mc_compiler_defsymbol(mcastcompiler_t* comp, mcastlocation_t pos,
 mcstate_t* mc_state_make(void)
 {
     mcstate_t* state;
-    state = (mcstate_t*)malloc(sizeof(mcstate_t));
+    state = (mcstate_t*)mc_memory_malloc(sizeof(mcstate_t));
     if(!state)
     {
         return NULL;
@@ -12871,7 +12874,7 @@ mcvalue_t mc_scriptfn_left(mcstate_t* state, void* data, int argc, mcvalue_t* ar
         {
             return mc_value_makestringlen(state, inpstr, inplen);
         }
-        result = (char*)malloc(startpos + 1);
+        result = (char*)mc_memory_malloc(startpos + 1);
         if(result == NULL)
         {
             return mc_value_makenull();
@@ -12919,7 +12922,7 @@ mcvalue_t mc_scriptfn_right(mcstate_t* state, void* data, int argc, mcvalue_t* a
         {
             return mc_value_makestringlen(state, inpstr, inplen);
         }
-        result = (char*)malloc(startpos + 1);
+        result = (char*)mc_memory_malloc(startpos + 1);
         if(result == NULL)
         {
             return mc_value_makenull();
@@ -12982,7 +12985,7 @@ mcvalue_t mc_scriptfn_replace(mcstate_t* state, void* data, int argc, mcvalue_t*
         }
         /* Allocate new string to store result */
         newlen = inplen + count * (replacelen - searchlen) + 1;
-        result = (char*)malloc(newlen);
+        result = (char*)mc_memory_malloc(newlen);
         if(result == NULL)
         {
             return mc_value_makenull();
@@ -13050,7 +13053,7 @@ mcvalue_t mc_scriptfn_replacefirst(mcstate_t* state, void* data, int argc, mcval
         }
         /* Allocate new string to store result */
         newlen = inplen + (replacelen - searchlen) + 1;
-        result = (char*)malloc(newlen + 1);
+        result = (char*)mc_memory_malloc(newlen + 1);
         if(result == NULL)
         {
             return mc_value_makenull();
@@ -13095,7 +13098,7 @@ mcvalue_t mc_scriptfn_trim(mcstate_t* state, void* data, int argc, mcvalue_t* ar
         {
             return mc_value_makestringlen(state, "", 0);
         }
-        result = (char*)malloc(inplen + 1);
+        result = (char*)mc_memory_malloc(inplen + 1);
         if(result == NULL)
         {
             return mc_value_makestringlen(state, "", 0);
@@ -16413,49 +16416,46 @@ bool mc_vm_checkassign(mcstate_t* state, mcvalue_t oldvalue, mcvalue_t nvalue)
     return true;
 }
 
-MCINLINE bool mc_vmdo_opaddstring(mcstate_t* state, mcvalue_t valleft, mcvalue_t valright, mcvaltype_t righttype, mcopcode_t opcode)
+bool mc_valstring_appendvalue(mcvalue_t destval, mcvalue_t val)
 {
     bool ok;
-    int leftlen;
-    int rightlen;
-    const char* strleft;
-    const char* strright;
+    int vlen;
+    const char* vstr;
+    if(val.type == MC_VAL_NUMBER)
+    {
+        mc_valstring_appendformat(destval, "%g", mc_value_getnumber(val));
+        return true;
+    }
+    if(val.type == MC_VAL_STRING)
+    {
+        vlen = mc_valstring_getlength(val);
+        vstr = mc_valstring_getdata(val);
+        ok = mc_valstring_appendlen(destval, vstr, vlen);
+        if(!ok)
+        {
+            return false;
+        }
+    
+        return true;
+    }
+    return false;
+}
+
+MCINLINE bool mc_vmdo_opaddstring(mcstate_t* state, mcvalue_t valleft, mcvalue_t valright, mcvaltype_t righttype, mcopcode_t opcode)
+{
     mcvalue_t nstring;
     (void)opcode;
-    if(righttype != MC_VAL_STRING)
-    {
-        return false;
-    }
-    leftlen = mc_valstring_getlength(valleft);
-    rightlen = mc_valstring_getlength(valright);
-    if(leftlen == 0)
-    {
-        mc_vm_stackpush(state, valright);
-    }
-    else if(rightlen == 0)
+    nstring = mc_value_makestrcapacity(state, 0);
+    mc_vm_stackpush(state, nstring);
+    if(!mc_valstring_appendvalue(nstring, valleft))
     {
         mc_vm_stackpush(state, valleft);
+        return false;
     }
-    else
+    if(!mc_valstring_appendvalue(nstring, valright))
     {
-        strleft = mc_valstring_getdata(valleft);
-        strright = mc_valstring_getdata(valright);
-        nstring = mc_value_makestrcapacity(state, leftlen + rightlen);
-        if(mc_value_isnull(nstring))
-        {
-            return false;
-        }
-        ok = mc_valstring_appendlen(nstring, strleft, leftlen);
-        if(!ok)
-        {
-            return false;
-        }
-        ok = mc_valstring_appendlen(nstring, strright, rightlen);
-        if(!ok)
-        {
-            return false;
-        }
-        mc_vm_stackpush(state, nstring);
+        mc_vm_stackpush(state, valright);
+        return false;
     }
     return true;
 }
@@ -16526,13 +16526,19 @@ MCINLINE bool mc_vmdo_math(mcstate_t* state, mcopcode_t opcode)
                 }
                 break;
             case MC_OPCODE_LSHIFT:
-                res = mc_mathutil_binshiftleft(dnleft, dnright);
+                {
+                    res = mc_mathutil_binshiftleft(dnleft, dnright);
+                }
                 break;
             case MC_OPCODE_RSHIFT:
-                res = mc_mathutil_binshiftright(dnleft, dnright);
+                {
+                    res = mc_mathutil_binshiftright(dnleft, dnright);
+                }
                 break;
             default:
-                MC_ASSERT(false);
+                {
+                    assert(false);
+                }
                 break;
         }
         mc_vm_stackpush(state, mc_value_makenumber(res));
@@ -18069,7 +18075,7 @@ int main(int argc, char* argv[])
     }
     finished:
     mc_state_destroy(state);
-    fprintf(stderr, "ok=%d\n");
+    fprintf(stderr, "ok=%d\n", ok);
     if(ok)
     {
         return 0;

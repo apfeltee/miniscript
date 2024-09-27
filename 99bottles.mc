@@ -9,11 +9,17 @@ function song()
     state.getNormalVerseFunction = null
     state.bottlesOfBeer = function(i)
     {
-        return ''+i+' bottles of beer';
+        var s ='';
+        s += '' + i;
+        s += ' bottles of beer';
+        return s;
     };
     state.bottlesOfBeerOnTheWall = function(i)
     {
-        return state.bottlesOfBeer(i)+' on the wall';
+        var s = '';
+        s += state.bottlesOfBeer(i);
+        s += ' on the wall';
+        return s;
     };
     state.takeOneDown = function()
     {
@@ -27,10 +33,15 @@ function song()
     {
         return function()
         {
-            state.createVerse(
-                state.bottlesOfBeerOnTheWall(i)+', '+state.bottlesOfBeer(i),
-                state.takeOneDown()+state.bottlesOfBeerOnTheWall(i-1)+'.'
-            );
+            var s = '';
+            var ns = '';
+            s += state.bottlesOfBeerOnTheWall(i);
+            s += ', ';
+            s += state.bottlesOfBeer(i);
+            ns += state.takeOneDown();
+            ns += state.bottlesOfBeerOnTheWall(i-1);
+            ns += '.';
+            state.createVerse(s, ns);
         };
     };
     state.verse = [];
