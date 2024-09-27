@@ -21,5 +21,5 @@ checkmath(12 << 48, 786432)
 checkmath(233 >> 2, 58)
 checkmath(12 | 48, 60)
 checkmath(55 ^ 48, 7)
-println(checkmath)
+
 println("all good")

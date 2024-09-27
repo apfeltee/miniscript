@@ -22,7 +22,9 @@
     #include <sys/time.h>
 #endif
 
+#include "mem.h"
 #include "optparse.h"
+#include "strbuf.h"
 
 /*
 SPDX-License-Identifier: MIT
@@ -68,7 +70,7 @@ THE SOFTWARE.
 
 #define MC_CONF_DEBUG 0
 #define MC_CONF_VMVALSTACKSIZE (4)
-#define MC_CONF_VMMAXGLOBALS (1024)
+#define MC_CONF_VMMAXGLOBALS (1024/4)
 #define MC_CONF_VMMAXFRAMES (MC_CONF_VMVALSTACKSIZE)
 #define MC_CONF_VMTHISSTACKSIZE (MC_CONF_VMVALSTACKSIZE)
 #define MC_CONF_NATIVEFUNCMAXDATA (24*1)
@@ -81,6 +83,8 @@ THE SOFTWARE.
 #define MC_CONF_GENERICDICTINVALIDIX (UINT_MAX)
 #define MC_CONF_VALDICTINVALIDIX (UINT_MAX)
 #define MC_CONF_GENERICDICTINITSIZE (32)
+
+#define MC_CONF_MAXOPEROVERLOADS (25)
 
 #ifdef _MSC_VER
     #define __attribute__(x)
@@ -97,7 +101,7 @@ THE SOFTWARE.
 #define MC_UTIL_STATICARRAYSIZE(array) ((int)(sizeof(array) / sizeof(array[0])))
 #define MC_UTIL_FABS(n) fabs(n)
 
-#if 1
+#if 0
     #define MC_UTIL_CMPFLOAT(a, b) (MC_UTIL_FABS((a) - (b)) < DBL_EPSILON)
 #else
     #define MC_UTIL_CMPFLOAT(a, b) ((a) == (b))
@@ -295,17 +299,23 @@ enum mcastexprtype_t
 
 enum mcopcode_t
 {
-    MC_OPCODE_HALT = 42,
+    MC_OPCODE_HALT = 0,
     MC_OPCODE_CONSTANT,
     MC_OPCODE_ADD,
-    MC_OPCODE_POP,
     MC_OPCODE_SUB,
     MC_OPCODE_MUL,
     MC_OPCODE_DIV,
     MC_OPCODE_MOD,
+    MC_OPCODE_POP,
+    MC_OPCODE_BINOR,
+    MC_OPCODE_BINXOR,
+    MC_OPCODE_BINAND,
+    MC_OPCODE_LSHIFT,
+    MC_OPCODE_RSHIFT,
+    MC_OPCODE_BANG,
+    MC_OPCODE_COMPARE,
     MC_OPCODE_TRUE,
     MC_OPCODE_FALSE,
-    MC_OPCODE_COMPARE,
     MC_OPCODE_COMPAREEQ,
     MC_OPCODE_EQUAL,
     MC_OPCODE_NOTEQUAL,
@@ -313,7 +323,6 @@ enum mcopcode_t
     MC_OPCODE_GREATERTHANEQUAL,
     MC_OPCODE_MINUS,
     MC_OPCODE_BINNOT,
-    MC_OPCODE_BANG,
     MC_OPCODE_JUMP,
     MC_OPCODE_JUMPIFFALSE,
     MC_OPCODE_JUMPIFTRUE,
@@ -344,11 +353,6 @@ enum mcopcode_t
     MC_OPCODE_NUMBER,
     MC_OPCODE_FOREACHLEN,
     MC_OPCODE_SETRECOVER,
-    MC_OPCODE_BINOR,
-    MC_OPCODE_BINXOR,
-    MC_OPCODE_BINAND,
-    MC_OPCODE_LSHIFT,
-    MC_OPCODE_RSHIFT,
     MC_OPCODE_MAX
 };
 
@@ -414,7 +418,7 @@ typedef struct mcbasicarray_t mcbasicarray_t;
 typedef struct mcptrlist_t mcptrlist_t;
 typedef struct mcprintconfig_t mcprintconfig_t;
 typedef struct mcprinter_t mcprinter_t;
-
+typedef struct mcastprinter_t mcastprinter_t;
 typedef struct mcerror_t mcerror_t;
 typedef struct mctraceback_t mctraceback_t;
 typedef struct mcastcompiledfile_t mcastcompiledfile_t;
@@ -486,7 +490,6 @@ typedef union mcobjunion_t mcobjunion_t;
 typedef union mcexprunion_t mcexprunion_t;
 typedef union mcfuncfvunion_t mcfuncfvunion_t;
 typedef union mcfuncnameunion_t mcfuncnameunion_t;
-typedef union mcstringstoreunion_t mcstringstoreunion_t;
 typedef struct /**/mcvallist_t mcvallist_t;
 typedef struct /**/mcframelist_t mcframelist_t;
 
@@ -557,7 +560,6 @@ struct mcastlocation_t
     int line;
     int column;
 };
-
 
 struct mcconfig_t
 {
@@ -800,19 +802,10 @@ struct mcobjerror_t
 };
 
 
-union mcstringstoreunion_t
-{
-    char* actualallocated;
-    char actualonstack[MC_CONF_STRINGMAXSTACKSIZE];
-};
-
 struct mcobjstring_t
 {
-    mcstringstoreunion_t ustrstore;
     unsigned long hash;
-    bool isallocated;
-    int capacity;
-    int length;
+    StringBuffer* strbuf;
 };
 
 
@@ -1017,7 +1010,7 @@ struct mcstate_t
     mcvalue_t lastpopped;
     mcvmframe_t* currframe;
     bool running;
-    mcvalue_t operoverloadkeys[MC_OPCODE_MAX];
+    mcvalue_t operoverloadkeys[MC_CONF_MAXOPEROVERLOADS];
     mcptrlist_t* files;
     mcastcompiler_t* compiler;
     mcprinter_t* stdoutprinter;
@@ -1048,6 +1041,13 @@ struct mcprinter_t
     char* data;
     size_t capacity;
     size_t len;
+};
+
+struct mcastprinter_t
+{
+    mcstate_t* pstate;
+    mcprinter_t* pdest;
+    bool pseudolisp;
 };
 
 struct mcbasicarray_t
@@ -1152,19 +1152,19 @@ const mcastlocation_t srcposinvalid = { NULL, -1, -1 };
 void* mc_allocator_malloc(mcstate_t* state, size_t size)
 {
     (void)state;
-    return malloc(size);
+    return mc_memory_malloc(size);
 }
 
 void* mc_allocator_realloc(mcstate_t* state, void* ptr, size_t size)
 {
     (void)state;
-    return realloc(ptr, size);
+    return mc_memory_realloc(ptr, size);
 }
 
 void mc_allocator_free(mcstate_t* state, void* ptr)
 {
     (void)state;
-    free(ptr);
+    mc_memory_free(ptr);
 }
 
 char* mc_util_readhandle(FILE* hnd, size_t* dlen)
@@ -1192,7 +1192,7 @@ char* mc_util_readhandle(FILE* hnd, size_t* dlen)
     {
         return NULL;
     }
-    buf = (char*)malloc(toldlen + 1);
+    buf = (char*)mc_memory_malloc(toldlen + 1);
     memset(buf, 0, toldlen+1);
     if(buf != NULL)
     {
@@ -2946,7 +2946,7 @@ bool mc_printer_init(mcprinter_t* pr, mcstate_t* state, size_t capacity, FILE* o
     return true;
 }
 
-void mc_printer_destroy(mcprinter_t* pr)
+void mc_printer_release(mcprinter_t* pr)
 {
     if(pr == NULL)
     {
@@ -2956,6 +2956,11 @@ void mc_printer_destroy(mcprinter_t* pr)
     {
         mc_allocator_free(pr->pstate, pr->data);
     }
+}
+
+void mc_printer_destroy(mcprinter_t* pr)
+{
+    mc_printer_release(pr);
     if(!pr->onstack)
     {
         mc_allocator_free(pr->pstate, pr);
@@ -3782,7 +3787,6 @@ MCINLINE mcvalue_t mc_value_makenull(void)
 
 mcvalue_t mc_value_makestrcapacity(mcstate_t* state, int capacity)
 {
-    bool ok;
     mcobjdata_t* data;
     data = mc_gcmemory_getdatafrompool(state, MC_VAL_STRING);
     if(!data)
@@ -3792,44 +3796,26 @@ mcvalue_t mc_value_makestrcapacity(mcstate_t* state, int capacity)
         {
             return mc_value_makenull();
         }
-        data->uvobj.valstring.capacity = MC_CONF_STRINGMAXSTACKSIZE - 1;
-        data->uvobj.valstring.isallocated = false;
     }
-    data->uvobj.valstring.length = 0;
     data->uvobj.valstring.hash = 0;
-    if(capacity > data->uvobj.valstring.capacity)
-    {
-        ok = mc_valstring_reservecapacity(data, capacity);
-        if(!ok)
-        {
-            return mc_value_makenull();
-        }
-    }
+    data->uvobj.valstring.strbuf = dyn_strbuf_makeempty(capacity);
     return mc_object_makedatafrom(MC_VAL_STRING, data);
 }
 
 mcvalue_t mc_value_makestrformat(mcstate_t* state, const char* fmt, ...)
 {
-    int towrite;
-    int written;
-    char* resbuf;
     va_list args;
     mcvalue_t res;
-    (void)written;
-    va_start(args, fmt);
-    towrite = vsnprintf(NULL, 0, fmt, args);
-    va_end(args);
-    va_start(args, fmt);
-    res = mc_value_makestrcapacity(state, towrite);
+    mcobjdata_t* data;
+    data = mc_gcmemory_getdatafrompool(state, MC_VAL_STRING);
+    res = mc_value_makestrcapacity(state, 0);
     if(mc_value_isnull(res))
     {
         return mc_value_makenull();
     }
-    resbuf = mc_valstring_getmutabledata(res);
-    written = vsprintf(resbuf, fmt, args);
-    MC_ASSERT(written == towrite);
+    va_start(args, fmt);
+    dyn_strbuf_appendformatv(data->uvobj.valstring.strbuf, fmt, args);
     va_end(args);
-    mc_string_setlength(res, towrite);
     return res;
 }
 
@@ -3842,7 +3828,7 @@ mcvalue_t mc_value_makestringlen(mcstate_t* state, const char* string, size_t le
     {
         return res;
     }
-    ok = mc_valstring_append(res, string, len);
+    ok = mc_valstring_appendlen(res, string, len);
     if(!ok)
     {
         return mc_value_makenull();
@@ -3949,7 +3935,7 @@ mcvalue_t mc_value_makeerror(mcstate_t* state, const char* error)
     res = mc_value_makeerrornocopy(state, errorstr);
     if(mc_value_isnull(res))
     {
-        mc_allocator_free(state, errorstr);
+        mc_memory_free(errorstr);
         return mc_value_makenull();
     }
     return res;
@@ -3980,7 +3966,7 @@ mcvalue_t mc_value_makeerrorf(mcstate_t* state, const char* fmt, ...)
     towrite = vsnprintf(NULL, 0, fmt, args);
     va_end(args);
     va_start(args, fmt);
-    res = (char*)mc_allocator_malloc(state, towrite + 1);
+    res = (char*)mc_memory_malloc(towrite + 1);
     if(!res)
     {
         return mc_value_makenull();
@@ -3991,7 +3977,7 @@ mcvalue_t mc_value_makeerrorf(mcstate_t* state, const char* fmt, ...)
     resobj = mc_value_makeerrornocopy(state, res);
     if(mc_value_isnull(resobj))
     {
-        mc_allocator_free(state, res);
+        mc_memory_free(res);
         return mc_value_makenull();
     }
     return resobj;
@@ -4023,7 +4009,7 @@ mcvalue_t mc_value_makefuncscript(mcstate_t* state, const char* name, mccompiled
     data->uvobj.valscriptfunc.numargs = nargs;
     if(fvc >= MC_UTIL_STATICARRAYSIZE(data->uvobj.valscriptfunc.ufv.freevalsstack))
     {
-        data->uvobj.valscriptfunc.ufv.freevalsallocated = (mcvalue_t*)mc_allocator_malloc(state, sizeof(mcvalue_t) * fvc);
+        data->uvobj.valscriptfunc.ufv.freevalsallocated = (mcvalue_t*)mc_memory_malloc(sizeof(mcvalue_t) * fvc);
         if(!data->uvobj.valscriptfunc.ufv.freevalsallocated)
         {
             return mc_value_makenull();
@@ -4071,10 +4057,7 @@ void mc_objectdata_deinit(mcobjdata_t* data)
             break;
         case MC_VAL_STRING:
             {
-                if(data->uvobj.valstring.isallocated)
-                {
-                    mc_allocator_free(data->pstate, data->uvobj.valstring.ustrstore.actualallocated);
-                }
+                dyn_strbuf_destroy(data->uvobj.valstring.strbuf);
             }
             break;
         case MC_VAL_FUNCSCRIPT:
@@ -4363,21 +4346,32 @@ bool mc_value_compare(mcvalue_t a, mcvalue_t b, mcvalcmpresult_t* cres)
     {
         alen = mc_valstring_getlength(a);
         blen = mc_valstring_getlength(b);
+        #if 0
+        fprintf(stderr, "mc_value_compare: alen=%d, blen=%d\n", alen, blen);
+        #endif
         if(alen != blen)
         {
             cres->result = alen - blen;
-            return true;
+            return false;
         }
         ahash = mc_valstring_gethash(a);
         bhash = mc_valstring_gethash(b);
         if(ahash != bhash)
         {
             cres->result = ahash - bhash;
-            return true;
+            return false;
         }
         astring = mc_valstring_getdata(a);
         bstring = mc_valstring_getdata(b);
-        cres->result = strcmp(astring, bstring);
+        if(strncmp(astring, bstring, alen) == 0)
+        {
+            cres->result = 0;
+            return true;
+        }
+        else
+        {
+            cres->result = 1;
+        }
         return true;
     }
     if((mc_value_isallocated(a) || mc_value_isnull(a)) && (mc_value_isallocated(b) || mc_value_isnull(b)))
@@ -4462,7 +4456,7 @@ int mc_valstring_getlength(mcvalue_t object)
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_STRING);
     data = mc_value_getallocateddata(object);
-    return data->uvobj.valstring.length;
+    return data->uvobj.valstring.strbuf->length;
 }
 
 void mc_string_setlength(mcvalue_t object, int len)
@@ -4470,16 +4464,9 @@ void mc_string_setlength(mcvalue_t object, int len)
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_STRING);
     data = mc_value_getallocateddata(object);
-    data->uvobj.valstring.length = len;
+    data->uvobj.valstring.strbuf->length = len;
 }
 
-int mc_valstring_getcapacity(mcvalue_t object)
-{
-    mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_STRING);
-    data = mc_value_getallocateddata(object);
-    return data->uvobj.valstring.capacity;
-}
 
 MCINLINE char* mc_valstring_getmutabledata(mcvalue_t object)
 {
@@ -4487,28 +4474,36 @@ MCINLINE char* mc_valstring_getmutabledata(mcvalue_t object)
     return mc_valstring_getdataintern(object);
 }
 
-bool mc_valstring_append(mcvalue_t obj, const char* src, int len)
+bool mc_valstring_appendlen(mcvalue_t obj, const char* src, size_t len)
 {
-    int capacity;
-    int currentlen;
-    char* strbuf;
     mcobjdata_t* data;
     mcobjstring_t* string;
     MC_ASSERT(mc_value_gettype(obj) == MC_VAL_STRING);
     data = mc_value_getallocateddata(obj);
     string = &data->uvobj.valstring;
-    strbuf = mc_valstring_getmutabledata(obj);
-    currentlen = string->length;
-    capacity = string->capacity;
-    if((len + currentlen) > capacity)
-    {
-        MC_ASSERT(false);
-        return false;
-    }
-    memcpy(strbuf + currentlen, src, len);
-    string->length += len;
-    strbuf[string->length] = '\0';
+    dyn_strbuf_appendstrn(string->strbuf, src, len);
     return true;
+}
+
+bool mc_valstring_appendformatv(mcvalue_t obj, const char* fmt, va_list va)
+{
+    mcobjdata_t* data;
+    mcobjstring_t* string;
+    MC_ASSERT(mc_value_gettype(obj) == MC_VAL_STRING);
+    data = mc_value_getallocateddata(obj);
+    string = &data->uvobj.valstring;
+    dyn_strbuf_appendformatv(string->strbuf, fmt, va);
+    return true;
+}
+
+bool mc_valstring_appendformat(mcvalue_t obj, const char* fmt, ...)
+{
+    bool r;
+    va_list va;
+    va_start(va, fmt);
+    r = mc_valstring_appendformatv(obj, fmt, va);
+    va_end(va);
+    return r;
 }
 
 unsigned long mc_valstring_gethash(mcvalue_t obj)
@@ -5176,51 +5171,7 @@ MCINLINE char* mc_valstring_getdataintern(mcvalue_t object)
     mcobjdata_t* data;
     data = mc_value_getallocateddata(object);
     MC_ASSERT(data->type == MC_VAL_STRING);
-    if(data->uvobj.valstring.isallocated)
-    {
-        return data->uvobj.valstring.ustrstore.actualallocated;
-    }
-    return data->uvobj.valstring.ustrstore.actualonstack;
-}
-
-bool mc_valstring_reservecapacity(mcobjdata_t* data, int capacity)
-{
-    char* newvalue;
-    mcobjstring_t* string;
-    MC_ASSERT(capacity >= 0);
-    string = &data->uvobj.valstring;
-    string->length = 0;
-    string->hash = 0;
-    if(capacity <= string->capacity)
-    {
-        return true;
-    }
-    if(capacity <= (MC_CONF_STRINGMAXSTACKSIZE - 1))
-    {
-        if(string->isallocated)
-        {
-            /* should never happen */
-            MC_ASSERT(false);
-            /* just in case */
-            mc_allocator_free(data->pstate, string->ustrstore.actualallocated);
-        }
-        string->capacity = MC_CONF_STRINGMAXSTACKSIZE - 1;
-        string->isallocated = false;
-        return true;
-    }
-    newvalue = (char*)mc_allocator_malloc(data->pstate, capacity + 1);
-    if(!newvalue)
-    {
-        return false;
-    }
-    if(string->isallocated)
-    {
-        mc_allocator_free(data->pstate, string->ustrstore.actualallocated);
-    }
-    string->ustrstore.actualallocated = newvalue;
-    string->isallocated = true;
-    string->capacity = capacity;
-    return true;
+    return data->uvobj.valstring.strbuf->data;
 }
 
 mcastscopecomp_t* mc_astcompscope_make(mcstate_t* state, mcastscopecomp_t* outer)
@@ -10004,6 +9955,8 @@ mcinternopcode_t mc_compiler_getlastopcode(mcastcompiler_t* comp)
     return currentscope->lastopcode;
 }
 
+
+
 bool mc_compiler_docompilesource(mcastcompiler_t* comp, const char* code)
 {
     bool ok;
@@ -10021,11 +9974,7 @@ bool mc_compiler_docompilesource(mcastcompiler_t* comp, const char* code)
     }
     if(comp->pstate->config.dumpast)
     {
-        state->stderrprinter->config.quotstring = true;
-        fprintf(stderr, "---AST dump begin---\n");
-        mc_astprint_stmtlist(state->stderrprinter, statements);
-        fprintf(stderr, "\n---AST dump end---\n");
-        state->stderrprinter->config.quotstring = false;
+        mc_astprinter_printast(state, statements);
     }
     ok = mc_compiler_compilestmtlist(comp, statements);
     mc_ptrlist_destroy(statements, (mcitemdestroyfn_t)mc_astexpr_destroy);
@@ -12653,363 +12602,7 @@ const char* mc_traceback_getfunctionname(mctraceback_t* traceback, int depth)
 }
 
 
-void mc_astprint_stmtlist(mcprinter_t* pr, mcptrlist_t* statements)
-{
-    int i;
-    int count;
-    mcastexpression_t* expr;
-    count = mc_ptrlist_count(statements);
-    for(i = 0; i < count; i++)
-    {
-        expr = (mcastexpression_t*)mc_ptrlist_get(statements, i);
-        mc_astprint_expression(pr, expr);
-        if(i < (count - 1))
-        {
-            mc_printer_puts(pr, "\n");
-        }
-    }
-}
-
-void mc_astprint_expression(mcprinter_t* pr, mcastexpression_t* expr)
-{
-    bool prevquot;
-    switch(expr->type)
-    {
-        case MC_EXPR_IDENT:
-            {
-                mc_printer_puts(pr, expr->uexpr.exprident->value);
-            }
-            break;
-        case MC_EXPR_NUMBERLITERAL:
-            {
-                mc_printer_printf(pr, "%1.17g", expr->uexpr.exprlitnumber);
-            }
-            break;
-        case MC_EXPR_BOOLLITERAL:
-            {
-                mc_printer_printf(pr, "%s", expr->uexpr.exprlitbool ? "true" : "false");
-            }
-            break;
-        case MC_EXPR_STRINGLITERAL:
-            {
-                if(pr->config.quotstring)
-                {
-                    mc_printer_printescapedstring(pr, expr->uexpr.exprlitstring.data, expr->uexpr.exprlitstring.length);
-                }
-                else
-                {
-                    mc_printer_putlen(pr, expr->uexpr.exprlitstring.data, expr->uexpr.exprlitstring.length);
-                }
-            }
-            break;
-        case MC_EXPR_NULLLITERAL:
-            {
-                mc_printer_puts(pr, "null");
-            }
-            break;
-        case MC_EXPR_ARRAYLITERAL:
-            {
-                size_t i;
-                mcastexpression_t* arrexpr;
-                mc_printer_puts(pr, "[");
-                for(i = 0; i < mc_ptrlist_count(expr->uexpr.exprlitarray.litarritems); i++)
-                {
-                    arrexpr = (mcastexpression_t*)mc_ptrlist_get(expr->uexpr.exprlitarray.litarritems, i);
-                    mc_astprint_expression(pr, arrexpr);
-                    if(i < (mc_ptrlist_count(expr->uexpr.exprlitarray.litarritems) - 1))
-                    {
-                        mc_printer_puts(pr, ", ");
-                    }
-                }
-                mc_printer_puts(pr, "]");
-            }
-            break;
-        case MC_EXPR_MAPLITERAL:
-            {
-                size_t i;
-                mcastexpression_t* keyexpr;
-                mcastexpression_t* valexpr;
-                mcastliteralmap_t* map;
-                map = &expr->uexpr.exprlitmap;
-                mc_printer_puts(pr, "{");
-                for(i = 0; i < mc_ptrlist_count(map->keys); i++)
-                {
-                    keyexpr = (mcastexpression_t*)mc_ptrlist_get(map->keys, i);
-                    valexpr = (mcastexpression_t*)mc_ptrlist_get(map->values, i);
-                    mc_astprint_expression(pr, keyexpr);
-                    mc_printer_puts(pr, " : ");
-                    mc_astprint_expression(pr, valexpr);
-                    if(i < (mc_ptrlist_count(map->keys) - 1))
-                    {
-                        mc_printer_puts(pr, ", ");
-                    }
-                }
-                mc_printer_puts(pr, "}");
-            }
-            break;
-        case MC_EXPR_PREFIX:
-            {
-                mc_printer_puts(pr, "(");
-                mc_printer_puts(pr, mc_util_mathopstring(expr->uexpr.exprinfix.op));
-                mc_astprint_expression(pr, expr->uexpr.exprprefix.right);
-                mc_printer_puts(pr, ")");
-            }
-            break;
-        case MC_EXPR_INFIX:
-            {
-                mc_printer_puts(pr, "(");
-                mc_astprint_expression(pr, expr->uexpr.exprinfix.left);
-                mc_printer_puts(pr, " ");
-                mc_printer_puts(pr, mc_util_mathopstring(expr->uexpr.exprinfix.op));
-                mc_printer_puts(pr, " ");
-                mc_astprint_expression(pr, expr->uexpr.exprinfix.right);
-                mc_printer_puts(pr, ")");
-            }
-            break;
-        case MC_EXPR_FUNCTIONLITERAL:
-            {
-                size_t i;
-                mcastfuncparam_t* param;
-                mcastliteralfunction_t* fn;
-                fn = &expr->uexpr.exprlitfunction;
-                mc_printer_puts(pr, "function");
-                mc_printer_puts(pr, "(");
-                for(i = 0; i < mc_ptrlist_count(fn->funcparamlist); i++)
-                {
-                    param = (mcastfuncparam_t*)mc_ptrlist_get(fn->funcparamlist, i);
-                    mc_printer_puts(pr, param->ident->value);
-                    if(i < (mc_ptrlist_count(fn->funcparamlist) - 1))
-                    {
-                        mc_printer_puts(pr, ", ");
-                    }
-                }
-                mc_printer_puts(pr, ") ");
-                mc_astprint_codeblock(pr, fn->body);
-            }
-            break;
-        case MC_EXPR_CALL:
-            {
-                size_t i;
-                mcastexprcall_t* ce;
-                mcastexpression_t* arg;
-                ce = &expr->uexpr.exprcall;
-                mc_astprint_expression(pr, ce->function);
-                mc_printer_puts(pr, "(");
-                for(i = 0; i < mc_ptrlist_count(ce->args); i++)
-                {
-                    arg = (mcastexpression_t*)mc_ptrlist_get(ce->args, i);
-                    mc_astprint_expression(pr, arg);
-                    if(i < (mc_ptrlist_count(ce->args) - 1))
-                    {
-                        mc_printer_puts(pr, ", ");
-                    }
-                }
-                mc_printer_puts(pr, ")");
-            }
-            break;
-        case MC_EXPR_INDEX:
-            {
-                mc_printer_puts(pr, "(");
-                mc_astprint_expression(pr, expr->uexpr.exprindex.left);
-                if(expr->uexpr.exprindex.isdot)
-                {
-                    mc_printer_puts(pr, ".");
-                    prevquot = pr->config.quotstring;
-                    pr->config.quotstring = false;
-                    mc_astprint_expression(pr, expr->uexpr.exprindex.index);
-                    pr->config.quotstring = prevquot;
-                }
-                else
-                {
-                    mc_printer_puts(pr, "[");
-                    mc_astprint_expression(pr, expr->uexpr.exprindex.index);
-                    mc_printer_puts(pr, "]");
-                }
-                mc_printer_puts(pr, ")");
-            }
-            break;
-        case MC_EXPR_ASSIGN:
-            {
-                mc_astprint_expression(pr, expr->uexpr.exprassign.dest);
-                mc_printer_puts(pr, " = ");
-                mc_astprint_expression(pr, expr->uexpr.exprassign.source);
-            }
-            break;
-        case MC_EXPR_LOGICAL:
-            {
-                mc_astprint_expression(pr, expr->uexpr.exprlogical.left);
-                mc_printer_puts(pr, " ");
-                mc_printer_puts(pr, mc_util_mathopstring(expr->uexpr.exprinfix.op));
-                mc_printer_puts(pr, " ");
-                mc_astprint_expression(pr, expr->uexpr.exprlogical.right);
-            }
-            break;
-        case MC_EXPR_TERNARY:
-            {
-                mc_astprint_expression(pr, expr->uexpr.exprternary.tercond);
-                mc_printer_puts(pr, " ? ");
-                mc_astprint_expression(pr, expr->uexpr.exprternary.teriftrue);
-                mc_printer_puts(pr, " : ");
-                mc_astprint_expression(pr, expr->uexpr.exprternary.teriffalse);
-            }
-            break;
-        case MC_EXPR_STMTDEFINE:
-            {
-                mcastexprdefine_t* defstmt;
-                defstmt = &expr->uexpr.exprdefine;
-                if(expr->uexpr.exprdefine.assignable)
-                {
-                    mc_printer_puts(pr, "var ");
-                }
-                else
-                {
-                    mc_printer_puts(pr, "const ");
-                }
-                mc_printer_puts(pr, defstmt->name->value);
-                mc_printer_puts(pr, " = ");
-                if(defstmt->value)
-                {
-                    mc_astprint_expression(pr, defstmt->value);
-                }
-            }
-            break;
-        case MC_EXPR_STMTIF:
-            {
-                size_t i;
-                mcastifcase_t* ifcase;
-                ifcase = (mcastifcase_t*)mc_ptrlist_get(expr->uexpr.exprifstmt.cases, 0);
-                mc_printer_puts(pr, "if (");
-                mc_astprint_expression(pr, ifcase->ifcond);
-                mc_printer_puts(pr, ") ");
-                mc_astprint_codeblock(pr, ifcase->consequence);
-                for(i = 1; i < mc_ptrlist_count(expr->uexpr.exprifstmt.cases); i++)
-                {
-                    mcastifcase_t* elifcase = (mcastifcase_t*)mc_ptrlist_get(expr->uexpr.exprifstmt.cases, i);
-                    mc_printer_puts(pr, " elif (");
-                    mc_astprint_expression(pr, elifcase->ifcond);
-                    mc_printer_puts(pr, ") ");
-                    mc_astprint_codeblock(pr, elifcase->consequence);
-                }
-                if(expr->uexpr.exprifstmt.alternative)
-                {
-                    mc_printer_puts(pr, " else ");
-                    mc_astprint_codeblock(pr, expr->uexpr.exprifstmt.alternative);
-                }
-            }
-            break;
-        case MC_EXPR_STMTRETURN:
-            {
-                mc_printer_puts(pr, "return ");
-                if(expr->uexpr.exprreturnvalue)
-                {
-                    mc_astprint_expression(pr, expr->uexpr.exprreturnvalue);
-                }
-            }
-            break;
-        case MC_EXPR_STMTEXPRESSION:
-            {
-                if(expr->uexpr.exprexpression)
-                {
-                    mc_astprint_expression(pr, expr->uexpr.exprexpression);
-                }
-            }
-            break;
-        case MC_EXPR_STMTLOOPWHILE:
-            {
-                mc_printer_puts(pr, "while (");
-                mc_astprint_expression(pr, expr->uexpr.exprwhileloopstmt.loopcond);
-                mc_printer_puts(pr, ")");
-                mc_astprint_codeblock(pr, expr->uexpr.exprwhileloopstmt.body);
-            }
-            break;
-        case MC_EXPR_STMTLOOPFORCLASSIC:
-            {
-                mc_printer_puts(pr, "for (");
-                if(expr->uexpr.exprforloopstmt.init)
-                {
-                    mc_astprint_expression(pr, expr->uexpr.exprforloopstmt.init);
-                    mc_printer_puts(pr, " ");
-                }
-                else
-                {
-                    mc_printer_puts(pr, ";");
-                }
-                if(expr->uexpr.exprforloopstmt.loopcond)
-                {
-                    mc_astprint_expression(pr, expr->uexpr.exprforloopstmt.loopcond);
-                    mc_printer_puts(pr, "; ");
-                }
-                else
-                {
-                    mc_printer_puts(pr, ";");
-                }
-                if(expr->uexpr.exprforloopstmt.update)
-                {
-                    mc_astprint_expression(pr, expr->uexpr.exprforloopstmt.loopcond);
-                }
-                mc_printer_puts(pr, ")");
-                mc_astprint_codeblock(pr, expr->uexpr.exprforloopstmt.body);
-            }
-            break;
-        case MC_EXPR_STMTLOOPFOREACH:
-            {
-                mc_printer_puts(pr, "for (");
-                mc_printer_printf(pr, "%s", expr->uexpr.exprforeachloopstmt.iterator->value);
-                mc_printer_puts(pr, " in ");
-                mc_astprint_expression(pr, expr->uexpr.exprforeachloopstmt.source);
-                mc_printer_puts(pr, ")");
-                mc_astprint_codeblock(pr, expr->uexpr.exprforeachloopstmt.body);
-            }
-            break;
-        case MC_EXPR_STMTBLOCK:
-            {
-                mc_astprint_codeblock(pr, expr->uexpr.exprblockstmt);
-            }
-            break;
-        case MC_EXPR_STMTBREAK:
-            {
-                mc_printer_puts(pr, "break");
-            }
-            break;
-        case MC_EXPR_STMTCONTINUE:
-            {
-                mc_printer_puts(pr, "continue");
-            }
-            break;
-        case MC_EXPR_STMTIMPORT:
-            {
-                mc_printer_printf(pr, "import \"%s\"", expr->uexpr.exprimportstmt.path);
-            }
-            break;
-        case MC_EXPR_NONE:
-            {
-                mc_printer_puts(pr, "MC_EXPR_NONE");
-            }
-            break;
-        case MC_EXPR_STMTRECOVER:
-            {
-                mc_printer_printf(pr, "recover (%s)", expr->uexpr.exprrecoverstmt.errident->value);
-                mc_astprint_codeblock(pr, expr->uexpr.exprrecoverstmt.body);
-            }
-            break;
-        default:
-            break;
-    }
-}
-
-void mc_astprint_codeblock(mcprinter_t* pr, mcastcodeblock_t* expr)
-{
-    size_t i;
-    mcastexpression_t* istmt;
-    mc_printer_puts(pr, "{ ");
-    for(i = 0; i < mc_ptrlist_count(expr->statements); i++)
-    {
-        istmt = (mcastexpression_t*)mc_ptrlist_get(expr->statements, i);
-        mc_astprint_expression(pr, istmt);
-        mc_printer_puts(pr, "\n");
-    }
-    mc_printer_puts(pr, " }");
-}
+#include "astprint.h"
 
 const char* mc_util_mathopstring(mcastmathoptype_t op)
 {
@@ -13194,7 +12787,7 @@ mcvalue_t mc_scriptfn_arrayjoin(mcstate_t* state, void* data, int argc, mcvalue_
     str = pr.data;
     slen = pr.len;
     rt = mc_value_makestringlen(state, str, slen);
-    mc_printer_destroy(&pr);
+    mc_printer_release(&pr);
     return rt;
 }
 
@@ -14047,13 +13640,13 @@ mcvalue_t mc_scriptfn_tostring(mcstate_t* state, void* data, int argc, mcvalue_t
     mc_printer_printvalue(&pr, arg);
     if(mc_printer_failed(&pr))
     {
-        mc_printer_destroy(&pr);
+        mc_printer_release(&pr);
         return mc_value_makenull();
     }
     resstr = mc_printer_getstring(&pr);
     reslen = mc_printer_getlength(&pr);
     res = mc_value_makestringlen(state, resstr, reslen);
-    mc_printer_destroy(&pr);
+    mc_printer_release(&pr);
     return res;
 }
 
@@ -14074,13 +13667,13 @@ mcvalue_t mc_scriptfn_jsonstringify(mcstate_t* state, void* data, int argc, mcva
     mc_printer_printvalue(&pr, arg);
     if(mc_printer_failed(&pr))
     {
-        mc_printer_destroy(&pr);
+        mc_printer_release(&pr);
         return mc_value_makenull();
     }
     resstr = mc_printer_getstring(&pr);
     reslen = mc_printer_getlength(&pr);
     res = mc_value_makestringlen(state, resstr, reslen);
-    mc_printer_destroy(&pr);
+    mc_printer_release(&pr);
     return res;
 }
 
@@ -14494,9 +14087,7 @@ mcvalue_t mc_scriptfn_slice(mcstate_t* state, void* data, int argc, mcvalue_t* a
     int i;
     int len;
     int index;
-    int reslen;
     char c;
-    char* resbuf;
     const char* str;
     const char* typestr;
     mcvalue_t res;
@@ -14540,6 +14131,7 @@ mcvalue_t mc_scriptfn_slice(mcstate_t* state, void* data, int argc, mcvalue_t* a
     }
     if(argtype == MC_VAL_STRING)
     {
+        
         str = mc_valstring_getdata(args[0]);
         len = mc_valstring_getlength(args[0]);
         if(index < 0)
@@ -14554,20 +14146,17 @@ mcvalue_t mc_scriptfn_slice(mcstate_t* state, void* data, int argc, mcvalue_t* a
         {
             return mc_value_makestringlen(state, "", 0);
         }
-        reslen = len - index;
-        res = mc_value_makestrcapacity(state, reslen);
+        res = mc_value_makestrcapacity(state, 0);
         if(mc_value_isnull(res))
         {
             return mc_value_makenull();
         }
-        resbuf = mc_valstring_getmutabledata(res);
-        memset(resbuf, 0, reslen + 1);
+        //bool mc_valstring_appendlen(mcvalue_t obj, const char *src, size_t len);
         for(i = index; i < len; i++)
         {
             c = str[i];
-            resbuf[i - index] = c;
+            mc_valstring_appendlen(res, &c, 1);
         }
-        mc_string_setlength(res, reslen);
         return res;
     }
     typestr = mc_valtype_getname(argtype);
@@ -15415,10 +15004,12 @@ bool mc_state_gccandatabeputinpool(mcstate_t* state, mcobjdata_t* data)
             break;
         case MC_VAL_STRING:
             {
+                #if 0
                 if(!data->uvobj.valstring.isallocated || data->uvobj.valstring.capacity > 4096)
                 {
                     return false;
                 }
+                #endif
             }
             break;
         default:
@@ -16351,7 +15942,7 @@ bool mc_vm_init(mcstate_t* state)
     state->framecount = 0;
     state->lastpopped = mc_value_makenull();
     state->running = false;
-    for(i = 0; i < MC_OPCODE_MAX; i++)
+    for(i = 0; i < MC_CONF_MAXOPEROVERLOADS; i++)
     {
         state->operoverloadkeys[i] = mc_value_makenull();
     }
@@ -16561,6 +16152,8 @@ void mc_vm_setstackpos(mcstate_t* state, int nsp)
 {
     int count;
     size_t bytescount;
+    (void)count;
+    (void)bytescount;
     if(nsp > state->vsposition)
     {
         /* to avoid gcing freed objects */
@@ -16702,7 +16295,7 @@ void mc_vm_rungc(mcstate_t* vm, mcbasicarray_t* constants)
     mc_state_gcmarkobjlist(vm->valuestack->listitems, vm->vsposition);
     mc_state_gcmarkobjlist(vm->valthisstack->listitems, vm->thisstpos);
     mc_state_gcmarkobject(vm->lastpopped);
-    mc_state_gcmarkobjlist(vm->operoverloadkeys, MC_OPCODE_MAX);
+    mc_state_gcmarkobjlist(vm->operoverloadkeys, MC_CONF_MAXOPEROVERLOADS);
     mc_state_gcsweep(vm);
 }
 
@@ -16852,12 +16445,12 @@ MCINLINE bool mc_vmdo_opaddstring(mcstate_t* state, mcvalue_t valleft, mcvalue_t
         {
             return false;
         }
-        ok = mc_valstring_append(nstring, strleft, leftlen);
+        ok = mc_valstring_appendlen(nstring, strleft, leftlen);
         if(!ok)
         {
             return false;
         }
-        ok = mc_valstring_append(nstring, strright, rightlen);
+        ok = mc_valstring_appendlen(nstring, strright, rightlen);
         if(!ok)
         {
             return false;
@@ -17251,9 +16844,9 @@ MCINLINE bool mc_vmdo_docmpvalue(mcstate_t* state, mcopcode_t opcode)
     if(!isoverloaded)
     {
         ok = mc_value_compare(left, right, &cres);
-        /*
+        #if 0
         fprintf(stderr, "compare: ok=%d cres.result=%g\n", ok, cres.result);
-        */
+        #endif
         if((ok == true) || (opcode == MC_OPCODE_COMPAREEQ))
         {
             res = mc_value_makenumber(cres.result);
@@ -18358,7 +17951,6 @@ void mc_cli_printtypesizes()
     printtypesize(mcexprunion_t);
     printtypesize(mcfuncfvunion_t);
     printtypesize(mcfuncnameunion_t);
-    printtypesize(mcstringstoreunion_t);
 
 }
 
@@ -18459,7 +18051,10 @@ int main(int argc, char* argv[])
     {
         if(nargc > 0)
         {
-            ok = mc_cli_compileandrunfile(state, nargv[0]);
+            if(!mc_cli_compileandrunfile(state, nargv[0]))
+            {
+                ok = false;
+            }
         }
         else
         {
@@ -18474,6 +18069,11 @@ int main(int argc, char* argv[])
     }
     finished:
     mc_state_destroy(state);
-    return (ok ? 0 : 1);
+    fprintf(stderr, "ok=%d\n");
+    if(ok)
+    {
+        return 0;
+    }
+    return 1;
 }
 
