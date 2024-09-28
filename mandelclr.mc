@@ -13,7 +13,7 @@ var calc_point = function(cx, cy, max_iter)
         {
             break;
         }
-        i = i + 1;
+        i++;
     }
     return i;
 }

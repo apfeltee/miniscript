@@ -68,17 +68,17 @@ THE SOFTWARE.
 #endif
 
 
-#define MC_CONF_DEBUG 0
-#define MC_CONF_VMVALSTACKSIZE (4)
-#define MC_CONF_VMMAXGLOBALS (1024/4)
-#define MC_CONF_VMMAXFRAMES (MC_CONF_VMVALSTACKSIZE)
-#define MC_CONF_VMTHISSTACKSIZE (MC_CONF_VMVALSTACKSIZE)
-#define MC_CONF_NATIVEFUNCMAXDATA (24*1)
+#define MC_CONF_DEBUG 1
+#define MC_CONF_MINVMVALSTACKSIZE (4)
+#define MC_CONF_MAXVMGLOBALS (1024/4)
+#define MC_CONF_MINVMFRAMES (MC_CONF_MINVMVALSTACKSIZE)
+#define MC_CONF_MINVMTHISSTACKSIZE (MC_CONF_MINVMVALSTACKSIZE)
+#define MC_CONF_MAXNATIVEFUNCDATA (24*1)
 #define MC_CONF_GCMEMPOOLSIZE (2048/16)
 #define MC_CONF_GCMEMPOOLCOUNT (3)
 #define MC_CONF_GCMEMSWEEPINTERVAL (128)
-#define MC_CONF_ERROR_MAXERRORCOUNT (4)
-#define MC_CONF_ERROR_MSGMAXLENGTH (128)
+#define MC_CONF_MAXERRORCOUNT (4)
+#define MC_CONF_MAXERRORMSGLENGTH (128)
 #define MC_CONF_GENERICDICTINVALIDIX (UINT_MAX)
 #define MC_CONF_VALDICTINVALIDIX (UINT_MAX)
 #define MC_CONF_GENERICDICTINITSIZE (32)
@@ -117,7 +117,7 @@ THE SOFTWARE.
 #endif
 
 
-#if 0 //defined(__GNUC__) || defined(__clang__)
+#if defined(__GNUC__) || defined(__clang__)
     #define mc_util_likely(x)   (__builtin_expect(!!(x), 1))
     #define mc_util_unlikely(x) (__builtin_expect(!!(x), 0))
 #else
@@ -774,7 +774,7 @@ struct mcobjfuncnative_t
 {
     char* name;
     mcnativefn_t natptrfn;
-    uint8_t userdata[MC_CONF_NATIVEFUNCMAXDATA];
+    uint8_t userdata[MC_CONF_MAXNATIVEFUNCDATA];
     int userdlen;
 };
 
@@ -903,14 +903,14 @@ struct mcastcompiledfile_t
 struct mcerror_t
 {
     mcerrtype_t type;
-    char message[MC_CONF_ERROR_MSGMAXLENGTH];
+    char message[MC_CONF_MAXERRORMSGLENGTH];
     mcastlocation_t pos;
     mctraceback_t* traceback;
 };
 
 struct mcerrlist_t
 {
-    mcerror_t errors[MC_CONF_ERROR_MAXERRORCOUNT];
+    mcerror_t errors[MC_CONF_MAXERRORCOUNT];
     int count;
 };
 
@@ -984,6 +984,7 @@ struct mcconfig_t
 {
     bool dumpast;
     bool dumpbytecode;
+    bool printinstructions;
     bool fatalcomplaints;
     bool exitaftercompiling;
     /* allows redefinition of symbols */
@@ -997,18 +998,18 @@ struct mcstate_t
     mcerrlist_t errors;
     mcgcmemory_t* mem;
     mcglobalstore_t* vmglobalstore;
-    mcvalue_t globalvalstack[MC_CONF_VMMAXGLOBALS];
+    mcvalue_t globalvalstack[MC_CONF_MAXVMGLOBALS];
     //mcvallist_t* globalvalstack;
-    int globalvalcount;
-    //mcvalue_t valuestack[MC_CONF_VMVALSTACKSIZE];
+    size_t globalvalcount;
+    //mcvalue_t valuestack[MC_CONF_MINVMVALSTACKSIZE];
     mcvallist_t* valuestack;
-    int vsposition;
-    //mcvalue_t valthisstack[MC_CONF_VMTHISSTACKSIZE];
+    size_t vsposition;
+    //mcvalue_t valthisstack[MC_CONF_MINVMTHISSTACKSIZE];
     mcvallist_t* valthisstack;
-    int thisstpos;
-    //mcvmframe_t framestack[MC_CONF_VMMAXFRAMES];
+    size_t thisstpos;
+    //mcvmframe_t framestack[MC_CONF_MINVMFRAMES];
     mcframelist_t* framestack;
-    int framecount;
+    size_t framecount;
     mcvalue_t lastpopped;
     mcvmframe_t* currframe;
     bool running;
@@ -1023,7 +1024,7 @@ struct mcglobalstore_t
 {
     mcstate_t* pstate;
     mcgenericdict_t* symbols;
-    mcbasicarray_t* objects;
+    mcvallist_t* storedobjects;
 };
 
 struct mcprintconfig_t
@@ -1127,7 +1128,7 @@ struct mcastcompiler_t
     mcerrlist_t* errors;
     mcptrlist_t* files;
     mcglobalstore_t* compglobalstore;
-    mcbasicarray_t* constants;
+    mcvallist_t* constants;
     mcastscopecomp_t* compilationscope;
     mcptrlist_t* filescopelist;
     mcbasicarray_t* srcposstack;
@@ -1462,6 +1463,23 @@ mcvallist_t* mc_vallist_make(mcstate_t* state, const char* name, size_t initials
         mc_vallist_ensurecapacity(list, initialsize, mc_value_makenull(), true);
     }
     return list;
+}
+
+mcvalue_t* mc_vallist_data(mcvallist_t* list)
+{
+    return list->listitems;
+}
+
+mcvallist_t* mc_vallist_copy(mcvallist_t* list)
+{
+    size_t i;
+    mcvallist_t* nlist;
+    nlist = mc_vallist_make(list->pstate, list->listname, 0);
+    for(i=0; i<list->listcount; i++)
+    {
+        mc_vallist_push(nlist, list->listitems[i]);
+    }
+    return nlist;
 }
 
 size_t mc_vallist_count(mcvallist_t* list)
@@ -3569,12 +3587,12 @@ void mc_errlist_deinit(mcerrlist_t* errors)
     mc_errlist_clear(errors);
 }
 
-void mc_errlist_push(mcerrlist_t* errors, mcerrtype_t type, mcastlocation_t pos, const char* message)
+void mc_errlist_pushmessage(mcerrlist_t* errors, mcerrtype_t type, mcastlocation_t pos, const char* message)
 {
     int len;
     int tocopy;
     mcerror_t err;
-    if(errors->count >= MC_CONF_ERROR_MAXERRORCOUNT)
+    if(errors->count >= MC_CONF_MAXERRORCOUNT)
     {
         return;
     }
@@ -3582,9 +3600,9 @@ void mc_errlist_push(mcerrlist_t* errors, mcerrtype_t type, mcastlocation_t pos,
     err.type = type;
     len = mc_util_strlen(message);
     tocopy = len;
-    if(tocopy >= (MC_CONF_ERROR_MSGMAXLENGTH - 1))
+    if(tocopy >= (MC_CONF_MAXERRORMSGLENGTH - 1))
     {
-        tocopy = MC_CONF_ERROR_MSGMAXLENGTH - 1;
+        tocopy = MC_CONF_MAXERRORMSGLENGTH - 1;
     }
     memcpy(err.message, message, tocopy);
     err.message[tocopy] = '\0';
@@ -3598,15 +3616,15 @@ void mc_errlist_addfv(mcerrlist_t* errors, mcerrtype_t type, mcastlocation_t pos
 {
     int towrite;
     int written;
-    char res[MC_CONF_ERROR_MSGMAXLENGTH];
+    char res[MC_CONF_MAXERRORMSGLENGTH];
     va_list vcopy;
     (void)towrite;
     (void)written;
     va_copy(vcopy, va);
     towrite = vsnprintf(NULL, 0, format, vcopy);
-    written = vsnprintf(res, MC_CONF_ERROR_MSGMAXLENGTH, format, va);
+    written = vsnprintf(res, MC_CONF_MAXERRORMSGLENGTH, format, va);
     MC_ASSERT(towrite == written);
-    mc_errlist_push(errors, type, pos, res);
+    mc_errlist_pushmessage(errors, type, pos, res);
 }
 
 void mc_errlist_addf(mcerrlist_t* errors, mcerrtype_t type, mcastlocation_t pos, const char* format, ...)
@@ -3776,7 +3794,7 @@ mcvalue_t mc_value_makestring(mcstate_t* state, const char* string)
 mcvalue_t mc_value_makefuncnative(mcstate_t* state, const char* name, mcnativefn_t fn, void* data, int dlen)
 {
     mcobjdata_t* obj;
-    if(dlen > MC_CONF_NATIVEFUNCMAXDATA)
+    if(dlen > MC_CONF_MAXNATIVEFUNCDATA)
     {
         return mc_value_makenull();
     }
@@ -3818,7 +3836,7 @@ mcvalue_t mc_value_makearraycapacity(mcstate_t* state, unsigned capacity)
     {
         return mc_value_makenull();
     }
-    data->uvobj.valarray = mc_vallist_make(state, "<array>", capacity);
+    data->uvobj.valarray = mc_vallist_make(state, NULL, capacity);
     if(!data->uvobj.valarray)
     {
         return mc_value_makenull();
@@ -6088,7 +6106,7 @@ void mc_compiler_setsymtable(mcastcompiler_t* comp, mcastsymtable_t* table)
     filescope->filesymtab = table;
 }
 
-mcbasicarray_t* mc_compiler_getconstants(mcastcompiler_t* comp)
+mcvallist_t* mc_compiler_getconstants(mcastcompiler_t* comp)
 {
     return comp->constants;
 }
@@ -6108,7 +6126,7 @@ bool mc_compiler_init(mcastcompiler_t* comp, mcstate_t* state, mcconfig_t* cfg, 
     {
         goto compilerinitfailed;
     }
-    comp->constants = mc_basicarray_make(state, sizeof(mcvalue_t));
+    comp->constants = mc_vallist_make(state, "compilerconstants", 0);
     if(!comp->constants)
     {
         goto compilerinitfailed;
@@ -6169,7 +6187,7 @@ void mc_compiler_deinit(mcastcompiler_t* comp)
     }
     mc_genericdict_destroyitemsanddict(comp->modules);
     mc_basicarray_destroy(comp->srcposstack);
-    mc_basicarray_destroy(comp->constants);
+    mc_vallist_destroy(comp->constants);
     mc_ptrlist_destroy(comp->filescopelist, NULL);
     memset(comp, 0, sizeof(mcastcompiler_t));
 }
@@ -6184,7 +6202,7 @@ bool mc_compiler_initshallowcopy(mcastcompiler_t* copy, mcastcompiler_t* src)
     const char* key;
     const char* loadedname;
     mcgenericdict_t* modulescopy;
-    mcbasicarray_t* constantscopy;
+    mcvallist_t* constantscopy;
     mcptrlist_t* srcloadedmodulenames;
     mcptrlist_t* copyloadedmodulenames;
     mcastsymtable_t* srcst;
@@ -6216,12 +6234,12 @@ bool mc_compiler_initshallowcopy(mcastcompiler_t* copy, mcastcompiler_t* src)
     }
     mc_genericdict_destroyitemsanddict(copy->modules);
     copy->modules = modulescopy;
-    constantscopy = mc_basicarray_copy(src->constants);
+    constantscopy = mc_vallist_copy(src->constants);
     if(!constantscopy)
     {
         goto compilercopyfailed;
     }
-    mc_basicarray_destroy(copy->constants);
+    mc_vallist_destroy(copy->constants);
     copy->constants = constantscopy;
     for(i = 0; i < mc_genericdict_count(src->stringconstposdict); i++)
     {
@@ -6286,61 +6304,61 @@ mcopdefinition_t* mc_opdef_lookup(mcopdefinition_t* def, mcinternopcode_t op)
 {
     switch(op)
     {
-        makecase(def, MC_OPCODE_HALT, "halt", 0, 0, 0);
-        makecase(def, MC_OPCODE_CONSTANT, "pushconst", 1, 2, 0);
-        makecase(def, MC_OPCODE_ADD, "add", 0, 0, 0);
-        makecase(def, MC_OPCODE_POP, "pop", 0, 0, 0);
-        makecase(def, MC_OPCODE_SUB, "sub", 0, 0, 0);
-        makecase(def, MC_OPCODE_MUL, "mul", 0, 0, 0);
-        makecase(def, MC_OPCODE_DIV, "div", 0, 0, 0);
-        makecase(def, MC_OPCODE_MOD, "mod", 0, 0, 0);
-        makecase(def, MC_OPCODE_TRUE, "pushtrue", 0, 0, 0);
-        makecase(def, MC_OPCODE_FALSE, "pushfalse", 0, 0, 0);
-        makecase(def, MC_OPCODE_COMPARE, "compare", 0, 0, 0);
-        makecase(def, MC_OPCODE_COMPAREEQ, "cmpequal", 0, 0, 0);
-        makecase(def, MC_OPCODE_EQUAL, "isequal", 0, 0, 0);
-        makecase(def, MC_OPCODE_NOTEQUAL, "notequal", 0, 0, 0);
-        makecase(def, MC_OPCODE_GREATERTHAN, "greaterthan", 0, 0, 0);
-        makecase(def, MC_OPCODE_GREATERTHANEQUAL, "greaterequal", 0, 0, 0);
-        makecase(def, MC_OPCODE_MINUS, "minus", 0, 0, 0);
-        makecase(def, MC_OPCODE_BINNOT, "binnot", 0, 0, 0);
-        makecase(def, MC_OPCODE_BANG, "not", 0, 0, 0);
-        makecase(def, MC_OPCODE_JUMP, "jump", 1, 2, 0);
-        makecase(def, MC_OPCODE_JUMPIFFALSE, "jmpiffalse", 1, 2, 0);
-        makecase(def, MC_OPCODE_JUMPIFTRUE, "jmpiftrue", 1, 2, 0);
-        makecase(def, MC_OPCODE_NULL, "pushnull", 0, 0, 0);
-        makecase(def, MC_OPCODE_GETMODULEGLOBAL, "getmodglobal", 1, 2, 0);
-        makecase(def, MC_OPCODE_SETMODULEGLOBAL, "setmodglobal", 1, 2, 0);
-        makecase(def, MC_OPCODE_DEFINEMODULEGLOBAL, "defmodglobal", 1, 2, 0);
-        makecase(def, MC_OPCODE_ARRAY, "makearray", 1, 2, 0);
-        makecase(def, MC_OPCODE_MAPSTART, "pushmakemapstart", 1, 2, 0);
-        makecase(def, MC_OPCODE_MAPEND, "pushmakemapend", 1, 2, 0);
-        makecase(def, MC_OPCODE_GETTHIS, "getthis", 0, 0, 0);
-        makecase(def, MC_OPCODE_GETINDEX, "getindex", 0, 0, 0);
-        makecase(def, MC_OPCODE_SETINDEX, "setindex", 0, 0, 0);
-        makecase(def, MC_OPCODE_GETDOTINDEX, "getdotindex", 0, 0, 0);
-        makecase(def, MC_OPCODE_GETVALUEAT, "getvalueat", 0, 0, 0);
-        makecase(def, MC_OPCODE_CALL, "call", 1, 1, 0);
-        makecase(def, MC_OPCODE_RETURNVALUE, "return.value", 0, 0, 0);
-        makecase(def, MC_OPCODE_RETURN, "return.nil", 0, 0, 0);
-        makecase(def, MC_OPCODE_GETLOCAL, "getlocal", 1, 1, 0);
-        makecase(def, MC_OPCODE_DEFINELOCAL, "deflocal", 1, 1, 0);
-        makecase(def, MC_OPCODE_SETLOCAL, "setlocal", 1, 1, 0);
-        makecase(def, MC_OPCODE_GETGLOBALBUILTIN, "getglobalbuiltin", 1, 2, 0);
-        makecase(def, MC_OPCODE_FUNCTION, "makefunction", 2, 2, 1);
-        makecase(def, MC_OPCODE_GETFREE, "getfree", 1, 1, 0);
-        makecase(def, MC_OPCODE_SETFREE, "setfree", 1, 1, 0);
-        makecase(def, MC_OPCODE_CURRENTFUNCTION, "pushcurrentfunc", 0, 0, 0);
-        makecase(def, MC_OPCODE_DUP, "dup", 0, 0, 0);
-        makecase(def, MC_OPCODE_NUMBER, "pushnumber", 1, 8, 0);
-        makecase(def, MC_OPCODE_FOREACHLEN, "foreach.len", 0, 0, 0);
-        makecase(def, MC_OPCODE_SETRECOVER, "recoverset", 1, 2, 0);
-        makecase(def, MC_OPCODE_BINOR, "bin.or", 0, 0, 0);
-        makecase(def, MC_OPCODE_BINXOR, "bin.xor", 0, 0, 0);
-        makecase(def, MC_OPCODE_BINAND, "bin.and", 0, 0, 0);
-        makecase(def, MC_OPCODE_LSHIFT, "bin.lshift", 0, 0, 0);
-        makecase(def, MC_OPCODE_RSHIFT, "bin.rshift", 0, 0, 0);
-        makecase(def, MC_OPCODE_MAX, "INVALID_MAX", 0, 0, 0);
+        makecase(def, MC_OPCODE_HALT, "MC_OPCODE_HALT", 0, 0, 0);
+        makecase(def, MC_OPCODE_CONSTANT, "MC_OPCODE_CONSTANT", 1, 2, 0);
+        makecase(def, MC_OPCODE_ADD, "MC_OPCODE_ADD", 0, 0, 0);
+        makecase(def, MC_OPCODE_POP, "MC_OPCODE_POP", 0, 0, 0);
+        makecase(def, MC_OPCODE_SUB, "MC_OPCODE_SUB", 0, 0, 0);
+        makecase(def, MC_OPCODE_MUL, "MC_OPCODE_MUL", 0, 0, 0);
+        makecase(def, MC_OPCODE_DIV, "MC_OPCODE_DIV", 0, 0, 0);
+        makecase(def, MC_OPCODE_MOD, "MC_OPCODE_MOD", 0, 0, 0);
+        makecase(def, MC_OPCODE_TRUE, "MC_OPCODE_TRUE", 0, 0, 0);
+        makecase(def, MC_OPCODE_FALSE, "MC_OPCODE_FALSE", 0, 0, 0);
+        makecase(def, MC_OPCODE_COMPARE, "MC_OPCODE_COMPARE", 0, 0, 0);
+        makecase(def, MC_OPCODE_COMPAREEQ, "MC_OPCODE_COMPAREEQ", 0, 0, 0);
+        makecase(def, MC_OPCODE_EQUAL, "MC_OPCODE_EQUAL", 0, 0, 0);
+        makecase(def, MC_OPCODE_NOTEQUAL, "MC_OPCODE_NOTEQUAL", 0, 0, 0);
+        makecase(def, MC_OPCODE_GREATERTHAN, "MC_OPCODE_GREATERTHAN", 0, 0, 0);
+        makecase(def, MC_OPCODE_GREATERTHANEQUAL, "MC_OPCODE_GREATERTHANEQUAL", 0, 0, 0);
+        makecase(def, MC_OPCODE_MINUS, "MC_OPCODE_MINUS", 0, 0, 0);
+        makecase(def, MC_OPCODE_BINNOT, "MC_OPCODE_BINNOT", 0, 0, 0);
+        makecase(def, MC_OPCODE_BANG, "MC_OPCODE_BANG", 0, 0, 0);
+        makecase(def, MC_OPCODE_JUMP, "MC_OPCODE_JUMP", 1, 2, 0);
+        makecase(def, MC_OPCODE_JUMPIFFALSE, "MC_OPCODE_JUMPIFFALSE", 1, 2, 0);
+        makecase(def, MC_OPCODE_JUMPIFTRUE, "MC_OPCODE_JUMPIFTRUE", 1, 2, 0);
+        makecase(def, MC_OPCODE_NULL, "MC_OPCODE_NULL", 0, 0, 0);
+        makecase(def, MC_OPCODE_GETMODULEGLOBAL, "MC_OPCODE_GETMODULEGLOBAL", 1, 2, 0);
+        makecase(def, MC_OPCODE_SETMODULEGLOBAL, "MC_OPCODE_SETMODULEGLOBAL", 1, 2, 0);
+        makecase(def, MC_OPCODE_DEFINEMODULEGLOBAL, "MC_OPCODE_DEFINEMODULEGLOBAL", 1, 2, 0);
+        makecase(def, MC_OPCODE_ARRAY, "MC_OPCODE_ARRAY", 1, 2, 0);
+        makecase(def, MC_OPCODE_MAPSTART, "MC_OPCODE_MAPSTART", 1, 2, 0);
+        makecase(def, MC_OPCODE_MAPEND, "MC_OPCODE_MAPEND", 1, 2, 0);
+        makecase(def, MC_OPCODE_GETTHIS, "MC_OPCODE_GETTHIS", 0, 0, 0);
+        makecase(def, MC_OPCODE_GETINDEX, "MC_OPCODE_GETINDEX", 0, 0, 0);
+        makecase(def, MC_OPCODE_SETINDEX, "MC_OPCODE_SETINDEX", 0, 0, 0);
+        makecase(def, MC_OPCODE_GETDOTINDEX, "MC_OPCODE_GETDOTINDEX", 0, 0, 0);
+        makecase(def, MC_OPCODE_GETVALUEAT, "MC_OPCODE_GETVALUEAT", 0, 0, 0);
+        makecase(def, MC_OPCODE_CALL, "MC_OPCODE_CALL", 1, 1, 0);
+        makecase(def, MC_OPCODE_RETURNVALUE, "MC_OPCODE_RETURNVALUE", 0, 0, 0);
+        makecase(def, MC_OPCODE_RETURN, "MC_OPCODE_RETURN", 0, 0, 0);
+        makecase(def, MC_OPCODE_GETLOCAL, "MC_OPCODE_GETLOCAL", 1, 1, 0);
+        makecase(def, MC_OPCODE_DEFINELOCAL, "MC_OPCODE_DEFINELOCAL", 1, 1, 0);
+        makecase(def, MC_OPCODE_SETLOCAL, "MC_OPCODE_SETLOCAL", 1, 1, 0);
+        makecase(def, MC_OPCODE_GETGLOBALBUILTIN, "MC_OPCODE_GETGLOBALBUILTIN", 1, 2, 0);
+        makecase(def, MC_OPCODE_FUNCTION, "MC_OPCODE_FUNCTION", 2, 2, 1);
+        makecase(def, MC_OPCODE_GETFREE, "MC_OPCODE_GETFREE", 1, 1, 0);
+        makecase(def, MC_OPCODE_SETFREE, "MC_OPCODE_SETFREE", 1, 1, 0);
+        makecase(def, MC_OPCODE_CURRENTFUNCTION, "MC_OPCODE_CURRENTFUNCTION", 0, 0, 0);
+        makecase(def, MC_OPCODE_DUP, "MC_OPCODE_DUP", 0, 0, 0);
+        makecase(def, MC_OPCODE_NUMBER, "MC_OPCODE_NUMBER", 1, 8, 0);
+        makecase(def, MC_OPCODE_FOREACHLEN, "MC_OPCODE_FOREACHLEN", 0, 0, 0);
+        makecase(def, MC_OPCODE_SETRECOVER, "MC_OPCODE_SETRECOVER", 1, 2, 0);
+        makecase(def, MC_OPCODE_BINOR, "MC_OPCODE_BINOR", 0, 0, 0);
+        makecase(def, MC_OPCODE_BINXOR, "MC_OPCODE_BINXOR", 0, 0, 0);
+        makecase(def, MC_OPCODE_BINAND, "MC_OPCODE_BINAND", 0, 0, 0);
+        makecase(def, MC_OPCODE_LSHIFT, "MC_OPCODE_LSHIFT", 0, 0, 0);
+        makecase(def, MC_OPCODE_RSHIFT, "MC_OPCODE_RSHIFT", 0, 0, 0);
+        makecase(def, MC_OPCODE_MAX, "MC_OPCODE_MAX", 0, 0, 0);
         default:
             {
                 return NULL; 
@@ -7995,7 +8013,7 @@ mcastexpression_t* mc_parser_parseexprstmt(mcastparser_t* p)
         /* this is actually completely unnecessary */
         if(expr->type != MC_EXPR_ASSIGN && expr->type != MC_EXPR_CALL)
         {
-            mc_errlist_addf(p->errors, MC_ERROR_PARSING, expr->pos, "Only assignments and function calls can be expression statements");
+            mc_errlist_addf(p->errors, MC_ERROR_PARSING, expr->pos, "only assignments and function calls can be expression statements");
             mc_astexpr_destroy(expr);
             return NULL;
         }
@@ -8092,7 +8110,7 @@ mcastexpression_t* mc_parser_parseimportstmt(mcastparser_t* p)
     processedname = mc_parser_processandcopystring(p->pstate, p->lexer.currtoken.literal, p->lexer.currtoken.len);
     if(!processedname)
     {
-        mc_errlist_push(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "Error when parsing module name");
+        mc_errlist_addf(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "error when parsing module name");
         return NULL;
     }
     mc_lexer_nexttoken(&p->lexer);
@@ -8309,7 +8327,7 @@ mcastcodeblock_t* mc_parser_parsecodeblock(mcastparser_t* p)
     {
         if(mc_lexer_currtokenis(&p->lexer, MC_TOK_EOF))
         {
-            mc_errlist_push(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "Unexpected EOF");
+            mc_errlist_addf(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "unexpected EOF");
             goto err;
         }
         if(mc_lexer_currtokenis(&p->lexer, MC_TOK_SEMICOLON))
@@ -8354,7 +8372,7 @@ mcastexpression_t* mc_parser_parseexpression(mcastparser_t* p, mcastprecedence_t
     pos = p->lexer.currtoken.pos;
     if(p->lexer.currtoken.type == MC_TOK_INVALID)
     {
-        mc_errlist_push(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "Illegal token");
+        mc_errlist_addf(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "illegal token");
         return NULL;
     }
     parserightassoc = p->rightassocfuncs[p->lexer.currtoken.type];
@@ -8450,7 +8468,7 @@ mcastexpression_t* mc_parser_parseliteralstring(mcastparser_t* p)
     processedliteral = mc_parser_processandcopystring(p->pstate, p->lexer.currtoken.literal, p->lexer.currtoken.len);
     if(!processedliteral)
     {
-        mc_errlist_push(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "Error when parsing string literal");
+        mc_errlist_addf(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "error parsing string literal");
         return NULL;
     }
     mc_lexer_nexttoken(&p->lexer);
@@ -8485,7 +8503,7 @@ mcastexpression_t* mc_parser_parseliteraltemplatestring(mcastparser_t* p)
     processedliteral = mc_parser_processandcopystring(p->pstate, p->lexer.currtoken.literal, p->lexer.currtoken.len);
     if(!processedliteral)
     {
-        mc_errlist_push(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "Error when parsing string literal");
+        mc_errlist_addf(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "error parsing string literal");
         return NULL;
     }
     mc_lexer_nexttoken(&p->lexer);
@@ -10030,7 +10048,7 @@ bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_t* imports
         {
             if(comp->pstate->config.fatalcomplaints)
             {
-                mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, importstmt->pos, "Module \"%s\" was already imported", modname);
+                mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, importstmt->pos, "module \"%s\" was already imported", modname);
                 result = false;
             }
             else
@@ -10073,7 +10091,7 @@ bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_t* imports
     symtab = mc_compiler_getsymtable(comp);
     if(symtab->outer != NULL || mc_ptrlist_count(symtab->blockscopes) > 1)
     {
-        mc_errlist_push(comp->errors, MC_ERROR_COMPILING, importstmt->pos, "Modules can only be imported in global scope");
+        mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, importstmt->pos, "modules can only be imported in global scope");
         result = false;
         goto end;
     }
@@ -10082,7 +10100,7 @@ bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_t* imports
         fs = (mcastscopefile_t*)mc_ptrlist_get(comp->filescopelist, i);
         if(MC_UTIL_STREQ(fs->file->path, filepath))
         {
-            mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, importstmt->pos, "Cyclic reference of file \"%s\"", filepath);
+            mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, importstmt->pos, "cyclic reference of file \"%s\"", filepath);
             result = false;
             goto end;
         }
@@ -10095,7 +10113,7 @@ bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_t* imports
         code = mc_fsutil_fileread(comp->pstate, searchedpath, &flen);
         if(!code)
         {
-            mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, importstmt->pos, "Reading module file \"%s\" failed", filepath);
+            mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, importstmt->pos, "reading module file \"%s\" failed", filepath);
             result = false;
             goto end;
         }
@@ -10287,7 +10305,7 @@ bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpression_t* expr
             {
                 if(compscope->outer == NULL)
                 {
-                    mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "Nothing to return from");
+                    mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "nothing to return from");
                     return false;
                 }
                 ip = -1;
@@ -10370,7 +10388,7 @@ bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpression_t* expr
                 breakip = mc_compiler_getbreakip(comp);
                 if(breakip < 0)
                 {
-                    mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "Nothing to break from.");
+                    mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "nothing to break from.");
                     return false;
                 }
                 opbuf[0] = breakip;
@@ -10387,7 +10405,7 @@ bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpression_t* expr
                 continueip = mc_compiler_getcontinueip(comp);
                 if(continueip < 0)
                 {
-                    mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "Nothing to continue from.");
+                    mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "nothing to continue from.");
                     return false;
                 }
                 opbuf[0] = continueip;
@@ -10732,12 +10750,12 @@ bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpression_t* expr
                 recover = &expr->uexpr.exprrecoverstmt;
                 if(mc_symtable_ismodglobalscope(symtab))
                 {
-                    mc_errlist_push(comp->errors, MC_ERROR_COMPILING, expr->pos, "Recover statement cannot be defined in global scope");
+                    mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "recover statement cannot be defined in global scope");
                     return false;
                 }
                 if(!mc_symtable_istopblockscope(symtab))
                 {
-                    mc_errlist_push(comp->errors, MC_ERROR_COMPILING, expr->pos, "Recover statement cannot be defined within other statements");
+                    mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "recover statement cannot be defined within other statements");
                     return false;
                 }
                 opbuf[0] = 0xbeef;
@@ -10776,7 +10794,7 @@ bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpression_t* expr
                 }
                 if(!mc_compiler_lastopcodeis(comp, MC_OPCODE_RETURN) && !mc_compiler_lastopcodeis(comp, MC_OPCODE_RETURNVALUE))
                 {
-                    mc_errlist_push(comp->errors, MC_ERROR_COMPILING, expr->pos, "Recover body must end with a return statement");
+                    mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "recover body must end with a return statement");
                     return false;
                 }
                 mc_symtable_popblockscope(symtab);
@@ -10886,7 +10904,7 @@ bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexpression_t* exp
                         break;
                     default:
                         {
-                            mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "Unknown infix operator");
+                            mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "unknown infix operator");
                             goto error;
                         }
                         break;
@@ -11094,7 +11112,7 @@ bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexpression_t* exp
                         break;
                     default:
                         {
-                            mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "Unknown prefix operator.");
+                            mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "unknown prefix operator.");
                             goto error;
                         }
                         break;
@@ -11191,14 +11209,14 @@ bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexpression_t* exp
                     fnsymbol = mc_symtable_definefunctionname(symtab, fn->name, false);
                     if(!fnsymbol)
                     {
-                        mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "Cannot define symbol \"%s\"", fn->name);
+                        mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "cannot define symbol \"%s\"", fn->name);
                         goto error;
                     }
                 }
                 thissymbol = mc_symtable_definethis(symtab);
                 if(!thissymbol)
                 {
-                    mc_errlist_push(comp->errors, MC_ERROR_COMPILING, expr->pos, "Cannot define \"this\" symbol");
+                    mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "cannot define \"this\" symbol");
                     goto error;
                 }
                 for(i = 0; i < mc_ptrlist_count(expr->uexpr.exprlitfunction.funcparamlist); i++)
@@ -11307,7 +11325,7 @@ bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexpression_t* exp
                 assign = &expr->uexpr.exprassign;
                 if(assign->dest->type != MC_EXPR_IDENT && assign->dest->type != MC_EXPR_INDEX)
                 {
-                    mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, assign->dest->pos, "Expression is not assignable.");
+                    mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, assign->dest->pos, "expression is not assignable");
                     goto error;
                 }
                 if(assign->is_postfix)
@@ -11535,12 +11553,12 @@ int mc_compiler_addconstant(mcastcompiler_t* comp, mcvalue_t obj)
 {
     bool ok;
     int pos;
-    ok = mc_basicarray_push(comp->constants, &obj);
+    ok = mc_vallist_push(comp->constants, obj);
     if(!ok)
     {
         return -1;
     }
-    pos = mc_basicarray_count(comp->constants) - 1;
+    pos = mc_vallist_count(comp->constants) - 1;
     return pos;
 }
 
@@ -11978,14 +11996,14 @@ mcastsymbol_t* mc_compiler_defsymbol(mcastcompiler_t* comp, mcastlocation_t pos,
         currentsymbol = mc_symtable_resolve(symtab, name);
         if(currentsymbol)
         {
-            mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, pos, "Symbol \"%s\" is already defined", name);
+            mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, pos, "symbol \"%s\" is already defined", name);
             return NULL;
         }
     }
     symbol = mc_symtable_define(symtab, name, assignable);
     if(!symbol)
     {
-        mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, pos, "Cannot define symbol \"%s\"", name);
+        mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, pos, "cannot define symbol \"%s\"", name);
         return NULL;
     }
     return symbol;
@@ -12001,9 +12019,9 @@ mcstate_t* mc_state_make(void)
     }
     memset(state, 0, sizeof(mcstate_t));
     mc_state_setdefaultconfig(state);
-    state->valuestack = mc_vallist_make(state, "valuestack", MC_CONF_VMVALSTACKSIZE);
-    state->valthisstack = mc_vallist_make(state, "valthisstack",  MC_CONF_VMTHISSTACKSIZE);
-    state->framestack = mc_framelist_make(state, MC_CONF_VMMAXFRAMES);
+    state->valuestack = mc_vallist_make(state, "valuestack", MC_CONF_MINVMVALSTACKSIZE);
+    state->valthisstack = mc_vallist_make(state, "valthisstack",  MC_CONF_MINVMTHISSTACKSIZE);
+    state->framestack = mc_framelist_make(state, MC_CONF_MINVMFRAMES);
     mc_errlist_init(&state->errors);
     state->mem = mc_gcmemory_make(state);
     if(!state->mem)
@@ -12063,6 +12081,7 @@ void mc_state_setdefaultconfig(mcstate_t* state)
     state->config.dumpbytecode = false;
     state->config.fatalcomplaints = false;
     state->config.exitaftercompiling = false;
+    state->config.printinstructions = false;
 }
 
 void mc_state_destroy(mcstate_t* state)
@@ -12118,13 +12137,13 @@ mcvalue_t mc_program_execute(mcstate_t* state, mccompiledprogram_t* program)
     mcvalue_t res;
     if(program == NULL)
     {
-        mc_errlist_push(&state->errors, MC_ERROR_USER, srcposinvalid, "program passed to execute was null.");
+        mc_errlist_addf(&state->errors, MC_ERROR_USER, srcposinvalid, "program passed to execute was null.");
         return mc_value_makenull();
     }
     mc_state_reset(state);
     if(state != program->pstate)
     {
-        mc_errlist_push(&state->errors, MC_ERROR_USER, srcposinvalid, "program was compiled with an incompatible instance");
+        mc_errlist_addf(&state->errors, MC_ERROR_USER, srcposinvalid, "program was compiled with an incompatible instance");
         return mc_value_makenull();
     }
     ok = mc_vm_runexecfunc(state, program, mc_compiler_getconstants(state->compiler));
@@ -12244,7 +12263,7 @@ mcvalue_t mc_state_getglobalobjectbyname(mcstate_t* state, const char* name)
     symbol = mc_symtable_resolve(st, name);
     if(!symbol)
     {
-        mc_state_pusherrorf(state, MC_ERROR_USER, srcposinvalid, "Symbol \"%s\" is not defined", name);
+        mc_state_pusherrorf(state, MC_ERROR_USER, srcposinvalid, "symbol \"%s\" is not defined", name);
         return mc_value_makenull();
     }
     res = mc_value_makenull();
@@ -12258,13 +12277,13 @@ mcvalue_t mc_state_getglobalobjectbyname(mcstate_t* state, const char* name)
         res = mc_globalstore_getatindex(state->vmglobalstore, symbol->index, &ok);
         if(!ok)
         {
-            mc_state_pusherrorf(state, MC_ERROR_USER, srcposinvalid, "Failed to get global object at %d", symbol->index);
+            mc_state_pusherrorf(state, MC_ERROR_USER, srcposinvalid, "failed to get global object at %d", symbol->index);
             return mc_value_makenull();
         }
     }
     else
     {
-        mc_state_pusherrorf(state, MC_ERROR_USER, srcposinvalid, "Value associated with symbol \"%s\" could not be loaded", name);
+        mc_state_pusherrorf(state, MC_ERROR_USER, srcposinvalid, "value associated with symbol \"%s\" could not be loaded", name);
         return mc_value_makenull();
     }
     return res;
@@ -12515,7 +12534,7 @@ char* mc_error_serializetostring(mcstate_t* state, mcerror_t* err)
     traceback = mc_error_gettraceback(err);
     if(traceback)
     {
-        mc_printer_printf(pr, "Traceback:\n");
+        mc_printer_printf(pr, "traceback:\n");
         mc_printer_printtraceback(pr, (mctraceback_t*)mc_error_gettraceback(err));
     }
     if(mc_printer_failed(pr))
@@ -13252,8 +13271,8 @@ mcglobalstore_t* mc_globalstore_make(mcstate_t* state)
     {
         goto err;
     }
-    store->objects = mc_basicarray_make(state, sizeof(mcvalue_t));
-    if(!store->objects)
+    store->storedobjects = mc_vallist_make(state, "globalstore", 0);
+    if(!store->storedobjects)
     {
         goto err;
     }
@@ -13270,7 +13289,7 @@ void mc_globalstore_destroy(mcglobalstore_t* store)
         return;
     }
     mc_genericdict_destroyitemsanddict(store->symbols);
-    mc_basicarray_destroy(store->objects);
+    mc_vallist_destroy(store->storedobjects);
     mc_allocator_free(store->pstate, store);
 }
 
@@ -13288,11 +13307,11 @@ bool mc_globalstore_setnamed(mcglobalstore_t* store, const char* name, mcvalue_t
     existingsymbol = mc_globalstore_getsymbol(store, name);
     if(existingsymbol)
     {
-        ok = mc_basicarray_set(store->objects, existingsymbol->index, &object);
+        ok = mc_vallist_set(store->storedobjects, existingsymbol->index, object);
         return ok;
     }
-    ix = mc_basicarray_count(store->objects);
-    ok = mc_basicarray_push(store->objects, &object);
+    ix = mc_vallist_count(store->storedobjects);
+    ok = mc_vallist_push(store->storedobjects, object);
     if(!ok)
     {
         return false;
@@ -13310,14 +13329,14 @@ bool mc_globalstore_setnamed(mcglobalstore_t* store, const char* name, mcvalue_t
     }
     return true;
 err:
-    mc_basicarray_pop(store->objects, NULL);
+    mc_vallist_pop(store->storedobjects, NULL);
     return false;
 }
 
 mcvalue_t mc_globalstore_getatindex(mcglobalstore_t* store, int ix, bool* outok)
 {
     mcvalue_t* res;
-    res = (mcvalue_t*)mc_basicarray_get(store->objects, ix);
+    res = (mcvalue_t*)mc_vallist_getp(store->storedobjects, ix);
     if(!res)
     {
         *outok = false;
@@ -13329,12 +13348,12 @@ mcvalue_t mc_globalstore_getatindex(mcglobalstore_t* store, int ix, bool* outok)
 
 mcvalue_t* mc_globalstore_getdata(mcglobalstore_t* store)
 {
-    return (mcvalue_t*)mc_basicarray_data(store->objects);
+    return (mcvalue_t*)mc_vallist_data(store->storedobjects);
 }
 
 int mc_globalstore_getcount(mcglobalstore_t* store)
 {
-    return mc_basicarray_count(store->objects);
+    return mc_vallist_count(store->storedobjects);
 }
 
 bool mc_value_ishashable(mcvalue_t obj)
@@ -14198,12 +14217,12 @@ void mc_vm_reset(mcstate_t* state)
     }
 }
 
-bool mc_vm_runexecfunc(mcstate_t* state, mccompiledprogram_t* comp_res, mcbasicarray_t* constants)
+bool mc_vm_runexecfunc(mcstate_t* state, mccompiledprogram_t* comp_res, mcvallist_t* constants)
 {
     bool res;
-    int oldsp;
-    int oldthissp;
-    int oldframescount;
+    size_t oldsp;
+    size_t oldthissp;
+    size_t oldframescount;
     mcvalue_t mainfn;
     (void)oldsp;
 #if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
@@ -14227,13 +14246,13 @@ bool mc_vm_runexecfunc(mcstate_t* state, mccompiledprogram_t* comp_res, mcbasica
     return res;
 }
 
-mcvalue_t mc_vm_callvalue(mcstate_t* state, mcbasicarray_t* constants, mcvalue_t callee, int argc, mcvalue_t* args)
+mcvalue_t mc_vm_callvalue(mcstate_t* state, mcvallist_t* constants, mcvalue_t callee, int argc, mcvalue_t* args)
 {
     bool ok;
     int i;
-    int oldsp;
-    int oldthissp;
-    int oldframescount;
+    size_t oldsp;
+    size_t oldthissp;
+    size_t oldframescount;
     mcvaltype_t type;
     (void)oldsp;
     type = mc_value_gettype(callee);
@@ -14266,7 +14285,7 @@ mcvalue_t mc_vm_callvalue(mcstate_t* state, mcbasicarray_t* constants, mcvalue_t
     {
         return mc_vm_callnativefunction(state, callee, srcposinvalid, argc, args);
     }
-    mc_errlist_push(&state->errors, MC_ERROR_USER, srcposinvalid, "Object is not callable");
+    mc_errlist_addf(&state->errors, MC_ERROR_USER, srcposinvalid, "object is not callable");
     return mc_value_makenull();
 }
 
@@ -14329,13 +14348,13 @@ bool mc_vm_haserrors(mcstate_t* state)
     return state->errors.count > 0;
 }
 
-bool mc_vm_setglobalbyindex(mcstate_t* state, int ix, mcvalue_t val)
+bool mc_vm_setglobalbyindex(mcstate_t* state, size_t ix, mcvalue_t val)
 {
     #if 1
-    if(ix >= MC_CONF_VMMAXGLOBALS)
+    if(ix >= MC_CONF_MAXVMGLOBALS)
     {
         MC_ASSERT(false);
-        mc_errlist_push(&state->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Global write out of range");
+        mc_errlist_addf(&state->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "cannot put global value at index %ld: out of range", ix);
         return false;
     }
     #endif
@@ -14347,22 +14366,22 @@ bool mc_vm_setglobalbyindex(mcstate_t* state, int ix, mcvalue_t val)
     return true;
 }
 
-mcvalue_t mc_vm_getglobalbyindex(mcstate_t* state, int ix)
+mcvalue_t mc_vm_getglobalbyindex(mcstate_t* state, size_t ix)
 {
     #if 1
-    if(ix >= MC_CONF_VMMAXGLOBALS)
+    if(ix >= MC_CONF_MAXVMGLOBALS)
     {
         MC_ASSERT(false);
-        mc_errlist_push(&state->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Global read out of range");
+        mc_errlist_addf(&state->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "cannot get global value at index %ld: out of range", ix);
         return mc_value_makenull();
     }
     #endif
     return state->globalvalstack[ix];
 }
 
-void mc_vm_setstackpos(mcstate_t* state, int nsp)
+void mc_vm_setstackpos(mcstate_t* state, size_t nsp)
 {
-    int count;
+    size_t count;
     size_t bytescount;
     (void)count;
     (void)bytescount;
@@ -14390,7 +14409,7 @@ void mc_vm_stackpush(mcstate_t* vm, mcvalue_t obj)
         frame = vm->currframe;
         currentfunction = mc_value_functiongetscriptfunction(frame->function);
         numlocals = currentfunction->numlocals;
-        MC_ASSERT(vm->vsposition >= (frame->basepointer + numlocals));
+        assert(vm->vsposition >= (frame->basepointer + numlocals));
     }
 #endif
     mc_vallist_set(vm->valuestack, vm->vsposition, obj);
@@ -14409,7 +14428,7 @@ mcvalue_t mc_vm_stackpop(mcstate_t* vm)
 #if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
     if(vm->vsposition == 0)
     {
-        mc_errlist_push(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(vm->currframe), "Stack underflow");
+        mc_errlist_addf(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(vm->currframe), "stack underflow");
         MC_ASSERT(false);
         return mc_value_makenull();
     }
@@ -14427,10 +14446,11 @@ mcvalue_t mc_vm_stackpop(mcstate_t* vm)
     return res;
 }
 
-mcvalue_t mc_vm_stackget(mcstate_t* vm, int nthitem)
+mcvalue_t mc_vm_stackget(mcstate_t* vm, size_t nthitem)
 {
-    int ix;
+    size_t ix;
     ix = vm->vsposition - 1 - nthitem;
+    //fprintf(stderr, "stackget: %ld\n", nthitem);
     return mc_vallist_get(vm->valuestack, ix);
 }
 
@@ -14445,7 +14465,7 @@ mcvalue_t mc_vm_thisstackpop(mcstate_t* vm)
 #if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
     if(vm->thisstpos == 0)
     {
-        mc_errlist_push(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(vm->currframe), "this stack underflow");
+        mc_errlist_addf(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(vm->currframe), "'this' stack underflow");
         MC_ASSERT(false);
         return mc_value_makenull();
     }
@@ -14491,13 +14511,13 @@ bool mc_vm_popframe(mcstate_t* vm)
     return true;
 }
 
-void mc_vm_rungc(mcstate_t* vm, mcbasicarray_t* constants)
+void mc_vm_rungc(mcstate_t* vm, mcvallist_t* constants)
 {
-    int i;
+    size_t i;
     mcvmframe_t* frame;
     mc_state_gcunmarkall(vm);
     mc_state_gcmarkobjlist(mc_globalstore_getdata(vm->vmglobalstore), mc_globalstore_getcount(vm->vmglobalstore));
-    mc_state_gcmarkobjlist((mcvalue_t*)mc_basicarray_data(constants), mc_basicarray_count(constants));
+    mc_state_gcmarkobjlist((mcvalue_t*)mc_vallist_data(constants), mc_vallist_count(constants));
     mc_state_gcmarkobjlist(vm->globalvalstack, vm->globalvalcount);
     for(i = 0; i < vm->framecount; i++)
     {
@@ -14527,7 +14547,7 @@ MCINLINE bool mc_vmdo_callobject(mcstate_t* vm, mcvalue_t callee, int nargs)
         if(nargs != calleefunction->numargs)
         {
             #if 1
-            mc_errlist_addf(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(vm->currframe), "Invalid number of arguments to \"%s\", expected %d, got %d",
+            mc_errlist_addf(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(vm->currframe), "invalid number of arguments to \"%s\": expected %d, got %d",
                               mc_value_functiongetname(callee), calleefunction->numargs, nargs);
             return false;
             #endif
@@ -14535,13 +14555,13 @@ MCINLINE bool mc_vmdo_callobject(mcstate_t* vm, mcvalue_t callee, int nargs)
         ok = mc_callframe_init(&calleeframe, callee, vm->vsposition - nargs);
         if(!ok)
         {
-            mc_errlist_push(&vm->errors, MC_ERROR_RUNTIME, srcposinvalid, "Frame init failed in mc_vmdo_callobject");
+            mc_errlist_addf(&vm->errors, MC_ERROR_RUNTIME, srcposinvalid, "frame init failed in mc_vmdo_callobject");
             return false;
         }
         ok = mc_vm_pushframe(vm, calleeframe);
         if(!ok)
         {
-            mc_errlist_push(&vm->errors, MC_ERROR_RUNTIME, srcposinvalid, "Pushing frame failed in mc_vmdo_callobject");
+            mc_errlist_addf(&vm->errors, MC_ERROR_RUNTIME, srcposinvalid, "pushing frame failed in mc_vmdo_callobject");
             return false;
         }
     }
@@ -14617,7 +14637,7 @@ bool mc_vm_checkassign(mcstate_t* state, mcvalue_t oldvalue, mcvalue_t nvalue)
     #if 0
     if(oldvaluetype != nvaluetype)
     {
-        mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Trying to assign variable of type %s to %s",
+        mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "trying to assign variable of type %s to %s",
                           mc_valtype_getname(nvaluetype), mc_valtype_getname(oldvaluetype));
         return false;
     }
@@ -14772,7 +14792,7 @@ MCINLINE bool mc_vmdo_math(mcstate_t* state, mcopcode_t opcode)
         opcodename = mc_opdef_getname(opcode);
         lefttypename = mc_valtype_getname(lefttype);
         righttypename = mc_valtype_getname(righttype);
-        mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Invalid operand types for %s, got %s and %s",
+        mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "invalid operand types for %s: got %s and %s",
                           opcodename, lefttypename, righttypename);
         return false;
     }
@@ -14791,7 +14811,7 @@ MCINLINE bool mc_vmdo_getindexpartial(mcstate_t* state, mcvalue_t left, mcvaltyp
     if(lefttype != MC_VAL_ARRAY && lefttype != MC_VAL_MAP && lefttype != MC_VAL_STRING)
     {
         lefttypename = mc_valtype_getname(lefttype);
-        mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Type %s is not indexable", lefttypename);
+        mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "type %s is not indexable", lefttypename);
         return false;
     }
     res = mc_value_makenull();
@@ -14801,7 +14821,7 @@ MCINLINE bool mc_vmdo_getindexpartial(mcstate_t* state, mcvalue_t left, mcvaltyp
         {
             lefttypename = mc_valtype_getname(lefttype);
             indextypename = mc_valtype_getname(indextype);
-            mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Cannot index %s with %s", lefttypename, indextypename);
+            mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "cannot index %s with %s", lefttypename, indextypename);
             return false;
         }
         ix = (int)mc_value_getnumber(index);
@@ -14824,7 +14844,7 @@ MCINLINE bool mc_vmdo_getindexpartial(mcstate_t* state, mcvalue_t left, mcvaltyp
         {
             lefttypename = mc_valtype_getname(lefttype);
             indextypename = mc_valtype_getname(indextype);
-            mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Cannot index %s with %s", lefttypename, indextypename);
+            mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "cannot index %s with %s", lefttypename, indextypename);
             return false;
         }
         str = mc_valstring_getdata(left);
@@ -14959,7 +14979,7 @@ MCINLINE bool mc_vmdo_getvalueatfull(mcstate_t* state)
     if(lefttype != MC_VAL_ARRAY && lefttype != MC_VAL_MAP && lefttype != MC_VAL_STRING)
     {
         lefttypename = mc_valtype_getname(lefttype);
-        mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Type %s is not indexable", lefttypename);
+        mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "type %s is not indexable", lefttypename);
         return false;
     }
     res = mc_value_makenull();
@@ -14967,7 +14987,7 @@ MCINLINE bool mc_vmdo_getvalueatfull(mcstate_t* state)
     {
         lefttypename = mc_valtype_getname(lefttype);
         indextypename = mc_valtype_getname(indextype);
-        mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Cannot index %s with %s", lefttypename, indextypename);
+        mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "cannot index %s with %s", lefttypename, indextypename);
         return false;
     }
     ix = (int)mc_value_getnumber(index);
@@ -14994,7 +15014,7 @@ MCINLINE bool mc_vmdo_getvalueatfull(mcstate_t* state)
     return true;
 }
 
-MCINLINE bool mc_vmdo_makefunction(mcstate_t* state, mcbasicarray_t* constants)
+MCINLINE bool mc_vmdo_makefunction(mcstate_t* state, mcvallist_t* constants)
 {
     int i;
     uint8_t numfree;
@@ -15008,10 +15028,10 @@ MCINLINE bool mc_vmdo_makefunction(mcstate_t* state, mcbasicarray_t* constants)
     mcobjfuncscript_t* constfun;
     constantix = mc_callframe_readuint16(state->currframe);
     numfree = mc_callframe_readuint8(state->currframe);
-    constant = (mcvalue_t*)mc_basicarray_get(constants, constantix);
+    constant = mc_vallist_getp(constants, constantix);
     if(!constant)
     {
-        mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Constant %d not found", constantix);
+        mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "constant %d not found", constantix);
         return false;
     }
     constanttype = mc_value_gettype(*constant);
@@ -15187,7 +15207,7 @@ MCINLINE bool mc_vmdo_makemapend(mcstate_t* state)
         {
             keytype = mc_value_gettype(key);
             keytypename = mc_valtype_getname(keytype);
-            mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Key of type %s is not hashable", keytypename);
+            mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "key of type %s is not hashable", keytypename);
             return false;
         }
         val = kvpairs[i + 1];
@@ -15222,13 +15242,13 @@ void mc_vmutil_getopinfo(mcopcode_t opc, const char** oname)
     }
 }
 
-bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcbasicarray_t* constants)
+bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t* constants)
 {
     bool ok;
     int fri;
-    int recoverframeix;
     int prevcode;
     int opcode;
+    size_t recoverframeix;
     mcvmframe_t createdframe;
     mcvalue_t errobj;
     mcvmframe_t* frame;
@@ -15238,7 +15258,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcbasicarray
     (void)oname;
     if(mc_util_unlikely(state->running))
     {
-        mc_errlist_push(&state->errors, MC_ERROR_USER, srcposinvalid, "VM is already executing code");
+        mc_errlist_addf(&state->errors, MC_ERROR_USER, srcposinvalid, "vm is already executing code");
         return false;
     }
     /* naming is hard */
@@ -15253,7 +15273,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcbasicarray
     ok = mc_vm_pushframe(state, createdframe);
     if(!ok)
     {
-        mc_errlist_push(&state->errors, MC_ERROR_USER, srcposinvalid, "Pushing frame failed");
+        mc_errlist_addf(&state->errors, MC_ERROR_USER, srcposinvalid, "pushing frame failed");
         return false;
     }
     fprintf(stderr, "**executing function**\n");
@@ -15264,10 +15284,11 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcbasicarray
         readnextop:
         prevcode = opcode;
         opcode = mc_callframe_readopcode(state->currframe);
-        #if 0
+        if(mc_util_unlikely(state->config.printinstructions))
+        {
             mc_vmutil_getopinfo(opcode, &oname);
             fprintf(stderr, "opcode=%d (%s)\n", opcode, oname);
-        #endif
+        }
         switch(opcode)
         {
             default:
@@ -15276,7 +15297,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcbasicarray
                     const char* thisname;
                     mc_vmutil_getopinfo(opcode, &thisname);
                     mc_vmutil_getopinfo(prevcode, &prevname);
-                    mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Unknown opcode: %d (%s) (previous opcode was %d (%s))", opcode, thisname, prevcode, prevname);
+                    mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "unknown opcode: %d (%s) (previous opcode was %d (%s))", opcode, thisname, prevcode, prevname);
                     MC_ASSERT(false);
                     goto onexecerror;
                 }
@@ -15314,10 +15335,10 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcbasicarray
                     uint16_t constantix;
                     mcvalue_t* constant;
                     constantix = mc_callframe_readuint16(state->currframe);
-                    constant = (mcvalue_t*)mc_basicarray_get(constants, constantix);
+                    constant = (mcvalue_t*)mc_vallist_getp(constants, constantix);
                     if(!constant)
                     {
-                        mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Constant at %d not found", constantix);
+                        mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "constant at %d not found", constantix);
                         goto onexecerror;
                     }
                     mc_vm_stackpush(state, *constant);
@@ -15402,7 +15423,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcbasicarray
                         if(!overloadfound)
                         {
                             opertname = mc_valtype_getname(opertype);
-                            mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Invalid operand type for MINUS, got %s", opertname);
+                            mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "invalid operand type for MINUS, got %s", opertname);
                             goto onexecerror;
                         }
                     }
@@ -15435,7 +15456,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcbasicarray
                         if(!overloadfound)
                         {
                             opertname = mc_valtype_getname(opertype);
-                            mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Invalid operand type for BINNOT, got %s", opertname);
+                            mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "invalid operand type for BINNOT, got %s", opertname);
                             goto onexecerror;
                         }
                     }
@@ -15629,7 +15650,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcbasicarray
                     val = mc_globalstore_getatindex(state->vmglobalstore, ix, &ok);
                     if(!ok)
                     {
-                        mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Global value %d not found", ix);
+                        mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "global value %d not found", ix);
                         goto onexecerror;
                     }
                     mc_vm_stackpush(state, val);
@@ -15731,7 +15752,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcbasicarray
                     else
                     {
                         tname = mc_valtype_getname(type);
-                        mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "Cannot get length of %s", tname);
+                        mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "cannot get length of %s", tname);
                         goto onexecerror;
                     }
                     mc_vm_stackpush(state, mc_value_makenumber(len));
@@ -15826,20 +15847,6 @@ onexecfinish:
     mc_vm_rungc(state, constants);
     state->running = false;
     return state->errors.count == 0;
-}
-
-
-mcvalue_t mc_scriptfn_binnot(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    mcfloat_t dn;
-    int64_t iv;
-    (void)state;
-    (void)data;
-    (void)argc;
-    dn = args[0].uval.valnumber;
-    iv = (int64_t)dn;
-    iv = ~iv;
-    return mc_value_makenumber(iv);
 }
 
 mcvalue_t mc_scriptfn_ord(mcstate_t* state, void* data, int argc, mcvalue_t* args)
@@ -16629,13 +16636,13 @@ mcvalue_t mc_scriptfn_maketestdict(mcstate_t *state, void *data, int argc, mcval
     (void)data;
     if (argc != 1)
     {
-        mc_state_setruntimeerrorf(state, "Invalid type passed to maketestdict, got %d, expected 1", argc);
+        mc_state_setruntimeerrorf(state, "invalid type passed to maketestdict, got %d, expected 1", argc);
         return mc_value_makenull();
     }    
     if (args[0].type != MC_VAL_NUMBER)
     {
         tname = mc_util_objtypename(args[0].type);
-        mc_state_setruntimeerrorf(state, "Invalid type passed to maketestdict, got %s", tname);
+        mc_state_setruntimeerrorf(state, "invalid type passed to maketestdict, got %s", tname);
         return mc_value_makenull();
     }
     numitems = mc_value_getnumber(args[0]);
@@ -16666,7 +16673,7 @@ mcvalue_t mc_scriptfn_squarearray(mcstate_t *state, void *data, int argc, mcvalu
     {
         if(mc_value_gettype(args[i]) != MC_VAL_NUMBER)
         {
-            mc_state_setruntimeerrorf(state, "Invalid type passed to squarearray");
+            mc_state_setruntimeerrorf(state, "invalid type passed to squarearray");
             return mc_value_makenull();
         }
         num = mc_value_getnumber(args[i]);
@@ -16845,7 +16852,7 @@ mcvalue_t mc_scriptfn_tonum(mcstate_t* state, void* data, int argc, mcvalue_t* a
     }
     return mc_value_makenumber(result);
 err:
-    mc_state_pusherrorf(state, MC_ERROR_RUNTIME, srcposinvalid, "Cannot convert \"%s\" to number", string);
+    mc_state_pusherrorf(state, MC_ERROR_RUNTIME, srcposinvalid, "cannot convert \"%s\" to number", string);
     return mc_value_makenull();
 }
 
@@ -16906,7 +16913,7 @@ mcvalue_t mc_scriptfn_range(mcstate_t* state, void* data, int argc, mcvalue_t* a
         {
             typestr = mc_valtype_getname(type);
             expectedstr = mc_valtype_getname(MC_VAL_NUMBER);
-            mc_state_pusherrorf(state, MC_ERROR_RUNTIME, srcposinvalid, "Invalid argument %d passed to range, got %s instead of %s", i, typestr, expectedstr);
+            mc_state_pusherrorf(state, MC_ERROR_RUNTIME, srcposinvalid, "invalid argument %d passed to range, got %s instead of %s", i, typestr, expectedstr);
             return mc_value_makenull();
         }
     }
@@ -16930,12 +16937,12 @@ mcvalue_t mc_scriptfn_range(mcstate_t* state, void* data, int argc, mcvalue_t* a
     }
     else
     {
-        mc_state_pusherrorf(state, MC_ERROR_RUNTIME, srcposinvalid, "Invalid number of arguments passed to range, got %d", argc);
+        mc_state_pusherrorf(state, MC_ERROR_RUNTIME, srcposinvalid, "invalid number of arguments passed to range, got %d", argc);
         return mc_value_makenull();
     }
     if(step == 0)
     {
-        mc_errlist_push(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "range step cannot be 0");
+        mc_errlist_addf(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "range step cannot be 0");
         return mc_value_makenull();
     }
     res = mc_value_makearray(state);
@@ -17123,11 +17130,11 @@ mcvalue_t mc_scriptfn_crash(mcstate_t* state, void* data, int argc, mcvalue_t* a
     (void)data;
     if(argc == 1 && args[0].type == MC_VAL_STRING)
     {
-        mc_errlist_push(&state->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), mc_valstring_getdata(args[0]));
+        mc_errlist_pushmessage(&state->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), mc_valstring_getdata(args[0]));
     }
     else
     {
-        mc_errlist_push(&state->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "");
+        mc_errlist_pushmessage(&state->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "");
     }
     return mc_value_makenull();
 }
@@ -17143,7 +17150,7 @@ mcvalue_t mc_scriptfn_assert(mcstate_t* state, void* data, int argc, mcvalue_t* 
     }
     if(!mc_value_getbool(args[0]))
     {
-        mc_errlist_push(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "assertion failed");
+        mc_errlist_addf(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "assertion failed");
         return mc_value_makenull();
     }
     return mc_value_makebool(true);
@@ -17188,14 +17195,14 @@ mcvalue_t mc_scriptfn_random(mcstate_t* state, void* data, int argc, mcvalue_t* 
         max = mc_value_getnumber(args[1]);
         if(min >= max)
         {
-            mc_errlist_push(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "max is bigger than min");
+            mc_errlist_addf(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "max is bigger than min");
             return mc_value_makenull();
         }
         range = max - min;
         res = min + (res * range);
         return mc_value_makenumber(res);
     }
-    mc_errlist_push(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "Invalid number or arguments");
+    mc_errlist_addf(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "invalid number or arguments");
     return mc_value_makenull();
 }
 
@@ -17295,7 +17302,7 @@ mcvalue_t mc_scriptfn_slice(mcstate_t* state, void* data, int argc, mcvalue_t* a
         return mc_scriptutil_slicestring(state, data, argc, args);
     }
     typestr = mc_valtype_getname(argtype);
-    mc_state_pusherrorf(state, MC_ERROR_RUNTIME, srcposinvalid, "Invalid argument 0 passed to slice, got %s instead", typestr);
+    mc_state_pusherrorf(state, MC_ERROR_RUNTIME, srcposinvalid, "invalid argument 0 passed to slice, got %s instead", typestr);
     return mc_value_makenull();
 }
 
@@ -17576,7 +17583,6 @@ void mc_cli_installbuiltins(mcstate_t* state)
         { "squarearray", mc_scriptfn_squarearray },
         { "lengthof", mc_scriptfn_lengthof },
         { "typeof", mc_scriptfn_typeof },        
-        { "binnot", mc_scriptfn_binnot},
         { "ord", mc_scriptfn_ord},
         { "println", mc_scriptfn_println },
         { "print", mc_scriptfn_print },
@@ -17929,6 +17935,7 @@ static optlongflags_t longopts[] =
     {"dumpast", 'a', OPTPARSE_NONE, "dump AST after parsing"},
     {"dumpbc", 'd', OPTPARSE_NONE, "dump bytecode after compiling"},
     {"exitcompile", 'x', OPTPARSE_NONE, "exit after compiling (for debugging)"},
+    {"printins", 'p', OPTPARSE_NONE, "print each instruction as it is being executed"},
     {0, 0, (optargtype_t)0, NULL}
 };
 
@@ -17979,6 +17986,10 @@ int main(int argc, char* argv[])
         else if(co == 'x')
         {
             state->config.exitaftercompiling = true;
+        }
+        else if(co == 'p')
+        {
+            state->config.printinstructions = true;
         }
         else if(co == 't')
         {
