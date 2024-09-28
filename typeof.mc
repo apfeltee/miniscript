@@ -35,6 +35,6 @@ testtypeof({ a: 1 }, "object");
 
 // Functions
 testtypeof(function () {}, "function");
-testtypeof(sin, "function");
+testtypeof(Math.sin, "function");
 
 println("all good!")

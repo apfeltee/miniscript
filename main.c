@@ -9935,6 +9935,66 @@ bool mc_compiler_compilestmtlist(mcastcompiler_t* comp, mcptrlist_t* statements)
     return ok;
 }
 
+bool mc_util_strequal(const char* a, const char* b)
+{
+    return strcmp(a, b) == 0;
+}
+
+
+char* mc_util_canonpath(mcstate_t* state, const char* path)
+{
+    size_t i;
+    char* joined;
+    char* stritem;
+    char* nextitem;
+    void* item;
+    const char* tmpstr;
+    mcptrlist_t* split;
+    if(!strchr(path, '/') || (!strstr(path, "/../") && !strstr(path, "./")))
+    {
+        return mc_util_strdup(state, path);
+    }
+    split = mc_util_splitstring(state, path, "/");
+    if(!split)
+    {
+        return NULL;
+    }
+    for(i = 0; i < mc_ptrlist_count(split) - 1; i++)
+    {
+        stritem = (char*)mc_ptrlist_get(split, i);
+        nextitem = (char*)mc_ptrlist_get(split, i + 1);
+        if(mc_util_strequal(stritem, "."))
+        {
+            mc_allocator_free(state, stritem);
+            mc_ptrlist_removeat(split, i);
+            i = -1;
+            continue;
+        }
+        if(mc_util_strequal(nextitem, ".."))
+        {
+            mc_allocator_free(state, stritem);
+            mc_allocator_free(state, nextitem);
+            mc_ptrlist_removeat(split, i);
+            mc_ptrlist_removeat(split, i);
+            i = -1;
+        }
+    }
+    tmpstr = "/";
+    joined = mc_util_joinstringarray(state, split, tmpstr, strlen(tmpstr));
+    for(i = 0; i < mc_ptrlist_count(split); i++)
+    {
+        item = mc_ptrlist_get(split, i);
+        mc_allocator_free(state, item);
+    }
+    mc_ptrlist_destroy(split, NULL);
+    return joined;
+}
+
+bool mc_util_pathisabsolute(const char* path)
+{
+    return path[0] == '/';
+}
+
 bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_t* importstmt)
 {
     bool ok;
@@ -12641,1742 +12701,6 @@ bool mc_argcheck_checkactual(mcstate_t* state, bool generateerror, int argc, mcv
 }
 
 
-mcvalue_t mc_scriptfn_binnot(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    mcfloat_t dn;
-    int64_t iv;
-    (void)state;
-    (void)data;
-    (void)argc;
-    dn = args[0].uval.valnumber;
-    iv = (int64_t)dn;
-    iv = ~iv;
-    return mc_value_makenumber(iv);
-}
-
-mcvalue_t mc_scriptfn_ord(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    char ch;
-    size_t len;
-    const char* str;
-    mcvalue_t sval;
-    (void)state;
-    (void)data;
-    (void)argc;
-    sval = args[0];
-    str = mc_valstring_getdata(sval);
-    len = mc_valstring_getlength(sval);
-    ch = 0;
-    if(len > 0)
-    {
-        ch = str[0];
-    }
-    return mc_value_makenumber(ch);
-}
-
-mcvalue_t mc_scriptfn_arrayjoin(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    bool havejoinee;
-    int i;
-    int slen;
-    int alen;
-    const char* str;
-    mcvalue_t rt;
-    mcvalue_t item;
-    mcvalue_t array;
-    mcvalue_t joinee;
-    mcprinter_t pr;
-    (void)state;
-    (void)argc;
-    (void)data;
-    havejoinee = false;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY, MC_VAL_ANY))
-    {
-        return mc_value_makenull();
-    }
-    array= args[0];
-    if(argc > 1)
-    {
-        havejoinee = true;
-        joinee = args[1];
-    }
-    alen = mc_valarray_getlength(array);
-    mc_printer_init(&pr, state, NULL, true);
-    for(i=0; i<alen; i++)
-    {
-        item = mc_valarray_getvalueat(array, i);
-        mc_printer_printvalue(&pr, item);
-        if(havejoinee)
-        {
-            if((i + 1) != alen)
-            {
-                mc_printer_printvalue(&pr, joinee);
-            }
-        }
-    }
-    str = pr.destbuf->data;
-    slen = pr.destbuf->length;
-    rt = mc_value_makestringlen(state, str, slen);
-    mc_printer_release(&pr, true);
-    return rt;
-}
-
-/**
- * \brief Searches a string an instance of another string in it and returns the index of the first occurance.  If no occurance is found a -1 is returned.
- * \param state Virtual Machine
- * \param data No clue what this is yet
- * \param argc The number of arguments
- * \param args The actual arguments
- * \return The index of the found string or -1 if it's not found.
- */
-mcvalue_t mc_scriptfn_index(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    int inplen;
-    int searchlen;
-    int startindex;
-    char* result;
-    const char* inpstr;
-    const char* searchstr;
-    mcvalue_t startval;
-    mcvalue_t inpval;
-    mcvalue_t searchval;
-    (void)state;
-    (void)data;
-    (void)inplen;
-    (void)searchlen;
-    startindex = 0;
-    if(argc == 3 && args[2].type == MC_VAL_NUMBER)
-    {
-        startval = args[2];
-        startindex = mc_value_getnumber(startval);
-    }
-    if((argc == 2 || argc == 3) && args[0].type == MC_VAL_STRING && args[1].type == MC_VAL_STRING)
-    {
-        inpval = args[0];
-        searchval = args[1];
-        inpstr = mc_valstring_getdata(inpval);
-        searchstr = mc_valstring_getdata(searchval);
-        inplen = mc_valstring_getlength(inpval);
-        searchlen = mc_valstring_getlength(searchval);
-        result = (char*)strstr(inpstr + startindex, searchstr);
-        if(result == NULL)
-        {
-            return mc_value_makenumber(-1);
-        }
-        return mc_value_makenumber(result - inpstr);
-    }
-    return mc_value_makenumber(-1);
-}
-
-/**
- * \brief Returns the specified number of characters from the left hand side of the string.  If more characters exist than the length of the string the entire string is returned.
- * \param state Virtual Machine
- * \param data No clue what this is yet
- * \param argc The number of arguments
- * \param args The actual arguments
- * \return The section of the string from the left-hand side.
- */
-mcvalue_t mc_scriptfn_left(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    int inplen;
-    int startpos;
-    char* result;
-    const char* inpstr;
-    mcvalue_t obj;
-    mcvalue_t inpval;
-    mcvalue_t posval;
-    (void)data;
-    if(argc == 2 && args[0].type == MC_VAL_STRING && args[1].type == MC_VAL_NUMBER)
-    {
-        inpval = args[0];
-        posval = args[1];
-        inpstr = mc_valstring_getdata(inpval);
-        inplen = mc_valstring_getlength(inpval);
-        startpos = mc_value_getnumber(posval);
-        /*
-        * If the requested startpos is longer than the string then return a new string
-        * of the full length.
-        */
-        if(startpos > (int)inplen)
-        {
-            return mc_value_makestringlen(state, inpstr, inplen);
-        }
-        result = (char*)mc_memory_malloc(startpos + 1);
-        if(result == NULL)
-        {
-            return mc_value_makenull();
-        }
-        strncpy(result, inpstr, startpos);
-        result[startpos] = '\0';
-        obj = mc_value_makestringlen(state, result, startpos);
-        free(result);
-        return obj;
-    }
-    return mc_value_makenull();
-}
-
-/**
- * \brief Returns the specified number of characters from the right hand side of the string.  If more characters exist than the length of the string the entire string is returned.
- * \param state Virtual Machine
- * \param data No clue what this is yet
- * \param argc The number of arguments
- * \param args The actual arguments
- * \return The section of the string from the right-hand side.
- */
-mcvalue_t mc_scriptfn_right(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    int inplen;
-    int startpos;
-    int strlength;
-    char* result;
-    const char* inpstr;
-    mcvalue_t obj;
-    mcvalue_t inpval;
-    mcvalue_t idxval;
-    (void)data;
-    if(argc == 2 && args[0].type == MC_VAL_STRING && args[1].type == MC_VAL_NUMBER)
-    {
-        inpval = args[0];
-        idxval = args[1];
-        inpstr = mc_valstring_getdata(inpval);
-        inplen = mc_valstring_getlength(inpval);
-        startpos = mc_value_getnumber(idxval);
-        /*
-        * If the requested startpos is longer than the string then return a new string
-        * of the full length.
-        */
-        if(startpos >= inplen)
-        {
-            return mc_value_makestringlen(state, inpstr, inplen);
-        }
-        result = (char*)mc_memory_malloc(startpos + 1);
-        if(result == NULL)
-        {
-            return mc_value_makenull();
-        }
-        strlength = inplen;
-        strncpy(result, inpstr + strlength - startpos, startpos);
-        result[startpos] = '\0';
-        obj = mc_value_makestringlen(state, result, startpos);
-        free(result);
-        return obj;
-    }
-    return mc_value_makenull();
-}
-
-/**
- * \brief Replaces all occurances of one string in another.
- * \param state Virtual Machine
- * \param data No clue what this is yet
- * \param argc The number of arguments
- * \param args The actual arguments
- * \return The string with all occurances replaced.
- */
-mcvalue_t mc_scriptfn_replace(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    size_t len;
-    size_t newlen;
-    size_t inplen;
-    size_t searchlen;
-    size_t replacelen;
-    size_t count;
-    char* ptr;
-    char* result;
-    const char* temp;
-    const char* inpstr;
-    const char* searchstr;
-    const char* replacestr;
-    mcvalue_t obj;
-    mcvalue_t inpval;
-    mcvalue_t searchval;
-    mcvalue_t repval;
-    (void)data;
-    if(argc == 3 && args[0].type == MC_VAL_STRING && args[1].type == MC_VAL_STRING && args[2].type == MC_VAL_STRING)
-    {
-        inpval = args[0];
-        searchval = args[1];
-        repval = args[2];
-        inpstr = mc_valstring_getdata(inpval);
-        searchstr = mc_valstring_getdata(searchval);
-        replacestr = mc_valstring_getdata(repval);
-        inplen = mc_valstring_getlength(inpval);
-        searchlen = mc_valstring_getlength(searchval);
-        replacelen = mc_valstring_getlength(repval);
-        count = 0;
-        temp = inpstr;
-        /* Count number of occurrences of searchstr in inpstr */
-        while((temp = strstr(temp, searchstr)))
-        {
-            count++;
-            temp += searchlen;
-        }
-        /* Allocate new string to store result */
-        newlen = inplen + count * (replacelen - searchlen) + 1;
-        result = (char*)mc_memory_malloc(newlen);
-        if(result == NULL)
-        {
-            return mc_value_makenull();
-        }
-        /* Replace all instances of searchstr with replacestr */
-        ptr = result;
-        while((temp = strstr(inpstr, searchstr)))
-        {
-            len = temp - inpstr;
-            memcpy(ptr, inpstr, len);
-            ptr += len;
-            memcpy(ptr, replacestr, replacelen);
-            ptr += replacelen;
-            inpstr = temp + searchlen;
-        }
-        /* Copy remaining part of inpstr */
-        strcpy(ptr, inpstr);
-        obj = mc_value_makestring(state, result);
-        free(result);
-        return obj;
-    }
-    return mc_value_makenull();
-}
-
-/**
- * \brief Replaces the first occurance of one string in another.
- * \param state Virtual Machine
- * \param data No clue what this is yet
- * \param argc The number of arguments
- * \param args The actual arguments
- * \return The string with the first occurance of the replacement replaced.
- */
-mcvalue_t mc_scriptfn_replacefirst(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    size_t len;
-    size_t newlen;
-    size_t inplen;
-    size_t searchlen;
-    size_t replacelen;
-    const char* inpstr;
-    const char* temp;
-    const char* searchstr;
-    const char* replacestr;
-    char* result;
-    mcvalue_t obj;
-    mcvalue_t inpval;
-    mcvalue_t repval;
-    mcvalue_t searchval;
-    (void)data;
-    if(argc == 3 && args[0].type == MC_VAL_STRING && args[1].type == MC_VAL_STRING && args[2].type == MC_VAL_STRING)
-    {
-        inpval = args[0];
-        searchval = args[1];
-        repval = args[2];
-        inpstr = mc_valstring_getdata(inpval);
-        searchstr = mc_valstring_getdata(searchval);
-        replacestr = mc_valstring_getdata(repval);
-        inplen = mc_valstring_getlength(inpval);
-        searchlen = mc_valstring_getlength(searchval);
-        replacelen = mc_valstring_getlength(repval);
-        temp = strstr(inpstr, searchstr);
-        if(temp == NULL)
-        {
-            return mc_value_makestringlen(state, inpstr, inplen);
-        }
-        /* Allocate new string to store result */
-        newlen = inplen + (replacelen - searchlen) + 1;
-        result = (char*)mc_memory_malloc(newlen + 1);
-        if(result == NULL)
-        {
-            return mc_value_makenull();
-        }
-        /* Replace the first instance of searchstr with replacestr */
-        len = temp - inpstr;
-        memcpy(result, inpstr, len);
-        strcpy(result + len, replacestr);
-        strcpy(result + len + replacelen, temp + searchlen);
-        obj = mc_value_makestringlen(state, result, len);
-        free(result);
-        return obj;
-    }
-    return mc_value_makenull();
-}
-
-/**
- * \brief Trims whitespace off the start and end of a string.
- * \param state Virtual Machine
- * \param data No clue what this is yet
- * \param argc The number of arguments
- * \param args The actual arguments
- * \return Returns a string that has whitespace trimmed from the start and finish.
- */
-mcvalue_t mc_scriptfn_trim(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    int i;
-    int j;
-    int k;
-    int inplen;
-    char* result;
-    const char* inpstr;
-    mcvalue_t obj;
-    mcvalue_t inpval;
-    (void)data;
-    if(argc == 1 && args[0].type == MC_VAL_STRING)
-    {
-        inpval = args[0];
-        inpstr = mc_valstring_getdata(inpval);
-        inplen = mc_valstring_getlength(inpval);
-        if(inplen == 0)
-        {
-            return mc_value_makestringlen(state, "", 0);
-        }
-        result = (char*)mc_memory_malloc(inplen + 1);
-        if(result == NULL)
-        {
-            return mc_value_makestringlen(state, "", 0);
-        }
-        strncpy(result, inpstr, inplen);
-        result[inplen] = '\0';
-        i = 0;
-        j = inplen - 1;
-        /* Trim whitespace from the front of the string */
-        while((isspace(result[i]) || result[i] == '\t') && result[i] != '\0')
-        {
-            i++;
-        }
-        /* Trim whitespace from the end of the string */
-        while((isspace(result[j]) || result[j] == '\t') && j >= i)
-        {
-            j--;
-        }
-        /* Shift the trimmed string to the beginning of the buffer */
-        k = 0;
-        while(i <= j)
-        {
-            result[k] = result[i];
-            k++;
-            i++;
-        }
-        result[k] = '\0';
-        obj = mc_value_makestringlen(state, result, k);
-        free(result);
-        return obj;
-    }
-    return mc_value_makenull();
-}
-
-mcvalue_t mc_scriptfn_lengthof(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    int len;
-    mcvalue_t arg;
-    mcvaltype_t type;
-    (void)data;
-    (void)state;
-    (void)argc;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_STRING | MC_VAL_ARRAY | MC_VAL_MAP))
-    {
-        return mc_value_makenull();
-    }
-    arg = args[0];
-    type = arg.type;
-    if(type == MC_VAL_STRING)
-    {
-        len = mc_valstring_getlength(arg);
-        return mc_value_makenumber(len);
-    }
-    if(type == MC_VAL_ARRAY)
-    {
-        len = mc_valarray_getlength(arg);
-        return mc_value_makenumber(len);
-    }
-    if(type == MC_VAL_MAP)
-    {
-        len = mc_valmap_getlength(arg);
-        return mc_value_makenumber(len);
-    }
-    return mc_value_makenull();
-}
-
-
-mcvalue_t mc_scriptfn_typeof(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    mcvalue_t arg;
-    mcvaltype_t type;
-    const char* ts;
-    (void)data;
-    (void)state;
-    (void)argc;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
-    {
-        return mc_value_makenull();
-    }
-    arg = args[0];
-    type = arg.type;
-    ts = mc_valtype_getname(type);
-    return mc_value_makestring(state, ts);
-}
-
-mcvalue_t mc_scriptfn_arrayfirst(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    mcvalue_t arg;
-    (void)state;
-    (void)data;
-    (void)argc;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY))
-    {
-        return mc_value_makenull();
-    }
-    arg = args[0];
-    return mc_valarray_getvalueat(arg, 0);
-}
-
-mcvalue_t mc_scriptfn_arraylast(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    int len;
-    mcvalue_t arg;
-    (void)state;
-    (void)argc;
-    (void)data;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY))
-    {
-        return mc_value_makenull();
-    }
-    arg = args[0];
-    len = mc_valarray_getlength(arg);
-    return mc_valarray_getvalueat(arg, len - 1);
-}
-
-mcvalue_t mc_scriptfn_arrayrest(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    bool ok;
-    int i;
-    int len;
-    mcvalue_t arg;
-    mcvalue_t res;
-    mcvalue_t item;
-    (void)state;
-    (void)argc;
-    (void)data;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY))
-    {
-        return mc_value_makenull();
-    }
-    arg = args[0];
-    len = mc_valarray_getlength(arg);
-    if(len == 0)
-    {
-        return mc_value_makenull();
-    }
-    res = mc_value_makearray(state);
-    if(mc_value_isnull(res))
-    {
-        return mc_value_makenull();
-    }
-    for(i = 1; i < len; i++)
-    {
-        item = mc_valarray_getvalueat(arg, i);
-        ok = mc_valarray_push(res, item);
-        if(!ok)
-        {
-            return mc_value_makenull();
-        }
-    }
-    return res;
-}
-
-mcvalue_t mc_scriptfn_reverse(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    bool ok;
-    int i;
-    int inplen;
-    char* resbuf;
-    const char* inpstr;
-    mcvaltype_t type;
-    mcvalue_t arg;
-    mcvalue_t obj;
-    mcvalue_t res;
-    (void)state;
-    (void)argc;
-    (void)data;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY | MC_VAL_STRING))
-    {
-        return mc_value_makenull();
-    }
-    arg = args[0];
-    type = arg.type;
-    if(type == MC_VAL_ARRAY)
-    {
-        inplen = mc_valarray_getlength(arg);
-        res = mc_value_makearraycapacity(state, inplen);
-        if(mc_value_isnull(res))
-        {
-            return mc_value_makenull();
-        }
-        for(i = 0; i < inplen; i++)
-        {
-            obj = mc_valarray_getvalueat(arg, i);
-            ok = mc_valarray_setvalueat(res, inplen - i - 1, obj);
-            if(!ok)
-            {
-                return mc_value_makenull();
-            }
-        }
-        return res;
-    }
-    if(type == MC_VAL_STRING)
-    {
-        inpstr = mc_valstring_getdata(arg);
-        inplen = mc_valstring_getlength(arg);
-        res = mc_value_makestrcapacity(state, inplen);
-        if(mc_value_isnull(res))
-        {
-            return mc_value_makenull();
-        }
-        resbuf = mc_valstring_getmutabledata(res);
-        for(i = 0; i < inplen; i++)
-        {
-            resbuf[inplen - i - 1] = inpstr[i];
-        }
-        resbuf[inplen] = '\0';
-        mc_string_setlength(res, inplen);
-        return res;
-    }
-    return mc_value_makenull();
-}
-
-mcvalue_t mc_scriptfn_array(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    bool ok;
-    int i;
-    int capacity;
-    mcvalue_t res;
-    mcvalue_t objnull;
-    (void)state;
-    (void)argc;
-    (void)data;
-    if(argc == 1)
-    {
-        if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
-        {
-            return mc_value_makenull();
-        }
-        capacity = (int)mc_value_getnumber(args[0]);
-        res = mc_value_makearraycapacity(state, capacity);
-        if(mc_value_isnull(res))
-        {
-            return mc_value_makenull();
-        }
-        objnull = mc_value_makenull();
-        for(i = 0; i < capacity; i++)
-        {
-            ok = mc_valarray_push(res, objnull);
-            if(!ok)
-            {
-                return mc_value_makenull();
-            }
-        }
-        return res;
-    }
-    if(argc == 2)
-    {
-        if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER, MC_VAL_ANY))
-        {
-            return mc_value_makenull();
-        }
-        capacity = (int)mc_value_getnumber(args[0]);
-        res = mc_value_makearraycapacity(state, capacity);
-        if(mc_value_isnull(res))
-        {
-            return mc_value_makenull();
-        }
-        for(i = 0; i < capacity; i++)
-        {
-            ok = mc_valarray_push(res, args[1]);
-            if(!ok)
-            {
-                return mc_value_makenull();
-            }
-        }
-        return res;
-    }
-    mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER);
-    return mc_value_makenull();
-}
-
-mcvalue_t mc_scriptfn_arraypush(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    bool ok;
-    int i;
-    int len;
-    (void)state;
-    (void)argc;
-    (void)data;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY, MC_VAL_ANY))
-    {
-        return mc_value_makenull();
-    }
-    for(i=1; i<argc; i++)
-    {
-        ok = mc_valarray_push(args[0], args[i]);
-        if(!ok)
-        {
-            return mc_value_makenull();
-        }
-    }
-    len = mc_valarray_getlength(args[0]);
-    return mc_value_makenumber(len);
-}
-
-mcvalue_t mc_scriptfn_arraypop(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    mcvalue_t val;
-    (void)state;
-    (void)argc;
-    (void)data;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY, MC_VAL_ANY))
-    {
-        return mc_value_makenull();
-    }
-    val = mc_valarray_pop(args[0]);
-    return val;
-}
-
-mcvalue_t mc_scriptfn_externalfn(mcstate_t* state, void *data, int argc, mcvalue_t *args)
-{
-    int *test;
-    (void)state;
-    (void)argc;
-    (void)args;
-    test = (int*)data;
-    *test = 42;
-    return mc_value_makenull();
-}
-
-mcvalue_t mc_scriptfn_vec2add(mcstate_t *state, void *data, int argc, mcvalue_t *args)
-{
-    mcfloat_t a_x;
-    mcfloat_t a_y;
-    mcfloat_t b_x;
-    mcfloat_t b_y;
-    mcvalue_t res;
-    mcvalue_t keyx;
-    mcvalue_t keyy;
-    (void)state;
-    (void)argc;
-    (void)data;
-    if (!mc_argcheck_check(state, true, argc, args, MC_VAL_MAP, MC_VAL_MAP))
-    {
-        return mc_value_makenull();
-    }
-    keyx = mc_value_makestring(state, "x");
-    keyy = mc_value_makestring(state, "y");
-    a_x = mc_value_getnumber(mc_valmap_getvalue(args[0], keyx));
-    a_y = mc_value_getnumber(mc_valmap_getvalue(args[0], keyy));
-    b_x = mc_value_getnumber(mc_valmap_getvalue(args[1], keyx));
-    b_y = mc_value_getnumber(mc_valmap_getvalue(args[1], keyy));
-    res = mc_value_makemap(state);
-    if (mc_value_gettype(res) == MC_VAL_NULL)
-    {
-        return res;
-    }
-    mc_valmap_setvalue(res, keyx, mc_value_makenumber(a_x + b_x));
-    mc_valmap_setvalue(res, keyy, mc_value_makenumber(a_y + b_y));
-    return res;
-}
-
-mcvalue_t mc_scriptfn_vec2sub(mcstate_t *state, void *data, int argc, mcvalue_t *args)
-{
-    mcfloat_t a_x;
-    mcfloat_t a_y;
-    mcfloat_t b_y;
-    mcfloat_t b_x;
-    mcvalue_t res;
-    mcvalue_t keyx;
-    mcvalue_t keyy;
-    (void)state;
-    (void)argc;
-    (void)data;
-    if (!mc_argcheck_check(state, true, argc, args, MC_VAL_MAP, MC_VAL_MAP))
-    {
-        return mc_value_makenull();
-    }
-    keyx = mc_value_makestring(state, "x");
-    keyy = mc_value_makestring(state, "y");
-    a_x = mc_value_getnumber(mc_valmap_getvalue(args[0], keyx));
-    a_y = mc_value_getnumber(mc_valmap_getvalue(args[0], keyy));
-    b_x = mc_value_getnumber(mc_valmap_getvalue(args[1], keyx));
-    b_y = mc_value_getnumber(mc_valmap_getvalue(args[1], keyy));
-    res = mc_value_makemap(state);
-    mc_valmap_setvalue(res, keyx, mc_value_makenumber(a_x - b_x));
-    mc_valmap_setvalue(res, keyy, mc_value_makenumber(a_y - b_y));
-    return res;
-}
-
-mcvalue_t mc_scriptfn_testcheckargs(mcstate_t* state, void *data, int argc, mcvalue_t *args)
-{
-    (void)state;
-    (void)args;
-    (void)argc;
-    (void)data;
-    if (!mc_argcheck_check(state, true, argc, args,
-                  MC_VAL_NUMBER,
-                  MC_VAL_ARRAY | MC_VAL_MAP,
-                  MC_VAL_MAP,
-                  MC_VAL_STRING,
-                  MC_VAL_NUMBER | MC_VAL_BOOL,
-                  MC_VAL_FUNCSCRIPT | MC_VAL_FUNCNATIVE,
-                  MC_VAL_ANY))
-    {
-        return mc_value_makenull();
-    }
-    return mc_value_makenumber(42);
-}
-
-
-mcvalue_t mc_scriptfn_maketestdict(mcstate_t *state, void *data, int argc, mcvalue_t *args)
-{
-    int i;
-    int blen;
-    int numitems;
-    mcvalue_t res;
-    mcvalue_t key;
-    mcvalue_t val;
-    const char *tname;
-    char keybuf[64];
-    (void)data;
-    if (argc != 1)
-    {
-        mc_state_setruntimeerrorf(state, "Invalid type passed to maketestdict, got %d, expected 1", argc);
-        return mc_value_makenull();
-    }    
-    if (args[0].type != MC_VAL_NUMBER)
-    {
-        tname = mc_util_objtypename(args[0].type);
-        mc_state_setruntimeerrorf(state, "Invalid type passed to maketestdict, got %s", tname);
-        return mc_value_makenull();
-    }
-    numitems = mc_value_getnumber(args[0]);
-    res = mc_value_makemap(state);
-    if (res.type == MC_VAL_NULL)
-    {
-        return mc_value_makenull();
-    }
-    for (i = 0; i < numitems; i++)
-    {
-        blen = sprintf(keybuf, "%d", i);
-        key = mc_value_makestringlen(state, keybuf, blen);
-        val = mc_value_makenumber(i);
-        mc_valmap_setvalue(res, key, val);
-    }
-    return res;
-}
-
-mcvalue_t mc_scriptfn_squarearray(mcstate_t *state, void *data, int argc, mcvalue_t *args)
-{
-    int i;
-    mcfloat_t num;
-    mcvalue_t res;
-    mcvalue_t resitem;    
-    (void)data;
-    res = mc_value_makearraycapacity(state, argc);
-    for(i = 0; i < argc; i++)
-    {
-        if(mc_value_gettype(args[i]) != MC_VAL_NUMBER)
-        {
-            mc_state_setruntimeerrorf(state, "Invalid type passed to squarearray");
-            return mc_value_makenull();
-        }
-        num = mc_value_getnumber(args[i]);
-        resitem = mc_value_makenumber(num * num);
-        mc_valarray_push(res, resitem);
-    }
-    return res;
-}
-
-mcvalue_t mc_scriptfn_print(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    int i;
-    mcvalue_t arg;
-    mcprinter_t* pr;
-    (void)data;
-    pr = state->stdoutprinter;
-    for(i = 0; i < argc; i++)
-    {
-        arg = args[i];
-        mc_printer_printvalue(pr, arg);
-    }
-    return mc_value_makenull();
-}
-
-mcvalue_t mc_scriptfn_println(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    mcvalue_t o;
-    o = mc_scriptfn_print(state, data, argc, args);
-    mc_printer_putchar(state->stdoutprinter, '\n');
-    return o;
-}
-
-mcvalue_t mc_scriptfn_filewritefile(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    int slen;
-    int written;
-    const char* path;
-    const char* string;
-    (void)state;
-    (void)argc;
-    (void)data;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_STRING, MC_VAL_STRING))
-    {
-        return mc_value_makenull();
-    }
-    path = mc_valstring_getdata(args[0]);
-    string = mc_valstring_getdata(args[1]);
-    slen = mc_valstring_getlength(args[1]);
-    written = mc_fsutil_filewrite(state, path, string, slen);
-    return mc_value_makenumber(written);
-}
-
-mcvalue_t mc_scriptfn_filereadfile(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    size_t flen;
-    char* contents;
-    const char* path;
-    mcvalue_t res;
-    (void)state;
-    (void)argc;
-    (void)data;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_STRING))
-    {
-        return mc_value_makenull();
-    }
-    path = mc_valstring_getdata(args[0]);
-    contents = mc_fsutil_fileread(state, path, &flen);
-    if(!contents)
-    {
-        return mc_value_makenull();
-    }
-    res = mc_value_makestringlen(state, contents, flen);
-    mc_allocator_free(state, contents);
-    return res;
-}
-
-mcvalue_t mc_scriptfn_tostring(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    int reslen;
-    const char* resstr;
-    mcvalue_t arg;
-    mcvalue_t res;
-    mcprinter_t pr;
-    (void)state;
-    (void)argc;
-    (void)data;
-    arg = args[0];
-    mc_printer_init(&pr, state, NULL, true);
-    mc_printer_printvalue(&pr, arg);
-    if(mc_printer_failed(&pr))
-    {
-        mc_printer_release(&pr, true);
-        return mc_value_makenull();
-    }
-    resstr = mc_printer_getstring(&pr);
-    reslen = mc_printer_getlength(&pr);
-    res = mc_value_makestringlen(state, resstr, reslen);
-    mc_printer_release(&pr, false);
-    return res;
-}
-
-mcvalue_t mc_scriptfn_jsonstringify(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    int reslen;
-    const char* resstr;
-    mcvalue_t arg;
-    mcvalue_t res;
-    mcprinter_t pr;
-    (void)state;
-    (void)argc;
-    (void)data;
-    arg = args[0];
-    mc_printer_init(&pr, state, NULL, true);
-    pr.config.verbosefunc = false;
-    pr.config.quotstring = true;
-    mc_printer_printvalue(&pr, arg);
-    if(mc_printer_failed(&pr))
-    {
-        mc_printer_release(&pr, true);
-        return mc_value_makenull();
-    }
-    resstr = mc_printer_getstring(&pr);
-    reslen = mc_printer_getlength(&pr);
-    res = mc_value_makestringlen(state, resstr, reslen);
-    mc_printer_release(&pr, true);
-    return res;
-}
-
-mcvalue_t mc_scriptfn_tonum(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    int stringlen;
-    int parsedlen;
-    mcfloat_t result;
-    char* end;
-    const char* string;
-    (void)state;
-    (void)argc;
-    (void)data;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_STRING | MC_VAL_NUMBER | MC_VAL_BOOL | MC_VAL_NULL))
-    {
-        return mc_value_makenull();
-    }
-    result = 0;
-    string = "";
-    if(mc_value_isnumeric(args[0]))
-    {
-        result = mc_value_getnumber(args[0]);
-    }
-    else if(mc_value_isnull(args[0]))
-    {
-        result = 0;
-    }
-    else if(args[0].type == MC_VAL_STRING)
-    {
-        stringlen = mc_valstring_getlength(args[0]);
-        string = mc_valstring_getdata(args[0]);
-        errno = 0;
-        result = mc_util_strtod(string, stringlen, &end);
-        if(errno == ERANGE && (result <= -HUGE_VAL || result >= HUGE_VAL))
-        {
-            goto err;
-        }
-        if(errno && errno != ERANGE)
-        {
-            goto err;
-        }
-        parsedlen = end - string;
-        if(stringlen != parsedlen)
-        {
-            goto err;
-        }
-    }
-    else
-    {
-        goto err;
-    }
-    return mc_value_makenumber(result);
-err:
-    mc_state_pusherrorf(state, MC_ERROR_RUNTIME, srcposinvalid, "Cannot convert \"%s\" to number", string);
-    return mc_value_makenull();
-}
-
-
-mcvalue_t mc_scriptfn_isnan(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    mcfloat_t val;
-    bool b;
-    (void)state;
-    (void)argc;
-    (void)data;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
-    {
-        return mc_value_makenull();
-    }
-    val = mc_value_getnumber(args[0]);
-    b = false;
-    if(val != val)
-    {
-        b = true;
-    }
-    return mc_value_makebool(b);
-}
-
-mcvalue_t mc_scriptfn_chr(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    mcfloat_t val;
-    char c;
-    (void)state;
-    (void)argc;
-    (void)data;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
-    {
-        return mc_value_makenull();
-    }
-    val = mc_value_getnumber(args[0]);
-    c = (char)val;
-    return mc_value_makestringlen(state, &c, 1);
-}
-
-mcvalue_t mc_scriptfn_range(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    bool ok;
-    int i;
-    int start;
-    int end;
-    int step;
-    const char* typestr;
-    const char* expectedstr;
-    mcvaltype_t type;
-    mcvalue_t res;
-    mcvalue_t item;
-    (void)data;
-    for(i = 0; i < argc; i++)
-    {
-        type = args[i].type;
-        if(type != MC_VAL_NUMBER)
-        {
-            typestr = mc_valtype_getname(type);
-            expectedstr = mc_valtype_getname(MC_VAL_NUMBER);
-            mc_state_pusherrorf(state, MC_ERROR_RUNTIME, srcposinvalid, "Invalid argument %d passed to range, got %s instead of %s", i, typestr, expectedstr);
-            return mc_value_makenull();
-        }
-    }
-    start = 0;
-    end = 0;
-    step = 1;
-    if(argc == 1)
-    {
-        end = (int)mc_value_getnumber(args[0]);
-    }
-    else if(argc == 2)
-    {
-        start = (int)mc_value_getnumber(args[0]);
-        end = (int)mc_value_getnumber(args[1]);
-    }
-    else if(argc == 3)
-    {
-        start = (int)mc_value_getnumber(args[0]);
-        end = (int)mc_value_getnumber(args[1]);
-        step = (int)mc_value_getnumber(args[2]);
-    }
-    else
-    {
-        mc_state_pusherrorf(state, MC_ERROR_RUNTIME, srcposinvalid, "Invalid number of arguments passed to range, got %d", argc);
-        return mc_value_makenull();
-    }
-    if(step == 0)
-    {
-        mc_errlist_push(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "range step cannot be 0");
-        return mc_value_makenull();
-    }
-    res = mc_value_makearray(state);
-    if(mc_value_isnull(res))
-    {
-        return mc_value_makenull();
-    }
-    for(i = start; i < end; i += step)
-    {
-        item = mc_value_makenumber(i);
-        ok = mc_valarray_push(res, item);
-        if(!ok)
-        {
-            return mc_value_makenull();
-        }
-    }
-    return res;
-}
-
-mcvalue_t mc_scriptfn_keys(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    bool ok;
-    int i;
-    int len;
-    mcvalue_t arg;
-    mcvalue_t res;
-    mcvalue_t key;
-    (void)state;
-    (void)argc;
-    (void)data;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_MAP))
-    {
-        return mc_value_makenull();
-    }
-    arg = args[0];
-    res = mc_value_makearray(state);
-    if(mc_value_isnull(res))
-    {
-        return mc_value_makenull();
-    }
-    len = mc_valmap_getlength(arg);
-    for(i = 0; i < len; i++)
-    {
-        key = mc_valmap_getkeyat(arg, i);
-        ok = mc_valarray_push(res, key);
-        if(!ok)
-        {
-            return mc_value_makenull();
-        }
-    }
-    return res;
-}
-
-mcvalue_t mc_scriptfn_values(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    bool ok;
-    int i;
-    int len;
-    mcvalue_t key;
-    mcvalue_t arg;
-    mcvalue_t res;
-    (void)state;
-    (void)argc;
-    (void)data;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_MAP))
-    {
-        return mc_value_makenull();
-    }
-    arg = args[0];
-    res = mc_value_makearray(state);
-    if(mc_value_isnull(res))
-    {
-        return mc_value_makenull();
-    }
-    len = mc_valmap_getlength(arg);
-    for(i = 0; i < len; i++)
-    {
-        key = mc_valmap_getvalueat(arg, i);
-        ok = mc_valarray_push(res, key);
-        if(!ok)
-        {
-            return mc_value_makenull();
-        }
-    }
-    return res;
-}
-
-mcvalue_t mc_scriptfn_copy(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    (void)state;
-    (void)argc;
-    (void)data;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
-    {
-        return mc_value_makenull();
-    }
-    return mc_value_copyflat(state, args[0]);
-}
-
-mcvalue_t mc_scriptfn_copydeep(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    (void)data;
-    (void)state;
-    (void)argc;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
-    {
-        return mc_value_makenull();
-    }
-    return mc_value_copydeep(state, args[0]);
-}
-
-mcvalue_t mc_scriptfn_remove(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    bool res;
-    int i;
-    int ix;
-    mcvalue_t obj;
-    (void)data;
-    (void)state;
-    (void)argc;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY, MC_VAL_ANY))
-    {
-        return mc_value_makenull();
-    }
-    ix = -1;
-    for(i = 0; i < mc_valarray_getlength(args[0]); i++)
-    {
-        obj = mc_valarray_getvalueat(args[0], i);
-        if(mc_value_equals(obj, args[1]))
-        {
-            ix = i;
-            break;
-        }
-    }
-    if(ix == -1)
-    {
-        return mc_value_makebool(false);
-    }
-    res = mc_valarray_removevalueat(args[0], ix);
-    return mc_value_makebool(res);
-}
-
-mcvalue_t mc_scriptfn_removeat(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    bool res;
-    int ix;
-    mcvaltype_t type;
-    (void)data;
-    (void)state;
-    (void)argc;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY, MC_VAL_NUMBER))
-    {
-        return mc_value_makenull();
-    }
-    type= args[0].type;
-    ix = (int)mc_value_getnumber(args[1]);
-    switch(type)
-    {
-        case MC_VAL_ARRAY:
-            {
-                res = mc_valarray_removevalueat(args[0], ix);
-                return mc_value_makebool(res);
-            }
-            break;
-        default:
-            {
-            }
-            break;
-    }
-    return mc_value_makebool(true);
-}
-
-mcvalue_t mc_scriptfn_error(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    (void)data;
-    if(argc == 1 && args[0].type == MC_VAL_STRING)
-    {
-        return mc_value_makeerror(state, mc_valstring_getdata(args[0]));
-    }
-    return mc_value_makeerror(state, "");
-}
-
-mcvalue_t mc_scriptfn_crash(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    (void)data;
-    if(argc == 1 && args[0].type == MC_VAL_STRING)
-    {
-        mc_errlist_push(&state->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), mc_valstring_getdata(args[0]));
-    }
-    else
-    {
-        mc_errlist_push(&state->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "");
-    }
-    return mc_value_makenull();
-}
-
-mcvalue_t mc_scriptfn_assert(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    (void)data;
-    (void)state;
-    (void)argc;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_BOOL))
-    {
-        return mc_value_makenull();
-    }
-    if(!mc_value_getbool(args[0]))
-    {
-        mc_errlist_push(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "assertion failed");
-        return mc_value_makenull();
-    }
-    return mc_value_makebool(true);
-}
-
-mcvalue_t mc_scriptfn_randseed(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    int seed;
-    (void)data;
-    (void)state;
-    (void)argc;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
-    {
-        return mc_value_makenull();
-    }
-    seed = (int)mc_value_getnumber(args[0]);
-    srand(seed);
-    return mc_value_makebool(true);
-}
-
-mcvalue_t mc_scriptfn_random(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    mcfloat_t min;
-    mcfloat_t max;
-    mcfloat_t res;
-    mcfloat_t range;
-    (void)data;
-    (void)state;
-    (void)argc;
-    res = (mcfloat_t)rand() / RAND_MAX;
-    if(argc == 0)
-    {
-        return mc_value_makenumber(res);
-    }
-    if(argc == 2)
-    {
-        if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER, MC_VAL_NUMBER))
-        {
-            return mc_value_makenull();
-        }
-        min = mc_value_getnumber(args[0]);
-        max = mc_value_getnumber(args[1]);
-        if(min >= max)
-        {
-            mc_errlist_push(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "max is bigger than min");
-            return mc_value_makenull();
-        }
-        range = max - min;
-        res = min + (res * range);
-        return mc_value_makenumber(res);
-    }
-    mc_errlist_push(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "Invalid number or arguments");
-    return mc_value_makenull();
-}
-
-mcvalue_t mc_scriptutil_slicearray(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    int i;
-    int len;
-    int index;
-    bool ok;
-    mcvalue_t res;
-    mcvalue_t item;
-    (void)data;
-    (void)argc;
-    index = (int)mc_value_getnumber(args[1]);
-    len = mc_valarray_getlength(args[0]);
-    if(index < 0)
-    {
-        index = len + index;
-        if(index < 0)
-        {
-            index = 0;
-        }
-    }
-    res = mc_value_makearraycapacity(state, len - index);
-    if(mc_value_isnull(res))
-    {
-        return mc_value_makenull();
-    }
-    for(i = index; i < len; i++)
-    {
-        item = mc_valarray_getvalueat(args[0], i);
-        ok = mc_valarray_push(res, item);
-        if(!ok)
-        {
-            return mc_value_makenull();
-        }
-    }
-    return res;
-}
-
-mcvalue_t mc_scriptutil_slicestring(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    int i;
-    int len;
-    int index;
-    char c;
-    mcvalue_t res;
-    const char* str;
-    (void)data;
-    (void)argc;
-    index = (int)mc_value_getnumber(args[1]);
-    str = mc_valstring_getdata(args[0]);
-    len = mc_valstring_getlength(args[0]);
-    if(index < 0)
-    {
-        index = len + index;
-        if(index < 0)
-        {
-            return mc_value_makestringlen(state, "", 0);
-        }
-    }
-    if(index >= len)
-    {
-        return mc_value_makestringlen(state, "", 0);
-    }
-    res = mc_value_makestrcapacity(state, 10);
-    if(mc_value_isnull(res))
-    {
-        return mc_value_makenull();
-    }
-    for(i = index; i < len; i++)
-    {
-        c = str[i];
-        mc_valstring_appendlen(res, &c, 1);
-    }
-    return res;
-}
-
-mcvalue_t mc_scriptfn_slice(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    const char* typestr;
-    mcvaltype_t argtype;
-    (void)data;
-    (void)state;
-    (void)argc;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_STRING | MC_VAL_ARRAY, MC_VAL_NUMBER))
-    {
-        return mc_value_makenull();
-    }
-    argtype = args[0].type;
-    if(argtype == MC_VAL_ARRAY)
-    {
-        return mc_scriptutil_slicearray(state, data, argc, args);
-    }
-    if(argtype == MC_VAL_STRING)
-    {
-        return mc_scriptutil_slicestring(state, data, argc, args);
-    }
-    typestr = mc_valtype_getname(argtype);
-    mc_state_pusherrorf(state, MC_ERROR_RUNTIME, srcposinvalid, "Invalid argument 0 passed to slice, got %s instead", typestr);
-    return mc_value_makenull();
-}
-
-mcvalue_t mc_scriptfn_isstring(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    (void)data;
-    (void)state;
-    (void)argc;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
-    {
-        return mc_value_makenull();
-    }
-    return mc_value_makebool(args[0].type == MC_VAL_STRING);
-}
-
-mcvalue_t mc_scriptfn_isarray(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    (void)data;
-    (void)state;
-    (void)argc;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
-    {
-        return mc_value_makenull();
-    }
-    return mc_value_makebool(args[0].type == MC_VAL_ARRAY);
-}
-
-mcvalue_t mc_scriptfn_ismap(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    (void)data;
-    (void)state;
-    (void)argc;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
-    {
-        return mc_value_makenull();
-    }
-    return mc_value_makebool(args[0].type == MC_VAL_MAP);
-}
-
-mcvalue_t mc_scriptfn_isnumber(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    (void)data;
-    (void)state;
-    (void)argc;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
-    {
-        return mc_value_makenull();
-    }
-    return mc_value_makebool(args[0].type == MC_VAL_NUMBER);
-}
-
-mcvalue_t mc_scriptfn_isbool(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    (void)data;
-    (void)state;
-    (void)argc;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
-    {
-        return mc_value_makenull();
-    }
-    return mc_value_makebool(args[0].type == MC_VAL_BOOL);
-}
-
-mcvalue_t mc_scriptfn_isnull(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    (void)data;
-    (void)state;
-    (void)argc;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
-    {
-        return mc_value_makenull();
-    }
-    return mc_value_makebool(mc_value_gettype(args[0]) == MC_VAL_NULL);
-}
-
-mcvalue_t mc_scriptfn_isfunction(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    (void)data;
-    (void)state;
-    (void)argc;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
-    {
-        return mc_value_makenull();
-    }
-    return mc_value_makebool(mc_value_gettype(args[0]) == MC_VAL_FUNCSCRIPT);
-}
-
-mcvalue_t mc_scriptfn_isexternal(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    (void)data;
-    (void)state;
-    (void)argc;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
-    {
-        return mc_value_makenull();
-    }
-    return mc_value_makebool(mc_value_gettype(args[0]) == MC_VAL_EXTERNAL);
-}
-
-mcvalue_t mc_scriptfn_iserror(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    (void)data;
-    (void)state;
-    (void)argc;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
-    {
-        return mc_value_makenull();
-    }
-    return mc_value_makebool(mc_value_gettype(args[0]) == MC_VAL_ERROR);
-}
-
-mcvalue_t mc_scriptfn_isnativefunction(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    (void)data;
-    (void)state;
-    (void)argc;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
-    {
-        return mc_value_makenull();
-    }
-    return mc_value_makebool(mc_value_gettype(args[0]) == MC_VAL_FUNCNATIVE);
-}
-
-mcvalue_t mc_scriptfn_sqrt(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    mcfloat_t arg;
-    mcfloat_t res;
-    (void)data;
-    (void)state;
-    (void)argc;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
-    {
-        return mc_value_makenull();
-    }
-    arg = mc_value_getnumber(args[0]);
-    res = sqrt(arg);
-    return mc_value_makenumber(res);
-}
-
-mcvalue_t mc_scriptfn_pow(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    mcfloat_t arg1;
-    mcfloat_t arg2;
-    mcfloat_t res;
-    (void)data;
-    (void)state;
-    (void)argc;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER, MC_VAL_NUMBER))
-    {
-        return mc_value_makenull();
-    }
-    arg1 = mc_value_getnumber(args[0]);
-    arg2 = mc_value_getnumber(args[1]);
-    res = pow(arg1, arg2);
-    return mc_value_makenumber(res);
-}
-
-mcvalue_t mc_scriptfn_sin(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    mcfloat_t arg;
-    mcfloat_t res;
-    (void)data;
-    (void)state;
-    (void)argc;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
-    {
-        return mc_value_makenull();
-    }
-    arg = mc_value_getnumber(args[0]);
-    res = sin(arg);
-    return mc_value_makenumber(res);
-}
-
-mcvalue_t mc_scriptfn_cos(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    mcfloat_t arg;
-    mcfloat_t res;
-    (void)data;
-    (void)state;
-    (void)argc;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
-    {
-        return mc_value_makenull();
-    }
-    arg = mc_value_getnumber(args[0]);
-    res = cos(arg);
-    return mc_value_makenumber(res);
-}
-
-mcvalue_t mc_scriptfn_tan(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    mcfloat_t arg;
-    mcfloat_t res;
-    (void)data;
-    (void)state;
-    (void)argc;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
-    {
-        return mc_value_makenull();
-    }
-    arg = mc_value_getnumber(args[0]);
-    res = tan(arg);
-    return mc_value_makenumber(res);
-}
-
-mcvalue_t mc_scriptfn_log(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    mcfloat_t arg;
-    mcfloat_t res;
-    (void)data;
-    (void)state;
-    (void)argc;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
-    {
-        return mc_value_makenull();
-    }
-    arg = mc_value_getnumber(args[0]);
-    res = log(arg);
-    return mc_value_makenumber(res);
-}
-
-mcvalue_t mc_scriptfn_ceil(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    mcfloat_t arg;
-    mcfloat_t res;
-    (void)data;
-    (void)state;
-    (void)argc;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
-    {
-        return mc_value_makenull();
-    }
-    arg = mc_value_getnumber(args[0]);
-    res = ceil(arg);
-    return mc_value_makenumber(res);
-}
-
-mcvalue_t mc_scriptfn_floor(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    mcfloat_t arg;
-    mcfloat_t res;
-    (void)data;
-    (void)state;
-    (void)argc;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
-    {
-        return mc_value_makenull();
-    }
-    arg = mc_value_getnumber(args[0]);
-    res = floor(arg);
-    return mc_value_makenumber(res);
-}
-
-mcvalue_t mc_scriptfn_abs(mcstate_t* state, void* data, int argc, mcvalue_t* args)
-{
-    mcfloat_t arg;
-    mcfloat_t res;
-    (void)data;
-    (void)state;
-    (void)argc;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
-    {
-        return mc_value_makenull();
-    }
-    arg = mc_value_getnumber(args[0]);
-    res = MC_UTIL_FABS(arg);
-    return mc_value_makenumber(res);
-}
-
 mcptrlist_t* mc_util_splitstring(mcstate_t* state, const char* str, const char* delimiter)
 {
     bool ok;
@@ -14457,65 +12781,6 @@ char* mc_util_joinstringarray(mcstate_t* state, mcptrlist_t* items, const char* 
         }
     }
     return mc_printer_getstringanddestroy(res, NULL);
-}
-
-char* mc_util_canonpath(mcstate_t* state, const char* path)
-{
-    size_t i;
-    char* joined;
-    char* stritem;
-    char* nextitem;
-    void* item;
-    const char* tmpstr;
-    mcptrlist_t* split;
-    if(!strchr(path, '/') || (!strstr(path, "/../") && !strstr(path, "./")))
-    {
-        return mc_util_strdup(state, path);
-    }
-    split = mc_util_splitstring(state, path, "/");
-    if(!split)
-    {
-        return NULL;
-    }
-    for(i = 0; i < mc_ptrlist_count(split) - 1; i++)
-    {
-        stritem = (char*)mc_ptrlist_get(split, i);
-        nextitem = (char*)mc_ptrlist_get(split, i + 1);
-        if(mc_util_strequal(stritem, "."))
-        {
-            mc_allocator_free(state, stritem);
-            mc_ptrlist_removeat(split, i);
-            i = -1;
-            continue;
-        }
-        if(mc_util_strequal(nextitem, ".."))
-        {
-            mc_allocator_free(state, stritem);
-            mc_allocator_free(state, nextitem);
-            mc_ptrlist_removeat(split, i);
-            mc_ptrlist_removeat(split, i);
-            i = -1;
-        }
-    }
-    tmpstr = "/";
-    joined = mc_util_joinstringarray(state, split, tmpstr, strlen(tmpstr));
-    for(i = 0; i < mc_ptrlist_count(split); i++)
-    {
-        item = mc_ptrlist_get(split, i);
-        mc_allocator_free(state, item);
-    }
-    mc_ptrlist_destroy(split, NULL);
-    return joined;
-}
-
-bool mc_util_pathisabsolute(const char* path)
-{
-    return path[0] == '/';
-}
-
-bool mc_util_strequal(const char* a, const char* b)
-{
-    return strcmp(a, b) == 0;
 }
 
 MCINLINE bool mc_callframe_init(mcvmframe_t* frame, mcvalue_t functionobj, int baseptr)
@@ -17564,6 +15829,1886 @@ onexecfinish:
 }
 
 
+mcvalue_t mc_scriptfn_binnot(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    mcfloat_t dn;
+    int64_t iv;
+    (void)state;
+    (void)data;
+    (void)argc;
+    dn = args[0].uval.valnumber;
+    iv = (int64_t)dn;
+    iv = ~iv;
+    return mc_value_makenumber(iv);
+}
+
+mcvalue_t mc_scriptfn_ord(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    char ch;
+    size_t len;
+    const char* str;
+    mcvalue_t sval;
+    (void)state;
+    (void)data;
+    (void)argc;
+    sval = args[0];
+    str = mc_valstring_getdata(sval);
+    len = mc_valstring_getlength(sval);
+    ch = 0;
+    if(len > 0)
+    {
+        ch = str[0];
+    }
+    return mc_value_makenumber(ch);
+}
+
+mcvalue_t mc_scriptfn_arrayjoin(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    bool havejoinee;
+    int i;
+    int slen;
+    int alen;
+    const char* str;
+    mcvalue_t rt;
+    mcvalue_t item;
+    mcvalue_t array;
+    mcvalue_t joinee;
+    mcprinter_t pr;
+    (void)state;
+    (void)argc;
+    (void)data;
+    havejoinee = false;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY, MC_VAL_ANY))
+    {
+        return mc_value_makenull();
+    }
+    array= args[0];
+    if(argc > 1)
+    {
+        havejoinee = true;
+        joinee = args[1];
+    }
+    alen = mc_valarray_getlength(array);
+    mc_printer_init(&pr, state, NULL, true);
+    for(i=0; i<alen; i++)
+    {
+        item = mc_valarray_getvalueat(array, i);
+        mc_printer_printvalue(&pr, item);
+        if(havejoinee)
+        {
+            if((i + 1) != alen)
+            {
+                mc_printer_printvalue(&pr, joinee);
+            }
+        }
+    }
+    str = pr.destbuf->data;
+    slen = pr.destbuf->length;
+    rt = mc_value_makestringlen(state, str, slen);
+    mc_printer_release(&pr, true);
+    return rt;
+}
+
+/**
+ * \brief Searches a string an instance of another string in it and returns the index of the first occurance.  If no occurance is found a -1 is returned.
+ * \param state Virtual Machine
+ * \param data No clue what this is yet
+ * \param argc The number of arguments
+ * \param args The actual arguments
+ * \return The index of the found string or -1 if it's not found.
+ */
+mcvalue_t mc_scriptfn_index(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    int inplen;
+    int searchlen;
+    int startindex;
+    char* result;
+    const char* inpstr;
+    const char* searchstr;
+    mcvalue_t startval;
+    mcvalue_t inpval;
+    mcvalue_t searchval;
+    (void)state;
+    (void)data;
+    (void)inplen;
+    (void)searchlen;
+    startindex = 0;
+    if(argc == 3 && args[2].type == MC_VAL_NUMBER)
+    {
+        startval = args[2];
+        startindex = mc_value_getnumber(startval);
+    }
+    if((argc == 2 || argc == 3) && args[0].type == MC_VAL_STRING && args[1].type == MC_VAL_STRING)
+    {
+        inpval = args[0];
+        searchval = args[1];
+        inpstr = mc_valstring_getdata(inpval);
+        searchstr = mc_valstring_getdata(searchval);
+        inplen = mc_valstring_getlength(inpval);
+        searchlen = mc_valstring_getlength(searchval);
+        result = (char*)strstr(inpstr + startindex, searchstr);
+        if(result == NULL)
+        {
+            return mc_value_makenumber(-1);
+        }
+        return mc_value_makenumber(result - inpstr);
+    }
+    return mc_value_makenumber(-1);
+}
+
+/**
+ * \brief Returns the specified number of characters from the left hand side of the string.  If more characters exist than the length of the string the entire string is returned.
+ * \param state Virtual Machine
+ * \param data No clue what this is yet
+ * \param argc The number of arguments
+ * \param args The actual arguments
+ * \return The section of the string from the left-hand side.
+ */
+mcvalue_t mc_scriptfn_left(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    int inplen;
+    int startpos;
+    char* result;
+    const char* inpstr;
+    mcvalue_t obj;
+    mcvalue_t inpval;
+    mcvalue_t posval;
+    (void)data;
+    if(argc == 2 && args[0].type == MC_VAL_STRING && args[1].type == MC_VAL_NUMBER)
+    {
+        inpval = args[0];
+        posval = args[1];
+        inpstr = mc_valstring_getdata(inpval);
+        inplen = mc_valstring_getlength(inpval);
+        startpos = mc_value_getnumber(posval);
+        /*
+        * If the requested startpos is longer than the string then return a new string
+        * of the full length.
+        */
+        if(startpos > (int)inplen)
+        {
+            return mc_value_makestringlen(state, inpstr, inplen);
+        }
+        result = (char*)mc_memory_malloc(startpos + 1);
+        if(result == NULL)
+        {
+            return mc_value_makenull();
+        }
+        strncpy(result, inpstr, startpos);
+        result[startpos] = '\0';
+        obj = mc_value_makestringlen(state, result, startpos);
+        free(result);
+        return obj;
+    }
+    return mc_value_makenull();
+}
+
+/**
+ * \brief Returns the specified number of characters from the right hand side of the string.  If more characters exist than the length of the string the entire string is returned.
+ * \param state Virtual Machine
+ * \param data No clue what this is yet
+ * \param argc The number of arguments
+ * \param args The actual arguments
+ * \return The section of the string from the right-hand side.
+ */
+mcvalue_t mc_scriptfn_right(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    int inplen;
+    int startpos;
+    int strlength;
+    char* result;
+    const char* inpstr;
+    mcvalue_t obj;
+    mcvalue_t inpval;
+    mcvalue_t idxval;
+    (void)data;
+    if(argc == 2 && args[0].type == MC_VAL_STRING && args[1].type == MC_VAL_NUMBER)
+    {
+        inpval = args[0];
+        idxval = args[1];
+        inpstr = mc_valstring_getdata(inpval);
+        inplen = mc_valstring_getlength(inpval);
+        startpos = mc_value_getnumber(idxval);
+        /*
+        * If the requested startpos is longer than the string then return a new string
+        * of the full length.
+        */
+        if(startpos >= inplen)
+        {
+            return mc_value_makestringlen(state, inpstr, inplen);
+        }
+        result = (char*)mc_memory_malloc(startpos + 1);
+        if(result == NULL)
+        {
+            return mc_value_makenull();
+        }
+        strlength = inplen;
+        strncpy(result, inpstr + strlength - startpos, startpos);
+        result[startpos] = '\0';
+        obj = mc_value_makestringlen(state, result, startpos);
+        free(result);
+        return obj;
+    }
+    return mc_value_makenull();
+}
+
+/**
+ * \brief Replaces all occurances of one string in another.
+ * \param state Virtual Machine
+ * \param data No clue what this is yet
+ * \param argc The number of arguments
+ * \param args The actual arguments
+ * \return The string with all occurances replaced.
+ */
+mcvalue_t mc_scriptfn_replace(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    size_t len;
+    size_t newlen;
+    size_t inplen;
+    size_t searchlen;
+    size_t replacelen;
+    size_t count;
+    char* ptr;
+    char* result;
+    const char* temp;
+    const char* inpstr;
+    const char* searchstr;
+    const char* replacestr;
+    mcvalue_t obj;
+    mcvalue_t inpval;
+    mcvalue_t searchval;
+    mcvalue_t repval;
+    (void)data;
+    if(argc == 3 && args[0].type == MC_VAL_STRING && args[1].type == MC_VAL_STRING && args[2].type == MC_VAL_STRING)
+    {
+        inpval = args[0];
+        searchval = args[1];
+        repval = args[2];
+        inpstr = mc_valstring_getdata(inpval);
+        searchstr = mc_valstring_getdata(searchval);
+        replacestr = mc_valstring_getdata(repval);
+        inplen = mc_valstring_getlength(inpval);
+        searchlen = mc_valstring_getlength(searchval);
+        replacelen = mc_valstring_getlength(repval);
+        count = 0;
+        temp = inpstr;
+        /* Count number of occurrences of searchstr in inpstr */
+        while((temp = strstr(temp, searchstr)))
+        {
+            count++;
+            temp += searchlen;
+        }
+        /* Allocate new string to store result */
+        newlen = inplen + count * (replacelen - searchlen) + 1;
+        result = (char*)mc_memory_malloc(newlen);
+        if(result == NULL)
+        {
+            return mc_value_makenull();
+        }
+        /* Replace all instances of searchstr with replacestr */
+        ptr = result;
+        while((temp = strstr(inpstr, searchstr)))
+        {
+            len = temp - inpstr;
+            memcpy(ptr, inpstr, len);
+            ptr += len;
+            memcpy(ptr, replacestr, replacelen);
+            ptr += replacelen;
+            inpstr = temp + searchlen;
+        }
+        /* Copy remaining part of inpstr */
+        strcpy(ptr, inpstr);
+        obj = mc_value_makestring(state, result);
+        free(result);
+        return obj;
+    }
+    return mc_value_makenull();
+}
+
+/**
+ * \brief Replaces the first occurance of one string in another.
+ * \param state Virtual Machine
+ * \param data No clue what this is yet
+ * \param argc The number of arguments
+ * \param args The actual arguments
+ * \return The string with the first occurance of the replacement replaced.
+ */
+mcvalue_t mc_scriptfn_replacefirst(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    size_t len;
+    size_t newlen;
+    size_t inplen;
+    size_t searchlen;
+    size_t replacelen;
+    const char* inpstr;
+    const char* temp;
+    const char* searchstr;
+    const char* replacestr;
+    char* result;
+    mcvalue_t obj;
+    mcvalue_t inpval;
+    mcvalue_t repval;
+    mcvalue_t searchval;
+    (void)data;
+    if(argc == 3 && args[0].type == MC_VAL_STRING && args[1].type == MC_VAL_STRING && args[2].type == MC_VAL_STRING)
+    {
+        inpval = args[0];
+        searchval = args[1];
+        repval = args[2];
+        inpstr = mc_valstring_getdata(inpval);
+        searchstr = mc_valstring_getdata(searchval);
+        replacestr = mc_valstring_getdata(repval);
+        inplen = mc_valstring_getlength(inpval);
+        searchlen = mc_valstring_getlength(searchval);
+        replacelen = mc_valstring_getlength(repval);
+        temp = strstr(inpstr, searchstr);
+        if(temp == NULL)
+        {
+            return mc_value_makestringlen(state, inpstr, inplen);
+        }
+        /* Allocate new string to store result */
+        newlen = inplen + (replacelen - searchlen) + 1;
+        result = (char*)mc_memory_malloc(newlen + 1);
+        if(result == NULL)
+        {
+            return mc_value_makenull();
+        }
+        /* Replace the first instance of searchstr with replacestr */
+        len = temp - inpstr;
+        memcpy(result, inpstr, len);
+        strcpy(result + len, replacestr);
+        strcpy(result + len + replacelen, temp + searchlen);
+        obj = mc_value_makestringlen(state, result, len);
+        free(result);
+        return obj;
+    }
+    return mc_value_makenull();
+}
+
+/**
+ * \brief Trims whitespace off the start and end of a string.
+ * \param state Virtual Machine
+ * \param data No clue what this is yet
+ * \param argc The number of arguments
+ * \param args The actual arguments
+ * \return Returns a string that has whitespace trimmed from the start and finish.
+ */
+mcvalue_t mc_scriptfn_trim(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    int i;
+    int j;
+    int k;
+    int inplen;
+    char* result;
+    const char* inpstr;
+    mcvalue_t obj;
+    mcvalue_t inpval;
+    (void)data;
+    if(argc == 1 && args[0].type == MC_VAL_STRING)
+    {
+        inpval = args[0];
+        inpstr = mc_valstring_getdata(inpval);
+        inplen = mc_valstring_getlength(inpval);
+        if(inplen == 0)
+        {
+            return mc_value_makestringlen(state, "", 0);
+        }
+        result = (char*)mc_memory_malloc(inplen + 1);
+        if(result == NULL)
+        {
+            return mc_value_makestringlen(state, "", 0);
+        }
+        strncpy(result, inpstr, inplen);
+        result[inplen] = '\0';
+        i = 0;
+        j = inplen - 1;
+        /* Trim whitespace from the front of the string */
+        while((isspace(result[i]) || result[i] == '\t') && result[i] != '\0')
+        {
+            i++;
+        }
+        /* Trim whitespace from the end of the string */
+        while((isspace(result[j]) || result[j] == '\t') && j >= i)
+        {
+            j--;
+        }
+        /* Shift the trimmed string to the beginning of the buffer */
+        k = 0;
+        while(i <= j)
+        {
+            result[k] = result[i];
+            k++;
+            i++;
+        }
+        result[k] = '\0';
+        obj = mc_value_makestringlen(state, result, k);
+        free(result);
+        return obj;
+    }
+    return mc_value_makenull();
+}
+
+mcvalue_t mc_scriptfn_lengthof(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    int len;
+    mcvalue_t arg;
+    mcvaltype_t type;
+    (void)data;
+    (void)state;
+    (void)argc;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_STRING | MC_VAL_ARRAY | MC_VAL_MAP))
+    {
+        return mc_value_makenull();
+    }
+    arg = args[0];
+    type = arg.type;
+    if(type == MC_VAL_STRING)
+    {
+        len = mc_valstring_getlength(arg);
+        return mc_value_makenumber(len);
+    }
+    if(type == MC_VAL_ARRAY)
+    {
+        len = mc_valarray_getlength(arg);
+        return mc_value_makenumber(len);
+    }
+    if(type == MC_VAL_MAP)
+    {
+        len = mc_valmap_getlength(arg);
+        return mc_value_makenumber(len);
+    }
+    return mc_value_makenull();
+}
+
+
+mcvalue_t mc_scriptfn_typeof(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    mcvalue_t arg;
+    mcvaltype_t type;
+    const char* ts;
+    (void)data;
+    (void)state;
+    (void)argc;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
+    {
+        return mc_value_makenull();
+    }
+    arg = args[0];
+    type = arg.type;
+    ts = mc_valtype_getname(type);
+    return mc_value_makestring(state, ts);
+}
+
+mcvalue_t mc_scriptfn_arrayfirst(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    mcvalue_t arg;
+    (void)state;
+    (void)data;
+    (void)argc;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY))
+    {
+        return mc_value_makenull();
+    }
+    arg = args[0];
+    return mc_valarray_getvalueat(arg, 0);
+}
+
+mcvalue_t mc_scriptfn_arraylast(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    int len;
+    mcvalue_t arg;
+    (void)state;
+    (void)argc;
+    (void)data;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY))
+    {
+        return mc_value_makenull();
+    }
+    arg = args[0];
+    len = mc_valarray_getlength(arg);
+    return mc_valarray_getvalueat(arg, len - 1);
+}
+
+mcvalue_t mc_scriptfn_arrayrest(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    bool ok;
+    int i;
+    int len;
+    mcvalue_t arg;
+    mcvalue_t res;
+    mcvalue_t item;
+    (void)state;
+    (void)argc;
+    (void)data;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY))
+    {
+        return mc_value_makenull();
+    }
+    arg = args[0];
+    len = mc_valarray_getlength(arg);
+    if(len == 0)
+    {
+        return mc_value_makenull();
+    }
+    res = mc_value_makearray(state);
+    if(mc_value_isnull(res))
+    {
+        return mc_value_makenull();
+    }
+    for(i = 1; i < len; i++)
+    {
+        item = mc_valarray_getvalueat(arg, i);
+        ok = mc_valarray_push(res, item);
+        if(!ok)
+        {
+            return mc_value_makenull();
+        }
+    }
+    return res;
+}
+
+mcvalue_t mc_scriptfn_reverse(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    bool ok;
+    int i;
+    int inplen;
+    char* resbuf;
+    const char* inpstr;
+    mcvaltype_t type;
+    mcvalue_t arg;
+    mcvalue_t obj;
+    mcvalue_t res;
+    (void)state;
+    (void)argc;
+    (void)data;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY | MC_VAL_STRING))
+    {
+        return mc_value_makenull();
+    }
+    arg = args[0];
+    type = arg.type;
+    if(type == MC_VAL_ARRAY)
+    {
+        inplen = mc_valarray_getlength(arg);
+        res = mc_value_makearraycapacity(state, inplen);
+        if(mc_value_isnull(res))
+        {
+            return mc_value_makenull();
+        }
+        for(i = 0; i < inplen; i++)
+        {
+            obj = mc_valarray_getvalueat(arg, i);
+            ok = mc_valarray_setvalueat(res, inplen - i - 1, obj);
+            if(!ok)
+            {
+                return mc_value_makenull();
+            }
+        }
+        return res;
+    }
+    if(type == MC_VAL_STRING)
+    {
+        inpstr = mc_valstring_getdata(arg);
+        inplen = mc_valstring_getlength(arg);
+        res = mc_value_makestrcapacity(state, inplen);
+        if(mc_value_isnull(res))
+        {
+            return mc_value_makenull();
+        }
+        resbuf = mc_valstring_getmutabledata(res);
+        for(i = 0; i < inplen; i++)
+        {
+            resbuf[inplen - i - 1] = inpstr[i];
+        }
+        resbuf[inplen] = '\0';
+        mc_string_setlength(res, inplen);
+        return res;
+    }
+    return mc_value_makenull();
+}
+
+mcvalue_t mc_scriptfn_array(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    bool ok;
+    int i;
+    int capacity;
+    mcvalue_t res;
+    mcvalue_t objnull;
+    (void)state;
+    (void)argc;
+    (void)data;
+    if(argc == 1)
+    {
+        if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
+        {
+            return mc_value_makenull();
+        }
+        capacity = (int)mc_value_getnumber(args[0]);
+        res = mc_value_makearraycapacity(state, capacity);
+        if(mc_value_isnull(res))
+        {
+            return mc_value_makenull();
+        }
+        objnull = mc_value_makenull();
+        for(i = 0; i < capacity; i++)
+        {
+            ok = mc_valarray_push(res, objnull);
+            if(!ok)
+            {
+                return mc_value_makenull();
+            }
+        }
+        return res;
+    }
+    if(argc == 2)
+    {
+        if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER, MC_VAL_ANY))
+        {
+            return mc_value_makenull();
+        }
+        capacity = (int)mc_value_getnumber(args[0]);
+        res = mc_value_makearraycapacity(state, capacity);
+        if(mc_value_isnull(res))
+        {
+            return mc_value_makenull();
+        }
+        for(i = 0; i < capacity; i++)
+        {
+            ok = mc_valarray_push(res, args[1]);
+            if(!ok)
+            {
+                return mc_value_makenull();
+            }
+        }
+        return res;
+    }
+    mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER);
+    return mc_value_makenull();
+}
+
+mcvalue_t mc_scriptfn_arraypush(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    bool ok;
+    int i;
+    int len;
+    (void)state;
+    (void)argc;
+    (void)data;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY, MC_VAL_ANY))
+    {
+        return mc_value_makenull();
+    }
+    for(i=1; i<argc; i++)
+    {
+        ok = mc_valarray_push(args[0], args[i]);
+        if(!ok)
+        {
+            return mc_value_makenull();
+        }
+    }
+    len = mc_valarray_getlength(args[0]);
+    return mc_value_makenumber(len);
+}
+
+mcvalue_t mc_scriptfn_arraypop(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    mcvalue_t val;
+    (void)state;
+    (void)argc;
+    (void)data;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY, MC_VAL_ANY))
+    {
+        return mc_value_makenull();
+    }
+    val = mc_valarray_pop(args[0]);
+    return val;
+}
+
+mcvalue_t mc_scriptfn_externalfn(mcstate_t* state, void *data, int argc, mcvalue_t *args)
+{
+    int *test;
+    (void)state;
+    (void)argc;
+    (void)args;
+    test = (int*)data;
+    *test = 42;
+    return mc_value_makenull();
+}
+
+mcvalue_t mc_scriptfn_vec2add(mcstate_t *state, void *data, int argc, mcvalue_t *args)
+{
+    mcfloat_t a_x;
+    mcfloat_t a_y;
+    mcfloat_t b_x;
+    mcfloat_t b_y;
+    mcvalue_t res;
+    mcvalue_t keyx;
+    mcvalue_t keyy;
+    (void)state;
+    (void)argc;
+    (void)data;
+    if (!mc_argcheck_check(state, true, argc, args, MC_VAL_MAP, MC_VAL_MAP))
+    {
+        return mc_value_makenull();
+    }
+    keyx = mc_value_makestring(state, "x");
+    keyy = mc_value_makestring(state, "y");
+    a_x = mc_value_getnumber(mc_valmap_getvalue(args[0], keyx));
+    a_y = mc_value_getnumber(mc_valmap_getvalue(args[0], keyy));
+    b_x = mc_value_getnumber(mc_valmap_getvalue(args[1], keyx));
+    b_y = mc_value_getnumber(mc_valmap_getvalue(args[1], keyy));
+    res = mc_value_makemap(state);
+    if (mc_value_gettype(res) == MC_VAL_NULL)
+    {
+        return res;
+    }
+    mc_valmap_setvalue(res, keyx, mc_value_makenumber(a_x + b_x));
+    mc_valmap_setvalue(res, keyy, mc_value_makenumber(a_y + b_y));
+    return res;
+}
+
+mcvalue_t mc_scriptfn_vec2sub(mcstate_t *state, void *data, int argc, mcvalue_t *args)
+{
+    mcfloat_t a_x;
+    mcfloat_t a_y;
+    mcfloat_t b_y;
+    mcfloat_t b_x;
+    mcvalue_t res;
+    mcvalue_t keyx;
+    mcvalue_t keyy;
+    (void)state;
+    (void)argc;
+    (void)data;
+    if (!mc_argcheck_check(state, true, argc, args, MC_VAL_MAP, MC_VAL_MAP))
+    {
+        return mc_value_makenull();
+    }
+    keyx = mc_value_makestring(state, "x");
+    keyy = mc_value_makestring(state, "y");
+    a_x = mc_value_getnumber(mc_valmap_getvalue(args[0], keyx));
+    a_y = mc_value_getnumber(mc_valmap_getvalue(args[0], keyy));
+    b_x = mc_value_getnumber(mc_valmap_getvalue(args[1], keyx));
+    b_y = mc_value_getnumber(mc_valmap_getvalue(args[1], keyy));
+    res = mc_value_makemap(state);
+    mc_valmap_setvalue(res, keyx, mc_value_makenumber(a_x - b_x));
+    mc_valmap_setvalue(res, keyy, mc_value_makenumber(a_y - b_y));
+    return res;
+}
+
+mcvalue_t mc_scriptfn_testcheckargs(mcstate_t* state, void *data, int argc, mcvalue_t *args)
+{
+    (void)state;
+    (void)args;
+    (void)argc;
+    (void)data;
+    if (!mc_argcheck_check(state, true, argc, args,
+                  MC_VAL_NUMBER,
+                  MC_VAL_ARRAY | MC_VAL_MAP,
+                  MC_VAL_MAP,
+                  MC_VAL_STRING,
+                  MC_VAL_NUMBER | MC_VAL_BOOL,
+                  MC_VAL_FUNCSCRIPT | MC_VAL_FUNCNATIVE,
+                  MC_VAL_ANY))
+    {
+        return mc_value_makenull();
+    }
+    return mc_value_makenumber(42);
+}
+
+
+mcvalue_t mc_scriptfn_maketestdict(mcstate_t *state, void *data, int argc, mcvalue_t *args)
+{
+    int i;
+    int blen;
+    int numitems;
+    mcvalue_t res;
+    mcvalue_t key;
+    mcvalue_t val;
+    const char *tname;
+    char keybuf[64];
+    (void)data;
+    if (argc != 1)
+    {
+        mc_state_setruntimeerrorf(state, "Invalid type passed to maketestdict, got %d, expected 1", argc);
+        return mc_value_makenull();
+    }    
+    if (args[0].type != MC_VAL_NUMBER)
+    {
+        tname = mc_util_objtypename(args[0].type);
+        mc_state_setruntimeerrorf(state, "Invalid type passed to maketestdict, got %s", tname);
+        return mc_value_makenull();
+    }
+    numitems = mc_value_getnumber(args[0]);
+    res = mc_value_makemap(state);
+    if (res.type == MC_VAL_NULL)
+    {
+        return mc_value_makenull();
+    }
+    for (i = 0; i < numitems; i++)
+    {
+        blen = sprintf(keybuf, "%d", i);
+        key = mc_value_makestringlen(state, keybuf, blen);
+        val = mc_value_makenumber(i);
+        mc_valmap_setvalue(res, key, val);
+    }
+    return res;
+}
+
+mcvalue_t mc_scriptfn_squarearray(mcstate_t *state, void *data, int argc, mcvalue_t *args)
+{
+    int i;
+    mcfloat_t num;
+    mcvalue_t res;
+    mcvalue_t resitem;    
+    (void)data;
+    res = mc_value_makearraycapacity(state, argc);
+    for(i = 0; i < argc; i++)
+    {
+        if(mc_value_gettype(args[i]) != MC_VAL_NUMBER)
+        {
+            mc_state_setruntimeerrorf(state, "Invalid type passed to squarearray");
+            return mc_value_makenull();
+        }
+        num = mc_value_getnumber(args[i]);
+        resitem = mc_value_makenumber(num * num);
+        mc_valarray_push(res, resitem);
+    }
+    return res;
+}
+
+mcvalue_t mc_scriptfn_print(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    int i;
+    mcvalue_t arg;
+    mcprinter_t* pr;
+    (void)data;
+    pr = state->stdoutprinter;
+    for(i = 0; i < argc; i++)
+    {
+        arg = args[i];
+        mc_printer_printvalue(pr, arg);
+    }
+    return mc_value_makenull();
+}
+
+mcvalue_t mc_scriptfn_println(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    mcvalue_t o;
+    o = mc_scriptfn_print(state, data, argc, args);
+    mc_printer_putchar(state->stdoutprinter, '\n');
+    return o;
+}
+
+mcvalue_t mc_nsfnfile_writefile(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    int slen;
+    int written;
+    const char* path;
+    const char* string;
+    (void)state;
+    (void)argc;
+    (void)data;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_STRING, MC_VAL_STRING))
+    {
+        return mc_value_makenull();
+    }
+    path = mc_valstring_getdata(args[0]);
+    string = mc_valstring_getdata(args[1]);
+    slen = mc_valstring_getlength(args[1]);
+    written = mc_fsutil_filewrite(state, path, string, slen);
+    return mc_value_makenumber(written);
+}
+
+mcvalue_t mc_nsfnfile_readfile(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    size_t flen;
+    char* contents;
+    const char* path;
+    mcvalue_t res;
+    (void)state;
+    (void)argc;
+    (void)data;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_STRING))
+    {
+        return mc_value_makenull();
+    }
+    path = mc_valstring_getdata(args[0]);
+    contents = mc_fsutil_fileread(state, path, &flen);
+    if(!contents)
+    {
+        return mc_value_makenull();
+    }
+    res = mc_value_makestringlen(state, contents, flen);
+    mc_allocator_free(state, contents);
+    return res;
+}
+
+mcvalue_t mc_scriptfn_tostring(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    int reslen;
+    const char* resstr;
+    mcvalue_t arg;
+    mcvalue_t res;
+    mcprinter_t pr;
+    (void)state;
+    (void)argc;
+    (void)data;
+    arg = args[0];
+    mc_printer_init(&pr, state, NULL, true);
+    mc_printer_printvalue(&pr, arg);
+    if(mc_printer_failed(&pr))
+    {
+        mc_printer_release(&pr, true);
+        return mc_value_makenull();
+    }
+    resstr = mc_printer_getstring(&pr);
+    reslen = mc_printer_getlength(&pr);
+    res = mc_value_makestringlen(state, resstr, reslen);
+    mc_printer_release(&pr, false);
+    return res;
+}
+
+mcvalue_t mc_nsfnjson_stringify(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    int reslen;
+    const char* resstr;
+    mcvalue_t arg;
+    mcvalue_t res;
+    mcprinter_t pr;
+    (void)state;
+    (void)argc;
+    (void)data;
+    arg = args[0];
+    mc_printer_init(&pr, state, NULL, true);
+    pr.config.verbosefunc = false;
+    pr.config.quotstring = true;
+    mc_printer_printvalue(&pr, arg);
+    if(mc_printer_failed(&pr))
+    {
+        mc_printer_release(&pr, true);
+        return mc_value_makenull();
+    }
+    resstr = mc_printer_getstring(&pr);
+    reslen = mc_printer_getlength(&pr);
+    res = mc_value_makestringlen(state, resstr, reslen);
+    mc_printer_release(&pr, true);
+    return res;
+}
+
+mcvalue_t mc_scriptfn_tonum(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    int stringlen;
+    int parsedlen;
+    mcfloat_t result;
+    char* end;
+    const char* string;
+    (void)state;
+    (void)argc;
+    (void)data;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_STRING | MC_VAL_NUMBER | MC_VAL_BOOL | MC_VAL_NULL))
+    {
+        return mc_value_makenull();
+    }
+    result = 0;
+    string = "";
+    if(mc_value_isnumeric(args[0]))
+    {
+        result = mc_value_getnumber(args[0]);
+    }
+    else if(mc_value_isnull(args[0]))
+    {
+        result = 0;
+    }
+    else if(args[0].type == MC_VAL_STRING)
+    {
+        stringlen = mc_valstring_getlength(args[0]);
+        string = mc_valstring_getdata(args[0]);
+        errno = 0;
+        result = mc_util_strtod(string, stringlen, &end);
+        if(errno == ERANGE && (result <= -HUGE_VAL || result >= HUGE_VAL))
+        {
+            goto err;
+        }
+        if(errno && errno != ERANGE)
+        {
+            goto err;
+        }
+        parsedlen = end - string;
+        if(stringlen != parsedlen)
+        {
+            goto err;
+        }
+    }
+    else
+    {
+        goto err;
+    }
+    return mc_value_makenumber(result);
+err:
+    mc_state_pusherrorf(state, MC_ERROR_RUNTIME, srcposinvalid, "Cannot convert \"%s\" to number", string);
+    return mc_value_makenull();
+}
+
+
+mcvalue_t mc_scriptfn_isnan(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    mcfloat_t val;
+    bool b;
+    (void)state;
+    (void)argc;
+    (void)data;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
+    {
+        return mc_value_makenull();
+    }
+    val = mc_value_getnumber(args[0]);
+    b = false;
+    if(val != val)
+    {
+        b = true;
+    }
+    return mc_value_makebool(b);
+}
+
+mcvalue_t mc_scriptfn_chr(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    mcfloat_t val;
+    char c;
+    (void)state;
+    (void)argc;
+    (void)data;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
+    {
+        return mc_value_makenull();
+    }
+    val = mc_value_getnumber(args[0]);
+    c = (char)val;
+    return mc_value_makestringlen(state, &c, 1);
+}
+
+mcvalue_t mc_scriptfn_range(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    bool ok;
+    int i;
+    int start;
+    int end;
+    int step;
+    const char* typestr;
+    const char* expectedstr;
+    mcvaltype_t type;
+    mcvalue_t res;
+    mcvalue_t item;
+    (void)data;
+    for(i = 0; i < argc; i++)
+    {
+        type = args[i].type;
+        if(type != MC_VAL_NUMBER)
+        {
+            typestr = mc_valtype_getname(type);
+            expectedstr = mc_valtype_getname(MC_VAL_NUMBER);
+            mc_state_pusherrorf(state, MC_ERROR_RUNTIME, srcposinvalid, "Invalid argument %d passed to range, got %s instead of %s", i, typestr, expectedstr);
+            return mc_value_makenull();
+        }
+    }
+    start = 0;
+    end = 0;
+    step = 1;
+    if(argc == 1)
+    {
+        end = (int)mc_value_getnumber(args[0]);
+    }
+    else if(argc == 2)
+    {
+        start = (int)mc_value_getnumber(args[0]);
+        end = (int)mc_value_getnumber(args[1]);
+    }
+    else if(argc == 3)
+    {
+        start = (int)mc_value_getnumber(args[0]);
+        end = (int)mc_value_getnumber(args[1]);
+        step = (int)mc_value_getnumber(args[2]);
+    }
+    else
+    {
+        mc_state_pusherrorf(state, MC_ERROR_RUNTIME, srcposinvalid, "Invalid number of arguments passed to range, got %d", argc);
+        return mc_value_makenull();
+    }
+    if(step == 0)
+    {
+        mc_errlist_push(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "range step cannot be 0");
+        return mc_value_makenull();
+    }
+    res = mc_value_makearray(state);
+    if(mc_value_isnull(res))
+    {
+        return mc_value_makenull();
+    }
+    for(i = start; i < end; i += step)
+    {
+        item = mc_value_makenumber(i);
+        ok = mc_valarray_push(res, item);
+        if(!ok)
+        {
+            return mc_value_makenull();
+        }
+    }
+    return res;
+}
+
+mcvalue_t mc_scriptfn_keys(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    bool ok;
+    int i;
+    int len;
+    mcvalue_t arg;
+    mcvalue_t res;
+    mcvalue_t key;
+    (void)state;
+    (void)argc;
+    (void)data;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_MAP))
+    {
+        return mc_value_makenull();
+    }
+    arg = args[0];
+    res = mc_value_makearray(state);
+    if(mc_value_isnull(res))
+    {
+        return mc_value_makenull();
+    }
+    len = mc_valmap_getlength(arg);
+    for(i = 0; i < len; i++)
+    {
+        key = mc_valmap_getkeyat(arg, i);
+        ok = mc_valarray_push(res, key);
+        if(!ok)
+        {
+            return mc_value_makenull();
+        }
+    }
+    return res;
+}
+
+mcvalue_t mc_scriptfn_values(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    bool ok;
+    int i;
+    int len;
+    mcvalue_t key;
+    mcvalue_t arg;
+    mcvalue_t res;
+    (void)state;
+    (void)argc;
+    (void)data;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_MAP))
+    {
+        return mc_value_makenull();
+    }
+    arg = args[0];
+    res = mc_value_makearray(state);
+    if(mc_value_isnull(res))
+    {
+        return mc_value_makenull();
+    }
+    len = mc_valmap_getlength(arg);
+    for(i = 0; i < len; i++)
+    {
+        key = mc_valmap_getvalueat(arg, i);
+        ok = mc_valarray_push(res, key);
+        if(!ok)
+        {
+            return mc_value_makenull();
+        }
+    }
+    return res;
+}
+
+mcvalue_t mc_scriptfn_copy(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    (void)state;
+    (void)argc;
+    (void)data;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
+    {
+        return mc_value_makenull();
+    }
+    return mc_value_copyflat(state, args[0]);
+}
+
+mcvalue_t mc_scriptfn_copydeep(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    (void)data;
+    (void)state;
+    (void)argc;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
+    {
+        return mc_value_makenull();
+    }
+    return mc_value_copydeep(state, args[0]);
+}
+
+mcvalue_t mc_scriptfn_remove(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    bool res;
+    int i;
+    int ix;
+    mcvalue_t obj;
+    (void)data;
+    (void)state;
+    (void)argc;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY, MC_VAL_ANY))
+    {
+        return mc_value_makenull();
+    }
+    ix = -1;
+    for(i = 0; i < mc_valarray_getlength(args[0]); i++)
+    {
+        obj = mc_valarray_getvalueat(args[0], i);
+        if(mc_value_equals(obj, args[1]))
+        {
+            ix = i;
+            break;
+        }
+    }
+    if(ix == -1)
+    {
+        return mc_value_makebool(false);
+    }
+    res = mc_valarray_removevalueat(args[0], ix);
+    return mc_value_makebool(res);
+}
+
+mcvalue_t mc_scriptfn_removeat(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    bool res;
+    int ix;
+    mcvaltype_t type;
+    (void)data;
+    (void)state;
+    (void)argc;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY, MC_VAL_NUMBER))
+    {
+        return mc_value_makenull();
+    }
+    type= args[0].type;
+    ix = (int)mc_value_getnumber(args[1]);
+    switch(type)
+    {
+        case MC_VAL_ARRAY:
+            {
+                res = mc_valarray_removevalueat(args[0], ix);
+                return mc_value_makebool(res);
+            }
+            break;
+        default:
+            {
+            }
+            break;
+    }
+    return mc_value_makebool(true);
+}
+
+mcvalue_t mc_scriptfn_error(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    (void)data;
+    if(argc == 1 && args[0].type == MC_VAL_STRING)
+    {
+        return mc_value_makeerror(state, mc_valstring_getdata(args[0]));
+    }
+    return mc_value_makeerror(state, "");
+}
+
+mcvalue_t mc_scriptfn_crash(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    (void)data;
+    if(argc == 1 && args[0].type == MC_VAL_STRING)
+    {
+        mc_errlist_push(&state->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), mc_valstring_getdata(args[0]));
+    }
+    else
+    {
+        mc_errlist_push(&state->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "");
+    }
+    return mc_value_makenull();
+}
+
+mcvalue_t mc_scriptfn_assert(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    (void)data;
+    (void)state;
+    (void)argc;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_BOOL))
+    {
+        return mc_value_makenull();
+    }
+    if(!mc_value_getbool(args[0]))
+    {
+        mc_errlist_push(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "assertion failed");
+        return mc_value_makenull();
+    }
+    return mc_value_makebool(true);
+}
+
+mcvalue_t mc_scriptfn_randseed(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    int seed;
+    (void)data;
+    (void)state;
+    (void)argc;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
+    {
+        return mc_value_makenull();
+    }
+    seed = (int)mc_value_getnumber(args[0]);
+    srand(seed);
+    return mc_value_makebool(true);
+}
+
+mcvalue_t mc_scriptfn_random(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    mcfloat_t min;
+    mcfloat_t max;
+    mcfloat_t res;
+    mcfloat_t range;
+    (void)data;
+    (void)state;
+    (void)argc;
+    res = (mcfloat_t)rand() / RAND_MAX;
+    if(argc == 0)
+    {
+        return mc_value_makenumber(res);
+    }
+    if(argc == 2)
+    {
+        if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER, MC_VAL_NUMBER))
+        {
+            return mc_value_makenull();
+        }
+        min = mc_value_getnumber(args[0]);
+        max = mc_value_getnumber(args[1]);
+        if(min >= max)
+        {
+            mc_errlist_push(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "max is bigger than min");
+            return mc_value_makenull();
+        }
+        range = max - min;
+        res = min + (res * range);
+        return mc_value_makenumber(res);
+    }
+    mc_errlist_push(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "Invalid number or arguments");
+    return mc_value_makenull();
+}
+
+mcvalue_t mc_scriptutil_slicearray(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    int i;
+    int len;
+    int index;
+    bool ok;
+    mcvalue_t res;
+    mcvalue_t item;
+    (void)data;
+    (void)argc;
+    index = (int)mc_value_getnumber(args[1]);
+    len = mc_valarray_getlength(args[0]);
+    if(index < 0)
+    {
+        index = len + index;
+        if(index < 0)
+        {
+            index = 0;
+        }
+    }
+    res = mc_value_makearraycapacity(state, len - index);
+    if(mc_value_isnull(res))
+    {
+        return mc_value_makenull();
+    }
+    for(i = index; i < len; i++)
+    {
+        item = mc_valarray_getvalueat(args[0], i);
+        ok = mc_valarray_push(res, item);
+        if(!ok)
+        {
+            return mc_value_makenull();
+        }
+    }
+    return res;
+}
+
+mcvalue_t mc_scriptutil_slicestring(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    int i;
+    int len;
+    int index;
+    char c;
+    mcvalue_t res;
+    const char* str;
+    (void)data;
+    (void)argc;
+    index = (int)mc_value_getnumber(args[1]);
+    str = mc_valstring_getdata(args[0]);
+    len = mc_valstring_getlength(args[0]);
+    if(index < 0)
+    {
+        index = len + index;
+        if(index < 0)
+        {
+            return mc_value_makestringlen(state, "", 0);
+        }
+    }
+    if(index >= len)
+    {
+        return mc_value_makestringlen(state, "", 0);
+    }
+    res = mc_value_makestrcapacity(state, 10);
+    if(mc_value_isnull(res))
+    {
+        return mc_value_makenull();
+    }
+    for(i = index; i < len; i++)
+    {
+        c = str[i];
+        mc_valstring_appendlen(res, &c, 1);
+    }
+    return res;
+}
+
+mcvalue_t mc_scriptfn_slice(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    const char* typestr;
+    mcvaltype_t argtype;
+    (void)data;
+    (void)state;
+    (void)argc;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_STRING | MC_VAL_ARRAY, MC_VAL_NUMBER))
+    {
+        return mc_value_makenull();
+    }
+    argtype = args[0].type;
+    if(argtype == MC_VAL_ARRAY)
+    {
+        return mc_scriptutil_slicearray(state, data, argc, args);
+    }
+    if(argtype == MC_VAL_STRING)
+    {
+        return mc_scriptutil_slicestring(state, data, argc, args);
+    }
+    typestr = mc_valtype_getname(argtype);
+    mc_state_pusherrorf(state, MC_ERROR_RUNTIME, srcposinvalid, "Invalid argument 0 passed to slice, got %s instead", typestr);
+    return mc_value_makenull();
+}
+
+mcvalue_t mc_scriptfn_isstring(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    (void)data;
+    (void)state;
+    (void)argc;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
+    {
+        return mc_value_makenull();
+    }
+    return mc_value_makebool(args[0].type == MC_VAL_STRING);
+}
+
+mcvalue_t mc_scriptfn_isarray(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    (void)data;
+    (void)state;
+    (void)argc;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
+    {
+        return mc_value_makenull();
+    }
+    return mc_value_makebool(args[0].type == MC_VAL_ARRAY);
+}
+
+mcvalue_t mc_scriptfn_ismap(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    (void)data;
+    (void)state;
+    (void)argc;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
+    {
+        return mc_value_makenull();
+    }
+    return mc_value_makebool(args[0].type == MC_VAL_MAP);
+}
+
+mcvalue_t mc_scriptfn_isnumber(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    (void)data;
+    (void)state;
+    (void)argc;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
+    {
+        return mc_value_makenull();
+    }
+    return mc_value_makebool(args[0].type == MC_VAL_NUMBER);
+}
+
+mcvalue_t mc_scriptfn_isbool(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    (void)data;
+    (void)state;
+    (void)argc;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
+    {
+        return mc_value_makenull();
+    }
+    return mc_value_makebool(args[0].type == MC_VAL_BOOL);
+}
+
+mcvalue_t mc_scriptfn_isnull(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    (void)data;
+    (void)state;
+    (void)argc;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
+    {
+        return mc_value_makenull();
+    }
+    return mc_value_makebool(mc_value_gettype(args[0]) == MC_VAL_NULL);
+}
+
+mcvalue_t mc_scriptfn_isfunction(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    (void)data;
+    (void)state;
+    (void)argc;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
+    {
+        return mc_value_makenull();
+    }
+    return mc_value_makebool(mc_value_gettype(args[0]) == MC_VAL_FUNCSCRIPT);
+}
+
+mcvalue_t mc_scriptfn_isexternal(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    (void)data;
+    (void)state;
+    (void)argc;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
+    {
+        return mc_value_makenull();
+    }
+    return mc_value_makebool(mc_value_gettype(args[0]) == MC_VAL_EXTERNAL);
+}
+
+mcvalue_t mc_scriptfn_iserror(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    (void)data;
+    (void)state;
+    (void)argc;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
+    {
+        return mc_value_makenull();
+    }
+    return mc_value_makebool(mc_value_gettype(args[0]) == MC_VAL_ERROR);
+}
+
+mcvalue_t mc_scriptfn_isnativefunction(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    (void)data;
+    (void)state;
+    (void)argc;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
+    {
+        return mc_value_makenull();
+    }
+    return mc_value_makebool(mc_value_gettype(args[0]) == MC_VAL_FUNCNATIVE);
+}
+
+mcvalue_t mc_nsfnmath_sqrt(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    mcfloat_t arg;
+    mcfloat_t res;
+    (void)data;
+    (void)state;
+    (void)argc;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
+    {
+        return mc_value_makenull();
+    }
+    arg = mc_value_getnumber(args[0]);
+    res = sqrt(arg);
+    return mc_value_makenumber(res);
+}
+
+mcvalue_t mc_nsfnmath_pow(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    mcfloat_t arg1;
+    mcfloat_t arg2;
+    mcfloat_t res;
+    (void)data;
+    (void)state;
+    (void)argc;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER, MC_VAL_NUMBER))
+    {
+        return mc_value_makenull();
+    }
+    arg1 = mc_value_getnumber(args[0]);
+    arg2 = mc_value_getnumber(args[1]);
+    res = pow(arg1, arg2);
+    return mc_value_makenumber(res);
+}
+
+mcvalue_t mc_nsfnmath_sin(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    mcfloat_t arg;
+    mcfloat_t res;
+    (void)data;
+    (void)state;
+    (void)argc;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
+    {
+        return mc_value_makenull();
+    }
+    arg = mc_value_getnumber(args[0]);
+    res = sin(arg);
+    return mc_value_makenumber(res);
+}
+
+mcvalue_t mc_nsfnmath_cos(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    mcfloat_t arg;
+    mcfloat_t res;
+    (void)data;
+    (void)state;
+    (void)argc;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
+    {
+        return mc_value_makenull();
+    }
+    arg = mc_value_getnumber(args[0]);
+    res = cos(arg);
+    return mc_value_makenumber(res);
+}
+
+mcvalue_t mc_nsfnmath_tan(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    mcfloat_t arg;
+    mcfloat_t res;
+    (void)data;
+    (void)state;
+    (void)argc;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
+    {
+        return mc_value_makenull();
+    }
+    arg = mc_value_getnumber(args[0]);
+    res = tan(arg);
+    return mc_value_makenumber(res);
+}
+
+mcvalue_t mc_nsfnmath_log(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    mcfloat_t arg;
+    mcfloat_t res;
+    (void)data;
+    (void)state;
+    (void)argc;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
+    {
+        return mc_value_makenull();
+    }
+    arg = mc_value_getnumber(args[0]);
+    res = log(arg);
+    return mc_value_makenumber(res);
+}
+
+mcvalue_t mc_nsfnmath_ceil(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    mcfloat_t arg;
+    mcfloat_t res;
+    (void)data;
+    (void)state;
+    (void)argc;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
+    {
+        return mc_value_makenull();
+    }
+    arg = mc_value_getnumber(args[0]);
+    res = ceil(arg);
+    return mc_value_makenumber(res);
+}
+
+mcvalue_t mc_nsfnmath_floor(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    mcfloat_t arg;
+    mcfloat_t res;
+    (void)data;
+    (void)state;
+    (void)argc;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
+    {
+        return mc_value_makenull();
+    }
+    arg = mc_value_getnumber(args[0]);
+    res = floor(arg);
+    return mc_value_makenumber(res);
+}
+
+mcvalue_t mc_nsfnmath_abs(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    mcfloat_t arg;
+    mcfloat_t res;
+    (void)data;
+    (void)state;
+    (void)argc;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
+    {
+        return mc_value_makenull();
+    }
+    arg = mc_value_getnumber(args[0]);
+    res = MC_UTIL_FABS(arg);
+    return mc_value_makenumber(res);
+}
+
+void mc_cli_installbuiltins(mcstate_t* state)
+{
+    static struct
+    {
+        const char* name;
+        mcnativefn_t fn;
+    } nativefunctions[] = {
+        { "maketestdict", mc_scriptfn_maketestdict },
+        { "squarearray", mc_scriptfn_squarearray },
+        { "lengthof", mc_scriptfn_lengthof },
+        { "typeof", mc_scriptfn_typeof },        
+        { "binnot", mc_scriptfn_binnot},
+        { "ord", mc_scriptfn_ord},
+        { "println", mc_scriptfn_println },
+        { "print", mc_scriptfn_print },
+        { "arrayfirst", mc_scriptfn_arrayfirst },
+        { "arraylast", mc_scriptfn_arraylast },
+        { "arrayrest", mc_scriptfn_arrayrest },
+        { "arrayjoin", mc_scriptfn_arrayjoin},
+        { "arraypush", mc_scriptfn_arraypush },
+        { "arraypop", mc_scriptfn_arraypop },
+        { "remove", mc_scriptfn_remove },
+        { "removeat", mc_scriptfn_removeat },
+        { "tostring", mc_scriptfn_tostring },
+        { "tonum", mc_scriptfn_tonum },
+        { "strtoint", mc_scriptfn_tonum },
+        { "isNaN", mc_scriptfn_isnan },
+        { "range", mc_scriptfn_range },
+        { "keys", mc_scriptfn_keys },
+        { "values", mc_scriptfn_values },
+        { "copy", mc_scriptfn_copy },
+        { "deepcopy", mc_scriptfn_copydeep },
+        { "chr", mc_scriptfn_chr },
+        { "reverse", mc_scriptfn_reverse },
+        { "array", mc_scriptfn_array },
+        { "error", mc_scriptfn_error },
+        { "crash", mc_scriptfn_crash },
+        { "assert", mc_scriptfn_assert },
+        { "randomseed", mc_scriptfn_randseed },
+        { "random", mc_scriptfn_random },
+        { "slice", mc_scriptfn_slice },
+
+        /* Custom */
+        { "indexof", mc_scriptfn_index },
+        { "left", mc_scriptfn_left },
+        { "right", mc_scriptfn_right },
+        { "replace", mc_scriptfn_replace },
+        { "replacefirst", mc_scriptfn_replacefirst },
+        { "trim", mc_scriptfn_trim },
+
+        /* Type checks */
+        { "isstring", mc_scriptfn_isstring },
+        { "isarray", mc_scriptfn_isarray },
+        { "ismap", mc_scriptfn_ismap },
+        { "isnumber", mc_scriptfn_isnumber },
+        { "isbool", mc_scriptfn_isbool },
+        { "isnull", mc_scriptfn_isnull },
+        { "isfunction", mc_scriptfn_isfunction },
+        { "isexternal", mc_scriptfn_isexternal },
+        { "iserror", mc_scriptfn_iserror },
+        { "isnativefunction", mc_scriptfn_isnativefunction },
+
+
+        {NULL, NULL}
+    };
+    int i;
+    for(i=0; nativefunctions[i].name != NULL; i++)
+    {
+        mc_state_setnativefunction(state, nativefunctions[i].name, nativefunctions[i].fn, NULL, 0);
+    }
+}
+
+
+/*
+TODO:
+kind-of ruby-ish. so sue me.
+to add:
+File.read: data = File.read("somefile"[, how-much-in-bytes])
+File.write: File.write("somefile", arrayjoin(somestuff, "\n"))
+File.exists
+...
+
+*/
+
+void mc_cli_installjsondummy(mcstate_t* state)
+{
+    mcvalue_t jmap;
+    jmap = mc_value_makemap(state);
+    mc_valmap_setvalstring(jmap, "stringify", mc_value_makefuncnative(state, "stringify", mc_nsfnjson_stringify, NULL, 0));
+    mc_state_setglobalconstant(state, "JSON", jmap);
+}
+
+void mc_cli_installjsconsole(mcstate_t* state)
+{
+    mcvalue_t jmap;
+    jmap = mc_value_makemap(state);
+    mc_valmap_setvalstring(jmap, "log", mc_value_makefuncnative(state, "log", mc_scriptfn_println, NULL, 0));
+    mc_state_setglobalconstant(state, "console", jmap);
+}
+
+void mc_cli_installmath(mcstate_t* state)
+{
+    mcvalue_t jmap;
+    jmap = mc_value_makemap(state);
+    mc_valmap_setvalstring(jmap, "sqrt", mc_value_makefuncnative(state, "sqrt", mc_nsfnmath_sqrt, NULL, 0));
+    mc_valmap_setvalstring(jmap, "pow", mc_value_makefuncnative(state, "pow", mc_nsfnmath_pow, NULL, 0));
+    mc_valmap_setvalstring(jmap, "sin", mc_value_makefuncnative(state, "sin", mc_nsfnmath_sin, NULL, 0));
+    mc_valmap_setvalstring(jmap, "cos", mc_value_makefuncnative(state, "cos", mc_nsfnmath_cos, NULL, 0));
+    mc_valmap_setvalstring(jmap, "tan", mc_value_makefuncnative(state, "tan", mc_nsfnmath_tan, NULL, 0));
+    mc_valmap_setvalstring(jmap, "log", mc_value_makefuncnative(state, "log", mc_nsfnmath_log, NULL, 0));
+    mc_valmap_setvalstring(jmap, "ceil", mc_value_makefuncnative(state, "ceil", mc_nsfnmath_ceil, NULL, 0));
+    mc_valmap_setvalstring(jmap, "floor", mc_value_makefuncnative(state, "floor", mc_nsfnmath_floor, NULL, 0));
+    mc_valmap_setvalstring(jmap, "abs", mc_value_makefuncnative(state, "abs", mc_nsfnmath_abs, NULL, 0));
+    mc_state_setglobalconstant(state, "Math", jmap);
+}
+
+void mc_cli_installfauxjavascript(mcstate_t* state)
+{
+    mc_cli_installjsondummy(state);
+    mc_cli_installjsconsole(state);
+    mc_cli_installmath(state);
+}
+
+void mc_cli_installfileio(mcstate_t* state)
+{
+    mcvalue_t map;
+    map = mc_value_makemap(state);
+    mc_valmap_setvalstring(map, "read", mc_value_makefuncnative(state, "read", mc_nsfnfile_readfile, NULL, 0));
+    mc_valmap_setvalstring(map, "write", mc_value_makefuncnative(state, "write", mc_nsfnfile_writefile, NULL, 0));
+    mc_state_setglobalconstant(state, "File", map);
+}
+
+static int g_extfnvar;
+
+void mc_cli_installotherstuff(mcstate_t* state)
+{
+    mc_state_setglobalconstant(state, "test", mc_value_makenumber(42));
+    mc_state_setnativefunction(state, "external_fn_test", mc_scriptfn_externalfn, &g_extfnvar, sizeof(g_extfnvar));
+    mc_state_setnativefunction(state, "test_check_args", mc_scriptfn_testcheckargs, NULL, 0);
+    mc_state_setnativefunction(state, "vec2_add", mc_scriptfn_vec2add, NULL, 0);
+    mc_state_setnativefunction(state, "vec2_sub", mc_scriptfn_vec2sub, NULL, 0);
+    mc_cli_installfileio(state);
+}
+
 void optprs_fprintmaybearg(FILE* out, const char* begin, const char* flagname, size_t flaglen, bool needval, bool maybeval, const char* delim)
 {
     fprintf(out, "%s%.*s", begin, (int)flaglen, flagname);
@@ -17634,7 +17779,7 @@ void mc_cli_printusage(char* argv[], optlongflags_t* flags, bool fail)
     optprs_fprintusage(out, flags);
 }
 
-static int g_extfnvar;
+
 
 bool mc_cli_compileandrunsource(mcstate_t* state, mcvalue_t* vdest, const char* source)
 {
@@ -17692,141 +17837,6 @@ void mc_cli_installargv(mcstate_t* state, int argc, char** argv, int beginat)
         mc_valarray_push(argvobj, strval);
     }
     mc_state_setglobalconstant(state, "ARGV", argvobj);
-}
-
-void mc_cli_installbuiltins(mcstate_t* state)
-{
-    static struct
-    {
-        const char* name;
-        mcnativefn_t fn;
-    } nativefunctions[] = {
-        { "maketestdict", mc_scriptfn_maketestdict },
-        { "squarearray", mc_scriptfn_squarearray },
-        { "lengthof", mc_scriptfn_lengthof },
-        { "typeof", mc_scriptfn_typeof },        
-        { "binnot", mc_scriptfn_binnot},
-        { "ord", mc_scriptfn_ord},
-        { "println", mc_scriptfn_println },
-        { "print", mc_scriptfn_print },
-        { "readfile", mc_scriptfn_filereadfile },
-        { "writefile", mc_scriptfn_filewritefile },
-        { "arrayfirst", mc_scriptfn_arrayfirst },
-        { "arraylast", mc_scriptfn_arraylast },
-        { "arrayrest", mc_scriptfn_arrayrest },
-        { "arrayjoin", mc_scriptfn_arrayjoin},
-        { "arraypush", mc_scriptfn_arraypush },
-        { "arraypop", mc_scriptfn_arraypop },
-        { "remove", mc_scriptfn_remove },
-        { "removeat", mc_scriptfn_removeat },
-        { "tostring", mc_scriptfn_tostring },
-        { "tonum", mc_scriptfn_tonum },
-        { "strtoint", mc_scriptfn_tonum },
-        { "isNaN", mc_scriptfn_isnan },
-        { "range", mc_scriptfn_range },
-        { "keys", mc_scriptfn_keys },
-        { "values", mc_scriptfn_values },
-        { "copy", mc_scriptfn_copy },
-        { "deepcopy", mc_scriptfn_copydeep },
-        { "chr", mc_scriptfn_chr },
-        { "reverse", mc_scriptfn_reverse },
-        { "array", mc_scriptfn_array },
-        { "error", mc_scriptfn_error },
-        { "crash", mc_scriptfn_crash },
-        { "assert", mc_scriptfn_assert },
-        { "randomseed", mc_scriptfn_randseed },
-        { "random", mc_scriptfn_random },
-        { "slice", mc_scriptfn_slice },
-
-        /* Custom */
-        { "indexof", mc_scriptfn_index },
-        { "left", mc_scriptfn_left },
-        { "right", mc_scriptfn_right },
-        { "replace", mc_scriptfn_replace },
-        { "replacefirst", mc_scriptfn_replacefirst },
-        { "trim", mc_scriptfn_trim },
-
-        /* Type checks */
-        { "isstring", mc_scriptfn_isstring },
-        { "isarray", mc_scriptfn_isarray },
-        { "ismap", mc_scriptfn_ismap },
-        { "isnumber", mc_scriptfn_isnumber },
-        { "isbool", mc_scriptfn_isbool },
-        { "isnull", mc_scriptfn_isnull },
-        { "isfunction", mc_scriptfn_isfunction },
-        { "isexternal", mc_scriptfn_isexternal },
-        { "iserror", mc_scriptfn_iserror },
-        { "isnativefunction", mc_scriptfn_isnativefunction },
-
-        /* Math */
-        { "sqrt", mc_scriptfn_sqrt },
-        { "pow", mc_scriptfn_pow },
-        { "sin", mc_scriptfn_sin },
-        { "cos", mc_scriptfn_cos },
-        { "tan", mc_scriptfn_tan },
-        { "log", mc_scriptfn_log },
-        { "ceil", mc_scriptfn_ceil },
-        { "floor", mc_scriptfn_floor },
-        { "abs", mc_scriptfn_abs },
-        {NULL, NULL}
-    };
-    int i;
-    for(i=0; nativefunctions[i].name != NULL; i++)
-    {
-        mc_state_setnativefunction(state, nativefunctions[i].name, nativefunctions[i].fn, NULL, 0);
-    }
-}
-
-/*
-TODO:
-kind-of ruby-ish. so sue me.
-to add:
-File.read: data = File.read("somefile"[, how-much-in-bytes])
-File.write: File.write("somefile", arrayjoin(somestuff, "\n"))
-File.exists
-...
-
-*/
-
-void mc_cli_installjsondummy(mcstate_t* state)
-{
-    mcvalue_t jmap;
-    jmap = mc_value_makemap(state);
-    mc_valmap_setvalstring(jmap, "stringify", mc_value_makefuncnative(state, "stringify", mc_scriptfn_jsonstringify, NULL, 0));
-    mc_state_setglobalconstant(state, "JSON", jmap);
-}
-
-void mc_cli_installjsconsole(mcstate_t* state)
-{
-    mcvalue_t jmap;
-    jmap = mc_value_makemap(state);
-    mc_valmap_setvalstring(jmap, "log", mc_value_makefuncnative(state, "log", mc_scriptfn_println, NULL, 0));
-    mc_state_setglobalconstant(state, "console", jmap);
-}
-
-void mc_cli_installfauxjavascript(mcstate_t* state)
-{
-    mc_cli_installjsondummy(state);
-    mc_cli_installjsconsole(state);
-}
-
-void mc_cli_installfileio(mcstate_t* state)
-{
-    mcvalue_t map;
-    map = mc_value_makemap(state);
-    mc_valmap_setvalstring(map, "read", mc_value_makefuncnative(state, "read", mc_scriptfn_filereadfile, NULL, 0));
-    mc_valmap_setvalstring(map, "write", mc_value_makefuncnative(state, "write", mc_scriptfn_filewritefile, NULL, 0));
-    mc_state_setglobalconstant(state, "File", map);
-}
-
-void mc_cli_installotherstuff(mcstate_t* state)
-{
-    mc_state_setglobalconstant(state, "test", mc_value_makenumber(42));
-    mc_state_setnativefunction(state, "external_fn_test", mc_scriptfn_externalfn, &g_extfnvar, sizeof(g_extfnvar));
-    mc_state_setnativefunction(state, "test_check_args", mc_scriptfn_testcheckargs, NULL, 0);
-    mc_state_setnativefunction(state, "vec2_add", mc_scriptfn_vec2add, NULL, 0);
-    mc_state_setnativefunction(state, "vec2_sub", mc_scriptfn_vec2sub, NULL, 0);
-    mc_cli_installfileio(state);
 }
 
 #define printtypesize(typ) \
