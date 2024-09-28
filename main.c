@@ -74,7 +74,6 @@ THE SOFTWARE.
 #define MC_CONF_VMMAXFRAMES (MC_CONF_VMVALSTACKSIZE)
 #define MC_CONF_VMTHISSTACKSIZE (MC_CONF_VMVALSTACKSIZE)
 #define MC_CONF_NATIVEFUNCMAXDATA (24*1)
-#define MC_CONF_STRINGMAXSTACKSIZE (24*1)
 #define MC_CONF_GCMEMPOOLSIZE (2048/16)
 #define MC_CONF_GCMEMPOOLCOUNT (3)
 #define MC_CONF_GCMEMSWEEPINTERVAL (128)
@@ -561,15 +560,6 @@ struct mcastlocation_t
     int column;
 };
 
-struct mcconfig_t
-{
-    bool dumpast;
-    bool dumpbytecode;
-    bool fatalcomplaints;
-    /* allows redefinition of symbols */
-    bool replmode;
-};
-
 struct mcasttoken_t
 {
     mcasttoktype_t type;
@@ -989,6 +979,18 @@ struct mctraceback_t
     mcbasicarray_t* items;
 };
 
+
+struct mcconfig_t
+{
+    bool dumpast;
+    bool dumpbytecode;
+    bool fatalcomplaints;
+    bool exitaftercompiling;
+    /* allows redefinition of symbols */
+    bool replmode;
+};
+
+
 struct mcstate_t
 {
     mcconfig_t config;
@@ -1038,9 +1040,7 @@ struct mcprinter_t
     bool failed;
     bool onstack;
     FILE* destfile;
-    char* data;
-    size_t capacity;
-    size_t len;
+    StringBuffer* destbuf;
 };
 
 struct mcastprinter_t
@@ -1935,14 +1935,14 @@ bool mc_genericdict_init(mcgenericdict_t* dict, mcstate_t* state, unsigned int i
     dict->hashes = (long unsigned int*)mc_allocator_malloc(dict->pstate, dict->itemcapacity * sizeof(*dict->hashes));
     if(dict->cells == NULL || dict->keys == NULL || dict->values == NULL || dict->cellindices == NULL || dict->hashes == NULL)
     {
-        goto error;
+        goto dictallocfailed;
     }
     for(i = 0; i < dict->cellcapacity; i++)
     {
         dict->cells[i] = MC_CONF_GENERICDICTINVALIDIX;
     }
     return true;
-error:
+dictallocfailed:
     mc_allocator_free(dict->pstate, dict->cells);
     mc_allocator_free(dict->pstate, dict->keys);
     mc_allocator_free(dict->pstate, dict->values);
@@ -2016,8 +2016,11 @@ bool mc_genericdict_growandrehash(mcgenericdict_t* dict)
     unsigned int i;
     char* key;
     void* value;
+    size_t ncap;
     mcgenericdict_t newdict;
-    ok = mc_genericdict_init(&newdict, dict->pstate, dict->cellcapacity * 2, dict->funccopyfn, dict->funcdestroyfn);
+    ncap = dict->cellcapacity * 2;
+    //ncap = (dict->cellcapacity + 15) / 16 * 16;
+    ok = mc_genericdict_init(&newdict, dict->pstate, ncap, dict->funccopyfn, dict->funcdestroyfn);
     if(!ok)
     {
         return false;
@@ -2108,14 +2111,14 @@ bool mc_valdict_init(mcvaldict_t* dict, mcstate_t* state, size_t ktsz, size_t vt
     dict->hashes = (long unsigned int*)mc_allocator_malloc(dict->pstate, dict->itemcapacity * sizeof(*dict->hashes));
     if(dict->cells == NULL || dict->keys == NULL || dict->values == NULL || dict->cellindices == NULL || dict->hashes == NULL)
     {
-        goto error;
+        goto dictallocfailed;
     }
     for(i = 0; i < dict->cellcapacity; i++)
     {
         dict->cells[i] = MC_CONF_VALDICTINVALIDIX;
     }
     return true;
-error:
+dictallocfailed:
     mc_allocator_free(dict->pstate, dict->cells);
     mc_allocator_free(dict->pstate, dict->keys);
     mc_allocator_free(dict->pstate, dict->values);
@@ -2400,6 +2403,7 @@ bool mc_valdict_growandrehash(mcvaldict_t* dict)
     char* key;
     void* value;
     newcapacity = dict->cellcapacity == 0 ? MC_CONF_GENERICDICTINITSIZE : dict->cellcapacity * 2;
+    //newcapacity = (dict->cellcapacity + 15) / 16 * 16;
     ok = mc_valdict_init(&newdict, dict->pstate, dict->keytypesize, dict->valtypesize, newcapacity);
     if(!ok)
     {
@@ -2478,6 +2482,35 @@ mcbasicarray_t* mc_basicarray_makecapacity(mcstate_t* state, unsigned int capaci
     return arr;
 }
 
+bool mc_basicarray_initcapacity(mcbasicarray_t* arr, mcstate_t* state, unsigned int capacity, size_t tsz)
+{
+    arr->pstate = state;
+    if(capacity > 0)
+    {
+        arr->allocdata = (unsigned char*)mc_allocator_malloc(arr->pstate, capacity * tsz);
+        arr->data = arr->allocdata;
+        if(!arr->allocdata)
+        {
+            return false;
+        }
+    }
+    else
+    {
+        arr->allocdata = NULL;
+        arr->data = NULL;
+    }
+    arr->capacity = capacity;
+    arr->count = 0;
+    arr->typesize = tsz;
+    arr->caplocked = false;
+    return true;
+}
+
+void mc_basicarray_deinit(mcbasicarray_t* arr)
+{
+    mc_allocator_free(arr->pstate, arr->allocdata);
+}
+
 void mc_basicarray_destroy(mcbasicarray_t* arr)
 {
     mcstate_t* state;
@@ -2534,6 +2567,7 @@ bool mc_basicarray_push(mcbasicarray_t* arr, void* value)
             return false;
         }
         newcapacity = arr->capacity > 0 ? arr->capacity * 2 : 1;
+        //Unewcapacity = arr->capacity > 0 ? ((arr->capacity + 15) / 16 * 16) : 1;
         newdata = (unsigned char*)mc_allocator_malloc(arr->pstate, newcapacity * arr->typesize);
         if(!newdata)
         {
@@ -2658,34 +2692,7 @@ void mc_basicarray_orphandata(mcbasicarray_t* arr)
     mc_basicarray_initcapacity(arr, arr->pstate, 0, arr->typesize);
 }
 
-bool mc_basicarray_initcapacity(mcbasicarray_t* arr, mcstate_t* state, unsigned int capacity, size_t tsz)
-{
-    arr->pstate = state;
-    if(capacity > 0)
-    {
-        arr->allocdata = (unsigned char*)mc_allocator_malloc(arr->pstate, capacity * tsz);
-        arr->data = arr->allocdata;
-        if(!arr->allocdata)
-        {
-            return false;
-        }
-    }
-    else
-    {
-        arr->allocdata = NULL;
-        arr->data = NULL;
-    }
-    arr->capacity = capacity;
-    arr->count = 0;
-    arr->typesize = tsz;
-    arr->caplocked = false;
-    return true;
-}
 
-void mc_basicarray_deinit(mcbasicarray_t* arr)
-{
-    mc_allocator_free(arr->pstate, arr->allocdata);
-}
 
 void mc_ptrlist_setempty(mcptrlist_t* list)
 {
@@ -2873,16 +2880,16 @@ mcptrlist_t* mc_ptrlist_copy(mcptrlist_t* arr, mcitemcopyfn_t copyfn, mcitemdest
         }
         if(item && !itemcopy)
         {
-            goto err;
+            goto listcopyfailed;
         }
         ok = mc_ptrlist_push(arrcopy, itemcopy);
         if(!ok)
         {
-            goto err;
+            goto listcopyfailed;
         }
     }
     return arrcopy;
-err:
+listcopyfailed:
     mc_ptrlist_destroy(arrcopy, dfn);
     return NULL;
 }
@@ -2902,91 +2909,63 @@ void mc_ptrlist_clearanddestroy(mcptrlist_t* arr, mcitemdestroyfn_t dfn)
 
 mcprinter_t* mc_printer_make(mcstate_t* state, FILE* ofh)
 {
-    return mc_printer_make_with_capacity(state, 1, ofh);
-}
-
-mcprinter_t* mc_printer_make_with_capacity(mcstate_t* state, unsigned int capacity, FILE* ofh)
-{
     mcprinter_t* pr;
     pr = (mcprinter_t*)mc_allocator_malloc(state, sizeof(mcprinter_t));
     if(pr == NULL)
     {
         return NULL;
     }
-    if(!mc_printer_init(pr, state, capacity, ofh, false))
+    if(!mc_printer_init(pr, state, ofh, false))
     {
         return NULL;
     }
     return pr;
 }
 
-bool mc_printer_init(mcprinter_t* pr, mcstate_t* state, size_t capacity, FILE* ofh, bool onstack)
+bool mc_printer_init(mcprinter_t* pr, mcstate_t* state, FILE* ofh, bool onstack)
 {
     memset(pr, 0, sizeof(mcprinter_t));
     pr->pstate = state;
     pr->failed = false;
     pr->destfile = ofh;
-    pr->data = NULL;
-    pr->capacity = 0;
-    pr->len = 0;
     pr->onstack = onstack;
+    pr->destbuf = NULL;
     pr->config.verbosefunc = true;
     pr->config.quotstring = false;
     pr->config.shouldflush = true;
-    if(ofh != NULL)
+    if(pr->destfile == NULL)
     {
-        return true;
+        pr->destbuf = dyn_strbuf_makeempty(0);
     }
-    pr->data = (char*)mc_allocator_malloc(state, capacity);
-    if(pr->data == NULL)
-    {
-        mc_allocator_free(state, pr);
-        return false;
-    }
-    pr->capacity = capacity;
-    pr->len = 0;
-    pr->data[0] = '\0';
     return true;
 }
 
-void mc_printer_release(mcprinter_t* pr)
+void mc_printer_release(mcprinter_t* pr, bool took)
 {
     if(pr == NULL)
     {
         return;
     }
-    if(pr->data != NULL)
+    if(pr->destbuf != NULL)
     {
-        mc_allocator_free(pr->pstate, pr->data);
+        if(!took)
+        {
+            dyn_strbuf_destroy(pr->destbuf);
+        }
     }
 }
 
 void mc_printer_destroy(mcprinter_t* pr)
 {
-    mc_printer_release(pr);
+    mc_printer_release(pr, true);
     if(!pr->onstack)
     {
         mc_allocator_free(pr->pstate, pr);
     }
 }
 
-void mc_printer_clear(mcprinter_t* pr)
-{
-    if(pr->destfile == NULL)
-    {
-        if(pr->failed)
-        {
-            return;
-        }
-        pr->len = 0;
-        pr->data[0] = '\0';
-    }
-}
-
 bool mc_printer_putlen(mcprinter_t* pr, const char* str, size_t len)
 {
-    bool ok;
-    size_t needcap;
     if(pr->failed)
     {
         return false;
@@ -2995,27 +2974,18 @@ bool mc_printer_putlen(mcprinter_t* pr, const char* str, size_t len)
     {
         return true;
     }
-    if(pr->destfile != NULL)
+    if(pr->destfile == NULL)
+    {
+        dyn_strbuf_appendstrn(pr->destbuf, str, len);
+    }
+    else
     {
         fwrite(str, sizeof(char), len, pr->destfile);
         if(pr->config.shouldflush)
         {
             fflush(pr->destfile);
         }
-        return true;
     }
-    needcap = pr->len + len + 1;
-    if(needcap > pr->capacity)
-    {
-        ok = mc_printer_grow(pr, needcap * 2);
-        if(!ok)
-        {
-            return false;
-        }
-    }
-    memcpy(pr->data + pr->len, str, len);
-    pr->len = pr->len + len;
-    pr->data[pr->len] = '\0';
     return true;
 }
 
@@ -3031,55 +3001,35 @@ bool mc_printer_putchar(mcprinter_t* pr, int b)
     return mc_printer_putlen(pr, &ch, 1);
 }
 
-bool mc_printer_printf(mcprinter_t* pr, const char* fmt, ...)
+bool mc_printer_printfv(mcprinter_t* pr, const char* fmt, va_list va)
 {
-    bool ok;
-    int resz;
-    int needsz;
-    size_t needcap;
-    va_list va;
-    (void)resz;
     if(pr->failed)
     {
         return false;
     }
-    if(pr->destfile != NULL)
+    if(pr->destfile == NULL)
     {
-        va_start(va, fmt);
+        dyn_strbuf_appendformatv(pr->destbuf, fmt, va);
+    }
+    else
+    {
         vfprintf(pr->destfile, fmt, va);
         if(pr->config.shouldflush)
         {
             fflush(pr->destfile);
         }
-        va_end(va);
-        return true;
     }
-    va_start(va, fmt);
-    needsz = vsnprintf(NULL, 0, fmt, va);
-    va_end(va);
-    if(needsz == 0)
-    {
-        return true;
-    }
-    needcap = pr->len + needsz + 1;
-    if(needcap > pr->capacity)
-    {
-        ok = mc_printer_grow(pr, needcap * 2);
-        if(!ok)
-        {
-            return false;
-        }
-    }
-    va_start(va, fmt);
-    resz = vsprintf(pr->data + pr->len, fmt, va);
-    va_end(va);
-    if(resz != needsz)
-    {
-        return false;
-    }
-    pr->len = pr->len + needsz;
-    pr->data[pr->len] = '\0';
     return true;
+}
+
+bool mc_printer_printf(mcprinter_t* pr, const char* fmt, ...)
+{
+    bool r;
+    va_list va;
+    va_start(va, fmt);
+    r = mc_printer_printfv(pr, fmt, va);
+    va_end(va);
+    return r;
 }
 
 void mc_printer_printescapedchar(mcprinter_t* pr, int ch)
@@ -3169,7 +3119,7 @@ const char* mc_printer_getstring(mcprinter_t* pr)
     {
         return NULL;
     }
-    return pr->data;
+    return pr->destbuf->data;
 }
 
 size_t mc_printer_getlength(mcprinter_t* pr)
@@ -3182,7 +3132,7 @@ size_t mc_printer_getlength(mcprinter_t* pr)
     {
         return 0;
     }
-    return pr->len;
+    return pr->destbuf->length;
 }
 
 char* mc_printer_getstringanddestroy(mcprinter_t* pr, size_t* lendest)
@@ -3197,12 +3147,12 @@ char* mc_printer_getstringanddestroy(mcprinter_t* pr, size_t* lendest)
     {
         return NULL;
     }
-    res = pr->data;
+    res = pr->destbuf->data;
     if(lendest != NULL)
     {
-        *lendest = pr->len;
+        *lendest = pr->destbuf->length;
     }
-    pr->data = NULL;
+    pr->destbuf = NULL;
     mc_printer_destroy(pr);
     return res;
 }
@@ -3210,27 +3160,6 @@ char* mc_printer_getstringanddestroy(mcprinter_t* pr, size_t* lendest)
 bool mc_printer_failed(mcprinter_t* pr)
 {
     return pr->failed;
-}
-
-bool mc_printer_grow(mcprinter_t* pr, size_t newcapacity)
-{
-    char* ndata;
-    if(pr->destfile != NULL)
-    {
-        return true;
-    }
-    ndata = (char*)mc_allocator_malloc(pr->pstate, newcapacity);
-    if(ndata == NULL)
-    {
-        pr->failed = true;
-        return false;
-    }
-    memcpy(ndata, pr->data, pr->len);
-    ndata[pr->len] = '\0';
-    mc_allocator_free(pr->pstate, pr->data);
-    pr->data = ndata;
-    pr->capacity = newcapacity;
-    return true;
 }
 
 #define mc_printer_printvalue(pr, val) \
@@ -5191,25 +5120,25 @@ mcastscopecomp_t* mc_astcompscope_make(mcstate_t* state, mcastscopecomp_t* outer
     scope->bytecode = mc_basicarray_make(state, sizeof(uint8_t));
     if(!scope->bytecode)
     {
-        goto err;
+        goto scopemakefailed;
     }
     scope->scopesrcposlist = mc_basicarray_make(state, sizeof(mcastlocation_t));
     if(!scope->scopesrcposlist)
     {
-        goto err;
+        goto scopemakefailed;
     }
     scope->ipstackbreak = mc_basicarray_make(state, sizeof(int));
     if(!scope->ipstackbreak)
     {
-        goto err;
+        goto scopemakefailed;
     }
     scope->ipstackcontinue = mc_basicarray_make(state, sizeof(int));
     if(!scope->ipstackcontinue)
     {
-        goto err;
+        goto scopemakefailed;
     }
     return scope;
-err:
+scopemakefailed:
     mc_astcompscope_destroy(scope);
     return NULL;
 }
@@ -6100,12 +6029,10 @@ mccompiledprogram_t* mc_compiler_compilesource(mcastcompiler_t* comp, const char
     mcastscopecomp_t* compscope;
     mccompiledprogram_t* res;
     compscope = mc_compiler_getcompilationscope(comp);
-
     MC_ASSERT(mc_basicarray_count(comp->srcposstack) == 0);
     MC_ASSERT(mc_basicarray_count(compscope->bytecode) == 0);
     MC_ASSERT(mc_basicarray_count(compscope->ipstackbreak) == 0);
     MC_ASSERT(mc_basicarray_count(compscope->ipstackcontinue) == 0);
-
     mc_basicarray_clear(comp->srcposstack);
     mc_basicarray_clear(compscope->bytecode);
     mc_basicarray_clear(compscope->scopesrcposlist);
@@ -6119,7 +6046,7 @@ mccompiledprogram_t* mc_compiler_compilesource(mcastcompiler_t* comp, const char
     ok = mc_compiler_docompilesource(comp, code);
     if(!ok)
     {
-        goto err;
+        goto compilefailed;
     }
     mc_compiler_emit(comp, MC_OPCODE_HALT, 0, 0);
     /* might've changed */
@@ -6129,16 +6056,15 @@ mccompiledprogram_t* mc_compiler_compilesource(mcastcompiler_t* comp, const char
     res = mc_astcompscope_orphanresult(compscope);
     if(!res)
     {
-        goto err;
+        goto compilefailed;
     }
     mc_compiler_deinit(&compshallowcopy);
     return res;
-err:
+compilefailed:
     mc_compiler_deinit(comp);
     *comp = compshallowcopy;
     return NULL;
 }
-
 
 mcastsymtable_t* mc_compiler_getsymtable(mcastcompiler_t* comp)
 {
@@ -6180,41 +6106,41 @@ bool mc_compiler_init(mcastcompiler_t* comp, mcstate_t* state, mcconfig_t* cfg, 
     comp->filescopelist = mc_ptrlist_make(state, 0);
     if(!comp->filescopelist)
     {
-        goto err;
+        goto compilerinitfailed;
     }
     comp->constants = mc_basicarray_make(state, sizeof(mcvalue_t));
     if(!comp->constants)
     {
-        goto err;
+        goto compilerinitfailed;
     }
     comp->srcposstack = mc_basicarray_make(state, sizeof(mcastlocation_t));
     if(!comp->srcposstack)
     {
-        goto err;
+        goto compilerinitfailed;
     }
     comp->modules = mc_genericdict_make(state, (mcitemcopyfn_t)mc_module_copy, (mcitemdestroyfn_t)mc_module_destroy);
     if(!comp->modules)
     {
-        goto err;
+        goto compilerinitfailed;
     }
     ok = mc_compiler_pushcompilationscope(comp);
     if(!ok)
     {
-        goto err;
+        goto compilerinitfailed;
     }
     ok = mc_compiler_filescopepush(comp, "none");
     if(!ok)
     {
-        goto err;
+        goto compilerinitfailed;
     }
     comp->stringconstposdict = mc_genericdict_make(comp->pstate, NULL, NULL);
     if(!comp->stringconstposdict)
     {
-        goto err;
+        goto compilerinitfailed;
     }
 
     return true;
-err:
+compilerinitfailed:
     mc_compiler_deinit(comp);
     return false;
 }
@@ -6277,7 +6203,7 @@ bool mc_compiler_initshallowcopy(mcastcompiler_t* copy, mcastcompiler_t* src)
     srcstocopy = mc_symtable_copy(srcst);
     if(!srcstocopy)
     {
-        goto err;
+        goto compilercopyfailed;
     }
     copyst = mc_compiler_getsymtable(copy);
     mc_symtable_destroy(copyst);
@@ -6286,14 +6212,14 @@ bool mc_compiler_initshallowcopy(mcastcompiler_t* copy, mcastcompiler_t* src)
     modulescopy = mc_genericdict_copy(src->modules);
     if(!modulescopy)
     {
-        goto err;
+        goto compilercopyfailed;
     }
     mc_genericdict_destroyitemsanddict(copy->modules);
     copy->modules = modulescopy;
     constantscopy = mc_basicarray_copy(src->constants);
     if(!constantscopy)
     {
-        goto err;
+        goto compilercopyfailed;
     }
     mc_basicarray_destroy(copy->constants);
     copy->constants = constantscopy;
@@ -6304,14 +6230,14 @@ bool mc_compiler_initshallowcopy(mcastcompiler_t* copy, mcastcompiler_t* src)
         valcopy = (int*)mc_allocator_malloc(src->pstate, sizeof(int));
         if(!valcopy)
         {
-            goto err;
+            goto compilercopyfailed;
         }
         *valcopy = *val;
         ok = mc_genericdict_set(copy->stringconstposdict, key, valcopy);
         if(!ok)
         {
             mc_allocator_free(src->pstate, valcopy);
-            goto err;
+            goto compilercopyfailed;
         }
     }
     srcfilescope = (mcastscopefile_t*)mc_ptrlist_top(src->filescopelist);
@@ -6325,17 +6251,17 @@ bool mc_compiler_initshallowcopy(mcastcompiler_t* copy, mcastcompiler_t* src)
         loadednamecopy = mc_util_strdup(copy->pstate, loadedname);
         if(!loadednamecopy)
         {
-            goto err;
+            goto compilercopyfailed;
         }
         ok = mc_ptrlist_push(copyloadedmodulenames, loadednamecopy);
         if(!ok)
         {
             mc_allocator_free(copy->pstate, loadednamecopy);
-            goto err;
+            goto compilercopyfailed;
         }
     }
     return true;
-err:
+compilercopyfailed:
     mc_compiler_deinit(copy);
     return false;
 }
@@ -12076,6 +12002,7 @@ void mc_state_setdefaultconfig(mcstate_t* state)
     state->config.dumpast = false;
     state->config.dumpbytecode = false;
     state->config.fatalcomplaints = false;
+    state->config.exitaftercompiling = false;
 }
 
 void mc_state_destroy(mcstate_t* state)
@@ -12774,7 +12701,7 @@ mcvalue_t mc_scriptfn_arrayjoin(mcstate_t* state, void* data, int argc, mcvalue_
         joinee = args[1];
     }
     alen = mc_valarray_getlength(array);
-    mc_printer_init(&pr, state, alen, NULL, true);
+    mc_printer_init(&pr, state, NULL, true);
     for(i=0; i<alen; i++)
     {
         item = mc_valarray_getvalueat(array, i);
@@ -12787,10 +12714,10 @@ mcvalue_t mc_scriptfn_arrayjoin(mcstate_t* state, void* data, int argc, mcvalue_
             }
         }
     }
-    str = pr.data;
-    slen = pr.len;
+    str = pr.destbuf->data;
+    slen = pr.destbuf->length;
     rt = mc_value_makestringlen(state, str, slen);
-    mc_printer_release(&pr);
+    mc_printer_release(&pr, true);
     return rt;
 }
 
@@ -13639,17 +13566,17 @@ mcvalue_t mc_scriptfn_tostring(mcstate_t* state, void* data, int argc, mcvalue_t
     (void)argc;
     (void)data;
     arg = args[0];
-    mc_printer_init(&pr, state, 5, NULL, true);
+    mc_printer_init(&pr, state, NULL, true);
     mc_printer_printvalue(&pr, arg);
     if(mc_printer_failed(&pr))
     {
-        mc_printer_release(&pr);
+        mc_printer_release(&pr, true);
         return mc_value_makenull();
     }
     resstr = mc_printer_getstring(&pr);
     reslen = mc_printer_getlength(&pr);
     res = mc_value_makestringlen(state, resstr, reslen);
-    mc_printer_release(&pr);
+    mc_printer_release(&pr, false);
     return res;
 }
 
@@ -13664,19 +13591,19 @@ mcvalue_t mc_scriptfn_jsonstringify(mcstate_t* state, void* data, int argc, mcva
     (void)argc;
     (void)data;
     arg = args[0];
-    mc_printer_init(&pr, state, 5, NULL, true);
+    mc_printer_init(&pr, state, NULL, true);
     pr.config.verbosefunc = false;
     pr.config.quotstring = true;
     mc_printer_printvalue(&pr, arg);
     if(mc_printer_failed(&pr))
     {
-        mc_printer_release(&pr);
+        mc_printer_release(&pr, true);
         return mc_value_makenull();
     }
     resstr = mc_printer_getstring(&pr);
     reslen = mc_printer_getlength(&pr);
     res = mc_value_makestringlen(state, resstr, reslen);
-    mc_printer_release(&pr);
+    mc_printer_release(&pr, true);
     return res;
 }
 
@@ -14084,17 +14011,84 @@ mcvalue_t mc_scriptfn_random(mcstate_t* state, void* data, int argc, mcvalue_t* 
     return mc_value_makenull();
 }
 
-mcvalue_t mc_scriptfn_slice(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+mcvalue_t mc_scriptutil_slicearray(mcstate_t* state, void* data, int argc, mcvalue_t* args)
 {
+    int i;
+    int len;
+    int index;
     bool ok;
+    mcvalue_t res;
+    mcvalue_t item;
+    (void)data;
+    (void)argc;
+    index = (int)mc_value_getnumber(args[1]);
+    len = mc_valarray_getlength(args[0]);
+    if(index < 0)
+    {
+        index = len + index;
+        if(index < 0)
+        {
+            index = 0;
+        }
+    }
+    res = mc_value_makearraycapacity(state, len - index);
+    if(mc_value_isnull(res))
+    {
+        return mc_value_makenull();
+    }
+    for(i = index; i < len; i++)
+    {
+        item = mc_valarray_getvalueat(args[0], i);
+        ok = mc_valarray_push(res, item);
+        if(!ok)
+        {
+            return mc_value_makenull();
+        }
+    }
+    return res;
+}
+
+mcvalue_t mc_scriptutil_slicestring(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
     int i;
     int len;
     int index;
     char c;
-    const char* str;
-    const char* typestr;
     mcvalue_t res;
-    mcvalue_t item;
+    const char* str;
+    (void)data;
+    (void)argc;
+    index = (int)mc_value_getnumber(args[1]);
+    str = mc_valstring_getdata(args[0]);
+    len = mc_valstring_getlength(args[0]);
+    if(index < 0)
+    {
+        index = len + index;
+        if(index < 0)
+        {
+            return mc_value_makestringlen(state, "", 0);
+        }
+    }
+    if(index >= len)
+    {
+        return mc_value_makestringlen(state, "", 0);
+    }
+    res = mc_value_makestrcapacity(state, 10);
+    if(mc_value_isnull(res))
+    {
+        return mc_value_makenull();
+    }
+    for(i = index; i < len; i++)
+    {
+        c = str[i];
+        mc_valstring_appendlen(res, &c, 1);
+    }
+    return res;
+}
+
+mcvalue_t mc_scriptfn_slice(mcstate_t* state, void* data, int argc, mcvalue_t* args)
+{
+    const char* typestr;
     mcvaltype_t argtype;
     (void)data;
     (void)state;
@@ -14104,63 +14098,13 @@ mcvalue_t mc_scriptfn_slice(mcstate_t* state, void* data, int argc, mcvalue_t* a
         return mc_value_makenull();
     }
     argtype = args[0].type;
-    index = (int)mc_value_getnumber(args[1]);
     if(argtype == MC_VAL_ARRAY)
     {
-        len = mc_valarray_getlength(args[0]);
-        if(index < 0)
-        {
-            index = len + index;
-            if(index < 0)
-            {
-                index = 0;
-            }
-        }
-        res = mc_value_makearraycapacity(state, len - index);
-        if(mc_value_isnull(res))
-        {
-            return mc_value_makenull();
-        }
-        for(i = index; i < len; i++)
-        {
-            item = mc_valarray_getvalueat(args[0], i);
-            ok = mc_valarray_push(res, item);
-            if(!ok)
-            {
-                return mc_value_makenull();
-            }
-        }
-        return res;
+        return mc_scriptutil_slicearray(state, data, argc, args);
     }
     if(argtype == MC_VAL_STRING)
     {
-        
-        str = mc_valstring_getdata(args[0]);
-        len = mc_valstring_getlength(args[0]);
-        if(index < 0)
-        {
-            index = len + index;
-            if(index < 0)
-            {
-                return mc_value_makestringlen(state, "", 0);
-            }
-        }
-        if(index >= len)
-        {
-            return mc_value_makestringlen(state, "", 0);
-        }
-        res = mc_value_makestrcapacity(state, 0);
-        if(mc_value_isnull(res))
-        {
-            return mc_value_makenull();
-        }
-        //bool mc_valstring_appendlen(mcvalue_t obj, const char *src, size_t len);
-        for(i = index; i < len; i++)
-        {
-            c = str[i];
-            mc_valstring_appendlen(res, &c, 1);
-        }
-        return res;
+        return mc_scriptutil_slicestring(state, data, argc, args);
     }
     typestr = mc_valtype_getname(argtype);
     mc_state_pusherrorf(state, MC_ERROR_RUNTIME, srcposinvalid, "Invalid argument 0 passed to slice, got %s instead", typestr);
@@ -16445,6 +16389,7 @@ MCINLINE bool mc_vmdo_opaddstring(mcstate_t* state, mcvalue_t valleft, mcvalue_t
 {
     mcvalue_t nstring;
     (void)opcode;
+    (void)righttype;
     nstring = mc_value_makestrcapacity(state, 0);
     mc_vm_stackpush(state, nstring);
     if(!mc_valstring_appendvalue(nstring, valleft))
@@ -17025,7 +16970,8 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcbasicarray
     mcerror_t* err;    
     const char* oname;
     mcobjfuncscript_t* functionfunction;
-    if(state->running)
+    (void)oname;
+    if(mc_util_unlikely(state->running))
     {
         mc_errlist_push(&state->errors, MC_ERROR_USER, srcposinvalid, "VM is already executing code");
         return false;
@@ -17174,7 +17120,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcbasicarray
                     mcvalue_t operand;
                     operand = mc_vm_stackpop(state);
                     opertype = mc_value_gettype(operand);
-                    if(opertype == MC_VAL_NUMBER)
+                    if(mc_util_likely(opertype == MC_VAL_NUMBER))
                     {
                         val = mc_value_getnumber(operand);
                         res = mc_value_makenumber(-val);
@@ -17697,6 +17643,11 @@ bool mc_cli_compileandrunsource(mcstate_t* state, mcvalue_t* vdest, const char* 
     mccompiledprogram_t* program;
     ok = false;
     program = mc_state_compilesource(state, source);
+    if(state->config.exitaftercompiling)
+    {
+        mc_program_destroy(program);
+        return true;
+    }
     tmp = mc_program_execute(state, program);
     if(mc_state_haserrors(state))
     {
@@ -17967,6 +17918,7 @@ static optlongflags_t longopts[] =
     {"eval", 'e', OPTPARSE_REQUIRED, "evaluate a single line of code"},
     {"dumpast", 'a', OPTPARSE_NONE, "dump AST after parsing"},
     {"dumpbc", 'd', OPTPARSE_NONE, "dump bytecode after compiling"},
+    {"exitcompile", 'x', OPTPARSE_NONE, "exit after compiling (for debugging)"},
     {0, 0, (optargtype_t)0, NULL}
 };
 
@@ -18013,6 +17965,10 @@ int main(int argc, char* argv[])
         else if(co == 'd')
         {
             state->config.dumpbytecode = true;
+        }
+        else if(co == 'x')
+        {
+            state->config.exitaftercompiling = true;
         }
         else if(co == 't')
         {
