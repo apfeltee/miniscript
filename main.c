@@ -89,10 +89,25 @@ THE SOFTWARE.
     #define __attribute__(x)
 #endif
 
-#if defined(__STRICT_ANSI__)
-    #define MCINLINE __attribute__((always_inline))
+
+#if (defined(__GNUC__) || defined(__clang__)) && !defined(__STRICT_ANSI__)
+    #define MC_INLINE static inline
+    #define MC_FORCEINLINE MC_INLINE __attribute__((always_inline))
+    #define MC_NOINLINE __attribute__((noinline))
 #else
-    #define MCINLINE inline __attribute__((always_inline))
+    #define MC_INLINE static
+    #if defined(__STRICT_ANSI__)
+        #define MC_FORCEINLINE
+    #else
+        #define MC_FORCEINLINE inline
+    #endif
+    #if defined(_MSC_VER) && !defined(__clang__)
+        #define MC_FORCEINLINE __forceinline
+        #define MC_NOINLINE __declspec(noinline)
+    #else
+        #define MC_FORCEINLINE
+        #define MC_NOINLINE
+    #endif
 #endif
 
 #define MC_UTIL_STREQ(a, b) (strcmp((a), (b)) == 0)
@@ -127,11 +142,14 @@ THE SOFTWARE.
 
 #define mc_value_gettype(v) (v).type
 
-#define MC_GROW_CAPACITY(capacity) (((capacity) < 8) ? 8 : ((capacity) * 2))
+#if 1
+    #define MC_UTIL_INCCAPACITY(capacity) (((capacity) < 8) ? 8 : ((capacity) * 2))
+#else
+    #define MC_UTIL_INCCAPACITY(capacity) ((capacity) + 15) / 16 * 16;
+#endif
 
 typedef double mcfloat_t;
 typedef uint8_t mcinternopcode_t;
-
 
 enum mcerrtype_t
 {
@@ -491,6 +509,7 @@ typedef union mcfuncfvunion_t mcfuncfvunion_t;
 typedef union mcfuncnameunion_t mcfuncnameunion_t;
 typedef struct /**/mcvallist_t mcvallist_t;
 typedef struct /**/mcframelist_t mcframelist_t;
+typedef struct /**/mcclassinfo_t mcclassinfo_t;
 
 typedef mcvalue_t (*mcnativefn_t)(mcstate_t*, void*, int, mcvalue_t*);
 typedef unsigned long (*mcitemhashfn_t)(void*);
@@ -1360,8 +1379,51 @@ mcfloat_t mc_util_strtod(const char* str, size_t slen, char** endptr)
     return stod_strtod(&p, end, true);
 }
 
+
+MC_INLINE mcvalue_t mc_object_makedatafrom(mcvaltype_t type, mcobjdata_t* data)
+{
+    mcvalue_t object;
+    object.type = type;
+    data->type = type;
+    object.isallocated = true;
+    object.uval.odata = data;
+    return object;
+}
+
+MC_INLINE mcvalue_t mc_value_makeempty(mcvaltype_t t)
+{
+    mcvalue_t o = {};
+    //memset(&o, 0, sizeof(mcvalue_t));
+    o.type = t;
+    o.isallocated = false;
+    return o;
+}
+
+MC_INLINE mcvalue_t mc_value_makenumber(mcfloat_t val)
+{
+    mcvalue_t o;
+    o = mc_value_makeempty(MC_VAL_NUMBER);
+    o.uval.valnumber = val;
+    return o;
+}
+
+MC_INLINE mcvalue_t mc_value_makebool(bool val)
+{
+    mcvalue_t o;
+    o = mc_value_makeempty(MC_VAL_BOOL);
+    o.uval.valbool = val;
+    return o;
+}
+
+MC_INLINE mcvalue_t mc_value_makenull(void)
+{
+    mcvalue_t o;
+    o = mc_value_makeempty(MC_VAL_NULL);
+    return o;
+}
+
 typedef uint32_t mcshiftint_t;
-MCINLINE mcfloat_t mc_mathutil_binshiftleft(mcfloat_t dnleft, mcfloat_t dnright)
+MC_INLINE mcfloat_t mc_mathutil_binshiftleft(mcfloat_t dnleft, mcfloat_t dnright)
 {
     int64_t sileft;
     int64_t siright;
@@ -1379,7 +1441,7 @@ MCINLINE mcfloat_t mc_mathutil_binshiftleft(mcfloat_t dnleft, mcfloat_t dnright)
     return (mcfloat_t)(ivleft << ivright);
 }
 
-MCINLINE mcfloat_t mc_mathutil_binshiftright(mcfloat_t dnleft, mcfloat_t dnright)
+MC_INLINE mcfloat_t mc_mathutil_binshiftright(mcfloat_t dnleft, mcfloat_t dnright)
 {
     int64_t sileft;
     int64_t siright;
@@ -1397,7 +1459,7 @@ MCINLINE mcfloat_t mc_mathutil_binshiftright(mcfloat_t dnleft, mcfloat_t dnright
     return (mcfloat_t)(ivleft >> ivright);
 }
 
-MCINLINE mcfloat_t mc_mathutil_binor(mcfloat_t dnleft, mcfloat_t dnright)
+MC_INLINE mcfloat_t mc_mathutil_binor(mcfloat_t dnleft, mcfloat_t dnright)
 {
     int64_t ivleft;
     int64_t ivright;
@@ -1406,7 +1468,7 @@ MCINLINE mcfloat_t mc_mathutil_binor(mcfloat_t dnleft, mcfloat_t dnright)
     return (mcfloat_t)(ivleft | ivright);
 }
 
-MCINLINE mcfloat_t mc_mathutil_binand(mcfloat_t dnleft, mcfloat_t dnright)
+MC_INLINE mcfloat_t mc_mathutil_binand(mcfloat_t dnleft, mcfloat_t dnright)
 {
     int64_t ivleft;
     int64_t ivright;
@@ -1415,7 +1477,7 @@ MCINLINE mcfloat_t mc_mathutil_binand(mcfloat_t dnleft, mcfloat_t dnright)
     return (mcfloat_t)(ivleft & ivright);
 }
 
-MCINLINE mcfloat_t mc_mathutil_binxor(mcfloat_t dnleft, mcfloat_t dnright)
+MC_INLINE mcfloat_t mc_mathutil_binxor(mcfloat_t dnleft, mcfloat_t dnright)
 {
     int64_t ivleft;
     int64_t ivright;
@@ -1424,27 +1486,27 @@ MCINLINE mcfloat_t mc_mathutil_binxor(mcfloat_t dnleft, mcfloat_t dnright)
     return (mcfloat_t)(ivleft ^ ivright);
 }
 
-MCINLINE mcfloat_t mc_mathutil_add(mcfloat_t dnleft, mcfloat_t dnright)
+MC_INLINE mcfloat_t mc_mathutil_add(mcfloat_t dnleft, mcfloat_t dnright)
 {
     return dnleft + dnright;
 }
 
-MCINLINE mcfloat_t mc_mathutil_sub(mcfloat_t dnleft, mcfloat_t dnright)
+MC_INLINE mcfloat_t mc_mathutil_sub(mcfloat_t dnleft, mcfloat_t dnright)
 {
     return dnleft - dnright;
 }
 
-MCINLINE mcfloat_t mc_mathutil_mult(mcfloat_t dnleft, mcfloat_t dnright)
+MC_INLINE mcfloat_t mc_mathutil_mult(mcfloat_t dnleft, mcfloat_t dnright)
 {
     return dnleft * dnright;
 }
 
-MCINLINE mcfloat_t mc_mathutil_div(mcfloat_t dnleft, mcfloat_t dnright)
+MC_INLINE mcfloat_t mc_mathutil_div(mcfloat_t dnleft, mcfloat_t dnright)
 {
     return dnleft / dnright;
 }
 
-MCINLINE mcfloat_t mc_mathutil_mod(mcfloat_t dnleft, mcfloat_t dnright)
+MC_INLINE mcfloat_t mc_mathutil_mod(mcfloat_t dnleft, mcfloat_t dnright)
 {
     return fmod(dnleft, dnright);
 }
@@ -1465,12 +1527,12 @@ mcvallist_t* mc_vallist_make(mcstate_t* state, const char* name, size_t initials
     return list;
 }
 
-mcvalue_t* mc_vallist_data(mcvallist_t* list)
+MC_INLINE mcvalue_t* mc_vallist_data(mcvallist_t* list)
 {
     return list->listitems;
 }
 
-mcvallist_t* mc_vallist_copy(mcvallist_t* list)
+MC_INLINE mcvallist_t* mc_vallist_copy(mcvallist_t* list)
 {
     size_t i;
     mcvallist_t* nlist;
@@ -1482,17 +1544,17 @@ mcvallist_t* mc_vallist_copy(mcvallist_t* list)
     return nlist;
 }
 
-size_t mc_vallist_count(mcvallist_t* list)
+MC_INLINE size_t mc_vallist_count(mcvallist_t* list)
 {
     return list->listcount;
 }
 
-size_t mc_vallist_capacity(mcvallist_t* list)
+MC_INLINE size_t mc_vallist_capacity(mcvallist_t* list)
 {
     return list->listcount;
 }
 
-void mc_vallist_setempty(mcvallist_t* list)
+MC_INLINE void mc_vallist_setempty(mcvallist_t* list)
 {
     if((list->listcapacity > 0) && (list->listitems != NULL))
     {
@@ -1518,20 +1580,20 @@ void mc_vallist_destroy(mcvallist_t* list)
     }
 }
 
-mcvalue_t mc_vallist_get(mcvallist_t* list, size_t idx)
+MC_INLINE mcvalue_t mc_vallist_get(mcvallist_t* list, size_t idx)
 {
     return list->listitems[idx];
 }
 
-mcvalue_t* mc_vallist_getp(mcvallist_t* list, size_t idx)
+MC_INLINE mcvalue_t* mc_vallist_getp(mcvallist_t* list, size_t idx)
 {
     return &list->listitems[idx];
 }
 
-bool mc_vallist_set(mcvallist_t* list, size_t idx, mcvalue_t val)
+MC_INLINE bool mc_vallist_set(mcvallist_t* list, size_t idx, mcvalue_t val)
 {
     size_t need;
-    //need = MC_GROW_CAPACITY(list->listcapacity);
+    //need = MC_UTIL_INCCAPACITY(list->listcapacity + idx);
     need = idx + 8;
     if(((idx == 0) || (list->listcapacity == 0)) || (idx >= list->listcapacity))
     {
@@ -1545,14 +1607,14 @@ bool mc_vallist_set(mcvallist_t* list, size_t idx, mcvalue_t val)
     return true;
 }
 
-bool mc_vallist_push(mcvallist_t* list, mcvalue_t value)
+MC_INLINE bool mc_vallist_push(mcvallist_t* list, mcvalue_t value)
 {
     size_t oldcap;
     #if 1
         if(list->listcapacity < list->listcount + 1)
         {
             oldcap = list->listcapacity;
-            list->listcapacity = MC_GROW_CAPACITY(oldcap);
+            list->listcapacity = MC_UTIL_INCCAPACITY(oldcap);
             if(list->listitems == NULL)
             {
                 list->listitems = (mcvalue_t*)mc_allocator_malloc(list->pstate, sizeof(mcvalue_t) * list->listcapacity);
@@ -1568,7 +1630,7 @@ bool mc_vallist_push(mcvallist_t* list, mcvalue_t value)
     return true;
 }
 
-bool mc_vallist_pop(mcvallist_t* list, mcvalue_t* dest)
+MC_INLINE bool mc_vallist_pop(mcvallist_t* list, mcvalue_t* dest)
 {
     if(list->listcount > 0)
     {
@@ -1579,7 +1641,7 @@ bool mc_vallist_pop(mcvallist_t* list, mcvalue_t* dest)
     return false;
 }
 
-bool mc_vallist_removeat(mcvallist_t* arr, unsigned int ix)
+MC_INLINE bool mc_vallist_removeat(mcvallist_t* arr, unsigned int ix)
 {
     size_t tomovebytes;
     void* dest;
@@ -1608,7 +1670,7 @@ bool mc_vallist_removeat(mcvallist_t* arr, unsigned int ix)
     return true;
 }
 
-void mc_vallist_ensurecapacity(mcvallist_t* list, size_t needsize, mcvalue_t fillval, bool first)
+MC_INLINE void mc_vallist_ensurecapacity(mcvallist_t* list, size_t needsize, mcvalue_t fillval, bool first)
 {
     size_t i;
     size_t ncap;
@@ -1618,7 +1680,7 @@ void mc_vallist_ensurecapacity(mcvallist_t* list, size_t needsize, mcvalue_t fil
     {
         oldcap = list->listcapacity;
         //ncap = needsize;
-        ncap = (list->listcount + needsize + 15) / 16 * 16;
+        ncap = MC_UTIL_INCCAPACITY(list->listcapacity + needsize);
         list->listcapacity = ncap;
         if(list->listitems == NULL)
         {
@@ -1651,12 +1713,12 @@ mcframelist_t* mc_framelist_make(mcstate_t* state, size_t initialsize)
     return list;
 }
 
-size_t mc_framelist_count(mcframelist_t* list)
+MC_INLINE size_t mc_framelist_count(mcframelist_t* list)
 {
     return list->listcount;
 }
 
-size_t mc_framelist_capacity(mcframelist_t* list)
+MC_INLINE size_t mc_framelist_capacity(mcframelist_t* list)
 {
     return list->listcount;
 }
@@ -1674,16 +1736,16 @@ void mc_framelist_destroy(mcframelist_t* list)
     }
 }
 
-mcvmframe_t* mc_framelist_get(mcframelist_t* list, size_t idx)
+MC_INLINE mcvmframe_t* mc_framelist_get(mcframelist_t* list, size_t idx)
 {
     return &list->listitems[idx];
 }
 
-mcvmframe_t* mc_framelist_set(mcframelist_t* list, size_t idx, mcvmframe_t val)
+MC_INLINE mcvmframe_t* mc_framelist_set(mcframelist_t* list, size_t idx, mcvmframe_t val)
 {
     size_t need;
     mcvmframe_t nullframe = {};
-    //need = MC_GROW_CAPACITY(list->listcapacity);
+    //need = MC_UTIL_INCCAPACITY(list->listcapacity);
     need = idx + 8;
     if(((idx == 0) || (list->listcapacity == 0)) || (idx >= list->listcapacity))
     {
@@ -1697,13 +1759,13 @@ mcvmframe_t* mc_framelist_set(mcframelist_t* list, size_t idx, mcvmframe_t val)
     return &list->listitems[idx];
 }
 
-void mc_framelist_push(mcframelist_t* list, mcvmframe_t value)
+MC_INLINE void mc_framelist_push(mcframelist_t* list, mcvmframe_t value)
 {
     size_t oldcap;
     if(list->listcapacity < list->listcount + 1)
     {
         oldcap = list->listcapacity;
-        list->listcapacity = MC_GROW_CAPACITY(oldcap);
+        list->listcapacity = MC_UTIL_INCCAPACITY(oldcap);
         if(list->listitems == NULL)
         {
             list->listitems = (mcvmframe_t*)mc_allocator_malloc(list->pstate, sizeof(mcvmframe_t) * list->listcapacity);
@@ -1717,8 +1779,7 @@ void mc_framelist_push(mcframelist_t* list, mcvmframe_t value)
     list->listcount++;
 }
 
-
-void mc_framelist_ensurecapacity(mcframelist_t* list, size_t needsize, mcvmframe_t fillval, bool first)
+MC_INLINE void mc_framelist_ensurecapacity(mcframelist_t* list, size_t needsize, mcvmframe_t fillval, bool first)
 {
     size_t i;
     size_t ncap;
@@ -1728,7 +1789,8 @@ void mc_framelist_ensurecapacity(mcframelist_t* list, size_t needsize, mcvmframe
     {
         oldcap = list->listcapacity;
         //ncap = needsize;
-        ncap = (list->listcount + needsize + 15) / 16 * 16;
+        //ncap = (list->listcount + needsize + 15) / 16 * 16;
+        ncap = MC_UTIL_INCCAPACITY(list->listcapacity + needsize);
         list->listcapacity = ncap;
         if(list->listitems == NULL)
         {
@@ -2036,8 +2098,9 @@ bool mc_genericdict_growandrehash(mcgenericdict_t* dict)
     void* value;
     size_t ncap;
     mcgenericdict_t newdict;
-    ncap = dict->cellcapacity * 2;
+    //ncap = dict->cellcapacity * 2;
     //ncap = (dict->cellcapacity + 15) / 16 * 16;
+    ncap = MC_UTIL_INCCAPACITY(dict->cellcapacity);
     ok = mc_genericdict_init(&newdict, dict->pstate, ncap, dict->funccopyfn, dict->funcdestroyfn);
     if(!ok)
     {
@@ -2417,12 +2480,12 @@ bool mc_valdict_growandrehash(mcvaldict_t* dict)
     bool ok;
     mcvaldict_t newdict;
     unsigned int i;
-    unsigned newcapacity;
+    unsigned ncap;
     char* key;
     void* value;
-    newcapacity = dict->cellcapacity == 0 ? MC_CONF_GENERICDICTINITSIZE : dict->cellcapacity * 2;
-    //newcapacity = (dict->cellcapacity + 15) / 16 * 16;
-    ok = mc_valdict_init(&newdict, dict->pstate, dict->keytypesize, dict->valtypesize, newcapacity);
+    //ncap = dict->cellcapacity == 0 ? MC_CONF_GENERICDICTINITSIZE : dict->cellcapacity * 2;
+    ncap = MC_UTIL_INCCAPACITY(dict->cellcapacity);    
+    ok = mc_valdict_init(&newdict, dict->pstate, dict->keytypesize, dict->valtypesize, ncap);
     if(!ok)
     {
         return false;
@@ -2575,7 +2638,7 @@ mcbasicarray_t* mc_basicarray_copy(mcbasicarray_t* arr)
 
 bool mc_basicarray_push(mcbasicarray_t* arr, void* value)
 {
-    unsigned int newcapacity;
+    unsigned int ncap;
     unsigned char* newdata;
     if(arr->count >= arr->capacity)
     {
@@ -2584,9 +2647,9 @@ bool mc_basicarray_push(mcbasicarray_t* arr, void* value)
         {
             return false;
         }
-        newcapacity = arr->capacity > 0 ? arr->capacity * 2 : 1;
-        //Unewcapacity = arr->capacity > 0 ? ((arr->capacity + 15) / 16 * 16) : 1;
-        newdata = (unsigned char*)mc_allocator_malloc(arr->pstate, newcapacity * arr->typesize);
+        //ncap = arr->capacity > 0 ? arr->capacity * 2 : 1;
+        ncap = MC_UTIL_INCCAPACITY(arr->capacity);
+        newdata = (unsigned char*)mc_allocator_malloc(arr->pstate, ncap * arr->typesize);
         if(!newdata)
         {
             return false;
@@ -2595,7 +2658,7 @@ bool mc_basicarray_push(mcbasicarray_t* arr, void* value)
         mc_allocator_free(arr->pstate, arr->allocdata);
         arr->allocdata = newdata;
         arr->data = arr->allocdata;
-        arr->capacity = newcapacity;
+        arr->capacity = ncap;
     }
     if(value)
     {
@@ -2644,7 +2707,7 @@ bool mc_basicarray_set(mcbasicarray_t* arr, unsigned int ix, void* value)
     return true;
 }
 
-MCINLINE void* mc_basicarray_get(mcbasicarray_t* arr, unsigned int ix)
+MC_INLINE void* mc_basicarray_get(mcbasicarray_t* arr, unsigned int ix)
 {
     size_t offset;
     if(ix >= arr->count)
@@ -2656,7 +2719,7 @@ MCINLINE void* mc_basicarray_get(mcbasicarray_t* arr, unsigned int ix)
     return arr->data + offset;
 }
 
-MCINLINE size_t mc_basicarray_count(mcbasicarray_t* arr)
+MC_INLINE size_t mc_basicarray_count(mcbasicarray_t* arr)
 {
     if(!arr)
     {
@@ -2833,7 +2896,7 @@ bool mc_ptrlist_push(mcptrlist_t* list, void* value)
     if(list->listcapacity < list->listcount + 1)
     {
         oldcap = list->listcapacity;
-        list->listcapacity = MC_GROW_CAPACITY(oldcap);
+        list->listcapacity = MC_UTIL_INCCAPACITY(oldcap);
         if(list->listitems == NULL)
         {
             list->listitems = (void**)mc_allocator_malloc(list->pstate, sizeof(void*) * list->listcapacity);
@@ -3691,49 +3754,6 @@ mcerror_t* mc_errlist_getlast(mcerrlist_t* errors)
     return &errors->errors[errors->count - 1];
 }
 
-/* containerend utilsend */
-
-MCINLINE mcvalue_t mc_object_makedatafrom(mcvaltype_t type, mcobjdata_t* data)
-{
-    mcvalue_t object;
-    object.type = type;
-    data->type = type;
-    object.isallocated = true;
-    object.uval.odata = data;
-    return object;
-}
-
-MCINLINE mcvalue_t mc_value_makeempty(mcvaltype_t t)
-{
-    mcvalue_t o = {};
-    //memset(&o, 0, sizeof(mcvalue_t));
-    o.type = t;
-    o.isallocated = false;
-    return o;
-}
-
-MCINLINE mcvalue_t mc_value_makenumber(mcfloat_t val)
-{
-    mcvalue_t o;
-    o = mc_value_makeempty(MC_VAL_NUMBER);
-    o.uval.valnumber = val;
-    return o;
-}
-
-MCINLINE mcvalue_t mc_value_makebool(bool val)
-{
-    mcvalue_t o;
-    o = mc_value_makeempty(MC_VAL_BOOL);
-    o.uval.valbool = val;
-    return o;
-}
-
-MCINLINE mcvalue_t mc_value_makenull(void)
-{
-    mcvalue_t o;
-    o = mc_value_makeempty(MC_VAL_NULL);
-    return o;
-}
 
 mcvalue_t mc_value_makestrcapacity(mcstate_t* state, int capacity)
 {
@@ -4395,7 +4415,7 @@ mcfloat_t mc_value_getnumber(mcvalue_t obj)
     return obj.uval.valnumber;
 }
 
-MCINLINE const char* mc_valstring_getdata(mcvalue_t object)
+MC_INLINE const char* mc_valstring_getdata(mcvalue_t object)
 {
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_STRING);
     return mc_valstring_getdataintern(object);
@@ -4418,7 +4438,7 @@ void mc_string_setlength(mcvalue_t object, int len)
 }
 
 
-MCINLINE char* mc_valstring_getmutabledata(mcvalue_t object)
+MC_INLINE char* mc_valstring_getmutabledata(mcvalue_t object)
 {
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_STRING);
     return mc_valstring_getdataintern(object);
@@ -4484,7 +4504,7 @@ mcobjfuncscript_t* mc_value_functiongetscriptfunction(mcvalue_t object)
     return &data->uvobj.valscriptfunc;
 }
 
-MCINLINE mcobjfuncnative_t* mc_value_functiongetnativefunction(mcvalue_t obj)
+MC_INLINE mcobjfuncnative_t* mc_value_functiongetnativefunction(mcvalue_t obj)
 {
     mcobjdata_t* data = mc_value_getallocateddata(obj);
     return &data->uvobj.valnativefunc;
@@ -5116,7 +5136,7 @@ bool mc_objfunction_freevalsareallocated(mcobjfuncscript_t* fun)
     return fun->freevalscount >= MC_UTIL_STATICARRAYSIZE(fun->ufv.freevalsstack);
 }
 
-MCINLINE char* mc_valstring_getdataintern(mcvalue_t object)
+MC_INLINE char* mc_valstring_getdataintern(mcvalue_t object)
 {
     mcobjdata_t* data;
     data = mc_value_getallocateddata(object);
@@ -12802,7 +12822,7 @@ char* mc_util_joinstringarray(mcstate_t* state, mcptrlist_t* items, const char* 
     return mc_printer_getstringanddestroy(res, NULL);
 }
 
-MCINLINE bool mc_callframe_init(mcvmframe_t* frame, mcvalue_t functionobj, int baseptr)
+MC_INLINE bool mc_callframe_init(mcvmframe_t* frame, mcvalue_t functionobj, int baseptr)
 {
     mcobjfuncscript_t* function;
     if(mc_value_gettype(functionobj) != MC_VAL_FUNCSCRIPT)
@@ -12822,7 +12842,7 @@ MCINLINE bool mc_callframe_init(mcvmframe_t* frame, mcvalue_t functionobj, int b
     return true;
 }
 
-MCINLINE uint64_t mc_callframe_readuint64(mcvmframe_t* frame)
+MC_INLINE uint64_t mc_callframe_readuint64(mcvmframe_t* frame)
 {
     uint64_t res;
     uint8_t* data;
@@ -12840,7 +12860,7 @@ MCINLINE uint64_t mc_callframe_readuint64(mcvmframe_t* frame)
     return res;
 }
 
-MCINLINE uint16_t mc_callframe_readuint16(mcvmframe_t* frame)
+MC_INLINE uint16_t mc_callframe_readuint16(mcvmframe_t* frame)
 {
     uint8_t* data;
     data = frame->bytecode + frame->bcposition;
@@ -12848,7 +12868,7 @@ MCINLINE uint16_t mc_callframe_readuint16(mcvmframe_t* frame)
     return (data[0] << 8) | data[1];
 }
 
-MCINLINE uint8_t mc_callframe_readuint8(mcvmframe_t* frame)
+MC_INLINE uint8_t mc_callframe_readuint8(mcvmframe_t* frame)
 {
     uint8_t* data;
     data = frame->bytecode + frame->bcposition;
@@ -12856,13 +12876,13 @@ MCINLINE uint8_t mc_callframe_readuint8(mcvmframe_t* frame)
     return data[0];
 }
 
-MCINLINE mcopcode_t mc_callframe_readopcode(mcvmframe_t* frame)
+MC_INLINE mcopcode_t mc_callframe_readopcode(mcvmframe_t* frame)
 {
     frame->sourcebcpos = frame->bcposition;
     return (mcopcode_t)mc_callframe_readuint8(frame);
 }
 
-MCINLINE mcastlocation_t mc_callframe_getpos(mcvmframe_t* frame)
+MC_INLINE mcastlocation_t mc_callframe_getpos(mcvmframe_t* frame)
 {
     if(frame->framesrcposlist)
     {
@@ -14289,7 +14309,7 @@ mcvalue_t mc_vm_callvalue(mcstate_t* state, mcvallist_t* constants, mcvalue_t ca
     return mc_value_makenull();
 }
 
-MCINLINE bool mc_vmdo_tryoverloadoperator(mcstate_t* state, mcvalue_t left, mcvalue_t right, mcinternopcode_t op, bool* outoverloadfound)
+MC_INLINE bool mc_vmdo_tryoverloadoperator(mcstate_t* state, mcvalue_t left, mcvalue_t right, mcinternopcode_t op, bool* outoverloadfound)
 {
     int numoper;
     mcvalue_t key;
@@ -14531,7 +14551,7 @@ void mc_vm_rungc(mcstate_t* vm, mcvallist_t* constants)
     mc_state_gcsweep(vm);
 }
 
-MCINLINE bool mc_vmdo_callobject(mcstate_t* vm, mcvalue_t callee, int nargs)
+MC_INLINE bool mc_vmdo_callobject(mcstate_t* vm, mcvalue_t callee, int nargs)
 {
     bool ok;
     const char* calleetypename;
@@ -14670,7 +14690,7 @@ bool mc_valstring_appendvalue(mcvalue_t destval, mcvalue_t val)
     return false;
 }
 
-MCINLINE bool mc_vmdo_opaddstring(mcstate_t* state, mcvalue_t valleft, mcvalue_t valright, mcvaltype_t righttype, mcopcode_t opcode)
+MC_INLINE bool mc_vmdo_opaddstring(mcstate_t* state, mcvalue_t valleft, mcvalue_t valright, mcvaltype_t righttype, mcopcode_t opcode)
 {
     mcvalue_t nstring;
     (void)opcode;
@@ -14690,7 +14710,7 @@ MCINLINE bool mc_vmdo_opaddstring(mcstate_t* state, mcvalue_t valleft, mcvalue_t
     return true;
 }
 
-MCINLINE bool mc_vmdo_math(mcstate_t* state, mcopcode_t opcode)
+MC_INLINE bool mc_vmdo_math(mcstate_t* state, mcopcode_t opcode)
 {
     bool ok;
     bool overloadfound;
@@ -14799,7 +14819,21 @@ MCINLINE bool mc_vmdo_math(mcstate_t* state, mcopcode_t opcode)
     return true;
 }
 
-MCINLINE bool mc_vmdo_getindexpartial(mcstate_t* state, mcvalue_t left, mcvaltype_t lefttype, mcvalue_t index, mcvaltype_t indextype)
+MC_INLINE mcclassinfo_t* mc_vmdo_getclassfor(mcstate_t* state, mcvaltype_t typ)
+{
+    switch(typ)
+    {
+        
+    }
+    return NULL;
+}
+
+MC_INLINE bool mc_vmdo_getclassindex(mcstate_t* state, mcvalue_t left, mcvalue_t index, mcvalue_t setval)
+{
+    
+}
+
+MC_INLINE bool mc_vmdo_getindexpartial(mcstate_t* state, mcvalue_t left, mcvaltype_t lefttype, mcvalue_t index, mcvaltype_t indextype, bool fromdot)
 {
     int leftlen;
     int ix;
@@ -14808,6 +14842,7 @@ MCINLINE bool mc_vmdo_getindexpartial(mcstate_t* state, mcvalue_t left, mcvaltyp
     const char* indextypename;
     const char* lefttypename;
     mcvalue_t res;
+
     if(lefttype != MC_VAL_ARRAY && lefttype != MC_VAL_MAP && lefttype != MC_VAL_STRING)
     {
         lefttypename = mc_valtype_getname(lefttype);
@@ -14815,6 +14850,10 @@ MCINLINE bool mc_vmdo_getindexpartial(mcstate_t* state, mcvalue_t left, mcvaltyp
         return false;
     }
     res = mc_value_makenull();
+    if(mc_vmdo_getclassindex(state, left, index, mc_value_makenull()))
+    {
+        return true;
+    }
     if(lefttype == MC_VAL_ARRAY)
     {
         if(indextype != MC_VAL_NUMBER)
@@ -14860,7 +14899,7 @@ MCINLINE bool mc_vmdo_getindexpartial(mcstate_t* state, mcvalue_t left, mcvaltyp
     return true;
 }
 
-MCINLINE bool mc_vmdo_getindexfull(mcstate_t* state)
+MC_INLINE bool mc_vmdo_getindexfull(mcstate_t* state)
 {
     mcvaltype_t lefttype;
     mcvaltype_t indextype;
@@ -14870,7 +14909,7 @@ MCINLINE bool mc_vmdo_getindexfull(mcstate_t* state)
     left = mc_vm_stackpop(state);
     lefttype = mc_value_gettype(left);
     indextype = mc_value_gettype(index);
-    return mc_vmdo_getindexpartial(state, left, lefttype, index, indextype);
+    return mc_vmdo_getindexpartial(state, left, lefttype, index, indextype, false);
 }
 
 bool mc_vm_findclassfor(mcstate_t* state)
@@ -14879,7 +14918,7 @@ bool mc_vm_findclassfor(mcstate_t* state)
     return false;
 }
 
-MCINLINE bool mc_vmdo_getdotindex(mcstate_t* state)
+MC_INLINE bool mc_vmdo_getdotindex(mcstate_t* state)
 {
     mcvaltype_t lefttype;
     mcvaltype_t indextype;
@@ -14893,10 +14932,10 @@ MCINLINE bool mc_vmdo_getdotindex(mcstate_t* state)
     {
         /* TODO: find member function, if any */
     }
-    return mc_vmdo_getindexpartial(state, left, lefttype, index, indextype);
+    return mc_vmdo_getindexpartial(state, left, lefttype, index, indextype, true);
 }
 
-MCINLINE bool mc_vmdo_setindexpartial(mcstate_t* state, mcvalue_t left, mcvaltype_t lefttype, mcvalue_t index, mcvaltype_t indextype, mcvalue_t nvalue)
+MC_INLINE bool mc_vmdo_setindexpartial(mcstate_t* state, mcvalue_t left, mcvaltype_t lefttype, mcvalue_t index, mcvaltype_t indextype, mcvalue_t nvalue)
 {
     bool ok;
     int alen;
@@ -14944,7 +14983,7 @@ MCINLINE bool mc_vmdo_setindexpartial(mcstate_t* state, mcvalue_t left, mcvaltyp
     return true;
 }
 
-MCINLINE bool mc_vmdo_setindexfull(mcstate_t* state)
+MC_INLINE bool mc_vmdo_setindexfull(mcstate_t* state)
 {
     mcvalue_t index;
     mcvalue_t left;
@@ -14959,7 +14998,7 @@ MCINLINE bool mc_vmdo_setindexfull(mcstate_t* state)
     return mc_vmdo_setindexpartial(state, left, lefttype, index, indextype, nvalue);
 }
 
-MCINLINE bool mc_vmdo_getvalueatfull(mcstate_t* state)
+MC_INLINE bool mc_vmdo_getvalueatfull(mcstate_t* state)
 {
     int ix;
     int leftlen;
@@ -15014,7 +15053,7 @@ MCINLINE bool mc_vmdo_getvalueatfull(mcstate_t* state)
     return true;
 }
 
-MCINLINE bool mc_vmdo_makefunction(mcstate_t* state, mcvallist_t* constants)
+MC_INLINE bool mc_vmdo_makefunction(mcstate_t* state, mcvallist_t* constants)
 {
     int i;
     uint8_t numfree;
@@ -15058,7 +15097,7 @@ MCINLINE bool mc_vmdo_makefunction(mcstate_t* state, mcvallist_t* constants)
     return true;
 }
 
-MCINLINE bool mc_vmdo_docmpvalue(mcstate_t* state, mcopcode_t opcode)
+MC_INLINE bool mc_vmdo_docmpvalue(mcstate_t* state, mcopcode_t opcode)
 {
     bool ok;
     bool isoverloaded;
@@ -15099,7 +15138,7 @@ MCINLINE bool mc_vmdo_docmpvalue(mcstate_t* state, mcopcode_t opcode)
     return true;
 }
 
-MCINLINE bool mc_vmdo_docmpvalgreater(mcstate_t* state, mcopcode_t opcode)
+MC_INLINE bool mc_vmdo_docmpvalgreater(mcstate_t* state, mcopcode_t opcode)
 {
     bool resval;
     mcfloat_t comparisonres;
@@ -15141,7 +15180,7 @@ MCINLINE bool mc_vmdo_docmpvalgreater(mcstate_t* state, mcopcode_t opcode)
     return true;
 }
 
-MCINLINE bool mc_vmdo_makearray(mcstate_t* state)
+MC_INLINE bool mc_vmdo_makearray(mcstate_t* state)
 {
     bool ok;
     int i;
@@ -15170,7 +15209,7 @@ MCINLINE bool mc_vmdo_makearray(mcstate_t* state)
     return true;
 }
 
-MCINLINE bool mc_vmdo_makemapstart(mcstate_t* state)
+MC_INLINE bool mc_vmdo_makemapstart(mcstate_t* state)
 {
     uint16_t count;
     mcvalue_t mapobj;
@@ -15184,7 +15223,7 @@ MCINLINE bool mc_vmdo_makemapstart(mcstate_t* state)
     return true;
 }
 
-MCINLINE bool mc_vmdo_makemapend(mcstate_t* state)
+MC_INLINE bool mc_vmdo_makemapend(mcstate_t* state)
 {
     bool ok;
     int i;

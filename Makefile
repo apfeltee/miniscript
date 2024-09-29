@@ -17,7 +17,7 @@ unflags = \
 	-Wunused-variable
 
 
-WFLAGS = -Wall -Wextra -Wshadow -Wpointer-arith -Wstrict-prototypes $(unflags)
+WFLAGS = -Wall -Wextra -Wshadow -Wpointer-arith $(unflags)
 #WFLAGS = -Wall -Wextra -Wshadow
 #WFLAGS += -ansi -pedantic
 #WFLAGS = -w
@@ -26,7 +26,7 @@ CC = gcc $(WFLAGS)
 #CC = clang -gdwarf-4
 
 #CFLAGS = $(INCFLAGS) -Ofast -march=native -flto -ffast-math -funroll-loops
-CFLAGS = $(INCFLAGS) -O0 -g3 -ggdb3
+CFLAGS = $(INCFLAGS) -Og -g3 -ggdb3
 LDFLAGS = -ldl -lm  -lreadline -lpthread
 target = run
 
