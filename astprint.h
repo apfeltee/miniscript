@@ -54,7 +54,26 @@ void mc_astprint_printfuncliteral(mcastprinter_t* apr, mcastexpression_t* expr)
     }
     mc_printer_puts(apr->pdest, ") ");
     mc_astprint_codeblock(apr, fn->body);
+}
 
+void mc_astprint_printcall(mcastprinter_t* apr, mcastexpression_t* expr)
+{
+    size_t i;
+    mcastexprcall_t* ce;
+    mcastexpression_t* arg;
+    ce = &expr->uexpr.exprcall;
+    mc_astprint_expression(apr, ce->function);
+    mc_printer_puts(apr->pdest, "(");
+    for(i = 0; i < mc_ptrlist_count(ce->args); i++)
+    {
+        arg = (mcastexpression_t*)mc_ptrlist_get(ce->args, i);
+        mc_astprint_expression(apr, arg);
+        if(i < (mc_ptrlist_count(ce->args) - 1))
+        {
+            mc_printer_puts(apr->pdest, ", ");
+        }
+    }
+    mc_printer_puts(apr->pdest, ")");
 }
 
 void mc_astprint_expression(mcastprinter_t* apr, mcastexpression_t* expr)
@@ -160,22 +179,7 @@ void mc_astprint_expression(mcastprinter_t* apr, mcastexpression_t* expr)
             break;
         case MC_EXPR_CALL:
             {
-                size_t i;
-                mcastexprcall_t* ce;
-                mcastexpression_t* arg;
-                ce = &expr->uexpr.exprcall;
-                mc_astprint_expression(apr, ce->function);
-                mc_printer_puts(apr->pdest, "(");
-                for(i = 0; i < mc_ptrlist_count(ce->args); i++)
-                {
-                    arg = (mcastexpression_t*)mc_ptrlist_get(ce->args, i);
-                    mc_astprint_expression(apr, arg);
-                    if(i < (mc_ptrlist_count(ce->args) - 1))
-                    {
-                        mc_printer_puts(apr->pdest, ", ");
-                    }
-                }
-                mc_printer_puts(apr->pdest, ")");
+                mc_astprint_printcall(apr, expr);
             }
             break;
         case MC_EXPR_INDEX:

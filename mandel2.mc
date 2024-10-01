@@ -49,7 +49,7 @@ function inside(x, y)
 
 function main()
 {
-    var steps = 15;
+    var steps = 30;
     var xmin = of_int(-2);
     var xmax = of_int(1);
     var deltax = do_div(do_sub(xmax, xmin), of_int(2 * steps));

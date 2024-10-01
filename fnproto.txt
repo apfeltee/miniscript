@@ -1,0 +1,1 @@
+mcvalue_t\s+\b\w+\b\s*\(mcstate_t\s*\*\s*\b\w+\b\s*,\s*void\s*\*\s*\b\w+\b\s*,\s*int\s*\b\w+\b\s*,\s*mcvalue_t\s*\*\s*\b\w+\b\s*\)
