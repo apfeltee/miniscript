@@ -3,7 +3,7 @@
 
 function A(k, plusone, minusone, minusanother, plusanother, plusnull)
 {
-    var B = function()
+    function B()
     {
         k = k - 1;
         return A(k, B, plusone, minusone, minusanother, plusanother);

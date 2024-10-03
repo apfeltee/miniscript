@@ -22,8 +22,10 @@ WFLAGS = -Wall -Wextra -Wshadow -Wpointer-arith $(unflags)
 #WFLAGS += -ansi -pedantic
 #WFLAGS = -w
 
-CC = gcc $(WFLAGS)
-CC = clang -gdwarf-4 $(WFLAGS)
+#EXTRAFLAGS = -fsanitize=address -fsanitize=undefined -fstack-protector-all -ftrapv
+
+CC = g++ $(WFLAGS) $(EXTRAFLAGS)
+#CC = clang -gdwarf-4 $(WFLAGS) $(EXTRAFLAGS)
 
 #CFLAGS = $(INCFLAGS) -Ofast -march=native -flto -ffast-math -funroll-loops
 CFLAGS = $(INCFLAGS) -O0 -g3 -ggdb3

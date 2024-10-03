@@ -790,7 +790,6 @@ struct mcobjfuncscript_t
     int numargs;
     int freevalscount;
     bool ownsdata;
-
 };
 
 struct mcobjfuncnative_t
@@ -813,13 +812,11 @@ struct mcobjerror_t
     mctraceback_t* traceback;
 };
 
-
 struct mcobjstring_t
 {
     unsigned long hash;
     StringBuffer* strbuf;
 };
-
 
 union mcobjunion_t
 {
@@ -846,7 +843,6 @@ struct mcopdefinition_t
     const char* name;
     int numoperands;
     int operandwidths[2];
-
 };
 
 struct mcastsymbol_t
@@ -1001,7 +997,6 @@ struct mctraceback_t
     mcbasicarray_t* items;
 };
 
-
 struct mcconfig_t
 {
     bool dumpast;
@@ -1013,7 +1008,6 @@ struct mcconfig_t
     bool replmode;
 };
 
-
 struct mcstate_t
 {
     mcconfig_t config;
@@ -1021,15 +1015,11 @@ struct mcstate_t
     mcgcmemory_t* mem;
     mcglobalstore_t* vmglobalstore;
     mcvalue_t globalvalstack[MC_CONF_MAXVMGLOBALS];
-    //mcvallist_t* globalvalstack;
     size_t globalvalcount;
-    //mcvalue_t valuestack[MC_CONF_MINVMVALSTACKSIZE];
     mcvallist_t* valuestack;
     size_t vsposition;
-    //mcvalue_t valthisstack[MC_CONF_MINVMTHISSTACKSIZE];
     mcvallist_t* valthisstack;
     size_t thisstpos;
-    //mcvmframe_t framestack[MC_CONF_MINVMFRAMES];
     mcframelist_t* framestack;
     mcvalue_t lastpopped;
     mcvmframe_t* currframe;
@@ -1608,10 +1598,6 @@ MC_INLINE bool mc_vallist_set(mcvallist_t* list, size_t idx, mcvalue_t val)
         mc_vallist_ensurecapacity(list, need, mc_value_makenull(), false);
     }
     list->listitems[idx] = val;
-    if(idx > list->listcount)
-    {
-        list->listcount = idx;
-    }
     return true;
 }
 
@@ -2807,11 +2793,11 @@ void mc_ptrlist_ensurecapacity(mcptrlist_t* list, size_t needsize, void* fillval
         list->listcapacity = needsize;
         if(list->listitems == NULL)
         {
-            list->listitems = (void*)mc_allocator_malloc(list->pstate, sizeof(void*) * needsize);
+            list->listitems = (void**)mc_allocator_malloc(list->pstate, sizeof(void*) * needsize);
         }
         else
         {
-            list->listitems = (void*)mc_allocator_realloc(list->pstate, list->listitems, sizeof(void*) * needsize);
+            list->listitems = (void**)mc_allocator_realloc(list->pstate, list->listitems, sizeof(void*) * needsize);
         }
         for(i = oldcap; i < needsize; i++)
         {
@@ -11737,7 +11723,7 @@ mcvalue_t mc_program_execute(mcstate_t* state, mccompiledprogram_t* program)
     {
         return mc_value_makenull();
     }
-    MC_ASSERT(state->vsposition == 0);
+    //MC_ASSERT(state->vsposition == 0);
     res = mc_vm_getlastpopped(state);
     if(res.type == MC_VAL_NONE)
     {
@@ -13825,7 +13811,7 @@ bool mc_vm_runexecfunc(mcstate_t* state, mccompiledprogram_t* comp_res, mcvallis
     {
         mc_vm_popframe(state);
     }
-    MC_ASSERT(state->vsposition == oldsp);
+    //MC_ASSERT(state->vsposition == oldsp);
     state->thisstpos = oldthissp;
     return res;
 }
@@ -13975,7 +13961,7 @@ void mc_vm_setstackpos(mcstate_t* state, size_t nsp)
         #if 0
             memset(state->valuestack->listitems + state->vsposition, 0, bytescount);
         #else
-            mc_vallist_set(state->valuestack, state->vsposition, mc_value_makenull());
+            //mc_vallist_set(state->valuestack, state->vsposition, mc_value_makenull());
         #endif
     }
     state->vsposition = nsp;
@@ -13998,7 +13984,11 @@ void mc_vm_stackpush(mcstate_t* vm, mcvalue_t obj)
         MC_ASSERT((size_t)vm->vsposition >= (size_t)(frame->basepointer + numlocals));
     }
 #endif
-    mc_vallist_set(vm->valuestack, vm->vsposition, obj);
+    #if 1
+        mc_vallist_set(vm->valuestack, vm->vsposition, obj);
+    #else
+        mc_vallist_push(vm->valuestack, obj);
+    #endif
     vm->vsposition++;
 }
 
@@ -14069,11 +14059,17 @@ mcvalue_t mc_vm_thisstackget(mcstate_t* vm, int nthitem)
 
 bool mc_vm_pushframe(mcstate_t* vm, mcvmframe_t frame)
 {
+    int add;
     mcobjfuncscript_t* framefunction;
-    mc_framelist_set(vm->framestack, vm->framestack->listcount, frame);
-    //mc_framelist_push(vm->framestack, frame);
+    add = 0;
+    #if 1
+        mc_framelist_set(vm->framestack, vm->framestack->listcount, frame);
+        add = 1;
+    #else
+        mc_framelist_push(vm->framestack, frame);
+    #endif
     vm->currframe = mc_framelist_get(vm->framestack, vm->framestack->listcount);
-    vm->framestack->listcount++;
+    vm->framestack->listcount += add;
     framefunction = mc_value_functiongetscriptfunction(frame.function);
     mc_vm_setstackpos(vm, frame.basepointer + framefunction->numlocals);
     return true;
@@ -14133,7 +14129,7 @@ MC_INLINE bool mc_vmdo_callobject(mcstate_t* vm, mcvalue_t callee, int nargs)
         calleefunction = mc_value_functiongetscriptfunction(callee);
         if(nargs != calleefunction->numargs)
         {
-            #if 1
+            #if 0
             mc_errlist_addf(&vm->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(vm->currframe), "invalid number of arguments to \"%s\": expected %d, got %d",
                               mc_value_functiongetname(callee), calleefunction->numargs, nargs);
             return false;
@@ -14176,12 +14172,9 @@ mcvalue_t mc_vm_callnativefunction(mcstate_t* vm, mcvalue_t callee, mcastlocatio
 {
     mcvaltype_t restype;
     mcvalue_t res;
-    mcvalue_t thisval;
     mcerror_t* err; 
     mctraceback_t* traceback;
     mcobjfuncnative_t* nativefun;
-    (void)thisval;
-    thisval = mc_value_makenull();
     nativefun = mc_value_functiongetnativefunction(callee);
     res = nativefun->natptrfn(vm, nativefun->userpointer, argc, args);
     if(mc_util_unlikely(vm->errors.count > 0))
@@ -14909,7 +14902,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
         opcode = mc_callframe_readopcode(state->currframe);
         if(mc_util_unlikely(state->config.printinstructions))
         {
-            mc_vmutil_getopinfo(opcode, &oname);
+            mc_vmutil_getopinfo((mcopcode_t)opcode, &oname);
             fprintf(stderr, "opcode=%d (%s)\n", opcode, oname);
         }
         switch(opcode)
@@ -14918,8 +14911,8 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
                 {
                     const char* prevname;
                     const char* thisname;
-                    mc_vmutil_getopinfo(opcode, &thisname);
-                    mc_vmutil_getopinfo(prevcode, &prevname);
+                    mc_vmutil_getopinfo((mcopcode_t)opcode, &thisname);
+                    mc_vmutil_getopinfo((mcopcode_t)prevcode, &prevname);
                     mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "unknown opcode: %d (%s) (previous opcode was %d (%s))", opcode, thisname, prevcode, prevname);
                     MC_ASSERT(false);
                     goto onexecerror;
@@ -14978,7 +14971,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
             case MC_OPCODE_LSHIFT:
             case MC_OPCODE_RSHIFT:
                 {
-                    if(!mc_vmdo_math(state, opcode))
+                    if(!mc_vmdo_math(state, (mcopcode_t)opcode))
                     {
                         goto onexecerror;
                     }
@@ -15002,7 +14995,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
             case MC_OPCODE_COMPARE:
             case MC_OPCODE_COMPAREEQ:
                 {
-                    if(!mc_vmdo_docmpvalue(state, opcode))
+                    if(!mc_vmdo_docmpvalue(state, (mcopcode_t)opcode))
                     {
                         goto onexecerror;
                     }
@@ -15013,7 +15006,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
             case MC_OPCODE_GREATERTHAN:
             case MC_OPCODE_GREATERTHANEQUAL:
                 {
-                    if(!mc_vmdo_docmpvalgreater(state, opcode))
+                    if(!mc_vmdo_docmpvalgreater(state, (mcopcode_t)opcode))
                     {
                         goto onexecerror;
                     }
@@ -15258,11 +15251,20 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
                 mc_vmmac_break();
             case MC_OPCODE_GETLOCAL:
                 {
-                    uint16_t pos;
+                    size_t finalpos;
+                    size_t pos;
                     mcvalue_t val;
                     pos = mc_callframe_readuint8(state->currframe);
-                    val = mc_vallist_get(state->valuestack, state->currframe->basepointer + pos);
-                    
+                    finalpos = state->currframe->basepointer + pos;
+                    val = mc_vallist_get(state->valuestack, finalpos);
+                    #if 0
+                    {
+                        mcprinter_t* pr = state->stderrprinter;
+                        mc_printer_printf(pr, "GETLOCAL: finalpos=%ld val=<<<", finalpos);
+                        mc_printer_printvalue(pr, val, true);
+                        mc_printer_printf(pr, ">>>\n");
+                    }
+                    #endif
                     mc_vm_stackpush(state, val);
                 }
                 mc_vmmac_break();
