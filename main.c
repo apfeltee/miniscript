@@ -12747,6 +12747,7 @@ void mc_state_gcsweep(mcstate_t* state)
                 else
                 {
                     mc_allocator_free(state, data);
+                    data = NULL;
                 }
             }
         }
@@ -12856,13 +12857,16 @@ err:
 
 void mc_globalstore_destroy(mcglobalstore_t* store)
 {
+    mcstate_t* state;
     if(!store)
     {
         return;
     }
+    state = store->pstate;
     mc_genericdict_destroyitemsanddict(store->symbols);
     mc_vallist_destroy(store->storedobjects);
-    mc_allocator_free(store->pstate, store);
+    mc_allocator_free(state, store);
+    store = NULL;
 }
 
 mcastsymbol_t* mc_globalstore_getsymbol(mcglobalstore_t* store, const char* name)
@@ -12959,6 +12963,7 @@ mcastsymbol_t* mc_symbol_make(mcstate_t* state, const char* name, mcastsymtype_t
     if(!symbol->name)
     {
         mc_allocator_free(state, symbol);
+        symbol = NULL;
         return NULL;
     }
     symbol->type = type;
@@ -12969,12 +12974,16 @@ mcastsymbol_t* mc_symbol_make(mcstate_t* state, const char* name, mcastsymtype_t
 
 void mc_symbol_destroy(mcastsymbol_t* symbol)
 {
+    mcstate_t* state;
     if(!symbol)
     {
         return;
     }
-    mc_allocator_free(symbol->pstate, symbol->name);
-    mc_allocator_free(symbol->pstate, symbol);
+    state = symbol->pstate;
+    mc_allocator_free(state, symbol->name);
+    symbol->name = NULL;
+    mc_allocator_free(state, symbol);
+    symbol = NULL;
 }
 
 mcastsymbol_t* mc_symbol_copy(mcastsymbol_t* symbol)
@@ -13040,6 +13049,7 @@ void mc_symtable_destroy(mcastsymtable_t* table)
     state = table->pstate;
     memset(table, 0, sizeof(mcastsymtable_t));
     mc_allocator_free(state, table);
+    table = NULL;
 }
 
 mcastsymtable_t* mc_symtable_copy(mcastsymtable_t* table)
@@ -13403,8 +13413,11 @@ mcastscopeblock_t* mc_astblockscope_make(mcstate_t* state, int offset)
 
 void mc_astblockscope_destroy(mcastscopeblock_t* scope)
 {
+    mcstate_t* state;
+    state = scope->pstate;
     mc_genericdict_destroyitemsanddict(scope->store);
-    mc_allocator_free(scope->pstate, scope);
+    mc_allocator_free(state, scope);
+    scope = NULL;
 }
 
 mcastscopeblock_t* mc_astblockscope_copy(mcastscopeblock_t* scope)
@@ -13636,18 +13649,22 @@ mctraceback_t* mc_traceback_make(mcstate_t* state)
 void mc_traceback_destroy(mctraceback_t* traceback)
 {
     size_t i;
+    mcstate_t* state;
     mctraceitem_t* item;
     if(!traceback)
     {
         return;
     }
+    state = traceback->pstate;
     for(i = 0; i < mc_basicarray_count(traceback->items); i++)
     {
         item = (mctraceitem_t*)mc_basicarray_get(traceback->items, i);
         mc_allocator_free(traceback->pstate, item->trfuncname);
+        item->trfuncname = NULL;
     }
     mc_basicarray_destroy(traceback->items);
-    mc_allocator_free(traceback->pstate, traceback);
+    mc_allocator_free(state, traceback);
+    traceback = NULL;
 }
 
 bool mc_traceback_push(mctraceback_t* traceback, const char* fname, mcastlocation_t pos)
@@ -13664,6 +13681,7 @@ bool mc_traceback_push(mctraceback_t* traceback, const char* fname, mcastlocatio
     if(!ok)
     {
         mc_allocator_free(traceback->pstate, item.trfuncname);
+        item.trfuncname = NULL;
         return false;
     }
     return true;
@@ -13957,11 +13975,16 @@ void mc_vm_setstackpos(mcstate_t* state, size_t nsp)
     {
         /* to avoid gcing freed objects */
         count = nsp - state->vsposition;
-        bytescount = count * sizeof(mcvalue_t);
+        bytescount = (count - 0) * sizeof(mcvalue_t);
         #if 0
             memset(state->valuestack->listitems + state->vsposition, 0, bytescount);
         #else
-            //mc_vallist_set(state->valuestack, state->vsposition, mc_value_makenull());
+            size_t i;
+            for(i=(state->vsposition - 0); (i != bytescount) && (i < state->valuestack->listcapacity); i++)
+            {
+                //state->valuestack->listitems[i].type = MC_VAL_NULL;
+                memset(&state->valuestack->listitems[i], 0, sizeof(mcvalue_t));
+            }
         #endif
     }
     state->vsposition = nsp;
@@ -16374,6 +16397,7 @@ mcvalue_t mc_nsfnfile_readfile(mcstate_t* state, void* data, size_t argc, mcvalu
     }
     res = mc_value_makestringlen(state, contents, flen);
     mc_allocator_free(state, contents);
+    contents = NULL;
     return res;
 }
 
