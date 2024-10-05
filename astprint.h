@@ -142,8 +142,8 @@ void mc_astprint_printmapliteral(mcastprinter_t* apr, mcastexpression_t* astexpr
 
 void mc_astprint_printprefixexpr(mcastprinter_t* apr, mcastexpression_t* astexpr)
 {
-    mcastexprinfix_t* ex;
-    ex = &astexpr->uexpr.exprinfix;
+    mcastexprprefix_t* ex;
+    ex = &astexpr->uexpr.exprprefix;
     mc_printer_puts(apr->pdest, "(");
     mc_printer_puts(apr->pdest, mc_util_mathopstring(ex->op));
     mc_astprint_expression(apr, ex->right);

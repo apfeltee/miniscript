@@ -46,7 +46,7 @@ function vec3(x, y, z)
         },
         __operator_bang__: function(a)
         {
-            return a * (1 / sqrt(a % a))
+            return a * (1 / Math.sqrt(a % a))
         }
     }
 }
@@ -73,7 +73,7 @@ function vtest(o, d, t, n)
                 var q = b * b - c
                 if (q > 0)
                 {
-                    var s = -b - sqrt(q)
+                    var s = -b - Math.sqrt(q)
                     if (s < t && s > 0.01)
                     {
                         t = s
@@ -101,7 +101,7 @@ function sample(o, d)
     n = test_res.n
     if (m == 0)
     {
-        return vec3(0.7, 0.6, 1.0) * pow(1 - d.z, 4)
+        return vec3(0.7, 0.6, 1.0) * Math.pow(1 - d.z, 4)
     }
     var h = o + d * t
     var l = !(vec3(9 + random(), 9 + random(), 16) + h * - 1)
@@ -121,11 +121,11 @@ function sample(o, d)
             b = 0
         }
     }
-    var p = pow(l % r * (b > 0), 99)
+    var p = Math.pow(l % r * (b > 0), 99)
     if (m == 1)
     {
         h = h * 0.2
-        var x = floor(ceil(h.x) + ceil(h.y)) & 1
+        var x = Math.floor(Math.ceil(h.x) + Math.ceil(h.y)) & 1
         if (x)
         {
             return vec3(3, 1, 1) * (b * 0.2 + 0.1)
@@ -140,15 +140,19 @@ function sample(o, d)
 
 function main()
 {
-    var res = []
+    var totalsize = 512;
+    var sizea = totalsize;
+    var sizeb = totalsize;
     var g = !vec3(-6, -16, 0)
     var a = !(vec3(0, 0, 1) ^ g) * 0.002
     var b = !(g^a) * 0.002
     var c = (a+b) * -256 + g
 
-    for (var y = 511; y >= 0; y -= 1)
+    print("P3 ", sizea, " ", sizeb, " 255 ")
+
+    for (var y = (sizea - 1); y >= 0; y -= 1)
     {
-        for (var x = 511; x >= 0; x -= 1)
+        for (var x = (sizeb - 1); x >= 0; x -= 1)
         {
             var p = vec3(13, 13, 13)
             for (var r = 0; r < 64; r += 1)
@@ -156,15 +160,9 @@ function main()
                 var t = a * (random() - 0.5) * 99 + b * (random() - 0.5) * 99
                 p = sample(vec3(17,16,8) + t, !(t * -1 + (a * (random() + x) + b * (y + random()) + c) * 16)) * 3.5 + p
             }
-            arraypush(res, floor(p.x), floor(p.y), floor(p.z))
+            print(Math.floor(p.x), " ", Math.floor(p.y), " ", Math.floor(p.z), " ")
         }
     }
-    print("P3 512 512 255 ")
-    for(item in res)
-    {
-        print(item, " ")
-    }
-
 }
 
 main()

@@ -21,14 +21,14 @@ function Sample(input, output)
 
 function dot(x, y)
 {
-    if (lengthof(x) != lengthof(y)) {
+    if (x.length != y.length) {
         // TODO: add mechanism for error reporting in language?
         println("size for dot product does not match");
         return -999.0;
     }
 
     var result = 0.0;
-    var n = lengthof(x);
+    var n = x.length;
     for (var i = 0; i < n; i += 1) {
         result += x[i] * y[i];
     }
@@ -36,7 +36,7 @@ function dot(x, y)
 }
 
 function list_size(x) {
-    return lengthof(x);
+    return x.length;
 }
 
 function ai_output(state, input)
@@ -107,10 +107,10 @@ var threshold = 0.0;
 var max_iterations = 100;
 var hits = 0;
 var it = 0;
-while(it < max_iterations && hits != lengthof(training)) {
+while(it < max_iterations && hits != training.length) {
     hits = 0;
 
-    for (var t = 0; t < lengthof(training); t += 1) {
+    for (var t = 0; t < training.length; t += 1) {
         var sample = training[t];
         var inputs = sample.input;
         var output = sample_output(state, sample);
@@ -127,7 +127,7 @@ while(it < max_iterations && hits != lengthof(training)) {
             hits += 1;
         } else {
             var weights = state.weights;
-            var n = lengthof(weights);
+            var n = weights.length;
             for (var j = 0; j < n; j += 1) {
                 weights[j] = weights[j] + (state.learning_rate * sample.output * inputs[j]);
             }
@@ -136,7 +136,7 @@ while(it < max_iterations && hits != lengthof(training)) {
         }
     }
 
-    println("Iteration ", it, ": Correct: ", hits, " / ", lengthof(training));
+    println("Iteration ", it, ": Correct: ", hits, " / ", training.length);
     it += 1;
 }
 

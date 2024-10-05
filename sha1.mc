@@ -118,7 +118,7 @@ function core_sha1(x, l)
     var e = -1009589776;
     var i = 0;
     var j = 0;
-    while(i < lengthof(x))
+    while(i < x.length)
     {
         var olda = a;
         var oldb = b;
@@ -185,7 +185,7 @@ function str2binb(str)
     var chrsz   = 8;
     var mask = (1 << chrsz) - 1;
     var i = 0;
-    while(i < lengthof(str) * chrsz)
+    while(i < str.length * chrsz)
     {
         if(!bin[i>>5])
         {
@@ -202,9 +202,9 @@ function core_hmac_sha1(key, data)
 {
     var chrsz   = 8;
     var bkey = str2binb(key);
-    if(lengthof(bkey) > 16)
+    if(bkey.length > 16)
     {
-        bkey = core_sha1(bkey, lengthof(key) * chrsz);
+        bkey = core_sha1(bkey, key.length * chrsz);
     }
     var ipad = [];
     var opad = [];
@@ -215,7 +215,7 @@ function core_hmac_sha1(key, data)
         opad[i] = bkey[i] ^ 0x5C5C5C5C;
         i += 1;
     }
-    var hash = core_sha1(ipad + str2binb(data), 512 + lengthof(data) * chrsz);
+    var hash = core_sha1(ipad + str2binb(data), 512 + data.length * chrsz);
     return core_sha1(opad + hash, 512 + 160);
 }
 
@@ -227,7 +227,7 @@ function binb2str(bin)
     var str = "";
     var mask = (1 << chrsz) - 1;
     var i = 0;
-    while(i < (lengthof(bin) * 32))
+    while(i < (bin.length * 32))
     {
         str += chr(unshiftright(bin[i>>5], (24 - i%32)) & mask);
         i += chrsz;
@@ -241,7 +241,7 @@ function binb2hex(binarray)
     var hex_tab = "0123456789abcdef";
     var str = "";
     var i = 0;
-    while(i < (lengthof(binarray) * 4))
+    while(i < (binarray.length * 4))
     {
         var biv = binarray[i>>2];
         var c1 = hex_tab[((biv >> (((3 - (i%4)) * 8) + 4)) & 0xF)];
@@ -259,13 +259,13 @@ function binb2b64(binarray)
     const tab = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     var str = [];
     var i = 0;
-    while(i < (lengthof(binarray) * 4))
+    while(i < (binarray.length * 4))
     {
         var triplet = (((((binarray[i >> 2] >> (8 * (3 - (i % 4)))) & 255) << 16) | (((binarray[(i + 1) >> 2] >> (8 * (3 - ((i + 1) % 4)))) & 255) << 8)) | ((binarray[(i + 2) >> 2] >> (8 * (3 - ((i + 2) % 4)))) & 255)); 
         var j = 0;
         while(j < 4)
         {
-            if ((((i * 8) + (j * 6)) > (lengthof(binarray) * 32)))
+            if ((((i * 8) + (j * 6)) > (binarray.length * 32)))
             {
                 arraypush(str, b64pad);
             }
@@ -286,19 +286,19 @@ function binb2b64(binarray)
 function hex_sha1(s)
 {
     var chrsz   = 8;
-    return binb2hex(core_sha1(str2binb(s),lengthof(s) * chrsz));
+    return binb2hex(core_sha1(str2binb(s),s.length * chrsz));
 }
 
 function b64_sha1(s)
 {
     var chrsz   = 8;
-    return binb2b64(core_sha1(str2binb(s),lengthof(s) * chrsz));
+    return binb2b64(core_sha1(str2binb(s),s.length * chrsz));
 }
 
 function str_sha1(s)
 {
     var chrsz   = 8;
-    return binb2str(core_sha1(str2binb(s),lengthof(s) * chrsz));
+    return binb2str(core_sha1(str2binb(s),s.length * chrsz));
 }
 
 function hex_hmac_sha1(key, data)
@@ -327,7 +327,7 @@ function main()
     ];
 
     var idx=0;
-    while(idx<lengthof(demo))
+    while(idx<demo.length)
     {
         var itm = demo[idx];
         idx += 1;

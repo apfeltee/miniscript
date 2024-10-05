@@ -75,11 +75,11 @@ MyJSON.parseValue = function(state)
 
 MyJSON.parseLiteral = function(state, literal, value)
 {
-    if(lengthof(literal) > (state.m_srclength - state.m_index))
+    if(literal.length > (state.m_srclength - state.m_index))
     {
         error(`Expecting ${literal}`);
     }
-    for (var i = 0; i < lengthof(literal); i++)
+    for (var i = 0; i < literal.length; i++)
     {
         if (literal[i] != state.m_source[state.m_index++])
         {
@@ -232,7 +232,7 @@ MyJSON.parse = function(str)
 {
     var state = {};
     state.m_source = str;
-    state.m_srclength = lengthof(str);
+    state.m_srclength = str.length;
     state.m_index = 0;
     state.nfirstchars = "-0123456789.";
     state.nchars = "-0123456789.eE";
