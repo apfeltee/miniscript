@@ -34,18 +34,18 @@ var mandelbrot = function(x1,y1, x2,y2, size_x,size_y, max_iter)
             if (c == max_iter)
             {
                 //print(ec, "[37;40m ");
-                arraypush(line, ec, "[37;40m ");
+                line.push(ec, "[37;40m ");
             }
             else
             {
                 //print(ec, "[37;4", c%6+1, "m ");
-                arraypush(line, ec, "[37;4", c%6+1, "m ");
+                line.push(ec, "[37;4", c%6+1, "m ");
             }
             x = x + step_x;
         }
         y = y + step_y;
         //print(ec, "[0m");
-        print(arrayjoin(line));
+        print(line.join());
         print(ec, "[0m");
         print("\n");
         line = [];

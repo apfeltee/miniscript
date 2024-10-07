@@ -68,7 +68,7 @@ function fp_lexissingledigit(b)
 function fp_lexisnumber(buf)
 {
     var i;
-    for(i = 0; i < lengthof(buf); i++)
+    for(i = 0; i < buf.length; i++)
     {
         var b = buf.charCodeAt(i);
         if(!fp_lexissingledigit(b))
@@ -87,21 +87,21 @@ function fp_tokenize(src)
     // Writes characters in the buffer as a token, takes the positions, and clears the buffer
     var flushbuffer = function()
     {
-        if(lengthof(buffer) > 0)
+        if(buffer.length > 0)
         {
             var sbuf = buffer.join("")
             if(fp_lexisnumber(sbuf))
             {
-                arraypush(tokens, strtoint(sbuf));
+                tokens.push(sbuf.toNumber());
             }
             else
             {
-                arraypush(tokens, sbuf);
+                tokens.push(sbuf);
             }
         }
         buffer = [];
     };
-    for(var i = 0; i < lengthof(chars); i++)
+    for(var i = 0; i < chars.length; i++)
     {
         var ch = chars[i];
         var nextch = chars[i + 1];
@@ -110,7 +110,7 @@ function fp_tokenize(src)
             // Support the ability to escape symbols
             if(ch == chr(92))
             {
-                arraypush(buffer, ch + nextch);
+                buffer.push(ch + nextch);
                 // skip lexing the next character altogether
                 i += 1;
             }
@@ -120,7 +120,7 @@ function fp_tokenize(src)
                 if((ch == chr(40)) || (ch == chr(41)) || (ch == chr(34)))
                 {
                     flushbuffer();
-                    arraypush(buffer, ch);
+                    buffer.push(ch);
                     flushbuffer();
                 }
                 else
@@ -130,7 +130,7 @@ function fp_tokenize(src)
                     //if((ch != " ") || (ch != "\t") || (ch != "\n") || (ch != "\r"))
                     if((ch != " ") && (ch != "\t") && (ch != "\n") && (ch != "\r"))
                     {
-                        arraypush(buffer, ch);
+                        buffer.push(ch);
                     }
                     else
                     {
@@ -149,12 +149,12 @@ function fp_tokenize(src)
 
 function fp_quote(x, s)
 {
-    if(lengthof(s) != 0)
+    if(s.length != 0)
     {
-        var piece = s[lengthof(s) - 1];
+        var piece = s[s.length - 1];
         if(piece == chr(39))
         {
-            arraypop(s);
+            s.pop();
             var tmp = [x, null];
             return ["quote", tmp];
         }
@@ -164,24 +164,24 @@ function fp_quote(x, s)
 
 function fp_syn(s)
 {
-    var t = arraypop(s);
+    var t = s.pop();
     if(t == ")")
     {
         var r = null;
         while(true)
         {
-            var bit = s[lengthof(s) - 1]
+            var bit = s[s.length - 1]
             if(bit == "(")
             {
                 break;
             }
             else
             {
-                var iend = (lengthof(s) - 1);
+                var iend = (s.length - 1);
                 bit = s[iend]
                 if(bit == ".")
                 {
-                    arraypop(s);
+                    s.pop();
                     r = [fp_syn(s), fp_car(r)];
                 }
                 else
@@ -190,7 +190,7 @@ function fp_syn(s)
                 }
             }
         }
-        arraypop(s);
+        s.pop();
         return fp_quote(r, s);
     }
     else
@@ -373,7 +373,7 @@ function fp_builtinlessthan(v)
     var a = fp_car(v);
     var b = fp_cadr(v);
     fp_debugargs("fp_builtinlessthan", a, b);
-    return strtoint(a) < strtoint(b);
+    return a.toNumber() < b.toNumber();
 }
 
 function fp_builtinatom(v)

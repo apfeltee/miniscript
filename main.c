@@ -72,7 +72,8 @@ THE SOFTWARE.
 #define MC_CONF_MINVMVALSTACKSIZE (4)
 #define MC_CONF_MINVMFRAMES (4)
 
-#define MC_CONF_MAXVMGLOBALS (1024)
+#define MC_CONF_MAXVMGLOBALS (4)
+#define MC_CONF_MINNATIVETHISSTACKSIZE (1024)
 #define MC_CONF_MINVMTHISSTACKSIZE (MC_CONF_MINVMVALSTACKSIZE)
 #define MC_CONF_GCMEMPOOLSIZE (2048/16)
 #define MC_CONF_GCMEMPOOLCOUNT (3)
@@ -411,7 +412,7 @@ typedef enum mcopcode_t mcopcode_t;
 typedef enum mcastsymtype_t mcastsymtype_t;
 typedef enum mcastprecedence_t mcastprecedence_t;
 
-typedef struct mcgenericdict_t mcgenericdict_t;
+typedef struct mcptrdict_t mcptrdict_t;
 typedef struct mcvaldict_t mcvaldict_t;
 typedef struct mcbasicarray_t mcbasicarray_t;
 typedef struct mcptrlist_t mcptrlist_t;
@@ -491,8 +492,8 @@ typedef union mcfuncfvunion_t mcfuncfvunion_t;
 typedef union mcfuncnameunion_t mcfuncnameunion_t;
 typedef struct /**/mcvallist_t mcvallist_t;
 typedef struct /**/mcframelist_t mcframelist_t;
-typedef struct /**/mcclassinfo_t mcclassinfo_t;
-typedef struct /**/mcclassbuiltin_t mcclassbuiltin_t;
+typedef struct /**/mcclass_t mcclass_t;
+typedef struct /**/mcfield_t mcfield_t;
 
 typedef mcvalue_t (*mcnativefn_t)(mcstate_t*, void*, mcvalue_t, size_t, mcvalue_t*);
 typedef unsigned long (*mcitemhashfn_t)(void*);
@@ -503,14 +504,14 @@ typedef void (*mcitemdeinitfn_t)(void*);
 typedef mcastexpression_t* (*mcastrightassocparsefn_t)(mcastparser_t*);
 typedef mcastexpression_t* (*mcleftassocparsefn_t)(mcastparser_t*, mcastexpression_t*);
 
-struct mcclassbuiltin_t
+struct mcfield_t
 {
     const char* name;
     bool ispseudo;
     mcnativefn_t fndest;
 };
 
-struct mcclassinfo_t
+struct mcclass_t
 {
     mcvaltype_t vtype;
     const char* classname;
@@ -592,8 +593,8 @@ struct mcastcodeblock_t
 
 struct mcastliteralmap_t
 {
-    mcptrlist_t* keys;
-    mcptrlist_t* values;
+    mcptrlist_t* litmapkeys;
+    mcptrlist_t* litmapvalues;
 };
 
 struct mcastliteralarray_t
@@ -850,7 +851,7 @@ struct mcastsymbol_t
 struct mcastscopeblock_t
 {
     mcstate_t* pstate;
-    mcgenericdict_t* store;
+    mcptrdict_t* scopestore;
     int offset;
     int numdefinitions;
 };
@@ -1007,7 +1008,7 @@ struct mcstate_t
     mcerrlist_t errors;
     mcgcmemory_t* mem;
     mcglobalstore_t* vmglobalstore;
-    mcvalue_t globalvalstack[MC_CONF_MAXVMGLOBALS];
+    mcvallist_t* globalvalstack;
     size_t globalvalcount;
     mcvallist_t* valuestack;
     size_t vsposition;
@@ -1024,12 +1025,12 @@ struct mcstate_t
     mcprinter_t* stdoutprinter;
     mcprinter_t* stderrprinter;
 
-    mcclassinfo_t* stdobjobject;
-    mcclassinfo_t* stdobjnumber;
-    mcclassinfo_t* stdobjstring;
-    mcclassinfo_t* stdobjarray;
-    mcclassinfo_t* stdobjmap;
-    mcclassinfo_t* stdobjfunction;
+    mcclass_t* stdobjobject;
+    mcclass_t* stdobjnumber;
+    mcclass_t* stdobjstring;
+    mcclass_t* stdobjarray;
+    mcclass_t* stdobjmap;
+    mcclass_t* stdobjfunction;
 
 
 };
@@ -1037,7 +1038,7 @@ struct mcstate_t
 struct mcglobalstore_t
 {
     mcstate_t* pstate;
-    mcgenericdict_t* symbols;
+    mcptrdict_t* storedsymbols;
     mcvallist_t* storedobjects;
 };
 
@@ -1090,29 +1091,29 @@ struct mcvaldict_t
     mcstate_t* pstate;
     size_t keytypesize;
     size_t valtypesize;
-    unsigned int* cells;
-    unsigned long* hashes;
-    void* keys;
-    void* values;
-    unsigned int* cellindices;
-    unsigned int count;
-    unsigned int itemcapacity;
-    unsigned int cellcapacity;
+    unsigned int* vdcells;
+    unsigned long* vdhashes;
+    char** vdkeys;
+    mcvalue_t** vdvalues;
+    unsigned int* vdcellindices;
+    unsigned int vdcount;
+    unsigned int vditemcapacity;
+    unsigned int vdcellcapacity;
     mcitemhashfn_t funchashfn;
     mcitemcomparefn_t funckeyequalsfn;
 };
 
-struct mcgenericdict_t
+struct mcptrdict_t
 {
     mcstate_t* pstate;
-    unsigned int* cells;
-    unsigned long* hashes;
-    char** keys;
-    void** values;
-    unsigned int* cellindices;
-    unsigned int count;
-    unsigned int itemcapacity;
-    unsigned int cellcapacity;
+    unsigned int* gdcells;
+    unsigned long* gdhashes;
+    char** gdkeys;
+    void** gdvalues;
+    unsigned int* gdcellindices;
+    unsigned int gdcount;
+    unsigned int gditemcapacity;
+    unsigned int gdcellcapacity;
     mcitemcopyfn_t funccopyfn;
     mcitemdestroyfn_t funcdestroyfn;
 };
@@ -1122,7 +1123,7 @@ struct module_t
 {
     mcstate_t* pstate;
     char* name;
-    mcptrlist_t* symbols;
+    mcptrlist_t* modsymbols;
 };
 
 struct mcastscopefile_t
@@ -1146,8 +1147,8 @@ struct mcastcompiler_t
     mcastscopecomp_t* compilationscope;
     mcptrlist_t* filescopelist;
     mcbasicarray_t* srcposstack;
-    mcgenericdict_t* modules;
-    mcgenericdict_t* stringconstposdict;
+    mcptrdict_t* modules;
+    mcptrdict_t* stringconstposdict;
 };
 
 #include "prot.inc"
@@ -1376,7 +1377,6 @@ mcfloat_t mc_util_strtod(const char* str, size_t slen, char** endptr)
     return stod_strtod(&p, end, true);
 }
 
-
 MC_INLINE mcvalue_t mc_object_makedatafrom(mcvaltype_t type, mcobjdata_t* data)
 {
     mcvalue_t object;
@@ -1524,42 +1524,8 @@ mcvallist_t* mc_vallist_make(mcstate_t* state, const char* name, size_t initials
     return list;
 }
 
-MC_INLINE mcvalue_t* mc_vallist_data(mcvallist_t* list)
-{
-    return list->listitems;
-}
-
-MC_INLINE mcvallist_t* mc_vallist_copy(mcvallist_t* list)
-{
-    size_t i;
-    mcvallist_t* nlist;
-    nlist = mc_vallist_make(list->pstate, list->listname, 0);
-    for(i=0; i<list->listcount; i++)
-    {
-        mc_vallist_push(nlist, list->listitems[i]);
-    }
-    return nlist;
-}
-
-MC_INLINE size_t mc_vallist_count(mcvallist_t* list)
-{
-    return list->listcount;
-}
-
-MC_INLINE void mc_vallist_setempty(mcvallist_t* list)
-{
-    if((list->listcapacity > 0) && (list->listitems != NULL))
-    {
-        memset(list->listitems, 0, sizeof(mcvalue_t) * list->listcapacity);
-    }
-    list->listcount = 0;
-    list->listcapacity = 0;
-}
-
 void mc_vallist_destroy(mcvallist_t* list)
 {
-    mcstate_t* state;
-    state = list->pstate;
     if(list->listname != NULL)
     {
         fprintf(stderr, "vallist of '%s' use at end: count=%ld capacity=%ld\n", list->listname, list->listcount, list->listcapacity);
@@ -1570,6 +1536,16 @@ void mc_vallist_destroy(mcvallist_t* list)
         mc_memory_free(list);
         list = NULL;
     }
+}
+
+MC_INLINE size_t mc_vallist_count(mcvallist_t* list)
+{
+    return list->listcount;
+}
+
+MC_INLINE mcvalue_t* mc_vallist_data(mcvallist_t* list)
+{
+    return list->listitems;
 }
 
 MC_INLINE mcvalue_t mc_vallist_get(mcvallist_t* list, size_t idx)
@@ -1586,32 +1562,39 @@ MC_INLINE bool mc_vallist_set(mcvallist_t* list, size_t idx, mcvalue_t val)
 {
     size_t need;
     need = idx + 8;
+    if(list->listcount == 0)
+    {
+        return mc_vallist_push(list, val);
+    }
     if(((idx == 0) || (list->listcapacity == 0)) || (idx >= list->listcapacity))
     {
         mc_vallist_ensurecapacity(list, need, mc_value_makenull(), false);
     }
     list->listitems[idx] = val;
+    if(idx > list->listcount)
+    {
+        list->listcount = idx;
+    }
     return true;
 }
 
 MC_INLINE bool mc_vallist_push(mcvallist_t* list, mcvalue_t value)
 {
     size_t oldcap;
-    #if 1
-        if(list->listcapacity < list->listcount + 1)
+    if(list->listcapacity < list->listcount + 1)
+    {
+        oldcap = list->listcapacity;
+        list->listcapacity = MC_UTIL_INCCAPACITY(oldcap);
+        if(list->listitems == NULL)
         {
-            oldcap = list->listcapacity;
-            list->listcapacity = MC_UTIL_INCCAPACITY(oldcap);
-            if(list->listitems == NULL)
-            {
-                list->listitems = (mcvalue_t*)mc_allocator_malloc(list->pstate, sizeof(mcvalue_t) * list->listcapacity);
-            }
-            else
-            {
-                list->listitems = (mcvalue_t*)mc_allocator_realloc(list->pstate, list->listitems, sizeof(mcvalue_t) * list->listcapacity);
-            }
+            list->listitems = (mcvalue_t*)mc_allocator_malloc(list->pstate, sizeof(mcvalue_t) * list->listcapacity);
         }
-    #endif
+        else
+        {
+            list->listitems = (mcvalue_t*)mc_allocator_realloc(list->pstate, list->listitems, sizeof(mcvalue_t) * list->listcapacity);
+        }
+    }
+
     list->listitems[list->listcount] = value;
     list->listcount++;
     return true;
@@ -1628,22 +1611,11 @@ MC_INLINE bool mc_vallist_pop(mcvallist_t* list, mcvalue_t* dest)
     return false;
 }
 
-MC_INLINE bool mc_vallist_removeat(mcvallist_t* arr, unsigned int ix)
+bool mc_vallist_removeatintern(mcvallist_t* arr, unsigned int ix)
 {
     size_t tomovebytes;
-    void* dest;
     void* src;
-    if(ix >= arr->listcount)
-    {
-        return false;
-    }
-    if(ix == 0)
-    {
-        arr->listitems += sizeof(mcvalue_t);
-        arr->listcapacity--;
-        arr->listcount--;
-        return true;
-    }
+    void* dest;
     if(ix == (arr->listcount - 1))
     {
         arr->listcount--;
@@ -1657,7 +1629,23 @@ MC_INLINE bool mc_vallist_removeat(mcvallist_t* arr, unsigned int ix)
     return true;
 }
 
-MC_INLINE void mc_vallist_ensurecapacity(mcvallist_t* list, size_t needsize, mcvalue_t fillval, bool first)
+MC_INLINE bool mc_vallist_removeat(mcvallist_t* arr, unsigned int ix)
+{
+    if(ix >= arr->listcount)
+    {
+        return false;
+    }
+    if(ix == 0)
+    {
+        arr->listitems += sizeof(mcvalue_t);
+        arr->listcapacity--;
+        arr->listcount--;
+        return true;
+    }
+    return mc_vallist_removeatintern(arr, ix);
+}
+
+void mc_vallist_ensurecapacity(mcvallist_t* list, size_t needsize, mcvalue_t fillval, bool first)
 {
     size_t i;
     size_t ncap;
@@ -1666,7 +1654,14 @@ MC_INLINE void mc_vallist_ensurecapacity(mcvallist_t* list, size_t needsize, mcv
     if(list->listcapacity < needsize)
     {
         oldcap = list->listcapacity;
-        ncap = MC_UTIL_INCCAPACITY(list->listcapacity + needsize);
+        if(oldcap == 0)
+        {
+            ncap = needsize;
+        }
+        else
+        {
+            ncap = MC_UTIL_INCCAPACITY(list->listcapacity + needsize);
+        }
         list->listcapacity = ncap;
         if(list->listitems == NULL)
         {
@@ -1681,6 +1676,28 @@ MC_INLINE void mc_vallist_ensurecapacity(mcvallist_t* list, size_t needsize, mcv
             list->listitems[i] = fillval;
         }
     }
+}
+
+MC_INLINE mcvallist_t* mc_vallist_copy(mcvallist_t* list)
+{
+    size_t i;
+    mcvallist_t* nlist;
+    nlist = mc_vallist_make(list->pstate, list->listname, 0);
+    for(i=0; i<list->listcount; i++)
+    {
+        mc_vallist_push(nlist, list->listitems[i]);
+    }
+    return nlist;
+}
+
+MC_INLINE void mc_vallist_setempty(mcvallist_t* list)
+{
+    if((list->listcapacity > 0) && (list->listitems != NULL))
+    {
+        memset(list->listitems, 0, sizeof(mcvalue_t) * list->listcapacity);
+    }
+    list->listcount = 0;
+    list->listcapacity = 0;
 }
 
 mcframelist_t* mc_framelist_make(mcstate_t* state, size_t initialsize)
@@ -1699,16 +1716,8 @@ mcframelist_t* mc_framelist_make(mcstate_t* state, size_t initialsize)
     return list;
 }
 
-MC_INLINE size_t mc_framelist_count(mcframelist_t* list)
-{
-    return list->listcount;
-}
-
-
 void mc_framelist_destroy(mcframelist_t* list)
 {
-    mcstate_t* state;
-    state = list->pstate;
     fprintf(stderr, "framelist use at end: count=%ld capacity=%ld\n", list->listcount, list->listcapacity);
     if(list != NULL)
     {
@@ -1716,6 +1725,11 @@ void mc_framelist_destroy(mcframelist_t* list)
         mc_memory_free(list);
         list = NULL;
     }
+}
+
+MC_INLINE size_t mc_framelist_count(mcframelist_t* list)
+{
+    return list->listcount;
 }
 
 MC_INLINE mcvmframe_t* mc_framelist_get(mcframelist_t* list, size_t idx)
@@ -1756,7 +1770,7 @@ MC_INLINE void mc_framelist_push(mcframelist_t* list, mcvmframe_t value)
     list->listcount++;
 }
 
-MC_INLINE void mc_framelist_ensurecapacity(mcframelist_t* list, size_t needsize, mcvmframe_t fillval, bool first)
+void mc_framelist_ensurecapacity(mcframelist_t* list, size_t needsize, mcvmframe_t fillval, bool first)
 {
     size_t i;
     size_t ncap;
@@ -1782,16 +1796,54 @@ MC_INLINE void mc_framelist_ensurecapacity(mcframelist_t* list, size_t needsize,
     }
 }
 
-mcgenericdict_t* mc_genericdict_make(mcstate_t* state, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
+bool mc_ptrdict_init(mcstate_t* state, mcptrdict_t* dict, unsigned int initialcapacity, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
+{
+    unsigned int i;
+    dict->pstate = state;
+    dict->gdcells = NULL;
+    dict->gdkeys = NULL;
+    dict->gdvalues = NULL;
+    dict->gdcellindices = NULL;
+    dict->gdhashes = NULL;
+    dict->gdcount = 0;
+    dict->gdcellcapacity = 0;
+    dict->gdcellcapacity += initialcapacity;
+    dict->gditemcapacity = (unsigned int)(initialcapacity * 0.7f);
+    dict->funccopyfn = copyfn;
+    dict->funcdestroyfn = dfn;
+    dict->gdcells = (unsigned int*)mc_allocator_malloc(dict->pstate, dict->gdcellcapacity * sizeof(*dict->gdcells));
+    dict->gdkeys = (char**)mc_allocator_malloc(dict->pstate, dict->gditemcapacity * sizeof(*dict->gdkeys));
+    dict->gdvalues = (void**)mc_allocator_malloc(dict->pstate, dict->gditemcapacity * sizeof(*dict->gdvalues));
+    dict->gdcellindices = (unsigned int*)mc_allocator_malloc(dict->pstate, dict->gditemcapacity * sizeof(*dict->gdcellindices));
+    dict->gdhashes = (long unsigned int*)mc_allocator_malloc(dict->pstate, dict->gditemcapacity * sizeof(*dict->gdhashes));
+    if(dict->gdcells == NULL || dict->gdkeys == NULL || dict->gdvalues == NULL || dict->gdcellindices == NULL || dict->gdhashes == NULL)
+    {
+        goto dictallocfailed;
+    }
+    for(i = 0; i < dict->gdcellcapacity; i++)
+    {
+        dict->gdcells[i] = MC_CONF_GENERICDICTINVALIDIX;
+    }
+    return true;
+dictallocfailed:
+    mc_memory_free(dict->gdcells);
+    mc_memory_free(dict->gdkeys);
+    mc_memory_free(dict->gdvalues);
+    mc_memory_free(dict->gdcellindices);
+    mc_memory_free(dict->gdhashes);
+    return false;
+}
+
+mcptrdict_t* mc_ptrdict_make(mcstate_t* state, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
 {
     bool ok;
-    mcgenericdict_t* dict;
-    dict = (mcgenericdict_t*)mc_allocator_malloc(state, sizeof(mcgenericdict_t));
+    mcptrdict_t* dict;
+    dict = (mcptrdict_t*)mc_allocator_malloc(state, sizeof(mcptrdict_t));
     if(dict == NULL)
     {
         return NULL;
     }
-    ok = mc_genericdict_init(state, dict, MC_CONF_GENERICDICTINITSIZE, copyfn, dfn);
+    ok = mc_ptrdict_init(state, dict, MC_CONF_GENERICDICTINITSIZE, copyfn, dfn);
     if(!ok)
     {
         mc_memory_free(dict);
@@ -1801,19 +1853,42 @@ mcgenericdict_t* mc_genericdict_make(mcstate_t* state, mcitemcopyfn_t copyfn, mc
     return dict;
 }
 
-void mc_genericdict_destroy(mcgenericdict_t* dict)
+void mc_ptrdict_deinit(mcptrdict_t* dict, bool freekeys)
 {
-    mcstate_t* state;
+    unsigned int i;
+    if(freekeys)
+    {
+        for(i = 0; i < dict->gdcount; i++)
+        {
+            mc_memory_free(dict->gdkeys[i]);
+        }
+    }
+    dict->gdcount = 0;
+    dict->gditemcapacity = 0;
+    dict->gdcellcapacity = 0;
+    mc_memory_free(dict->gdcells);
+    mc_memory_free(dict->gdkeys);
+    mc_memory_free(dict->gdvalues);
+    mc_memory_free(dict->gdcellindices);
+    mc_memory_free(dict->gdhashes);
+    dict->gdcells = NULL;
+    dict->gdkeys = NULL;
+    dict->gdvalues = NULL;
+    dict->gdcellindices = NULL;
+    dict->gdhashes = NULL;
+}
+
+void mc_ptrdict_destroy(mcptrdict_t* dict)
+{
     if(!dict)
     {
         return;
     }
-    state = dict->pstate;
-    mc_genericdict_deinit(dict, true);
+    mc_ptrdict_deinit(dict, true);
     mc_memory_free(dict);
 }
 
-void mc_genericdict_destroyitemsanddict(mcgenericdict_t* dict)
+void mc_ptrdict_destroyitemsanddict(mcptrdict_t* dict)
 {
     unsigned int i;
     if(!dict)
@@ -1822,59 +1897,136 @@ void mc_genericdict_destroyitemsanddict(mcgenericdict_t* dict)
     }
     if(dict->funcdestroyfn)
     {
-        for(i = 0; i < dict->count; i++)
+        for(i = 0; i < dict->gdcount; i++)
         {
-            dict->funcdestroyfn(dict->values[i]);
+            dict->funcdestroyfn(dict->gdvalues[i]);
         }
     }
-    mc_genericdict_destroy(dict);
+    mc_ptrdict_destroy(dict);
 }
 
-mcgenericdict_t* mc_genericdict_copy(mcgenericdict_t* dict)
+bool mc_ptrdict_growandrehash(mcptrdict_t* dict)
 {
     bool ok;
-    size_t i;
-    void* item;
-    void* itemcopy;
-    const char* key;
-    mcgenericdict_t* dictcopy;
-    if(!dict->funccopyfn || !dict->funcdestroyfn)
+    unsigned int i;
+    char* key;
+    void* value;
+    size_t ncap;
+    mcptrdict_t newdict;
+    ncap = MC_UTIL_INCCAPACITY(dict->gdcellcapacity);
+    ok = mc_ptrdict_init(dict->pstate, &newdict, ncap, dict->funccopyfn, dict->funcdestroyfn);
+    if(!ok)
     {
-        return NULL;
+        return false;
     }
-    dictcopy = mc_genericdict_make(dict->pstate, dict->funccopyfn, dict->funcdestroyfn);
-    if(!dictcopy)
+    for(i = 0; i < dict->gdcount; i++)
     {
-        return NULL;
-    }
-    dictcopy->pstate = dict->pstate;
-    for(i = 0; i < mc_genericdict_count(dict); i++)
-    {
-        key = mc_genericdict_getkeyat(dict, i);
-        item = mc_genericdict_getvalueat(dict, i);
-        itemcopy = dictcopy->funccopyfn(item);
-        if(item && !itemcopy)
-        {
-            mc_genericdict_destroyitemsanddict(dictcopy);
-            return NULL;
-        }
-        ok = mc_genericdict_set(dictcopy, key, itemcopy);
+        key = dict->gdkeys[i];
+        value = dict->gdvalues[i];
+        ok = mc_ptrdict_setactual(&newdict, key, key, value);
         if(!ok)
         {
-            dictcopy->funcdestroyfn(itemcopy);
-            mc_genericdict_destroyitemsanddict(dictcopy);
-            return NULL;
+            mc_ptrdict_deinit(&newdict, false);
+            return false;
         }
     }
-    return dictcopy;
+    mc_ptrdict_deinit(dict, false);
+    *dict = newdict;
+    return true;
 }
 
-bool mc_genericdict_set(mcgenericdict_t* dict, const char* key, void* value)
+MC_INLINE unsigned int mc_ptrdict_getcellindex(mcptrdict_t* dict, const char* key, unsigned long hash, bool* outfound)
 {
-    return mc_genericdict_setinternal(dict, key, NULL, value);
+    unsigned int i;
+    unsigned int ix;
+    unsigned int cell;
+    unsigned int cellix;
+    unsigned long hashtocheck;
+    const char* keytocheck;
+    *outfound = false;
+    cellix = (unsigned int)hash & (dict->gdcellcapacity - 1);
+    for(i = 0; i < dict->gdcellcapacity; i++)
+    {
+        ix = (cellix + i) & (dict->gdcellcapacity - 1);
+        cell = dict->gdcells[ix];
+        if(cell == MC_CONF_GENERICDICTINVALIDIX)
+        {
+            return ix;
+        }
+        hashtocheck = dict->gdhashes[cell];
+        if(hash != hashtocheck)
+        {
+            continue;
+        }
+        keytocheck = dict->gdkeys[cell];
+        if(strcmp(key, keytocheck) == 0)
+        {
+            *outfound = true;
+            return ix;
+        }
+    }
+    return MC_CONF_GENERICDICTINVALIDIX;
 }
 
-void* mc_genericdict_get(mcgenericdict_t* dict, const char* key)
+bool mc_ptrdict_setintern(mcptrdict_t* dict, unsigned int cellix, unsigned long hash, const char* ckey, char* mkey, void* value)
+{
+    bool ok;
+    bool found;
+    char* keycopy;
+    if(dict->gdcount >= dict->gditemcapacity)
+    {
+        ok = mc_ptrdict_growandrehash(dict);
+        if(!ok)
+        {
+            return false;
+        }
+        cellix = mc_ptrdict_getcellindex(dict, ckey, hash, &found);
+    }
+    if(mkey)
+    {
+        dict->gdkeys[dict->gdcount] = mkey;
+    }
+    else
+    {
+        keycopy = mc_util_strdup(dict->pstate, ckey);
+        if(!keycopy)
+        {
+            return false;
+        }
+        dict->gdkeys[dict->gdcount] = keycopy;
+    }
+    dict->gdcells[cellix] = dict->gdcount;
+    dict->gdvalues[dict->gdcount] = value;
+    dict->gdcellindices[dict->gdcount] = cellix;
+    dict->gdhashes[dict->gdcount] = hash;
+    dict->gdcount++;
+    return true;
+}
+
+MC_INLINE bool mc_ptrdict_setactual(mcptrdict_t* dict, const char* ckey, char* mkey, void* value)
+{
+    bool found;
+    unsigned int cellix;
+    unsigned int itemix;
+    unsigned long hash;
+    hash = mc_util_hashdata(ckey, mc_util_strlen(ckey));
+    found = false;
+    cellix = mc_ptrdict_getcellindex(dict, ckey, hash, &found);
+    if(found)
+    {
+        itemix = dict->gdcells[cellix];
+        dict->gdvalues[itemix] = value;
+        return true;
+    }
+    return mc_ptrdict_setintern(dict, cellix, hash, ckey, mkey, value);
+}
+
+MC_INLINE bool mc_ptrdict_set(mcptrdict_t* dict, const char* key, void* value)
+{
+    return mc_ptrdict_setactual(dict, key, NULL, value);
+}
+
+MC_INLINE void* mc_ptrdict_get(mcptrdict_t* dict, const char* key)
 {
     bool found;
     unsigned int itemix;
@@ -1882,43 +2034,43 @@ void* mc_genericdict_get(mcgenericdict_t* dict, const char* key)
     unsigned long cellix;
     hash = mc_util_hashdata(key, mc_util_strlen(key));
     found = false;
-    cellix = mc_genericdict_getcellindex(dict, key, hash, &found);
+    cellix = mc_ptrdict_getcellindex(dict, key, hash, &found);
     if(found == false)
     {
         return NULL;
     }
-    itemix = dict->cells[cellix];
-    return dict->values[itemix];
+    itemix = dict->gdcells[cellix];
+    return dict->gdvalues[itemix];
 }
 
-void* mc_genericdict_getvalueat(mcgenericdict_t* dict, unsigned int ix)
+MC_INLINE void* mc_ptrdict_getvalueat(mcptrdict_t* dict, unsigned int ix)
 {
-    if(ix >= dict->count)
+    if(ix >= dict->gdcount)
     {
         return NULL;
     }
-    return dict->values[ix];
+    return dict->gdvalues[ix];
 }
 
-const char* mc_genericdict_getkeyat(mcgenericdict_t* dict, unsigned int ix)
+MC_INLINE const char* mc_ptrdict_getkeyat(mcptrdict_t* dict, unsigned int ix)
 {
-    if(ix >= dict->count)
+    if(ix >= dict->gdcount)
     {
         return NULL;
     }
-    return dict->keys[ix];
+    return dict->gdkeys[ix];
 }
 
-size_t mc_genericdict_count(mcgenericdict_t* dict)
+MC_INLINE size_t mc_ptrdict_count(mcptrdict_t* dict)
 {
     if(!dict)
     {
         return 0;
     }
-    return dict->count;
+    return dict->gdcount;
 }
 
-bool mc_genericdict_remove(mcgenericdict_t* dict, const char* key)
+MC_INLINE bool mc_ptrdict_remove(mcptrdict_t* dict, const char* key)
 {
     bool found;
     unsigned int x;
@@ -1931,253 +2083,119 @@ bool mc_genericdict_remove(mcgenericdict_t* dict, const char* key)
     unsigned long hash;
     hash = mc_util_hashdata(key, mc_util_strlen(key));
     found = false;
-    cell = mc_genericdict_getcellindex(dict, key, hash, &found);
+    cell = mc_ptrdict_getcellindex(dict, key, hash, &found);
     if(!found)
     {
         return false;
     }
-    itemix = dict->cells[cell];
-    mc_memory_free(dict->keys[itemix]);
-    lastitemix = dict->count - 1;
+    itemix = dict->gdcells[cell];
+    mc_memory_free(dict->gdkeys[itemix]);
+    lastitemix = dict->gdcount - 1;
     if(itemix < lastitemix)
     {
-        dict->keys[itemix] = dict->keys[lastitemix];
-        dict->values[itemix] = dict->values[lastitemix];
-        dict->cellindices[itemix] = dict->cellindices[lastitemix];
-        dict->hashes[itemix] = dict->hashes[lastitemix];
-        dict->cells[dict->cellindices[itemix]] = itemix;
+        dict->gdkeys[itemix] = dict->gdkeys[lastitemix];
+        dict->gdvalues[itemix] = dict->gdvalues[lastitemix];
+        dict->gdcellindices[itemix] = dict->gdcellindices[lastitemix];
+        dict->gdhashes[itemix] = dict->gdhashes[lastitemix];
+        dict->gdcells[dict->gdcellindices[itemix]] = itemix;
     }
-    dict->count--;
+    dict->gdcount--;
     i = cell;
     j = i;
-    for(x = 0; x < (dict->cellcapacity - 1); x++)
+    for(x = 0; x < (dict->gdcellcapacity - 1); x++)
     {
-        j = (j + 1) & (dict->cellcapacity - 1);
-        if(dict->cells[j] == MC_CONF_GENERICDICTINVALIDIX)
+        j = (j + 1) & (dict->gdcellcapacity - 1);
+        if(dict->gdcells[j] == MC_CONF_GENERICDICTINVALIDIX)
         {
             break;
         }
-        k = (unsigned int)(dict->hashes[dict->cells[j]]) & (dict->cellcapacity - 1);
+        k = (unsigned int)(dict->gdhashes[dict->gdcells[j]]) & (dict->gdcellcapacity - 1);
         if((j > i && (k <= i || k > j)) || (j < i && (k <= i && k > j)))
         {
-            dict->cellindices[dict->cells[j]] = i;
-            dict->cells[i] = dict->cells[j];
+            dict->gdcellindices[dict->gdcells[j]] = i;
+            dict->gdcells[i] = dict->gdcells[j];
             i = j;
         }
     }
-    dict->cells[i] = MC_CONF_GENERICDICTINVALIDIX;
+    dict->gdcells[i] = MC_CONF_GENERICDICTINVALIDIX;
     return true;
 }
 
-bool mc_genericdict_init(mcstate_t* state, mcgenericdict_t* dict, unsigned int initialcapacity, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
+mcptrdict_t* mc_ptrdict_copy(mcptrdict_t* dict)
+{
+    bool ok;
+    size_t i;
+    void* item;
+    void* itemcopy;
+    const char* key;
+    mcptrdict_t* dictcopy;
+    if(!dict->funccopyfn || !dict->funcdestroyfn)
+    {
+        return NULL;
+    }
+    dictcopy = mc_ptrdict_make(dict->pstate, dict->funccopyfn, dict->funcdestroyfn);
+    if(!dictcopy)
+    {
+        return NULL;
+    }
+    dictcopy->pstate = dict->pstate;
+    for(i = 0; i < mc_ptrdict_count(dict); i++)
+    {
+        key = mc_ptrdict_getkeyat(dict, i);
+        item = mc_ptrdict_getvalueat(dict, i);
+        itemcopy = dictcopy->funccopyfn(item);
+        if(item && !itemcopy)
+        {
+            mc_ptrdict_destroyitemsanddict(dictcopy);
+            return NULL;
+        }
+        ok = mc_ptrdict_set(dictcopy, key, itemcopy);
+        if(!ok)
+        {
+            dictcopy->funcdestroyfn(itemcopy);
+            mc_ptrdict_destroyitemsanddict(dictcopy);
+            return NULL;
+        }
+    }
+    return dictcopy;
+}
+
+bool mc_valdict_init(mcstate_t* state, mcvaldict_t* dict, unsigned int initialcapacity)
 {
     unsigned int i;
     dict->pstate = state;
-    dict->cells = NULL;
-    dict->keys = NULL;
-    dict->values = NULL;
-    dict->cellindices = NULL;
-    dict->hashes = NULL;
-    dict->count = 0;
-    dict->cellcapacity = 0;
-    dict->cellcapacity += initialcapacity;
-    dict->itemcapacity = (unsigned int)(initialcapacity * 0.7f);
-    dict->funccopyfn = copyfn;
-    dict->funcdestroyfn = dfn;
-    dict->cells = (unsigned int*)mc_allocator_malloc(dict->pstate, dict->cellcapacity * sizeof(*dict->cells));
-    dict->keys = (char**)mc_allocator_malloc(dict->pstate, dict->itemcapacity * sizeof(*dict->keys));
-    dict->values = (void**)mc_allocator_malloc(dict->pstate, dict->itemcapacity * sizeof(*dict->values));
-    dict->cellindices = (unsigned int*)mc_allocator_malloc(dict->pstate, dict->itemcapacity * sizeof(*dict->cellindices));
-    dict->hashes = (long unsigned int*)mc_allocator_malloc(dict->pstate, dict->itemcapacity * sizeof(*dict->hashes));
-    if(dict->cells == NULL || dict->keys == NULL || dict->values == NULL || dict->cellindices == NULL || dict->hashes == NULL)
-    {
-        goto dictallocfailed;
-    }
-    for(i = 0; i < dict->cellcapacity; i++)
-    {
-        dict->cells[i] = MC_CONF_GENERICDICTINVALIDIX;
-    }
-    return true;
-dictallocfailed:
-    mc_memory_free(dict->cells);
-    mc_memory_free(dict->keys);
-    mc_memory_free(dict->values);
-    mc_memory_free(dict->cellindices);
-    mc_memory_free(dict->hashes);
-    return false;
-}
-
-void mc_genericdict_deinit(mcgenericdict_t* dict, bool freekeys)
-{
-    unsigned int i;
-    if(freekeys)
-    {
-        for(i = 0; i < dict->count; i++)
-        {
-            mc_memory_free(dict->keys[i]);
-        }
-    }
-    dict->count = 0;
-    dict->itemcapacity = 0;
-    dict->cellcapacity = 0;
-    mc_memory_free(dict->cells);
-    mc_memory_free(dict->keys);
-    mc_memory_free(dict->values);
-    mc_memory_free(dict->cellindices);
-    mc_memory_free(dict->hashes);
-    dict->cells = NULL;
-    dict->keys = NULL;
-    dict->values = NULL;
-    dict->cellindices = NULL;
-    dict->hashes = NULL;
-}
-
-MC_INLINE unsigned int mc_genericdict_getcellindex(mcgenericdict_t* dict, const char* key, unsigned long hash, bool* outfound)
-{
-    unsigned int i;
-    unsigned int ix;
-    unsigned int cell;
-    unsigned int cellix;
-    unsigned long hashtocheck;
-    const char* keytocheck;
-    *outfound = false;
-    cellix = (unsigned int)hash & (dict->cellcapacity - 1);
-    for(i = 0; i < dict->cellcapacity; i++)
-    {
-        ix = (cellix + i) & (dict->cellcapacity - 1);
-        cell = dict->cells[ix];
-        if(cell == MC_CONF_GENERICDICTINVALIDIX)
-        {
-            return ix;
-        }
-        hashtocheck = dict->hashes[cell];
-        if(hash != hashtocheck)
-        {
-            continue;
-        }
-        keytocheck = dict->keys[cell];
-        if(strcmp(key, keytocheck) == 0)
-        {
-            *outfound = true;
-            return ix;
-        }
-    }
-    return MC_CONF_GENERICDICTINVALIDIX;
-}
-
-bool mc_genericdict_growandrehash(mcgenericdict_t* dict)
-{
-    bool ok;
-    unsigned int i;
-    char* key;
-    void* value;
-    size_t ncap;
-    mcgenericdict_t newdict;
-    ncap = MC_UTIL_INCCAPACITY(dict->cellcapacity);
-    ok = mc_genericdict_init(dict->pstate, &newdict, ncap, dict->funccopyfn, dict->funcdestroyfn);
-    if(!ok)
-    {
-        return false;
-    }
-    for(i = 0; i < dict->count; i++)
-    {
-        key = dict->keys[i];
-        value = dict->values[i];
-        ok = mc_genericdict_setinternal(&newdict, key, key, value);
-        if(!ok)
-        {
-            mc_genericdict_deinit(&newdict, false);
-            return false;
-        }
-    }
-    mc_genericdict_deinit(dict, false);
-    *dict = newdict;
-    return true;
-}
-
-bool mc_genericdict_setinternal(mcgenericdict_t* dict, const char* ckey, char* mkey, void* value)
-{
-    bool ok;
-    bool found;
-    unsigned int cellix;
-    unsigned int itemix;
-    unsigned long hash;
-    hash = mc_util_hashdata(ckey, mc_util_strlen(ckey));
-    found = false;
-    cellix = mc_genericdict_getcellindex(dict, ckey, hash, &found);
-    if(found)
-    {
-        itemix = dict->cells[cellix];
-        dict->values[itemix] = value;
-        return true;
-    }
-    if(dict->count >= dict->itemcapacity)
-    {
-        ok = mc_genericdict_growandrehash(dict);
-        if(!ok)
-        {
-            return false;
-        }
-        cellix = mc_genericdict_getcellindex(dict, ckey, hash, &found);
-    }
-
-    if(mkey)
-    {
-        dict->keys[dict->count] = mkey;
-    }
-    else
-    {
-        char* keycopy = mc_util_strdup(dict->pstate, ckey);
-        if(!keycopy)
-        {
-            return false;
-        }
-        dict->keys[dict->count] = keycopy;
-    }
-    dict->cells[cellix] = dict->count;
-    dict->values[dict->count] = value;
-    dict->cellindices[dict->count] = cellix;
-    dict->hashes[dict->count] = hash;
-    dict->count++;
-    return true;
-}
-
-bool mc_valdict_init(mcstate_t* state, mcvaldict_t* dict, size_t ktsz, size_t vtsz, unsigned int initialcapacity)
-{
-    unsigned int i;
-    dict->pstate = state;
-    dict->keytypesize = ktsz;
-    dict->valtypesize = vtsz;
-    dict->cells = NULL;
-    dict->keys = NULL;
-    dict->values = NULL;
-    dict->cellindices = NULL;
-    dict->hashes = NULL;
-    dict->count = 0;
-    dict->cellcapacity = initialcapacity;
-    dict->itemcapacity = (unsigned int)(initialcapacity * 0.7f);
+    dict->keytypesize = sizeof(mcvalue_t);
+    dict->valtypesize = sizeof(mcvalue_t);
+    dict->vdcells = NULL;
+    dict->vdkeys = NULL;
+    dict->vdvalues = NULL;
+    dict->vdcellindices = NULL;
+    dict->vdhashes = NULL;
+    dict->vdcount = 0;
+    dict->vdcellcapacity = initialcapacity;
+    dict->vditemcapacity = (unsigned int)(initialcapacity * 0.7f);
     dict->funckeyequalsfn = NULL;
     dict->funchashfn = NULL;
-    dict->cells = (unsigned int*)mc_allocator_malloc(dict->pstate, dict->cellcapacity * sizeof(*dict->cells));
-    dict->keys = (void*)mc_allocator_malloc(dict->pstate, dict->itemcapacity * ktsz);
-    dict->values = (void*)mc_allocator_malloc(dict->pstate, dict->itemcapacity * vtsz);
-    dict->cellindices = (unsigned int*)mc_allocator_malloc(dict->pstate, dict->itemcapacity * sizeof(*dict->cellindices));
-    dict->hashes = (long unsigned int*)mc_allocator_malloc(dict->pstate, dict->itemcapacity * sizeof(*dict->hashes));
-    if(dict->cells == NULL || dict->keys == NULL || dict->values == NULL || dict->cellindices == NULL || dict->hashes == NULL)
+    dict->vdcells = (unsigned int*)mc_allocator_malloc(dict->pstate, dict->vdcellcapacity * sizeof(*dict->vdcells));
+    dict->vdkeys = (char**)mc_allocator_malloc(dict->pstate, dict->vditemcapacity * dict->keytypesize);
+    dict->vdvalues = (mcvalue_t**)mc_allocator_malloc(dict->pstate, dict->vditemcapacity * dict->valtypesize);
+    dict->vdcellindices = (unsigned int*)mc_allocator_malloc(dict->pstate, dict->vditemcapacity * sizeof(*dict->vdcellindices));
+    dict->vdhashes = (long unsigned int*)mc_allocator_malloc(dict->pstate, dict->vditemcapacity * sizeof(*dict->vdhashes));
+    if(dict->vdcells == NULL || dict->vdkeys == NULL || dict->vdvalues == NULL || dict->vdcellindices == NULL || dict->vdhashes == NULL)
     {
         goto dictallocfailed;
     }
-    for(i = 0; i < dict->cellcapacity; i++)
+    for(i = 0; i < dict->vdcellcapacity; i++)
     {
-        dict->cells[i] = MC_CONF_VALDICTINVALIDIX;
+        dict->vdcells[i] = MC_CONF_VALDICTINVALIDIX;
     }
     return true;
 dictallocfailed:
-    mc_memory_free(dict->cells);
-    mc_memory_free(dict->keys);
-    mc_memory_free(dict->values);
-    mc_memory_free(dict->cellindices);
-    mc_memory_free(dict->hashes);
+    mc_memory_free(dict->vdcells);
+    mc_memory_free(dict->vdkeys);
+    mc_memory_free(dict->vdvalues);
+    mc_memory_free(dict->vdcellindices);
+    mc_memory_free(dict->vdhashes);
     return false;
 }
 
@@ -2185,27 +2203,27 @@ void mc_valdict_deinit(mcvaldict_t* dict)
 {
     dict->keytypesize = 0;
     dict->valtypesize = 0;
-    dict->count = 0;
-    dict->itemcapacity = 0;
-    dict->cellcapacity = 0;
-    mc_memory_free(dict->cells);
-    mc_memory_free(dict->keys);
-    mc_memory_free(dict->values);
-    mc_memory_free(dict->cellindices);
-    mc_memory_free(dict->hashes);
-    dict->cells = NULL;
-    dict->keys = NULL;
-    dict->values = NULL;
-    dict->cellindices = NULL;
-    dict->hashes = NULL;
+    dict->vdcount = 0;
+    dict->vditemcapacity = 0;
+    dict->vdcellcapacity = 0;
+    mc_memory_free(dict->vdcells);
+    mc_memory_free(dict->vdkeys);
+    mc_memory_free(dict->vdvalues);
+    mc_memory_free(dict->vdcellindices);
+    mc_memory_free(dict->vdhashes);
+    dict->vdcells = NULL;
+    dict->vdkeys = NULL;
+    dict->vdvalues = NULL;
+    dict->vdcellindices = NULL;
+    dict->vdhashes = NULL;
 }
 
-mcvaldict_t* mc_valdict_make(mcstate_t* state, size_t ktsz, size_t vtsz)
+mcvaldict_t* mc_valdict_makedefault(mcstate_t* state)
 {
-    return mc_valdict_makecapacity(state, MC_CONF_GENERICDICTINITSIZE, ktsz, vtsz);
+    return mc_valdict_makecapacity(state, MC_CONF_GENERICDICTINITSIZE);
 }
 
-mcvaldict_t* mc_valdict_makecapacity(mcstate_t* state, unsigned int mincapacity, size_t ktsz, size_t vtsz)
+mcvaldict_t* mc_valdict_makecapacity(mcstate_t* state, unsigned int mincapacity)
 {
     bool ok;
     unsigned int capacity;
@@ -2216,7 +2234,7 @@ mcvaldict_t* mc_valdict_makecapacity(mcstate_t* state, unsigned int mincapacity,
     {
         return NULL;
     }
-    ok = mc_valdict_init(state, dict, ktsz, vtsz, capacity);
+    ok = mc_valdict_init(state, dict, capacity);
     if(!ok)
     {
         mc_memory_free(dict);
@@ -2228,44 +2246,30 @@ mcvaldict_t* mc_valdict_makecapacity(mcstate_t* state, unsigned int mincapacity,
 
 void mc_valdict_destroy(mcvaldict_t* dict)
 {
-    mcstate_t* state;
     if(!dict)
     {
         return;
     }
-    state = dict->pstate;
     mc_valdict_deinit(dict);
     mc_memory_free(dict);
 }
 
-void mc_valdict_sethashfunction(mcvaldict_t* dict, mcitemhashfn_t hashfn)
+MC_INLINE void mc_valdict_sethashfunction(mcvaldict_t* dict, mcitemhashfn_t hashfn)
 {
     dict->funchashfn = hashfn;
 }
 
-void mc_valdict_setequalsfunction(mcvaldict_t* dict, mcitemcomparefn_t equalsfn)
+MC_INLINE void mc_valdict_setequalsfunction(mcvaldict_t* dict, mcitemcomparefn_t equalsfn)
 {
     dict->funckeyequalsfn = equalsfn;
 }
 
-bool mc_valdict_setkv(mcvaldict_t* dict, void* key, void* value)
+bool mc_valdict_setkvintern(mcvaldict_t* dict, unsigned int cellix, unsigned long hash, void* key, void* value)
 {
     bool ok;
     bool found;
-    unsigned long hash;
     unsigned int lastix;
-    unsigned int cellix;
-    unsigned int itemix;
-    hash = mc_valdict_hashkey(dict, key);
-    found = false;
-    cellix = mc_valdict_getcellindex(dict, key, hash, &found);
-    if(found)
-    {
-        itemix = dict->cells[cellix];
-        mc_valdict_setvalueat(dict, itemix, value);
-        return true;
-    }
-    if(dict->count >= dict->itemcapacity)
+    if(dict->vdcount >= dict->vditemcapacity)
     {
         ok = mc_valdict_growandrehash(dict);
         if(!ok)
@@ -2274,23 +2278,41 @@ bool mc_valdict_setkv(mcvaldict_t* dict, void* key, void* value)
         }
         cellix = mc_valdict_getcellindex(dict, key, hash, &found);
     }
-    lastix = dict->count;
-    dict->count++;
-    dict->cells[cellix] = lastix;
+    lastix = dict->vdcount;
+    dict->vdcount++;
+    dict->vdcells[cellix] = lastix;
     mc_valdict_setkeyat(dict, lastix, key);
     mc_valdict_setvalueat(dict, lastix, value);
-    dict->cellindices[lastix] = cellix;
-    dict->hashes[lastix] = hash;
+    dict->vdcellindices[lastix] = cellix;
+    dict->vdhashes[lastix] = hash;
     return true;
 }
 
-void* mc_valdict_get(mcvaldict_t* dict, void* key)
+MC_INLINE bool mc_valdict_setkv(mcvaldict_t* dict, void* key, void* value)
+{
+    bool found;
+    unsigned long hash;
+    unsigned int cellix;
+    unsigned int itemix;
+    hash = mc_valdict_hashkey(dict, key);
+    found = false;
+    cellix = mc_valdict_getcellindex(dict, key, hash, &found);
+    if(found)
+    {
+        itemix = dict->vdcells[cellix];
+        mc_valdict_setvalueat(dict, itemix, value);
+        return true;
+    }
+    return mc_valdict_setkvintern(dict, cellix, hash, key, value);
+}
+
+MC_INLINE void* mc_valdict_get(mcvaldict_t* dict, void* key)
 {
     bool found;
     unsigned int itemix;
     unsigned long hash;
     unsigned long cellix;
-    if(dict->count == 0)
+    if(dict->vdcount == 0)
     {
         return NULL;
     }
@@ -2301,55 +2323,55 @@ void* mc_valdict_get(mcvaldict_t* dict, void* key)
     {
         return NULL;
     }
-    itemix = dict->cells[cellix];
+    itemix = dict->vdcells[cellix];
     return mc_valdict_getvalueat(dict, itemix);
 }
 
-void* mc_valdict_getkeyat(mcvaldict_t* dict, unsigned int ix)
+MC_INLINE void* mc_valdict_getkeyat(mcvaldict_t* dict, unsigned int ix)
 {
-    if(ix >= dict->count)
+    if(ix >= dict->vdcount)
     {
         return NULL;
     }
-    return (char*)dict->keys + (dict->keytypesize * ix);
+    return (char*)dict->vdkeys + (dict->keytypesize * ix);
 }
 
-void* mc_valdict_getvalueat(mcvaldict_t* dict, unsigned int ix)
+MC_INLINE void* mc_valdict_getvalueat(mcvaldict_t* dict, unsigned int ix)
 {
-    if(ix >= dict->count)
+    if(ix >= dict->vdcount)
     {
         return NULL;
     }
-    return (char*)dict->values + (dict->valtypesize * ix);
+    return (char*)dict->vdvalues + (dict->valtypesize * ix);
 }
 
-unsigned int mc_valdict_getcapacity(mcvaldict_t* dict)
+MC_INLINE unsigned int mc_valdict_getcapacity(mcvaldict_t* dict)
 {
-    return dict->itemcapacity;
+    return dict->vditemcapacity;
 }
 
-bool mc_valdict_setvalueat(mcvaldict_t* dict, unsigned int ix, void* value)
+MC_INLINE bool mc_valdict_setvalueat(mcvaldict_t* dict, unsigned int ix, void* value)
 {
     size_t offset;
-    if(ix >= dict->count)
+    if(ix >= dict->vdcount)
     {
         return false;
     }
     offset = ix * dict->valtypesize;
-    memcpy((char*)dict->values + offset, value, dict->valtypesize);
+    memcpy((char*)dict->vdvalues + offset, value, dict->valtypesize);
     return true;
 }
 
-int mc_valdict_count(mcvaldict_t* dict)
+MC_INLINE int mc_valdict_count(mcvaldict_t* dict)
 {
     if(!dict)
     {
         return 0;
     }
-    return dict->count;
+    return dict->vdcount;
 }
 
-bool mc_valdict_removebykey(mcvaldict_t* dict, void* key)
+MC_INLINE bool mc_valdict_removebykey(mcvaldict_t* dict, void* key)
 {
     bool found;
     unsigned int x;
@@ -2369,51 +2391,51 @@ bool mc_valdict_removebykey(mcvaldict_t* dict, void* key)
     {
         return false;
     }
-    itemix = dict->cells[cell];
-    lastitemix = dict->count - 1;
+    itemix = dict->vdcells[cell];
+    lastitemix = dict->vdcount - 1;
     if(itemix < lastitemix)
     {
         lastkey = mc_valdict_getkeyat(dict, lastitemix);
         mc_valdict_setkeyat(dict, itemix, lastkey);
         lastvalue = mc_valdict_getkeyat(dict, lastitemix);
         mc_valdict_setvalueat(dict, itemix, lastvalue);
-        dict->cellindices[itemix] = dict->cellindices[lastitemix];
-        dict->hashes[itemix] = dict->hashes[lastitemix];
-        dict->cells[dict->cellindices[itemix]] = itemix;
+        dict->vdcellindices[itemix] = dict->vdcellindices[lastitemix];
+        dict->vdhashes[itemix] = dict->vdhashes[lastitemix];
+        dict->vdcells[dict->vdcellindices[itemix]] = itemix;
     }
-    dict->count--;
+    dict->vdcount--;
     i = cell;
     j = i;
-    for(x = 0; x < (dict->cellcapacity - 1); x++)
+    for(x = 0; x < (dict->vdcellcapacity - 1); x++)
     {
-        j = (j + 1) & (dict->cellcapacity - 1);
-        if(dict->cells[j] == MC_CONF_VALDICTINVALIDIX)
+        j = (j + 1) & (dict->vdcellcapacity - 1);
+        if(dict->vdcells[j] == MC_CONF_VALDICTINVALIDIX)
         {
             break;
         }
-        k = (unsigned int)(dict->hashes[dict->cells[j]]) & (dict->cellcapacity - 1);
+        k = (unsigned int)(dict->vdhashes[dict->vdcells[j]]) & (dict->vdcellcapacity - 1);
         if((j > i && (k <= i || k > j)) || (j < i && (k <= i && k > j)))
         {
-            dict->cellindices[dict->cells[j]] = i;
-            dict->cells[i] = dict->cells[j];
+            dict->vdcellindices[dict->vdcells[j]] = i;
+            dict->vdcells[i] = dict->vdcells[j];
             i = j;
         }
     }
-    dict->cells[i] = MC_CONF_VALDICTINVALIDIX;
+    dict->vdcells[i] = MC_CONF_VALDICTINVALIDIX;
     return true;
 }
 
-void mc_valdict_clear(mcvaldict_t* dict)
+MC_INLINE void mc_valdict_clear(mcvaldict_t* dict)
 {
     unsigned int i;
-    dict->count = 0;
-    for(i = 0; i < dict->cellcapacity; i++)
+    dict->vdcount = 0;
+    for(i = 0; i < dict->vdcellcapacity; i++)
     {
-        dict->cells[i] = MC_CONF_VALDICTINVALIDIX;
+        dict->vdcells[i] = MC_CONF_VALDICTINVALIDIX;
     }
 }
 
-unsigned int mc_valdict_getcellindex(mcvaldict_t* dict, void* key, unsigned long hash, bool* outfound)
+MC_INLINE unsigned int mc_valdict_getcellindex(mcvaldict_t* dict, void* key, unsigned long hash, bool* outfound)
 {
     bool areequal;
     unsigned int i;
@@ -2423,16 +2445,16 @@ unsigned int mc_valdict_getcellindex(mcvaldict_t* dict, void* key, unsigned long
     unsigned long hashtocheck;
     void* keytocheck;
     *outfound = false;
-    cellix = (unsigned int)hash & (dict->cellcapacity - 1);
-    for(i = 0; i < dict->cellcapacity; i++)
+    cellix = (unsigned int)hash & (dict->vdcellcapacity - 1);
+    for(i = 0; i < dict->vdcellcapacity; i++)
     {
-        ix = (cellix + i) & (dict->cellcapacity - 1);
-        cell = dict->cells[ix];
+        ix = (cellix + i) & (dict->vdcellcapacity - 1);
+        cell = dict->vdcells[ix];
         if(cell == MC_CONF_VALDICTINVALIDIX)
         {
             return ix;
         }
-        hashtocheck = dict->hashes[cell];
+        hashtocheck = dict->vdhashes[cell];
         if(hash != hashtocheck)
         {
             continue;
@@ -2448,7 +2470,7 @@ unsigned int mc_valdict_getcellindex(mcvaldict_t* dict, void* key, unsigned long
     return MC_CONF_VALDICTINVALIDIX;
 }
 
-bool mc_valdict_growandrehash(mcvaldict_t* dict)
+MC_INLINE bool mc_valdict_growandrehash(mcvaldict_t* dict)
 {
     bool ok;
     mcvaldict_t newdict;
@@ -2456,15 +2478,15 @@ bool mc_valdict_growandrehash(mcvaldict_t* dict)
     unsigned ncap;
     char* key;
     void* value;
-    ncap = MC_UTIL_INCCAPACITY(dict->cellcapacity);    
-    ok = mc_valdict_init(dict->pstate, &newdict, dict->keytypesize, dict->valtypesize, ncap);
+    ncap = MC_UTIL_INCCAPACITY(dict->vdcellcapacity);    
+    ok = mc_valdict_init(dict->pstate, &newdict, ncap);
     if(!ok)
     {
         return false;
     }
     newdict.funckeyequalsfn = dict->funckeyequalsfn;
     newdict.funchashfn = dict->funchashfn;
-    for(i = 0; i < dict->count; i++)
+    for(i = 0; i < dict->vdcount; i++)
     {
         key = (char*)mc_valdict_getkeyat(dict, i);
         value = mc_valdict_getvalueat(dict, i);
@@ -2480,19 +2502,19 @@ bool mc_valdict_growandrehash(mcvaldict_t* dict)
     return true;
 }
 
-bool mc_valdict_setkeyat(mcvaldict_t* dict, unsigned int ix, void* key)
+MC_INLINE bool mc_valdict_setkeyat(mcvaldict_t* dict, unsigned int ix, void* key)
 {
     size_t offset;
-    if(ix >= dict->count)
+    if(ix >= dict->vdcount)
     {
         return false;
     }
     offset = ix * dict->keytypesize;
-    memcpy((char*)dict->keys + offset, key, dict->keytypesize);
+    memcpy((char*)dict->vdkeys + offset, key, dict->keytypesize);
     return true;
 }
 
-bool mc_valdict_keysareequal(mcvaldict_t* dict, void* a, void* b)
+MC_INLINE bool mc_valdict_keysareequal(mcvaldict_t* dict, void* a, void* b)
 {
     if(dict->funckeyequalsfn)
     {
@@ -2501,7 +2523,7 @@ bool mc_valdict_keysareequal(mcvaldict_t* dict, void* a, void* b)
     return memcmp(a, b, dict->keytypesize) == 0;
 }
 
-unsigned long mc_valdict_hashkey(mcvaldict_t* dict, void* key)
+MC_INLINE unsigned long mc_valdict_hashkey(mcvaldict_t* dict, void* key)
 {
     if(dict->funchashfn)
     {
@@ -2566,12 +2588,10 @@ void mc_basicarray_deinit(mcbasicarray_t* arr)
 
 void mc_basicarray_destroy(mcbasicarray_t* arr)
 {
-    mcstate_t* state;
     if(!arr)
     {
         return;
     }
-    state = arr->pstate;
     mc_basicarray_deinit(arr);
     mc_memory_free(arr);
 }
@@ -2608,7 +2628,7 @@ mcbasicarray_t* mc_basicarray_copy(mcbasicarray_t* arr)
     return copy;
 }
 
-bool mc_basicarray_push(mcbasicarray_t* arr, void* value)
+MC_INLINE bool mc_basicarray_push(mcbasicarray_t* arr, void* value)
 {
     unsigned int ncap;
     unsigned char* newdata;
@@ -2639,8 +2659,7 @@ bool mc_basicarray_push(mcbasicarray_t* arr, void* value)
     return true;
 }
 
-
-bool mc_basicarray_pop(mcbasicarray_t* arr, void* outvalue)
+MC_INLINE bool mc_basicarray_pop(mcbasicarray_t* arr, void* outvalue)
 {
     void* res;
     if(arr->count <= 0)
@@ -2656,7 +2675,7 @@ bool mc_basicarray_pop(mcbasicarray_t* arr, void* outvalue)
     return true;
 }
 
-void* mc_basicarray_top(mcbasicarray_t* arr)
+MC_INLINE void* mc_basicarray_top(mcbasicarray_t* arr)
 {
     if(arr->count <= 0)
     {
@@ -2665,7 +2684,7 @@ void* mc_basicarray_top(mcbasicarray_t* arr)
     return mc_basicarray_get(arr, arr->count - 1);
 }
 
-bool mc_basicarray_set(mcbasicarray_t* arr, unsigned int ix, void* value)
+MC_INLINE bool mc_basicarray_set(mcbasicarray_t* arr, unsigned int ix, void* value)
 {
     size_t offset;
     if(ix >= arr->count)
@@ -2760,7 +2779,7 @@ MC_INLINE void* mc_basicarray_getconst(mcbasicarray_t* arr, unsigned int ix)
 
 int mc_basicarray_getindex(mcbasicarray_t* arr, void* ptr)
 {
-    int i;
+    size_t i;
     for(i = 0; i < mc_basicarray_count(arr); i++)
     {
         if(mc_basicarray_getconst(arr, i) == ptr)
@@ -2882,12 +2901,10 @@ size_t mc_ptrlist_capacity(mcptrlist_t* list)
 
 void mc_ptrlist_destroy(mcptrlist_t* list, mcitemdestroyfn_t dfn)
 {
-    mcstate_t* state;
     if(list == NULL)
     {
         return;
     }
-    state = list->pstate;
     if(dfn)
     {
         mc_ptrlist_clearanddestroy(list, dfn);
@@ -3887,7 +3904,7 @@ mcvalue_t mc_value_makemapcapacity(mcstate_t* state, unsigned capacity)
     {
         return mc_value_makenull();
     }
-    data->uvobj.valmap = mc_valdict_makecapacity(state, capacity, sizeof(mcvalue_t), sizeof(mcvalue_t));
+    data->uvobj.valmap = mc_valdict_makecapacity(state, capacity);
     if(!data->uvobj.valmap)
     {
         return mc_value_makenull();
@@ -4009,15 +4026,6 @@ mcvalue_t mc_value_makeuserobject(mcstate_t* state, void* data)
 
 #define mc_value_getallocateddata(object) (object).uval.odata
 
-void mc_value_deinit(mcvalue_t obj)
-{
-    mcobjdata_t* data;
-    if(mc_value_isallocated(obj))
-    {
-        data = mc_value_getallocateddata(obj);
-        mc_objectdata_deinit(data);
-    }
-}
 
 void mc_objectdata_deinit(mcobjdata_t* data)
 {
@@ -4395,12 +4403,11 @@ mcvalue_t mc_value_copydeepintern(mcstate_t* state, mcvalue_t obj, mcvaldict_t* 
     return copy;
 }
 
-
 mcvalue_t mc_value_copydeep(mcstate_t* state, mcvalue_t obj)
 {
     mcvalue_t res;
     mcvaldict_t* targetdict;
-    targetdict = mc_valdict_make(state, sizeof(mcvalue_t), sizeof(mcvalue_t));
+    targetdict = mc_valdict_makedefault(state);
     if(!targetdict)
     {
         return mc_value_makenull();
@@ -5195,8 +5202,6 @@ scopemakefailed:
 
 void mc_astcompscope_destroy(mcastscopecomp_t* scope)
 {
-    mcstate_t* state;
-    state = scope->pstate;
     mc_basicarray_destroy(scope->ipstackcontinue);
     mc_basicarray_destroy(scope->ipstackbreak);
     mc_basicarray_destroy(scope->bytecode);
@@ -5239,12 +5244,10 @@ mccompiledprogram_t* mc_astcompresult_make(mcstate_t* state, uint16_t* bytecode,
 
 void mc_astcompresult_destroy(mccompiledprogram_t* res)
 {
-    mcstate_t* state;
     if(!res)
     {
         return;
     }
-    state = res->pstate;
     mc_memory_free(res->bytecode);
     mc_memory_free(res->progsrcposlist);
     mc_memory_free(res);
@@ -6033,12 +6036,10 @@ void mc_compiledfile_destroy(mcastcompiledfile_t* file)
 {
     size_t i;
     void* item;
-    mcstate_t* state;
     if(!file)
     {
         return;
     }
-    state = file->pstate;
     for(i = 0; i < mc_ptrlist_count(file->lines); i++)
     {
         item = (void*)mc_ptrlist_get(file->lines, i);
@@ -6070,12 +6071,10 @@ mcastcompiler_t* mc_compiler_make(mcstate_t* state, mcconfig_t* config, mcgcmemo
 
 void mc_compiler_destroy(mcastcompiler_t* comp)
 {
-    mcstate_t* state;
     if(!comp)
     {
         return;
     }
-    state = comp->pstate;
     mc_compiler_deinit(comp);
     mc_memory_free(comp);
 }
@@ -6176,7 +6175,7 @@ bool mc_compiler_init(mcastcompiler_t* comp, mcstate_t* state, mcconfig_t* cfg, 
     {
         goto compilerinitfailed;
     }
-    comp->modules = mc_genericdict_make(state, (mcitemcopyfn_t)mc_module_copy, (mcitemdestroyfn_t)mc_module_destroy);
+    comp->modules = mc_ptrdict_make(state, (mcitemcopyfn_t)mc_module_copy, (mcitemdestroyfn_t)mc_module_destroy);
     if(!comp->modules)
     {
         goto compilerinitfailed;
@@ -6191,7 +6190,7 @@ bool mc_compiler_init(mcastcompiler_t* comp, mcstate_t* state, mcconfig_t* cfg, 
     {
         goto compilerinitfailed;
     }
-    comp->stringconstposdict = mc_genericdict_make(comp->pstate, NULL, NULL);
+    comp->stringconstposdict = mc_ptrdict_make(comp->pstate, NULL, NULL);
     if(!comp->stringconstposdict)
     {
         goto compilerinitfailed;
@@ -6211,12 +6210,12 @@ void mc_compiler_deinit(mcastcompiler_t* comp)
     {
         return;
     }
-    for(i = 0; i < mc_genericdict_count(comp->stringconstposdict); i++)
+    for(i = 0; i < mc_ptrdict_count(comp->stringconstposdict); i++)
     {
-        val = (int*)mc_genericdict_getvalueat(comp->stringconstposdict, i);
+        val = (int*)mc_ptrdict_getvalueat(comp->stringconstposdict, i);
         mc_memory_free(val);
     }
-    mc_genericdict_destroy(comp->stringconstposdict);
+    mc_ptrdict_destroy(comp->stringconstposdict);
     while(mc_ptrlist_count(comp->filescopelist) > 0)
     {
         mc_compiler_filescopepop(comp);
@@ -6225,7 +6224,7 @@ void mc_compiler_deinit(mcastcompiler_t* comp)
     {
         mc_compiler_popcompilationscope(comp);
     }
-    mc_genericdict_destroyitemsanddict(comp->modules);
+    mc_ptrdict_destroyitemsanddict(comp->modules);
     mc_basicarray_destroy(comp->srcposstack);
     mc_vallist_destroy(comp->constants);
     mc_ptrlist_destroy(comp->filescopelist, NULL);
@@ -6241,7 +6240,7 @@ bool mc_compiler_initshallowcopy(mcastcompiler_t* copy, mcastcompiler_t* src)
     char* loadednamecopy;
     const char* key;
     const char* loadedname;
-    mcgenericdict_t* modulescopy;
+    mcptrdict_t* modulescopy;
     mcvallist_t* constantscopy;
     mcptrlist_t* srcloadedmodulenames;
     mcptrlist_t* copyloadedmodulenames;
@@ -6267,12 +6266,12 @@ bool mc_compiler_initshallowcopy(mcastcompiler_t* copy, mcastcompiler_t* src)
     mc_symtable_destroy(copyst);
     copyst = NULL;
     mc_compiler_setsymtable(copy, srcstocopy);
-    modulescopy = mc_genericdict_copy(src->modules);
+    modulescopy = mc_ptrdict_copy(src->modules);
     if(!modulescopy)
     {
         goto compilercopyfailed;
     }
-    mc_genericdict_destroyitemsanddict(copy->modules);
+    mc_ptrdict_destroyitemsanddict(copy->modules);
     copy->modules = modulescopy;
     constantscopy = mc_vallist_copy(src->constants);
     if(!constantscopy)
@@ -6281,17 +6280,17 @@ bool mc_compiler_initshallowcopy(mcastcompiler_t* copy, mcastcompiler_t* src)
     }
     mc_vallist_destroy(copy->constants);
     copy->constants = constantscopy;
-    for(i = 0; i < mc_genericdict_count(src->stringconstposdict); i++)
+    for(i = 0; i < mc_ptrdict_count(src->stringconstposdict); i++)
     {
-        key = mc_genericdict_getkeyat(src->stringconstposdict, i);
-        val = (int*)mc_genericdict_getvalueat(src->stringconstposdict, i);
+        key = mc_ptrdict_getkeyat(src->stringconstposdict, i);
+        val = (int*)mc_ptrdict_getvalueat(src->stringconstposdict, i);
         valcopy = (int*)mc_allocator_malloc(src->pstate, sizeof(int));
         if(!valcopy)
         {
             goto compilercopyfailed;
         }
         *valcopy = *val;
-        ok = mc_genericdict_set(copy->stringconstposdict, key, valcopy);
+        ok = mc_ptrdict_set(copy->stringconstposdict, key, valcopy);
         if(!ok)
         {
             mc_memory_free(valcopy);
@@ -6494,8 +6493,8 @@ mcastexpression_t* mc_astexpr_makeliteralmap(mcstate_t* state, mcptrlist_t* keys
     {
         return NULL;
     }
-    res->uexpr.exprlitmap.keys = keys;
-    res->uexpr.exprlitmap.values = values;
+    res->uexpr.exprlitmap.litmapkeys = keys;
+    res->uexpr.exprlitmap.litmapvalues = values;
     return res;
 }
 
@@ -6648,8 +6647,8 @@ void mc_astexpr_destroy(mcastexpression_t* expr)
             break;
         case MC_EXPR_MAPLITERAL:
             {
-                mc_ptrlist_destroy(expr->uexpr.exprlitmap.keys, (mcitemdestroyfn_t)mc_astexpr_destroy);
-                mc_ptrlist_destroy(expr->uexpr.exprlitmap.values, (mcitemdestroyfn_t)mc_astexpr_destroy);
+                mc_ptrlist_destroy(expr->uexpr.exprlitmap.litmapkeys, (mcitemdestroyfn_t)mc_astexpr_destroy);
+                mc_ptrlist_destroy(expr->uexpr.exprlitmap.litmapvalues, (mcitemdestroyfn_t)mc_astexpr_destroy);
             }
             break;
         case MC_EXPR_PREFIX:
@@ -6863,8 +6862,8 @@ mcastexpression_t* mc_astexpr_copyexpr(mcastexpression_t* expr)
             {
                 mcptrlist_t* keyscopy;
                 mcptrlist_t* valuescopy;
-                keyscopy = mc_ptrlist_copy(expr->uexpr.exprlitmap.keys, (mcitemcopyfn_t)mc_astexpr_copyexpr, (mcitemdestroyfn_t)mc_astexpr_destroy);
-                valuescopy = mc_ptrlist_copy(expr->uexpr.exprlitmap.values, (mcitemcopyfn_t)mc_astexpr_copyexpr, (mcitemdestroyfn_t)mc_astexpr_destroy);
+                keyscopy = mc_ptrlist_copy(expr->uexpr.exprlitmap.litmapkeys, (mcitemcopyfn_t)mc_astexpr_copyexpr, (mcitemdestroyfn_t)mc_astexpr_destroy);
+                valuescopy = mc_ptrlist_copy(expr->uexpr.exprlitmap.litmapvalues, (mcitemcopyfn_t)mc_astexpr_copyexpr, (mcitemdestroyfn_t)mc_astexpr_destroy);
                 if(!keyscopy || !valuescopy)
                 {
                     mc_ptrlist_destroy(keyscopy, (mcitemdestroyfn_t)mc_astexpr_destroy);
@@ -10152,7 +10151,7 @@ bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_t* imports
             goto end;
         }
     }
-    module = (module_t*)mc_genericdict_get(comp->modules, filepath);
+    module = (module_t*)mc_ptrdict_get(comp->modules, filepath);
     if(!module)
     {
         /* todo: create new module function */
@@ -10191,7 +10190,7 @@ bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_t* imports
             mc_module_addsymbol(module, symbol);
         }
         mc_compiler_filescopepop(comp);
-        ok = mc_genericdict_set(comp->modules, filepath, module);
+        ok = mc_ptrdict_set(comp->modules, filepath, module);
         if(!ok)
         {
             mc_module_destroy(module);
@@ -10199,9 +10198,9 @@ bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_t* imports
             goto end;
         }
     }
-    for(i = 0; i < mc_ptrlist_count(module->symbols); i++)
+    for(i = 0; i < mc_ptrlist_count(module->modsymbols); i++)
     {
-        symbol = (mcastsymbol_t*)mc_ptrlist_get(module->symbols, i);
+        symbol = (mcastsymbol_t*)mc_ptrlist_get(module->modsymbols, i);
         ok = mc_symtable_addmodsymbol(symtab, symbol);
         if(!ok)
         {
@@ -11085,7 +11084,7 @@ bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexpression_t* exp
                 int* posval;
                 int* currentpos;
                 mcvalue_t obj;
-                currentpos = (int*)mc_genericdict_get(comp->stringconstposdict, expr->uexpr.exprlitstring.data);
+                currentpos = (int*)mc_ptrdict_get(comp->stringconstposdict, expr->uexpr.exprlitstring.data);
                 if(currentpos)
                 {
                     pos = *currentpos;
@@ -11108,7 +11107,7 @@ bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexpression_t* exp
                         goto error;
                     }
                     *posval = pos;
-                    ok = mc_genericdict_set(comp->stringconstposdict, expr->uexpr.exprlitstring.data, posval);
+                    ok = mc_ptrdict_set(comp->stringconstposdict, expr->uexpr.exprlitstring.data, posval);
                     if(!ok)
                     {
                         mc_memory_free(posval);
@@ -11168,7 +11167,7 @@ bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexpression_t* exp
                 mcastexpression_t* val;
                 mcastliteralmap_t* map;
                 map = &expr->uexpr.exprlitmap;
-                len = mc_ptrlist_count(map->keys);
+                len = mc_ptrlist_count(map->litmapkeys);
                 opbuf[0] = len;
                 ip = mc_compiler_emit(comp, MC_OPCODE_MAPSTART, 1, opbuf);
                 if(ip < 0)
@@ -11177,8 +11176,8 @@ bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexpression_t* exp
                 }
                 for(i = 0; i < len; i++)
                 {
-                    key = (mcastexpression_t*)mc_ptrlist_get(map->keys, i);
-                    val = (mcastexpression_t*)mc_ptrlist_get(map->values, i);
+                    key = (mcastexpression_t*)mc_ptrlist_get(map->litmapkeys, i);
+                    val = (mcastexpression_t*)mc_ptrlist_get(map->litmapvalues, i);
                     ok = mc_compiler_compileexpression(comp, key);
                     if(!ok)
                     {
@@ -12000,8 +11999,8 @@ module_t* mc_module_make(mcstate_t* state, const char* name)
         mc_module_destroy(module);
         return NULL;
     }
-    module->symbols = mc_ptrlist_make(state, 0);
-    if(!module->symbols)
+    module->modsymbols = mc_ptrlist_make(state, 0);
+    if(!module->modsymbols)
     {
         mc_module_destroy(module);
         return NULL;
@@ -12022,7 +12021,7 @@ void mc_module_destroy(module_t* module)
         return;
     }
     mc_memory_free(module->name);
-    mc_ptrlist_destroy(module->symbols, (mcitemdestroyfn_t)mc_symbol_destroy);
+    mc_ptrlist_destroy(module->modsymbols, (mcitemdestroyfn_t)mc_symbol_destroy);
     mc_memory_free(module);
 }
 
@@ -12042,8 +12041,8 @@ module_t* mc_module_copy(module_t* src)
         mc_module_destroy(copy);
         return NULL;
     }
-    copy->symbols = mc_ptrlist_copy(src->symbols, (mcitemcopyfn_t)mc_symbol_copy, (mcitemdestroyfn_t)mc_symbol_destroy);
-    if(!copy->symbols)
+    copy->modsymbols = mc_ptrlist_copy(src->modsymbols, (mcitemcopyfn_t)mc_symbol_copy, (mcitemdestroyfn_t)mc_symbol_destroy);
+    if(!copy->modsymbols)
     {
         mc_module_destroy(copy);
         return NULL;
@@ -12084,7 +12083,7 @@ bool mc_module_addsymbol(module_t* module, mcastsymbol_t* symbol)
     {
         return false;
     }
-    ok = mc_ptrlist_push(module->symbols, modulesymbol);
+    ok = mc_ptrlist_push(module->modsymbols, modulesymbol);
     if(!ok)
     {
         mc_symbol_destroy(modulesymbol);
@@ -12117,34 +12116,34 @@ mcastsymbol_t* mc_compiler_defsymbol(mcastcompiler_t* comp, mcastlocation_t pos,
     return symbol;
 }
 
-mcclassinfo_t* mc_class_make(mcstate_t* state, const char* name)
+mcclass_t* mc_class_make(mcstate_t* state, const char* name)
 {
-    mcclassinfo_t* cl;
-    cl = (mcclassinfo_t*)mc_memory_malloc(sizeof(mcclassinfo_t));
+    mcclass_t* cl;
+    cl = (mcclass_t*)mc_memory_malloc(sizeof(mcclass_t));
     cl->classname = name;
     cl->members = mc_ptrlist_make(state, 1);
     return cl;
 }
 
-void mc_class_destroy(mcstate_t* state, mcclassinfo_t* cl)
+void mc_class_destroy(mcstate_t* state, mcclass_t* cl)
 {
     size_t i;
-    mcclassbuiltin_t* memb;
+    mcfield_t* memb;
     (void)state;
     for(i=0; i<cl->members->listcount; i++)
     {
-        memb = (mcclassbuiltin_t*)mc_ptrlist_get(cl->members, i);
+        memb = (mcfield_t*)mc_ptrlist_get(cl->members, i);
         mc_memory_free(memb);
     }
     mc_ptrlist_destroy(cl->members, NULL);
     mc_memory_free(cl);
 }
 
-void mc_class_addmember(mcstate_t* state, mcclassinfo_t* cl, const char* name, bool ispseudo, mcnativefn_t fn)
+void mc_class_addmember(mcstate_t* state, mcclass_t* cl, const char* name, bool ispseudo, mcnativefn_t fn)
 {
-    mcclassbuiltin_t* bt;
+    mcfield_t* bt;
     (void)state;
-    bt = (mcclassbuiltin_t*)mc_memory_malloc(sizeof(mcclassbuiltin_t));
+    bt = (mcfield_t*)mc_memory_malloc(sizeof(mcfield_t));
     bt->name = name;
     bt->ispseudo = ispseudo;
     bt->fndest = fn;
@@ -12163,14 +12162,18 @@ void mc_state_makestdclasses(mcstate_t* state)
         state->stdobjstring = mc_class_make(state, "String");
         mc_class_addmember(state, state->stdobjstring, "length", true, mc_objfnstring_length);
         mc_class_addmember(state, state->stdobjstring, "getself", false, mc_objfnstring_getself);
-
+        mc_class_addmember(state, state->stdobjstring, "toNumber", false, mc_objfnstring_tonumber);
     }
     {
         state->stdobjarray = mc_class_make(state, "Array");
         mc_class_addmember(state, state->stdobjarray, "length", true, mc_objfnarray_length);
+        mc_class_addmember(state, state->stdobjarray, "push", false, mc_objfnarray_push);
+        mc_class_addmember(state, state->stdobjarray, "pop", false, mc_objfnarray_pop);
+        mc_class_addmember(state, state->stdobjarray, "join", false, mc_objfnarray_join);
     }
     {
         state->stdobjmap = mc_class_make(state, "Map");
+        mc_class_addmember(state, state->stdobjmap, "length", true, mc_objfnmap_length);
     }
     {
         state->stdobjfunction = mc_class_make(state, "Function");
@@ -12189,7 +12192,8 @@ mcstate_t* mc_state_make(void)
     mc_state_setdefaultconfig(state);
     state->valuestack = mc_vallist_make(state, "valuestack", MC_CONF_MINVMVALSTACKSIZE);
     state->valthisstack = mc_vallist_make(state, "valthisstack",  MC_CONF_MINVMTHISSTACKSIZE);
-    state->nativethisstack = mc_vallist_make(state, "nativethisstack",  MC_CONF_MINVMTHISSTACKSIZE);
+    state->nativethisstack = mc_vallist_make(state, "nativethisstack",  MC_CONF_MINNATIVETHISSTACKSIZE);
+    state->globalvalstack = mc_vallist_make(state, "globalvalstack", MC_CONF_MAXVMGLOBALS);
     state->framestack = mc_framelist_make(state, MC_CONF_MINVMFRAMES);
     mc_errlist_init(&state->errors);
     state->mem = mc_gcmemory_make(state);
@@ -12233,6 +12237,7 @@ void mc_state_deinit(mcstate_t* state)
     mc_printer_destroy(state->stdoutprinter);
     mc_printer_destroy(state->stderrprinter);
     mc_vallist_destroy(state->valuestack);
+    mc_vallist_destroy(state->globalvalstack);
     mc_framelist_destroy(state->framestack);
     mc_vallist_destroy(state->valthisstack);
     mc_vallist_destroy(state->nativethisstack);
@@ -12273,6 +12278,7 @@ void mc_state_destroy(mcstate_t* state)
 
 void mc_state_freeallocated(mcstate_t* state, void* ptr)
 {
+    (void)state;
     mc_memory_free(ptr);
 }
 
@@ -12827,8 +12833,12 @@ const char* mc_util_mathopstring(mcastmathoptype_t op)
             return "<<";
         case MC_MATHOP_RSHIFT:
             return ">>";
-        default:
-            break;
+        case MC_MATHOP_LTE:
+            return "<=";
+        case MC_MATHOP_GTE:
+            return ">=";
+        case MC_MATHOP_BINNOT:
+            return "~";
     }
     return "MC_MATHOP_UNKNOWN";
 }
@@ -13469,8 +13479,8 @@ mcglobalstore_t* mc_globalstore_make(mcstate_t* state)
     }
     memset(store, 0, sizeof(mcglobalstore_t));
     store->pstate = state;
-    store->symbols = mc_genericdict_make(state, (mcitemcopyfn_t)mc_symbol_copy, (mcitemdestroyfn_t)mc_symbol_destroy);
-    if(!store->symbols)
+    store->storedsymbols = mc_ptrdict_make(state, (mcitemcopyfn_t)mc_symbol_copy, (mcitemdestroyfn_t)mc_symbol_destroy);
+    if(!store->storedsymbols)
     {
         goto err;
     }
@@ -13487,13 +13497,11 @@ err:
 
 void mc_globalstore_destroy(mcglobalstore_t* store)
 {
-    mcstate_t* state;
     if(!store)
     {
         return;
     }
-    state = store->pstate;
-    mc_genericdict_destroyitemsanddict(store->symbols);
+    mc_ptrdict_destroyitemsanddict(store->storedsymbols);
     mc_vallist_destroy(store->storedobjects);
     mc_memory_free(store);
     store = NULL;
@@ -13501,7 +13509,7 @@ void mc_globalstore_destroy(mcglobalstore_t* store)
 
 mcastsymbol_t* mc_globalstore_getsymbol(mcglobalstore_t* store, const char* name)
 {
-    return (mcastsymbol_t*)mc_genericdict_get(store->symbols, name);
+    return (mcastsymbol_t*)mc_ptrdict_get(store->storedsymbols, name);
 }
 
 bool mc_globalstore_setnamed(mcglobalstore_t* store, const char* name, mcvalue_t object)
@@ -13527,7 +13535,7 @@ bool mc_globalstore_setnamed(mcglobalstore_t* store, const char* name, mcvalue_t
     {
         goto err;
     }
-    ok = mc_genericdict_set(store->symbols, name, symbol);
+    ok = mc_ptrdict_set(store->storedsymbols, name, symbol);
     if(!ok)
     {
         mc_symbol_destroy(symbol);
@@ -13568,9 +13576,7 @@ bool mc_value_ishashable(mcvalue_t obj)
     switch(type)
     {
         case MC_VAL_STRING:
-            return true;
         case MC_VAL_NUMBER:
-            return true;
         case MC_VAL_BOOL:
             return true;
         default:
@@ -13604,12 +13610,10 @@ mcastsymbol_t* mc_symbol_make(mcstate_t* state, const char* name, mcastsymtype_t
 
 void mc_symbol_destroy(mcastsymbol_t* symbol)
 {
-    mcstate_t* state;
     if(!symbol)
     {
         return;
     }
-    state = symbol->pstate;
     mc_memory_free(symbol->name);
     symbol->name = NULL;
     mc_memory_free(symbol);
@@ -13664,7 +13668,6 @@ err:
 
 void mc_symtable_destroy(mcastsymtable_t* table)
 {
-    mcstate_t* state;
     if(!table)
     {
         return;
@@ -13676,7 +13679,6 @@ void mc_symtable_destroy(mcastsymtable_t* table)
     mc_ptrlist_destroy(table->blockscopes, NULL);
     mc_ptrlist_destroy(table->modglobalsymbols, (mcitemdestroyfn_t)mc_symbol_destroy);
     mc_ptrlist_destroy(table->freesymbols, (mcitemdestroyfn_t)mc_symbol_destroy);
-    state = table->pstate;
     memset(table, 0, sizeof(mcastsymtable_t));
     mc_memory_free(table);
     table = NULL;
@@ -13905,7 +13907,7 @@ mcastsymbol_t* mc_symtable_resolve(mcastsymtable_t* table, const char* name)
     for(i = mc_ptrlist_count(table->blockscopes) - 1; i >= 0; i--)
     {
         scope = (mcastscopeblock_t*)mc_ptrlist_get(table->blockscopes, i);
-        symbol = (mcastsymbol_t*)mc_genericdict_get(scope->store, name);
+        symbol = (mcastsymbol_t*)mc_ptrdict_get(scope->scopestore, name);
         if(symbol)
         {
             break;
@@ -13942,7 +13944,7 @@ bool mc_symtable_isdefined(mcastsymtable_t* table, const char* name)
         return true;
     }
     topscope = (mcastscopeblock_t*)mc_ptrlist_top(table->blockscopes);
-    symbol = (mcastsymbol_t*)mc_genericdict_get(topscope->store, name);
+    symbol = (mcastsymbol_t*)mc_ptrdict_get(topscope->scopestore, name);
     if(symbol)
     {
         return true;
@@ -14030,8 +14032,8 @@ mcastscopeblock_t* mc_astblockscope_make(mcstate_t* state, int offset)
     }
     memset(newscope, 0, sizeof(mcastscopeblock_t));
     newscope->pstate = state;
-    newscope->store = mc_genericdict_make(state, (mcitemcopyfn_t)mc_symbol_copy, (mcitemdestroyfn_t)mc_symbol_destroy);
-    if(!newscope->store)
+    newscope->scopestore = mc_ptrdict_make(state, (mcitemcopyfn_t)mc_symbol_copy, (mcitemdestroyfn_t)mc_symbol_destroy);
+    if(!newscope->scopestore)
     {
         mc_astblockscope_destroy(newscope);
         return NULL;
@@ -14043,9 +14045,7 @@ mcastscopeblock_t* mc_astblockscope_make(mcstate_t* state, int offset)
 
 void mc_astblockscope_destroy(mcastscopeblock_t* scope)
 {
-    mcstate_t* state;
-    state = scope->pstate;
-    mc_genericdict_destroyitemsanddict(scope->store);
+    mc_ptrdict_destroyitemsanddict(scope->scopestore);
     mc_memory_free(scope);
     scope = NULL;
 }
@@ -14062,8 +14062,8 @@ mcastscopeblock_t* mc_astblockscope_copy(mcastscopeblock_t* scope)
     copy->pstate = scope->pstate;
     copy->numdefinitions = scope->numdefinitions;
     copy->offset = scope->offset;
-    copy->store = mc_genericdict_copy(scope->store);
-    if(!copy->store)
+    copy->scopestore = mc_ptrdict_copy(scope->scopestore);
+    if(!copy->scopestore)
     {
         mc_astblockscope_destroy(copy);
         return NULL;
@@ -14076,12 +14076,12 @@ bool mc_symtable_setsymbol(mcastsymtable_t* table, mcastsymbol_t* symbol)
     mcastscopeblock_t* topscope;
     mcastsymbol_t* existing;
     topscope = (mcastscopeblock_t*)mc_ptrlist_top(table->blockscopes);
-    existing = (mcastsymbol_t*)mc_genericdict_get(topscope->store, symbol->name);
+    existing = (mcastsymbol_t*)mc_ptrdict_get(topscope->scopestore, symbol->name);
     if(existing)
     {
         mc_symbol_destroy(existing);
     }
-    return mc_genericdict_set(topscope->store, symbol->name, symbol);
+    return mc_ptrdict_set(topscope->scopestore, symbol->name, symbol);
 }
 
 int mc_symtable_nextsymindex(mcastsymtable_t* table)
@@ -14279,13 +14279,11 @@ mctraceback_t* mc_traceback_make(mcstate_t* state)
 void mc_traceback_destroy(mctraceback_t* traceback)
 {
     size_t i;
-    mcstate_t* state;
     mctraceitem_t* item;
     if(!traceback)
     {
         return;
     }
-    state = traceback->pstate;
     for(i = 0; i < mc_basicarray_count(traceback->items); i++)
     {
         item = (mctraceitem_t*)mc_basicarray_get(traceback->items, i);
@@ -14566,15 +14564,7 @@ bool mc_vm_haserrors(mcstate_t* state)
 
 bool mc_vm_setglobalbyindex(mcstate_t* state, size_t ix, mcvalue_t val)
 {
-    #if 1
-    if(ix >= MC_CONF_MAXVMGLOBALS)
-    {
-        MC_ASSERT(false);
-        mc_errlist_addf(&state->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "cannot put global value at index %ld: out of range", ix);
-        return false;
-    }
-    #endif
-    state->globalvalstack[ix] = val;
+    mc_vallist_set(state->globalvalstack, ix, val);
     if(ix >= state->globalvalcount)
     {
         state->globalvalcount = ix + 1;
@@ -14584,15 +14574,7 @@ bool mc_vm_setglobalbyindex(mcstate_t* state, size_t ix, mcvalue_t val)
 
 mcvalue_t mc_vm_getglobalbyindex(mcstate_t* state, size_t ix)
 {
-    #if 1
-    if(ix >= MC_CONF_MAXVMGLOBALS)
-    {
-        MC_ASSERT(false);
-        mc_errlist_addf(&state->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(state->currframe), "cannot get global value at index %ld: out of range", ix);
-        return mc_value_makenull();
-    }
-    #endif
-    return state->globalvalstack[ix];
+    return mc_vallist_get(state->globalvalstack, ix);
 }
 
 void mc_vm_setstackpos(mcstate_t* state, size_t nsp)
@@ -14748,7 +14730,7 @@ void mc_vm_rungc(mcstate_t* state, mcvallist_t* constants)
     mc_state_gcunmarkall(state);
     mc_state_gcmarkobjlist(mc_globalstore_getdata(state->vmglobalstore), mc_globalstore_getcount(state->vmglobalstore));
     mc_state_gcmarkobjlist((mcvalue_t*)mc_vallist_data(constants), mc_vallist_count(constants));
-    mc_state_gcmarkobjlist(state->globalvalstack, state->globalvalcount);
+    mc_state_gcmarkobjlist(state->globalvalstack->listitems, state->globalvalcount);
     for(i = 0; i < state->framestack->listcount; i++)
     {
         frame = mc_framelist_get(state->framestack, i);
@@ -14768,13 +14750,15 @@ MC_INLINE bool mc_vmdo_callobject(mcstate_t* state, mcvalue_t callee, int nargs)
     mcvaltype_t calleetype;
     mcvmframe_t calleeframe;
     mcvalue_t res;
+    mcvalue_t tmpval;
     mcvalue_t selfval;
     mcvalue_t* stackpos;
     mcobjfuncscript_t* calleefunction;
     calleetype = mc_value_gettype(callee);
-    if(!mc_vallist_pop(state->nativethisstack, &selfval))
+    selfval = mc_value_makenull();
+    if(mc_vallist_pop(state->nativethisstack, &tmpval))
     {
-        selfval = mc_value_makenull();
+        selfval = tmpval;
     }
     #if 0
     {
@@ -15047,7 +15031,7 @@ MC_INLINE bool mc_vmdo_math(mcstate_t* state, mcopcode_t opcode)
     return true;
 }
 
-MC_INLINE mcclassinfo_t* mc_vmdo_getclassforintern(mcstate_t* state, mcvaltype_t typ)
+MC_INLINE mcclass_t* mc_vmdo_getclassforintern(mcstate_t* state, mcvaltype_t typ)
 {
     (void)state;
     (void)typ;
@@ -15087,9 +15071,9 @@ MC_INLINE mcclassinfo_t* mc_vmdo_getclassforintern(mcstate_t* state, mcvaltype_t
     return NULL;
 }
 
-MC_INLINE mcclassinfo_t* mc_vmdo_getclassfor(mcstate_t* state, mcvaltype_t typ)
+MC_INLINE mcclass_t* mc_vmdo_getclassfor(mcstate_t* state, mcvaltype_t typ)
 {
-    mcclassinfo_t* cl;
+    mcclass_t* cl;
     cl = mc_vmdo_getclassforintern(state, typ);
     if(cl != NULL)
     {
@@ -15099,20 +15083,20 @@ MC_INLINE mcclassinfo_t* mc_vmdo_getclassfor(mcstate_t* state, mcvaltype_t typ)
 }
 
 /*
-mcclassinfo_t:
+mcclass_t:
     mcvaltype_t vtype;
     const char* classname;
     mcvallist_t* members;
 */
 
-MC_INLINE mcclassbuiltin_t* mc_vmdo_getclassmember(mcstate_t* state, mcclassinfo_t* cl, const char* name)
+MC_INLINE mcfield_t* mc_vmdo_getclassmember(mcstate_t* state, mcclass_t* cl, const char* name)
 {
     size_t i;
-    mcclassbuiltin_t* memb;
+    mcfield_t* memb;
     (void)state;
     for(i=0; i<cl->members->listcount; i++)
     {
-        memb = (mcclassbuiltin_t*)mc_ptrlist_get(cl->members, i);
+        memb = (mcfield_t*)mc_ptrlist_get(cl->members, i);
         if(strcmp(memb->name, name) == 0)
         {
             return memb;
@@ -15123,7 +15107,7 @@ MC_INLINE mcclassbuiltin_t* mc_vmdo_getclassmember(mcstate_t* state, mcclassinfo
 
 /*
 
-mcclassbuiltin_t:
+mcfield_t:
     const char* name;
     bool ispseudo;
     mcnativefn_t fndest;
@@ -15131,16 +15115,15 @@ mcclassbuiltin_t:
 */
 MC_INLINE bool mc_vmdo_getclassmembervalue(mcstate_t* state, mcvalue_t left, mcvalue_t index, mcvalue_t setval)
 {
-    bool ok;
     mcvalue_t fnval;
     mcvalue_t retv;
     const char* idxname;
-    mcclassbuiltin_t* vdest;
+    mcfield_t* vdest;
     (void)state;
     (void)left;
     (void)index;
     (void)setval;
-    mcclassinfo_t* cl;
+    mcclass_t* cl;
     cl = mc_vmdo_getclassfor(state, left.type);
     if(cl != NULL)
     {
@@ -15169,7 +15152,6 @@ MC_INLINE bool mc_vmdo_getclassmembervalue(mcstate_t* state, mcvalue_t left, mcv
 
 MC_INLINE bool mc_vmdo_getindexpartial(mcstate_t* state, mcvalue_t left, mcvaltype_t lefttype, mcvalue_t index, mcvaltype_t indextype, bool fromdot)
 {
-    bool ok;
     int leftlen;
     int ix;
     char resstr[2];
@@ -15178,7 +15160,6 @@ MC_INLINE bool mc_vmdo_getindexpartial(mcstate_t* state, mcvalue_t left, mcvalty
     const char* lefttypename;
     mcvalue_t res;
     (void)fromdot;
-    //mc_state_gcdisablefor(left);
     mc_vallist_push(state->nativethisstack, left);
     if(mc_value_isstring(index))
     {
@@ -15600,10 +15581,19 @@ MC_INLINE bool mc_vmdo_makemapend(mcstate_t* state)
     return true;
 }
 
-#if 0
+#if defined(__GNUC__) || defined(__CLANG__) || defined(__TINYC__)
+    #define MC_CONF_USECOMPUTEDGOTOS 1
+#else
+    #define MC_CONF_USECOMPUTEDGOTOS 0
+#endif
+
+#if defined(MC_CONF_USECOMPUTEDGOTOS) && (MC_CONF_USECOMPUTEDGOTOS == 1)
+    #define MAKELABEL(opname) LABEL_##opname
+    #define mcvm_case(opn) LABEL_##opn
     #define mc_vmmac_break() \
         goto readnextop
 #else
+    #define mcvm_case(opn) case opn
     #define mc_vmmac_break() \
         break
 #endif
@@ -15634,6 +15624,66 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
     const char* oname;
     mcobjfuncscript_t* functionfunction;
     (void)oname;
+
+    #if defined(MC_CONF_USECOMPUTEDGOTOS) && (MC_CONF_USECOMPUTEDGOTOS == 1)
+        static void* dispatchtable[] = {
+            &&MAKELABEL(MC_OPCODE_HALT),
+            &&MAKELABEL(MC_OPCODE_CONSTANT),
+            &&MAKELABEL(MC_OPCODE_ADD),
+            &&MAKELABEL(MC_OPCODE_SUB),
+            &&MAKELABEL(MC_OPCODE_MUL),
+            &&MAKELABEL(MC_OPCODE_DIV),
+            &&MAKELABEL(MC_OPCODE_MOD),
+            &&MAKELABEL(MC_OPCODE_POP),
+            &&MAKELABEL(MC_OPCODE_BINOR),
+            &&MAKELABEL(MC_OPCODE_BINXOR),
+            &&MAKELABEL(MC_OPCODE_BINAND),
+            &&MAKELABEL(MC_OPCODE_LSHIFT),
+            &&MAKELABEL(MC_OPCODE_RSHIFT),
+            &&MAKELABEL(MC_OPCODE_BANG),
+            &&MAKELABEL(MC_OPCODE_COMPARE),
+            &&MAKELABEL(MC_OPCODE_TRUE),
+            &&MAKELABEL(MC_OPCODE_FALSE),
+            &&MAKELABEL(MC_OPCODE_COMPAREEQ),
+            &&MAKELABEL(MC_OPCODE_EQUAL),
+            &&MAKELABEL(MC_OPCODE_NOTEQUAL),
+            &&MAKELABEL(MC_OPCODE_GREATERTHAN),
+            &&MAKELABEL(MC_OPCODE_GREATERTHANEQUAL),
+            &&MAKELABEL(MC_OPCODE_MINUS),
+            &&MAKELABEL(MC_OPCODE_BINNOT),
+            &&MAKELABEL(MC_OPCODE_JUMP),
+            &&MAKELABEL(MC_OPCODE_JUMPIFFALSE),
+            &&MAKELABEL(MC_OPCODE_JUMPIFTRUE),
+            &&MAKELABEL(MC_OPCODE_NULL),
+            &&MAKELABEL(MC_OPCODE_GETMODULEGLOBAL),
+            &&MAKELABEL(MC_OPCODE_SETMODULEGLOBAL),
+            &&MAKELABEL(MC_OPCODE_DEFINEMODULEGLOBAL),
+            &&MAKELABEL(MC_OPCODE_ARRAY),
+            &&MAKELABEL(MC_OPCODE_MAPSTART),
+            &&MAKELABEL(MC_OPCODE_MAPEND),
+            &&MAKELABEL(MC_OPCODE_GETTHIS),
+            &&MAKELABEL(MC_OPCODE_GETINDEX),
+            &&MAKELABEL(MC_OPCODE_SETINDEX),
+            &&MAKELABEL(MC_OPCODE_GETDOTINDEX),
+            &&MAKELABEL(MC_OPCODE_GETVALUEAT),
+            &&MAKELABEL(MC_OPCODE_CALL),
+            &&MAKELABEL(MC_OPCODE_RETURNVALUE),
+            &&MAKELABEL(MC_OPCODE_RETURN),
+            &&MAKELABEL(MC_OPCODE_GETLOCAL),
+            &&MAKELABEL(MC_OPCODE_DEFINELOCAL),
+            &&MAKELABEL(MC_OPCODE_SETLOCAL),
+            &&MAKELABEL(MC_OPCODE_GETGLOBALBUILTIN),
+            &&MAKELABEL(MC_OPCODE_FUNCTION),
+            &&MAKELABEL(MC_OPCODE_GETFREE),
+            &&MAKELABEL(MC_OPCODE_SETFREE),
+            &&MAKELABEL(MC_OPCODE_CURRENTFUNCTION),
+            &&MAKELABEL(MC_OPCODE_DUP),
+            &&MAKELABEL(MC_OPCODE_NUMBER),
+            &&MAKELABEL(MC_OPCODE_FOREACHLEN),
+            &&MAKELABEL(MC_OPCODE_SETRECOVER),
+        };
+    #endif
+
     if(mc_util_unlikely(state->running))
     {
         mc_errlist_addf(&state->errors, MC_ERROR_USER, srcposinvalid, "state is already executing code");
@@ -15667,8 +15717,13 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
             mc_vmutil_getopinfo((mcopcode_t)opcode, &oname);
             fprintf(stderr, "opcode=%d (%s)\n", opcode, oname);
         }
+        #if defined(MC_CONF_USECOMPUTEDGOTOS) && (MC_CONF_USECOMPUTEDGOTOS == 1)
+            goto* dispatchtable[opcode];
+        #else
         switch(opcode)
+        #endif
         {
+            #if !defined(MC_CONF_USECOMPUTEDGOTOS) || (MC_CONF_USECOMPUTEDGOTOS == 0)
             default:
                 {
                     const char* prevname;
@@ -15680,12 +15735,12 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
                     goto onexecerror;
                 }
                 break;
-            case MC_OPCODE_HALT:
+            #endif
+            mcvm_case(MC_OPCODE_HALT):
                 {
                     goto onexecfinish;
                 }
-                break;
-            case MC_OPCODE_RETURNVALUE:
+            mcvm_case(MC_OPCODE_RETURNVALUE):
                 {
                     mcvalue_t res;
                     res = mc_vm_stackpop(state);
@@ -15696,8 +15751,8 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
                     }
                     mc_vm_stackpush(state, res);
                 }
-                break;
-            case MC_OPCODE_RETURN:
+                mc_vmmac_break();
+            mcvm_case(MC_OPCODE_RETURN):
                 {
                     ok = mc_vm_popframe(state);
                     mc_vm_stackpush(state, mc_value_makenull());
@@ -15707,8 +15762,8 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
                         goto onexecfinish;
                     }
                 }
-                break;
-            case MC_OPCODE_CONSTANT:
+                mc_vmmac_break();
+            mcvm_case(MC_OPCODE_CONSTANT):
                 {
                     uint16_t constantix;
                     mcvalue_t* constant;
@@ -15722,16 +15777,16 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
                     mc_vm_stackpush(state, *constant);
                 }
                 mc_vmmac_break();
-            case MC_OPCODE_ADD:
-            case MC_OPCODE_SUB:
-            case MC_OPCODE_MUL:
-            case MC_OPCODE_DIV:
-            case MC_OPCODE_MOD:
-            case MC_OPCODE_BINOR:
-            case MC_OPCODE_BINXOR:
-            case MC_OPCODE_BINAND:
-            case MC_OPCODE_LSHIFT:
-            case MC_OPCODE_RSHIFT:
+            mcvm_case(MC_OPCODE_ADD):
+            mcvm_case(MC_OPCODE_SUB):
+            mcvm_case(MC_OPCODE_MUL):
+            mcvm_case(MC_OPCODE_DIV):
+            mcvm_case(MC_OPCODE_MOD):
+            mcvm_case(MC_OPCODE_BINOR):
+            mcvm_case(MC_OPCODE_BINXOR):
+            mcvm_case(MC_OPCODE_BINAND):
+            mcvm_case(MC_OPCODE_LSHIFT):
+            mcvm_case(MC_OPCODE_RSHIFT):
                 {
                     if(!mc_vmdo_math(state, (mcopcode_t)opcode))
                     {
@@ -15739,23 +15794,23 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
                     }
                 }
                 mc_vmmac_break();
-            case MC_OPCODE_POP:
+            mcvm_case(MC_OPCODE_POP):
                 {
                     mc_vm_stackpop(state);
                 }
                 mc_vmmac_break();
-            case MC_OPCODE_TRUE:
+            mcvm_case(MC_OPCODE_TRUE):
                 {
                     mc_vm_stackpush(state, mc_value_makebool(true));
                 }
                 mc_vmmac_break();
-            case MC_OPCODE_FALSE:
+            mcvm_case(MC_OPCODE_FALSE):
                 {
                     mc_vm_stackpush(state, mc_value_makebool(false));
                 }
                 mc_vmmac_break();
-            case MC_OPCODE_COMPARE:
-            case MC_OPCODE_COMPAREEQ:
+            mcvm_case(MC_OPCODE_COMPARE):
+            mcvm_case(MC_OPCODE_COMPAREEQ):
                 {
                     if(!mc_vmdo_docmpvalue(state, (mcopcode_t)opcode))
                     {
@@ -15763,10 +15818,10 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
                     }
                 }
                 mc_vmmac_break();
-            case MC_OPCODE_EQUAL:
-            case MC_OPCODE_NOTEQUAL:
-            case MC_OPCODE_GREATERTHAN:
-            case MC_OPCODE_GREATERTHANEQUAL:
+            mcvm_case(MC_OPCODE_EQUAL):
+            mcvm_case(MC_OPCODE_NOTEQUAL):
+            mcvm_case(MC_OPCODE_GREATERTHAN):
+            mcvm_case(MC_OPCODE_GREATERTHANEQUAL):
                 {
                     if(!mc_vmdo_docmpvalgreater(state, (mcopcode_t)opcode))
                     {
@@ -15774,7 +15829,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
                     }
                 }
                 mc_vmmac_break();
-            case MC_OPCODE_MINUS:
+            mcvm_case(MC_OPCODE_MINUS):
                 {
                     bool overloadfound;
                     mcfloat_t val;
@@ -15807,7 +15862,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
                     }
                 }
                 mc_vmmac_break();
-            case MC_OPCODE_BINNOT:
+            mcvm_case(MC_OPCODE_BINNOT):
                 {
                     bool overloadfound;
                     int64_t val;
@@ -15840,7 +15895,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
                     }
                 }
                 mc_vmmac_break();
-            case MC_OPCODE_BANG:
+            mcvm_case(MC_OPCODE_BANG):
                 {
                     bool overloadfound;
                     mcvalue_t res;
@@ -15874,14 +15929,14 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
                     }
                 }
                 mc_vmmac_break();
-            case MC_OPCODE_JUMP:
+            mcvm_case(MC_OPCODE_JUMP):
                 {
                     uint16_t pos;
                     pos = mc_callframe_readuint16(state->currframe);
                     state->currframe->bcposition = pos;
                 }
                 mc_vmmac_break();
-            case MC_OPCODE_JUMPIFFALSE:
+            mcvm_case(MC_OPCODE_JUMPIFFALSE):
                 {
                     uint16_t pos;
                     mcvalue_t test;
@@ -15893,7 +15948,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
                     }
                 }
                 mc_vmmac_break();
-            case MC_OPCODE_JUMPIFTRUE:
+            mcvm_case(MC_OPCODE_JUMPIFTRUE):
                 {
                     uint16_t pos;
                     mcvalue_t test;
@@ -15905,12 +15960,12 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
                     }
                 }
                 mc_vmmac_break();
-            case MC_OPCODE_NULL:
+            mcvm_case(MC_OPCODE_NULL):
                 {
                     mc_vm_stackpush(state, mc_value_makenull());
                 }
                 mc_vmmac_break();
-            case MC_OPCODE_DEFINEMODULEGLOBAL:
+            mcvm_case(MC_OPCODE_DEFINEMODULEGLOBAL):
                 {
                     uint16_t ix;
                     mcvalue_t value;
@@ -15919,7 +15974,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
                     mc_vm_setglobalbyindex(state, ix, value);
                 }
                 mc_vmmac_break();
-            case MC_OPCODE_SETMODULEGLOBAL:
+            mcvm_case(MC_OPCODE_SETMODULEGLOBAL):
                 {
                     uint16_t ix;
                     mcvalue_t nvalue;
@@ -15934,16 +15989,16 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
                     mc_vm_setglobalbyindex(state, ix, nvalue);
                 }
                 mc_vmmac_break();
-            case MC_OPCODE_GETMODULEGLOBAL:
+            mcvm_case(MC_OPCODE_GETMODULEGLOBAL):
                 {
                     uint16_t ix;
                     mcvalue_t global;
                     ix = mc_callframe_readuint16(state->currframe);
-                    global = state->globalvalstack[ix];
+                    global = mc_vallist_get(state->globalvalstack, ix);
                     mc_vm_stackpush(state, global);
                 }
                 mc_vmmac_break();
-            case MC_OPCODE_ARRAY:
+            mcvm_case(MC_OPCODE_ARRAY):
                 {
                     if(!mc_vmdo_makearray(state))
                     {
@@ -15951,7 +16006,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
                     }
                 }
                 mc_vmmac_break();
-            case MC_OPCODE_MAPSTART:
+            mcvm_case(MC_OPCODE_MAPSTART):
                 {
                     if(!mc_vmdo_makemapstart(state))
                     {
@@ -15959,7 +16014,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
                     }
                 }
                 mc_vmmac_break();
-            case MC_OPCODE_MAPEND:
+            mcvm_case(MC_OPCODE_MAPEND):
                 {
                     if(!mc_vmdo_makemapend(state))
                     {
@@ -15967,7 +16022,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
                     }
                 }
                 mc_vmmac_break();
-            case MC_OPCODE_GETVALUEAT:
+            mcvm_case(MC_OPCODE_GETVALUEAT):
                 {
                     if(!mc_vmdo_getvalueatfull(state))
                     {
@@ -15975,7 +16030,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
                     }
                 }
                 mc_vmmac_break();
-            case MC_OPCODE_CALL:
+            mcvm_case(MC_OPCODE_CALL):
                 {
                     uint16_t nargs;
                     mcvalue_t callee;
@@ -15988,14 +16043,14 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
                     }
                 }
                 mc_vmmac_break();
-            case MC_OPCODE_DEFINELOCAL:
+            mcvm_case(MC_OPCODE_DEFINELOCAL):
                 {
                     uint16_t pos;
                     pos = mc_callframe_readuint8(state->currframe);
                     mc_vallist_set(state->valuestack, state->currframe->basepointer + pos, mc_vm_stackpop(state));
                 }
                 mc_vmmac_break();
-            case MC_OPCODE_SETLOCAL:
+            mcvm_case(MC_OPCODE_SETLOCAL):
                 {
                     uint16_t pos;
                     mcvalue_t nvalue;
@@ -16010,7 +16065,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
                     mc_vallist_set(state->valuestack, state->currframe->basepointer + pos, nvalue);
                 }
                 mc_vmmac_break();
-            case MC_OPCODE_GETLOCAL:
+            mcvm_case(MC_OPCODE_GETLOCAL):
                 {
                     size_t finalpos;
                     size_t pos;
@@ -16029,7 +16084,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
                     mc_vm_stackpush(state, val);
                 }
                 mc_vmmac_break();
-            case MC_OPCODE_GETGLOBALBUILTIN:
+            mcvm_case(MC_OPCODE_GETGLOBALBUILTIN):
                 {
                     uint16_t ix;
                     mcvalue_t val;
@@ -16045,7 +16100,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
                 }
                 mc_vmmac_break();
 
-            case MC_OPCODE_FUNCTION:
+            mcvm_case(MC_OPCODE_FUNCTION):
                 {
                     if(!mc_vmdo_makefunction(state, constants))
                     {
@@ -16053,7 +16108,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
                     }
                 }
                 mc_vmmac_break();
-            case MC_OPCODE_GETFREE:
+            mcvm_case(MC_OPCODE_GETFREE):
                 {
                     uint16_t freeix;
                     mcvalue_t val;
@@ -16062,7 +16117,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
                     mc_vm_stackpush(state, val);
                 }
                 mc_vmmac_break();
-            case MC_OPCODE_SETFREE:
+            mcvm_case(MC_OPCODE_SETFREE):
                 {
                     uint16_t freeix;
                     mcvalue_t val;
@@ -16071,21 +16126,21 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
                     mc_value_functionsetfreevalat(state->currframe->function, freeix, val);
                 }
                 mc_vmmac_break();
-            case MC_OPCODE_CURRENTFUNCTION:
+            mcvm_case(MC_OPCODE_CURRENTFUNCTION):
                 {
                     mcvalue_t currentfunction;
                     currentfunction = state->currframe->function;
                     mc_vm_stackpush(state, currentfunction);
                 }
                 mc_vmmac_break();
-            case MC_OPCODE_GETTHIS:
+            mcvm_case(MC_OPCODE_GETTHIS):
                 {
                     mcvalue_t obj;
                     obj = mc_vm_thisstackget(state, 0);
                     mc_vm_stackpush(state, obj);
                 }
                 mc_vmmac_break();
-            case MC_OPCODE_GETDOTINDEX:
+            mcvm_case(MC_OPCODE_GETDOTINDEX):
                 {
                     if(!mc_vmdo_getdotindex(state))
                     {
@@ -16093,7 +16148,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
                     }
                 }
                 mc_vmmac_break();
-            case MC_OPCODE_GETINDEX:
+            mcvm_case(MC_OPCODE_GETINDEX):
                 {
                     if(!mc_vmdo_getindexfull(state))
                     {
@@ -16101,7 +16156,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
                     }
                 }
                 mc_vmmac_break();
-            case MC_OPCODE_SETINDEX:
+            mcvm_case(MC_OPCODE_SETINDEX):
                 {
                     if(!mc_vmdo_setindexfull(state))
                     {
@@ -16109,14 +16164,14 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
                     }
                 }
                 mc_vmmac_break();
-            case MC_OPCODE_DUP:
+            mcvm_case(MC_OPCODE_DUP):
                 {
                     mcvalue_t val;
                     val = mc_vm_stackget(state, 0);
                     mc_vm_stackpush(state, val);
                 }
                 mc_vmmac_break();
-            case MC_OPCODE_FOREACHLEN:
+            mcvm_case(MC_OPCODE_FOREACHLEN):
                 {
                     int len;
                     const char* tname;
@@ -16146,7 +16201,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
                     mc_vm_stackpush(state, mc_value_makenumber(len));
                 }
                 mc_vmmac_break();
-            case MC_OPCODE_NUMBER:
+            mcvm_case(MC_OPCODE_NUMBER):
                 {
                     uint64_t val;
                     mcfloat_t dval;
@@ -16157,7 +16212,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
                     mc_vm_stackpush(state, obj);
                 }
                 mc_vmmac_break();
-            case MC_OPCODE_SETRECOVER:
+            mcvm_case(MC_OPCODE_SETRECOVER):
                 {
                     uint16_t recip;
                     recip = mc_callframe_readuint16(state->currframe);
@@ -16258,53 +16313,7 @@ mcvalue_t mc_scriptfn_ord(mcstate_t* state, void* data, mcvalue_t thisval, size_
     return mc_value_makenumber(ch);
 }
 
-mcvalue_t mc_scriptfn_arrayjoin(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
-{
-    bool havejoinee;
-    int i;
-    int slen;
-    int alen;
-    const char* str;
-    mcvalue_t rt;
-    mcvalue_t item;
-    mcvalue_t array;
-    mcvalue_t joinee;
-    mcprinter_t pr;
-    (void)state;
-    (void)thisval;
-    (void)argc;
-    (void)data;
-    havejoinee = false;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY, MC_VAL_ANY))
-    {
-        return mc_value_makenull();
-    }
-    array= args[0];
-    if(argc > 1)
-    {
-        havejoinee = true;
-        joinee = args[1];
-    }
-    alen = mc_valarray_getlength(array);
-    mc_printer_init(&pr, state, NULL, true);
-    for(i=0; i<alen; i++)
-    {
-        item = mc_valarray_getvalueat(array, i);
-        mc_printer_printvalue(&pr, item, false);
-        if(havejoinee)
-        {
-            if((i + 1) != alen)
-            {
-                mc_printer_printvalue(&pr, joinee, false);
-            }
-        }
-    }
-    str = pr.destbuf->data;
-    slen = pr.destbuf->length;
-    rt = mc_value_makestringlen(state, str, slen);
-    mc_printer_release(&pr, true);
-    return rt;
-}
+
 
 /**
  * \brief Searches a string an instance of another string in it and returns the index of the first occurance.  If no occurance is found a -1 is returned.
@@ -16651,40 +16660,6 @@ mcvalue_t mc_scriptfn_trim(mcstate_t* state, void* data, mcvalue_t thisval, size
     return mc_value_makenull();
 }
 
-mcvalue_t mc_scriptfn_lengthof(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
-{
-    int len;
-    mcvalue_t arg;
-    mcvaltype_t type;
-    (void)data;
-    (void)state;
-    (void)thisval;
-    (void)argc;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_STRING | MC_VAL_ARRAY | MC_VAL_MAP))
-    {
-        return mc_value_makenull();
-    }
-    arg = args[0];
-    type = arg.type;
-    if(type == MC_VAL_STRING)
-    {
-        len = mc_valstring_getlength(arg);
-        return mc_value_makenumber(len);
-    }
-    if(type == MC_VAL_ARRAY)
-    {
-        len = mc_valarray_getlength(arg);
-        return mc_value_makenumber(len);
-    }
-    if(type == MC_VAL_MAP)
-    {
-        len = mc_valmap_getlength(arg);
-        return mc_value_makenumber(len);
-    }
-    return mc_value_makenull();
-}
-
-
 mcvalue_t mc_scriptfn_typeof(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
 {
     mcvalue_t arg;
@@ -16894,46 +16869,6 @@ mcvalue_t mc_scriptfn_array(mcstate_t* state, void* data, mcvalue_t thisval, siz
     }
     mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER);
     return mc_value_makenull();
-}
-
-mcvalue_t mc_scriptfn_arraypush(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
-{
-    bool ok;
-    size_t i;
-    size_t len;
-    (void)state;
-    (void)thisval;
-    (void)argc;
-    (void)data;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY, MC_VAL_ANY))
-    {
-        return mc_value_makenull();
-    }
-    for(i=1; i<argc; i++)
-    {
-        ok = mc_valarray_push(args[0], args[i]);
-        if(!ok)
-        {
-            return mc_value_makenull();
-        }
-    }
-    len = mc_valarray_getlength(args[0]);
-    return mc_value_makenumber(len);
-}
-
-mcvalue_t mc_scriptfn_arraypop(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
-{
-    mcvalue_t val;
-    (void)state;
-    (void)thisval;
-    (void)argc;
-    (void)data;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY, MC_VAL_ANY))
-    {
-        return mc_value_makenull();
-    }
-    val = mc_valarray_pop(args[0]);
-    return val;
 }
 
 mcvalue_t mc_scriptfn_externalfn(mcstate_t* state, void *data, mcvalue_t thisval, size_t argc, mcvalue_t *args)
@@ -17224,42 +17159,25 @@ mcvalue_t mc_nsfnjson_stringify(mcstate_t* state, void* data, mcvalue_t thisval,
 mcvalue_t mc_objfnstring_length(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
 {
     size_t len;
-    const char* str;
     (void)state;
     (void)data;
     (void)argc;
-    (void)thisval;
-    str = mc_valstring_getdata(thisval);
+    (void)args;
     len = mc_valstring_getlength(thisval);
     return mc_value_makenumber(len);
 }
 
 mcvalue_t mc_objfnstring_getself(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
 {
-    size_t len;
     const char* str;
     (void)state;
     (void)data;
     (void)argc;
-    (void)thisval;
+    (void)args;
     str = mc_valstring_getdata(thisval);
-    len = mc_valstring_getlength(thisval);
     fprintf(stderr, "objfnstring_getself: str=\"%s\"\n", str);
     return thisval;
 }
-
-
-mcvalue_t mc_objfnarray_length(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
-{
-    size_t len;
-    (void)state;
-    (void)data;
-    (void)argc;
-    (void)thisval;
-    len = mc_valarray_getlength(thisval);
-    return mc_value_makenumber(len);
-}
-
 
 mcvalue_t mc_objfnstring_tonumber(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
 {
@@ -17271,42 +17189,23 @@ mcvalue_t mc_objfnstring_tonumber(mcstate_t* state, void* data, mcvalue_t thisva
     (void)state;
     (void)argc;
     (void)data;
-    (void)thisval;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_STRING | MC_VAL_NUMBER | MC_VAL_BOOL | MC_VAL_NULL))
-    {
-        return mc_value_makenull();
-    }
+    (void)args;
     result = 0;
     string = "";
-    if(mc_value_isnumeric(args[0]))
+    stringlen = mc_valstring_getlength(thisval);
+    string = mc_valstring_getdata(thisval);
+    errno = 0;
+    result = mc_util_strtod(string, stringlen, &end);
+    if(errno == ERANGE && (result <= -HUGE_VAL || result >= HUGE_VAL))
     {
-        result = mc_value_getnumber(args[0]);
+        goto err;
     }
-    else if(mc_value_isnull(args[0]))
+    if(errno && errno != ERANGE)
     {
-        result = 0;
+        goto err;
     }
-    else if(args[0].type == MC_VAL_STRING)
-    {
-        stringlen = mc_valstring_getlength(args[0]);
-        string = mc_valstring_getdata(args[0]);
-        errno = 0;
-        result = mc_util_strtod(string, stringlen, &end);
-        if(errno == ERANGE && (result <= -HUGE_VAL || result >= HUGE_VAL))
-        {
-            goto err;
-        }
-        if(errno && errno != ERANGE)
-        {
-            goto err;
-        }
-        parsedlen = end - string;
-        if(stringlen != parsedlen)
-        {
-            goto err;
-        }
-    }
-    else
+    parsedlen = end - string;
+    if(stringlen != parsedlen)
     {
         goto err;
     }
@@ -17316,6 +17215,115 @@ err:
     return mc_value_makenull();
 }
 
+mcvalue_t mc_objfnarray_length(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
+{
+    size_t len;
+    (void)state;
+    (void)data;
+    (void)argc;
+    (void)args;
+    len = mc_valarray_getlength(thisval);
+    return mc_value_makenumber(len);
+}
+
+mcvalue_t mc_objfnarray_push(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
+{
+    bool ok;
+    size_t i;
+    size_t len;
+    (void)state;
+    (void)thisval;
+    (void)argc;
+    (void)data;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY, MC_VAL_ANY))
+    {
+        return mc_value_makenull();
+    }
+    for(i=0; i<argc; i++)
+    {
+        ok = mc_valarray_push(thisval, args[i]);
+        if(!ok)
+        {
+            return mc_value_makenull();
+        }
+    }
+    len = mc_valarray_getlength(thisval);
+    return mc_value_makenumber(len);
+}
+
+mcvalue_t mc_objfnarray_pop(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
+{
+    mcvalue_t val;
+    (void)state;
+    (void)thisval;
+    (void)argc;
+    (void)data;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY, MC_VAL_ANY))
+    {
+        return mc_value_makenull();
+    }
+    val = mc_valarray_pop(thisval);
+    return val;
+}
+
+mcvalue_t mc_objfnarray_join(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
+{
+    bool havejoinee;
+    int i;
+    int slen;
+    int alen;
+    const char* str;
+    mcvalue_t rt;
+    mcvalue_t item;
+    mcvalue_t array;
+    mcvalue_t joinee;
+    mcprinter_t pr;
+    (void)state;
+    (void)thisval;
+    (void)argc;
+    (void)data;
+    havejoinee = false;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY, MC_VAL_ANY))
+    {
+        return mc_value_makenull();
+    }
+    array= thisval;
+    if(argc > 0)
+    {
+        havejoinee = true;
+        joinee = args[0];
+    }
+    alen = mc_valarray_getlength(array);
+    mc_printer_init(&pr, state, NULL, true);
+    for(i=0; i<alen; i++)
+    {
+        item = mc_valarray_getvalueat(array, i);
+        mc_printer_printvalue(&pr, item, false);
+        if(havejoinee)
+        {
+            if((i + 1) != alen)
+            {
+                mc_printer_printvalue(&pr, joinee, false);
+            }
+        }
+    }
+    str = pr.destbuf->data;
+    slen = pr.destbuf->length;
+    rt = mc_value_makestringlen(state, str, slen);
+    mc_printer_release(&pr, true);
+    return rt;
+}
+
+mcvalue_t mc_objfnmap_length(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
+{
+    size_t len;
+    (void)state;
+    (void)data;
+    (void)argc;
+    (void)args;
+    len = mc_valmap_getlength(thisval);
+    return mc_value_makenumber(len);
+}
 
 mcvalue_t mc_scriptfn_isnan(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
 {
@@ -18078,7 +18086,6 @@ void mc_cli_installbuiltins(mcstate_t* state)
     } nativefunctions[] = {
         { "maketestdict", mc_scriptfn_maketestdict },
         { "squarearray", mc_scriptfn_squarearray },
-        { "lengthof", mc_scriptfn_lengthof },
         { "typeof", mc_scriptfn_typeof },        
         { "ord", mc_scriptfn_ord},
         { "println", mc_scriptfn_println },
@@ -18086,14 +18093,9 @@ void mc_cli_installbuiltins(mcstate_t* state)
         { "arrayfirst", mc_scriptfn_arrayfirst },
         { "arraylast", mc_scriptfn_arraylast },
         { "arrayrest", mc_scriptfn_arrayrest },
-        { "arrayjoin", mc_scriptfn_arrayjoin},
-        { "arraypush", mc_scriptfn_arraypush },
-        { "arraypop", mc_scriptfn_arraypop },
         { "remove", mc_scriptfn_remove },
         { "removeat", mc_scriptfn_removeat },
         { "tostring", mc_scriptfn_tostring },
-        { "tonum", mc_objfnstring_tonumber },
-        { "strtoint", mc_objfnstring_tonumber },
         { "isNaN", mc_scriptfn_isnan },
         { "range", mc_scriptfn_range },
         { "keys", mc_scriptfn_keys },
@@ -18353,7 +18355,7 @@ void mc_cli_printtypesize(const char* name, size_t sz)
 
 void mc_cli_printtypesizes()
 {
-    printtypesize(mcgenericdict_t);
+    printtypesize(mcptrdict_t);
     printtypesize(mcvaldict_t);
     printtypesize(mcbasicarray_t);
     printtypesize(mcptrlist_t);

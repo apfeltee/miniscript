@@ -125,14 +125,14 @@ void mc_astprint_printmapliteral(mcastprinter_t* apr, mcastexpression_t* astexpr
     mcastliteralmap_t* ex;
     ex = &astexpr->uexpr.exprlitmap;
     mc_printer_puts(apr->pdest, "{");
-    for(i = 0; i < mc_ptrlist_count(ex->keys); i++)
+    for(i = 0; i < mc_ptrlist_count(ex->litmapkeys); i++)
     {
-        keyexpr = (mcastexpression_t*)mc_ptrlist_get(ex->keys, i);
-        valexpr = (mcastexpression_t*)mc_ptrlist_get(ex->values, i);
+        keyexpr = (mcastexpression_t*)mc_ptrlist_get(ex->litmapkeys, i);
+        valexpr = (mcastexpression_t*)mc_ptrlist_get(ex->litmapvalues, i);
         mc_astprint_expression(apr, keyexpr);
         mc_printer_puts(apr->pdest, " : ");
         mc_astprint_expression(apr, valexpr);
-        if(i < (mc_ptrlist_count(ex->keys) - 1))
+        if(i < (mc_ptrlist_count(ex->litmapkeys) - 1))
         {
             mc_printer_puts(apr->pdest, ", ");
         }

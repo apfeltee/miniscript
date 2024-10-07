@@ -351,7 +351,6 @@ StringBuffer* dyn_strbuf_makeempty(size_t len)
     {
         return NULL;
     }
-    sbuf->isborrowed = false;
     sbuf->length = 0;
     sbuf->capacity = 0;
     sbuf->data = NULL;

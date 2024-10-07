@@ -267,17 +267,17 @@ function binb2b64(binarray)
         {
             if ((((i * 8) + (j * 6)) > (binarray.length * 32)))
             {
-                arraypush(str, b64pad);
+                str.push(b64pad);
             }
             else
             {
-                arraypush(str, tab[((triplet >> (6 * (3 - j))) & 0x3F)]);
+                str.push(tab[((triplet >> (6 * (3 - j))) & 0x3F)]);
             }
             j += 1;
         }
         i += 3;
     }
-    return arrayjoin(str, "");
+    return str.join("");
 }
 
 

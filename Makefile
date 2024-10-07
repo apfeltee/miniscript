@@ -22,7 +22,7 @@ WFLAGS = -Wall -Wextra -Wshadow -Wpointer-arith $(unflags)
 #WFLAGS += -ansi -pedantic
 #WFLAGS = -w
 
-OPTFLAGS = -O0
+OPTFLAGS = -Og
 #OPTFLAGS = -O5 -funroll-loops -march=native -flto -ffast-math 
 
 #EXTRAFLAGS = -fsanitize=address -fsanitize=undefined -fstack-protector-all -ftrapv

@@ -59,7 +59,7 @@ function init_state(in_vec_size, bias, learning_rate)
     var weights = state.weights;
     for (var i = 0; i < in_vec_size; i += 1) {
         // Could initialize weight to a random value in the future
-        arraypush(weights, 0.0);
+        weights.push(0.0);
     }
     return state;
 }

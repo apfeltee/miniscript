@@ -99,7 +99,7 @@ MyJSON.parseNumber = function (state)
     }
     var str = slice(state.m_source, startIndex, state.m_index);
     println(`parseNumber: str=${str}`);
-    return tonum(str);
+    return str.toNumber();
 };
 
 MyJSON.parseString = function(state, quote)
@@ -207,7 +207,7 @@ MyJSON.parseArray = function(state)
     while(true)
     {
         var value = MyJSON.parseValue(state);
-        arraypush(a, value);
+        a.push(value);
         MyJSON.skipWhiteSpace(state);
         c = state.m_source[state.m_index];
         if (c == ",")
