@@ -30,11 +30,6 @@ MyJSON.skipWhiteSpace = function(state)
     }
 };
 
-function indexof(src, ch)
-{
-    return src.indexOf(ch)
-}
-
 MyJSON.parseValue = function(state)
 {
     MyJSON.skipWhiteSpace(state);
@@ -99,7 +94,6 @@ MyJSON.parseNumber = function (state)
     var startIndex = state.m_index;
     var c = 0;
     while(state.nchars.indexOf(state.m_source[state.m_index]) != -1)
-    //while(indexof(state.nchars, state.m_source[state.m_index]) != -1)
     {
         state.m_index++;
     }

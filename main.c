@@ -137,6 +137,7 @@ THE SOFTWARE.
 
 typedef double mcfloat_t;
 typedef uint16_t mcinternopcode_t;
+typedef uint32_t mcshiftint_t;
 
 enum mcerrtype_t
 {
@@ -1423,8 +1424,7 @@ MC_INLINE mcvalue_t mc_value_makenull(void)
     return o;
 }
 
-typedef uint32_t mcshiftint_t;
-MC_INLINE mcfloat_t mc_mathutil_binshiftleft(mcfloat_t dnleft, mcfloat_t dnright)
+MC_INLINE mcshiftint_t mc_mathutil_binshiftleft(mcfloat_t dnleft, mcfloat_t dnright)
 {
     int64_t sileft;
     int64_t siright;
@@ -1436,13 +1436,13 @@ MC_INLINE mcfloat_t mc_mathutil_binshiftleft(mcfloat_t dnleft, mcfloat_t dnright
         siright = (int64_t)dnright;
         return (mcfloat_t)(sileft << siright);
     }
-    ivleft = (int32_t)dnleft;
+    ivleft = (mcshiftint_t)dnleft;
     ivright = (mcshiftint_t)dnright;
     ivright &= 0x1f;
-    return (mcfloat_t)(ivleft << ivright);
+    return (ivleft << ivright);
 }
 
-MC_INLINE mcfloat_t mc_mathutil_binshiftright(mcfloat_t dnleft, mcfloat_t dnright)
+MC_INLINE mcshiftint_t mc_mathutil_binshiftright(mcfloat_t dnleft, mcfloat_t dnright)
 {
     int64_t sileft;
     int64_t siright;
@@ -1457,7 +1457,7 @@ MC_INLINE mcfloat_t mc_mathutil_binshiftright(mcfloat_t dnleft, mcfloat_t dnrigh
     ivleft = (mcshiftint_t)dnleft;
     ivright = (mcshiftint_t)dnright;
     ivright &= 0x1f;
-    return (mcfloat_t)(ivleft >> ivright);
+    return (ivleft >> ivright);
 }
 
 MC_INLINE mcfloat_t mc_mathutil_binor(mcfloat_t dnleft, mcfloat_t dnright)
@@ -2892,13 +2892,12 @@ bool mc_ptrlist_removeat(mcptrlist_t* arr, unsigned int ix)
     return true;
 }
 
-
-size_t mc_ptrlist_count(mcptrlist_t* list)
+MC_INLINE size_t mc_ptrlist_count(mcptrlist_t* list)
 {
     return list->listcount;
 }
 
-size_t mc_ptrlist_capacity(mcptrlist_t* list)
+MC_INLINE size_t mc_ptrlist_capacity(mcptrlist_t* list)
 {
     return list->listcount;
 }
@@ -2919,12 +2918,12 @@ void mc_ptrlist_destroy(mcptrlist_t* list, mcitemdestroyfn_t dfn)
     mc_memory_free(list);
 }
 
-void mc_ptrlist_clear(mcptrlist_t* list)
+MC_INLINE void mc_ptrlist_clear(mcptrlist_t* list)
 {
     list->listcount = 0;
 }
 
-bool mc_ptrlist_push(mcptrlist_t* list, void* value)
+MC_INLINE bool mc_ptrlist_push(mcptrlist_t* list, void* value)
 {
     size_t oldcap;
     if(list->listcapacity < list->listcount + 1)
@@ -2947,12 +2946,12 @@ bool mc_ptrlist_push(mcptrlist_t* list, void* value)
     return true;
 }
 
-void* mc_ptrlist_get(mcptrlist_t* arr, unsigned int ix)
+MC_INLINE void* mc_ptrlist_get(mcptrlist_t* arr, unsigned int ix)
 {
     return arr->listitems[ix];
 }
 
-void* mc_ptrlist_top(mcptrlist_t* arr)
+MC_INLINE void* mc_ptrlist_top(mcptrlist_t* arr)
 {
     if(arr->listcount == 0)
     {
@@ -2961,7 +2960,7 @@ void* mc_ptrlist_top(mcptrlist_t* arr)
     return arr->listitems[arr->listcount - 1];
 }
 
-void* mc_ptrlist_pop(mcptrlist_t* list)
+MC_INLINE void* mc_ptrlist_pop(mcptrlist_t* list)
 {
     void* v;
     if(list->listcount > 0)
@@ -3078,7 +3077,7 @@ void mc_printer_destroy(mcprinter_t* pr)
     }
 }
 
-bool mc_printer_putlen(mcprinter_t* pr, const char* str, size_t len)
+MC_INLINE bool mc_printer_putlen(mcprinter_t* pr, const char* str, size_t len)
 {
     if(pr->failed)
     {
@@ -3103,19 +3102,19 @@ bool mc_printer_putlen(mcprinter_t* pr, const char* str, size_t len)
     return true;
 }
 
-bool mc_printer_puts(mcprinter_t* pr, const char* str)
+MC_INLINE bool mc_printer_puts(mcprinter_t* pr, const char* str)
 {
     return mc_printer_putlen(pr, str, mc_util_strlen(str));
 }
 
-bool mc_printer_putchar(mcprinter_t* pr, int b)
+MC_INLINE bool mc_printer_putchar(mcprinter_t* pr, int b)
 {
     char ch;
     ch = b;
     return mc_printer_putlen(pr, &ch, 1);
 }
 
-bool mc_printer_printfv(mcprinter_t* pr, const char* fmt, va_list va)
+MC_INLINE bool mc_printer_printfv(mcprinter_t* pr, const char* fmt, va_list va)
 {
     if(pr->failed)
     {
@@ -3136,7 +3135,7 @@ bool mc_printer_printfv(mcprinter_t* pr, const char* fmt, va_list va)
     return true;
 }
 
-bool mc_printer_printf(mcprinter_t* pr, const char* fmt, ...)
+MC_INLINE bool mc_printer_printf(mcprinter_t* pr, const char* fmt, ...)
 {
     bool r;
     va_list va;
@@ -3146,7 +3145,7 @@ bool mc_printer_printf(mcprinter_t* pr, const char* fmt, ...)
     return r;
 }
 
-void mc_printer_printescapedchar(mcprinter_t* pr, int ch)
+MC_INLINE void mc_printer_printescapedchar(mcprinter_t* pr, int ch)
 {
     switch(ch)
     {
@@ -3203,7 +3202,7 @@ void mc_printer_printescapedchar(mcprinter_t* pr, int ch)
     }
 }
 
-void mc_printer_printescapedstring(mcprinter_t* pr, const char* str, size_t len)
+MC_INLINE void mc_printer_printescapedstring(mcprinter_t* pr, const char* str, size_t len)
 {
     int ch;
     size_t i;
@@ -3223,7 +3222,7 @@ void mc_printer_printescapedstring(mcprinter_t* pr, const char* str, size_t len)
     mc_printer_puts(pr, "\"");
 }
 
-const char* mc_printer_getstring(mcprinter_t* pr)
+MC_INLINE const char* mc_printer_getstring(mcprinter_t* pr)
 {
     if(pr->failed)
     {
@@ -3236,7 +3235,7 @@ const char* mc_printer_getstring(mcprinter_t* pr)
     return pr->destbuf->data;
 }
 
-size_t mc_printer_getlength(mcprinter_t* pr)
+MC_INLINE size_t mc_printer_getlength(mcprinter_t* pr)
 {
     if(pr->failed)
     {
@@ -3249,7 +3248,7 @@ size_t mc_printer_getlength(mcprinter_t* pr)
     return pr->destbuf->length;
 }
 
-char* mc_printer_getstringanddestroy(mcprinter_t* pr, size_t* lendest)
+MC_INLINE char* mc_printer_getstringanddestroy(mcprinter_t* pr, size_t* lendest)
 {
     char* res;
     if(pr->failed)
@@ -3271,10 +3270,6 @@ char* mc_printer_getstringanddestroy(mcprinter_t* pr, size_t* lendest)
     return res;
 }
 
-bool mc_printer_failed(mcprinter_t* pr)
-{
-    return pr->failed;
-}
 
 #define mc_printer_printvalue(pr, val, accurate) \
     mc_printer_printvalue_actual(mc_value_gettype(val), pr, val, accurate)
@@ -10216,7 +10211,7 @@ bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_t* imports
         mc_printer_printf(filepathbuf, "%s%s.mc", filescope->file->dir_path, modpath);
     }
 
-    if(mc_printer_failed(filepathbuf))
+    if(filepathbuf->failed)
     {
         mc_printer_destroy(filepathbuf);
         result = false;
@@ -12261,8 +12256,14 @@ void mc_state_makestdclasses(mcstate_t* state)
         mc_class_addmember(state, state->stdobjstring, "length", true, mc_objfnstring_length);
         mc_class_addmember(state, state->stdobjstring, "getself", false, mc_objfnstring_getself);
         mc_class_addmember(state, state->stdobjstring, "toNumber", false, mc_objfnstring_tonumber);
-        mc_class_addmember(state, state->stdobjstring, "ord", false, mc_objfnstring_ord);
+        mc_class_addmember(state, state->stdobjstring, "ord", false, mc_objfnstring_charcode);
         mc_class_addmember(state, state->stdobjstring, "indexOf", false, mc_objfnstring_indexof);
+        mc_class_addmember(state, state->stdobjstring, "left", false, mc_objfnstring_left);
+        mc_class_addmember(state, state->stdobjstring, "right", false, mc_objfnstring_right);
+        mc_class_addmember(state, state->stdobjstring, "replace", false, mc_objfnstring_replaceall);
+        mc_class_addmember(state, state->stdobjstring, "replacefirst", false, mc_objfnstring_replacefirst);
+        mc_class_addmember(state, state->stdobjstring, "trim", false, mc_objfnstring_trim);
+
     }
     {
         state->stdobjarray = mc_class_make(state, "Array");
@@ -14374,7 +14375,7 @@ bool mc_printer_printtraceback(mcprinter_t* pr, mctraceback_t* traceback)
             mc_printer_printf(pr, "%s\n", item->trfuncname);
         }
     }
-    return !mc_printer_failed(pr);
+    return !pr->failed;
 }
 
 const char* mc_traceitem_getsourceline(mctraceitem_t* item)
@@ -15020,14 +15021,34 @@ MC_INLINE bool mc_vmdo_math(mcstate_t* state, mcopcode_t opcode)
                     res = mc_mathutil_binand(dnleft, dnright);
                 }
                 break;
+            // TODO: shifting, signedness: how does nodejs do it?
+            // enabling checks for <0 breaks sha1.mc!
             case MC_OPCODE_LSHIFT:
                 {
-                    res = mc_mathutil_binshiftleft(dnleft, dnright);
+                    #if 0
+                    if((dnleft < 0) || (dnright < 0))
+                    {
+                        res = (int64_t)dnleft << (int64_t)dnright;
+                    }
+                    else
+                    #endif
+                    {
+                        res = mc_mathutil_binshiftleft(dnleft, dnright);
+                    }
                 }
                 break;
             case MC_OPCODE_RSHIFT:
                 {
-                    res = mc_mathutil_binshiftright(dnleft, dnright);
+                    #if 0
+                    if((dnleft < 0) || (dnright < 0))
+                    {
+                        res = (int64_t)dnleft >> (int64_t)dnright;
+                    }
+                    else
+                    #endif
+                    {
+                        res = mc_mathutil_binshiftright(dnleft, dnright);
+                    }
                 }
                 break;
             default:
@@ -16339,302 +16360,7 @@ onexecfinish:
 
 
 
-/**
- * \brief Returns the specified number of characters from the left hand side of the string.  If more characters exist than the length of the string the entire string is returned.
- * \param state Virtual Machine
- * \param data No clue what this is yet
- * \param argc The number of arguments
- * \param args The actual arguments
- * \return The section of the string from the left-hand side.
- */
-mcvalue_t mc_scriptfn_left(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
-{
-    int inplen;
-    int startpos;
-    char* result;
-    const char* inpstr;
-    mcvalue_t obj;
-    mcvalue_t inpval;
-    mcvalue_t posval;
-    (void)data;
-    (void)thisval;
-    if(argc == 2 && mc_value_gettype(args[0]) == MC_VAL_STRING && mc_value_gettype(args[1]) == MC_VAL_NUMBER)
-    {
-        inpval = args[0];
-        posval = args[1];
-        inpstr = mc_valstring_getdata(inpval);
-        inplen = mc_valstring_getlength(inpval);
-        startpos = mc_value_getnumber(posval);
-        /*
-        * If the requested startpos is longer than the string then return a new string
-        * of the full length.
-        */
-        if(startpos > (int)inplen)
-        {
-            return mc_value_makestringlen(state, inpstr, inplen);
-        }
-        result = (char*)mc_memory_malloc(startpos + 1);
-        if(result == NULL)
-        {
-            return mc_value_makenull();
-        }
-        strncpy(result, inpstr, startpos);
-        result[startpos] = '\0';
-        obj = mc_value_makestringlen(state, result, startpos);
-        free(result);
-        return obj;
-    }
-    return mc_value_makenull();
-}
 
-/**
- * \brief Returns the specified number of characters from the right hand side of the string.  If more characters exist than the length of the string the entire string is returned.
- * \param state Virtual Machine
- * \param data No clue what this is yet
- * \param argc The number of arguments
- * \param args The actual arguments
- * \return The section of the string from the right-hand side.
- */
-mcvalue_t mc_scriptfn_right(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
-{
-    int inplen;
-    int startpos;
-    int strlength;
-    char* result;
-    const char* inpstr;
-    mcvalue_t obj;
-    mcvalue_t inpval;
-    mcvalue_t idxval;
-    (void)data;
-    (void)thisval;
-    if(argc == 2 && mc_value_gettype(args[0]) == MC_VAL_STRING && mc_value_gettype(args[1]) == MC_VAL_NUMBER)
-    {
-        inpval = args[0];
-        idxval = args[1];
-        inpstr = mc_valstring_getdata(inpval);
-        inplen = mc_valstring_getlength(inpval);
-        startpos = mc_value_getnumber(idxval);
-        /*
-        * If the requested startpos is longer than the string then return a new string
-        * of the full length.
-        */
-        if(startpos >= inplen)
-        {
-            return mc_value_makestringlen(state, inpstr, inplen);
-        }
-        result = (char*)mc_memory_malloc(startpos + 1);
-        if(result == NULL)
-        {
-            return mc_value_makenull();
-        }
-        strlength = inplen;
-        strncpy(result, inpstr + strlength - startpos, startpos);
-        result[startpos] = '\0';
-        obj = mc_value_makestringlen(state, result, startpos);
-        free(result);
-        return obj;
-    }
-    return mc_value_makenull();
-}
-
-/**
- * \brief Replaces all occurances of one string in another.
- * \param state Virtual Machine
- * \param data No clue what this is yet
- * \param argc The number of arguments
- * \param args The actual arguments
- * \return The string with all occurances replaced.
- */
-mcvalue_t mc_scriptfn_replace(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
-{
-    size_t len;
-    size_t newlen;
-    size_t inplen;
-    size_t searchlen;
-    size_t replacelen;
-    size_t count;
-    char* ptr;
-    char* result;
-    const char* temp;
-    const char* inpstr;
-    const char* searchstr;
-    const char* replacestr;
-    mcvalue_t obj;
-    mcvalue_t inpval;
-    mcvalue_t searchval;
-    mcvalue_t repval;
-    (void)data;
-    (void)thisval;
-    if(argc == 3 && mc_value_gettype(args[0]) == MC_VAL_STRING && mc_value_gettype(args[1]) == MC_VAL_STRING && mc_value_gettype(args[2]) == MC_VAL_STRING)
-    {
-        inpval = args[0];
-        searchval = args[1];
-        repval = args[2];
-        inpstr = mc_valstring_getdata(inpval);
-        searchstr = mc_valstring_getdata(searchval);
-        replacestr = mc_valstring_getdata(repval);
-        inplen = mc_valstring_getlength(inpval);
-        searchlen = mc_valstring_getlength(searchval);
-        replacelen = mc_valstring_getlength(repval);
-        count = 0;
-        temp = inpstr;
-        /* Count number of occurrences of searchstr in inpstr */
-        while((temp = strstr(temp, searchstr)))
-        {
-            count++;
-            temp += searchlen;
-        }
-        /* Allocate new string to store result */
-        newlen = inplen + count * (replacelen - searchlen) + 1;
-        result = (char*)mc_memory_malloc(newlen);
-        if(result == NULL)
-        {
-            return mc_value_makenull();
-        }
-        /* Replace all instances of searchstr with replacestr */
-        ptr = result;
-        while((temp = strstr(inpstr, searchstr)))
-        {
-            len = temp - inpstr;
-            memcpy(ptr, inpstr, len);
-            ptr += len;
-            memcpy(ptr, replacestr, replacelen);
-            ptr += replacelen;
-            inpstr = temp + searchlen;
-        }
-        /* Copy remaining part of inpstr */
-        strcpy(ptr, inpstr);
-        obj = mc_value_makestring(state, result);
-        free(result);
-        return obj;
-    }
-    return mc_value_makenull();
-}
-
-/**
- * \brief Replaces the first occurance of one string in another.
- * \param state Virtual Machine
- * \param data No clue what this is yet
- * \param argc The number of arguments
- * \param args The actual arguments
- * \return The string with the first occurance of the replacement replaced.
- */
-mcvalue_t mc_scriptfn_replacefirst(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
-{
-    size_t len;
-    size_t newlen;
-    size_t inplen;
-    size_t searchlen;
-    size_t replacelen;
-    const char* inpstr;
-    const char* temp;
-    const char* searchstr;
-    const char* replacestr;
-    char* result;
-    mcvalue_t obj;
-    mcvalue_t inpval;
-    mcvalue_t repval;
-    mcvalue_t searchval;
-    (void)data;
-    (void)thisval;
-    if(argc == 3 && mc_value_gettype(args[0]) == MC_VAL_STRING && mc_value_gettype(args[1]) == MC_VAL_STRING && mc_value_gettype(args[2]) == MC_VAL_STRING)
-    {
-        inpval = args[0];
-        searchval = args[1];
-        repval = args[2];
-        inpstr = mc_valstring_getdata(inpval);
-        searchstr = mc_valstring_getdata(searchval);
-        replacestr = mc_valstring_getdata(repval);
-        inplen = mc_valstring_getlength(inpval);
-        searchlen = mc_valstring_getlength(searchval);
-        replacelen = mc_valstring_getlength(repval);
-        temp = strstr(inpstr, searchstr);
-        if(temp == NULL)
-        {
-            return mc_value_makestringlen(state, inpstr, inplen);
-        }
-        /* Allocate new string to store result */
-        newlen = inplen + (replacelen - searchlen) + 1;
-        result = (char*)mc_memory_malloc(newlen + 1);
-        if(result == NULL)
-        {
-            return mc_value_makenull();
-        }
-        /* Replace the first instance of searchstr with replacestr */
-        len = temp - inpstr;
-        memcpy(result, inpstr, len);
-        strcpy(result + len, replacestr);
-        strcpy(result + len + replacelen, temp + searchlen);
-        obj = mc_value_makestringlen(state, result, len);
-        free(result);
-        return obj;
-    }
-    return mc_value_makenull();
-}
-
-/**
- * \brief Trims whitespace off the start and end of a string.
- * \param state Virtual Machine
- * \param data No clue what this is yet
- * \param argc The number of arguments
- * \param args The actual arguments
- * \return Returns a string that has whitespace trimmed from the start and finish.
- */
-mcvalue_t mc_scriptfn_trim(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
-{
-    int i;
-    int j;
-    int k;
-    int inplen;
-    char* result;
-    const char* inpstr;
-    mcvalue_t obj;
-    mcvalue_t inpval;
-    (void)data;
-    (void)thisval;
-    if(argc == 1 && mc_value_gettype(args[0]) == MC_VAL_STRING)
-    {
-        inpval = args[0];
-        inpstr = mc_valstring_getdata(inpval);
-        inplen = mc_valstring_getlength(inpval);
-        if(inplen == 0)
-        {
-            return mc_value_makestringlen(state, "", 0);
-        }
-        result = (char*)mc_memory_malloc(inplen + 1);
-        if(result == NULL)
-        {
-            return mc_value_makestringlen(state, "", 0);
-        }
-        strncpy(result, inpstr, inplen);
-        result[inplen] = '\0';
-        i = 0;
-        j = inplen - 1;
-        /* Trim whitespace from the front of the string */
-        while((isspace(result[i]) || result[i] == '\t') && result[i] != '\0')
-        {
-            i++;
-        }
-        /* Trim whitespace from the end of the string */
-        while((isspace(result[j]) || result[j] == '\t') && j >= i)
-        {
-            j--;
-        }
-        /* Shift the trimmed string to the beginning of the buffer */
-        k = 0;
-        while(i <= j)
-        {
-            result[k] = result[i];
-            k++;
-            i++;
-        }
-        result[k] = '\0';
-        obj = mc_value_makestringlen(state, result, k);
-        free(result);
-        return obj;
-    }
-    return mc_value_makenull();
-}
 
 mcvalue_t mc_scriptfn_typeof(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
 {
@@ -17092,7 +16818,7 @@ mcvalue_t mc_scriptfn_tostring(mcstate_t* state, void* data, mcvalue_t thisval, 
     arg = args[0];
     mc_printer_init(&pr, state, NULL, true);
     mc_printer_printvalue(&pr, arg, false);
-    if(mc_printer_failed(&pr))
+    if(pr.failed)
     {
         mc_printer_release(&pr, true);
         return mc_value_makenull();
@@ -17120,7 +16846,7 @@ mcvalue_t mc_nsfnjson_stringify(mcstate_t* state, void* data, mcvalue_t thisval,
     pr.config.verbosefunc = false;
     pr.config.quotstring = true;
     mc_printer_printvalue(&pr, arg, false);
-    if(mc_printer_failed(&pr))
+    if(pr.failed)
     {
         mc_printer_release(&pr, true);
         return mc_value_makenull();
@@ -17174,13 +16900,13 @@ mcvalue_t mc_objfnstring_indexof(mcstate_t* state, void* data, mcvalue_t thisval
     char* result;
     const char* inpstr;
     const char* searchstr;
-    mcvalue_t startval;
     mcvalue_t searchval;
     mcvaltype_t searchtype;
     (void)state;
     (void)data;
     (void)inplen;
     (void)searchlen;
+    (void)argc;
     startindex = 0;
     searchval = args[0];
     searchtype = mc_value_gettype(searchval);
@@ -17213,7 +16939,7 @@ mcvalue_t mc_objfnstring_indexof(mcstate_t* state, void* data, mcvalue_t thisval
     return mc_value_makenumber(result - inpstr);
 }
 
-mcvalue_t mc_objfnstring_ord(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
+mcvalue_t mc_objfnstring_charcode(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
 {
     char ch;
     size_t len;
@@ -17281,6 +17007,299 @@ mcvalue_t mc_objfnstring_tonumber(mcstate_t* state, void* data, mcvalue_t thisva
 err:
     mc_state_pusherrorf(state, MC_ERROR_RUNTIME, srcposinvalid, "cannot convert \"%s\" to number", string);
     return mc_value_makenull();
+}
+
+/**
+ * \brief Returns the specified number of characters from the left hand side of the string.  If more characters exist than the length of the string the entire string is returned.
+ * \param state Virtual Machine
+ * \param data No clue what this is yet
+ * \param argc The number of arguments
+ * \param args The actual arguments
+ * \return The section of the string from the left-hand side.
+ */
+mcvalue_t mc_objfnstring_left(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
+{
+    int inplen;
+    int startpos;
+    char* result;
+    const char* inpstr;
+    mcvalue_t obj;
+    mcvalue_t inpval;
+    mcvalue_t posval;
+    (void)data;
+    if(argc > 0 && mc_value_gettype(args[0]) == MC_VAL_NUMBER)
+    {
+        inpval = thisval;
+        posval = args[0];
+        inpstr = mc_valstring_getdata(inpval);
+        inplen = mc_valstring_getlength(inpval);
+        startpos = mc_value_getnumber(posval);
+        /*
+        * If the requested startpos is longer than the string then return a new string
+        * of the full length.
+        */
+        if(startpos > (int)inplen)
+        {
+            return mc_value_makestringlen(state, inpstr, inplen);
+        }
+        result = (char*)mc_memory_malloc(startpos + 1);
+        if(result == NULL)
+        {
+            return mc_value_makenull();
+        }
+        strncpy(result, inpstr, startpos);
+        result[startpos] = '\0';
+        obj = mc_value_makestringlen(state, result, startpos);
+        free(result);
+        return obj;
+    }
+    return mc_value_makenull();
+}
+
+/**
+ * \brief Returns the specified number of characters from the right hand side of the string.  If more characters exist than the length of the string the entire string is returned.
+ * \param state Virtual Machine
+ * \param data No clue what this is yet
+ * \param argc The number of arguments
+ * \param args The actual arguments
+ * \return The section of the string from the right-hand side.
+ */
+mcvalue_t mc_objfnstring_right(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
+{
+    int inplen;
+    int startpos;
+    int strlength;
+    char* result;
+    const char* inpstr;
+    mcvalue_t obj;
+    mcvalue_t inpval;
+    mcvalue_t idxval;
+    (void)data;
+    (void)thisval;
+    if(argc > 0 && mc_value_gettype(args[1]) == MC_VAL_NUMBER)
+    {
+        inpval = thisval;
+        idxval = args[0];
+        inpstr = mc_valstring_getdata(inpval);
+        inplen = mc_valstring_getlength(inpval);
+        startpos = mc_value_getnumber(idxval);
+        /*
+        * If the requested startpos is longer than the string then return a new string
+        * of the full length.
+        */
+        if(startpos >= inplen)
+        {
+            return mc_value_makestringlen(state, inpstr, inplen);
+        }
+        result = (char*)mc_memory_malloc(startpos + 1);
+        if(result == NULL)
+        {
+            return mc_value_makenull();
+        }
+        strlength = inplen;
+        strncpy(result, inpstr + strlength - startpos, startpos);
+        result[startpos] = '\0';
+        obj = mc_value_makestringlen(state, result, startpos);
+        free(result);
+        return obj;
+    }
+    return mc_value_makenull();
+}
+
+/**
+ * \brief Replaces all occurances of one string in another.
+ * \param state Virtual Machine
+ * \param data No clue what this is yet
+ * \param argc The number of arguments
+ * \param args The actual arguments
+ * \return The string with all occurances replaced.
+ */
+mcvalue_t mc_objfnstring_replaceall(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
+{
+    size_t len;
+    size_t newlen;
+    size_t inplen;
+    size_t searchlen;
+    size_t replacelen;
+    size_t count;
+    char* ptr;
+    char* result;
+    const char* temp;
+    const char* inpstr;
+    const char* searchstr;
+    const char* replacestr;
+    mcvalue_t obj;
+    mcvalue_t inpval;
+    mcvalue_t searchval;
+    mcvalue_t repval;
+    (void)data;
+    (void)argc;
+    if(mc_value_gettype(args[0]) == MC_VAL_STRING && mc_value_gettype(args[1]) == MC_VAL_STRING)
+    {
+        inpval = thisval;
+        searchval = args[0];
+        repval = args[1];
+        inpstr = mc_valstring_getdata(inpval);
+        searchstr = mc_valstring_getdata(searchval);
+        replacestr = mc_valstring_getdata(repval);
+        inplen = mc_valstring_getlength(inpval);
+        searchlen = mc_valstring_getlength(searchval);
+        replacelen = mc_valstring_getlength(repval);
+        count = 0;
+        temp = inpstr;
+        /* Count number of occurrences of searchstr in inpstr */
+        while((temp = strstr(temp, searchstr)))
+        {
+            count++;
+            temp += searchlen;
+        }
+        /* Allocate new string to store result */
+        newlen = inplen + count * (replacelen - searchlen) + 1;
+        result = (char*)mc_memory_malloc(newlen);
+        if(result == NULL)
+        {
+            return mc_value_makenull();
+        }
+        /* Replace all instances of searchstr with replacestr */
+        ptr = result;
+        while((temp = strstr(inpstr, searchstr)))
+        {
+            len = temp - inpstr;
+            memcpy(ptr, inpstr, len);
+            ptr += len;
+            memcpy(ptr, replacestr, replacelen);
+            ptr += replacelen;
+            inpstr = temp + searchlen;
+        }
+        /* Copy remaining part of inpstr */
+        strcpy(ptr, inpstr);
+        obj = mc_value_makestring(state, result);
+        free(result);
+        return obj;
+    }
+    return mc_value_makenull();
+}
+
+/**
+ * \brief Replaces the first occurance of one string in another.
+ * \param state Virtual Machine
+ * \param data No clue what this is yet
+ * \param argc The number of arguments
+ * \param args The actual arguments
+ * \return The string with the first occurance of the replacement replaced.
+ */
+mcvalue_t mc_objfnstring_replacefirst(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
+{
+    size_t len;
+    size_t newlen;
+    size_t inplen;
+    size_t searchlen;
+    size_t replacelen;
+    const char* inpstr;
+    const char* temp;
+    const char* searchstr;
+    const char* replacestr;
+    char* result;
+    mcvalue_t obj;
+    mcvalue_t inpval;
+    mcvalue_t repval;
+    mcvalue_t searchval;
+    (void)data;
+    (void)argc;
+    if(mc_value_gettype(args[0]) == MC_VAL_STRING && mc_value_gettype(args[1]) == MC_VAL_STRING)
+    {
+        inpval = thisval;
+        searchval = args[0];
+        repval = args[1];
+        inpstr = mc_valstring_getdata(inpval);
+        searchstr = mc_valstring_getdata(searchval);
+        replacestr = mc_valstring_getdata(repval);
+        inplen = mc_valstring_getlength(inpval);
+        searchlen = mc_valstring_getlength(searchval);
+        replacelen = mc_valstring_getlength(repval);
+        temp = strstr(inpstr, searchstr);
+        if(temp == NULL)
+        {
+            return mc_value_makestringlen(state, inpstr, inplen);
+        }
+        /* Allocate new string to store result */
+        newlen = inplen + (replacelen - searchlen) + 1;
+        result = (char*)mc_memory_malloc(newlen + 1);
+        if(result == NULL)
+        {
+            return mc_value_makenull();
+        }
+        /* Replace the first instance of searchstr with replacestr */
+        len = temp - inpstr;
+        memcpy(result, inpstr, len);
+        strcpy(result + len, replacestr);
+        strcpy(result + len + replacelen, temp + searchlen);
+        obj = mc_value_makestringlen(state, result, len);
+        free(result);
+        return obj;
+    }
+    return mc_value_makenull();
+}
+
+/**
+ * \brief Trims whitespace off the start and end of a string.
+ * \param state Virtual Machine
+ * \param data No clue what this is yet
+ * \param argc The number of arguments
+ * \param args The actual arguments
+ * \return Returns a string that has whitespace trimmed from the start and finish.
+ */
+mcvalue_t mc_objfnstring_trim(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
+{
+    int i;
+    int j;
+    int k;
+    int inplen;
+    char* result;
+    const char* inpstr;
+    mcvalue_t obj;
+    mcvalue_t inpval;
+    (void)data;
+    (void)argc;
+    (void)args;
+    inpval = thisval;
+    inpstr = mc_valstring_getdata(inpval);
+    inplen = mc_valstring_getlength(inpval);
+    if(inplen == 0)
+    {
+        return mc_value_makestringlen(state, "", 0);
+    }
+    result = (char*)mc_memory_malloc(inplen + 1);
+    if(result == NULL)
+    {
+        return mc_value_makestringlen(state, "", 0);
+    }
+    strncpy(result, inpstr, inplen);
+    result[inplen] = '\0';
+    i = 0;
+    j = inplen - 1;
+    /* Trim whitespace from the front of the string */
+    while((isspace(result[i]) || result[i] == '\t') && result[i] != '\0')
+    {
+        i++;
+    }
+    /* Trim whitespace from the end of the string */
+    while((isspace(result[j]) || result[j] == '\t') && j >= i)
+    {
+        j--;
+    }
+    /* Shift the trimmed string to the beginning of the buffer */
+    k = 0;
+    while(i <= j)
+    {
+        result[k] = result[i];
+        k++;
+        i++;
+    }
+    result[k] = '\0';
+    obj = mc_value_makestringlen(state, result, k);
+    free(result);
+    return obj;
 }
 
 mcvalue_t mc_objfnarray_length(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
@@ -18161,13 +18180,6 @@ void mc_cli_installbuiltins(mcstate_t* state)
         { "randomseed", mc_scriptfn_randseed },
         { "random", mc_scriptfn_random },
         { "slice", mc_scriptfn_slice },
-
-        /* Custom */
-        { "left", mc_scriptfn_left },
-        { "right", mc_scriptfn_right },
-        { "replace", mc_scriptfn_replace },
-        { "replacefirst", mc_scriptfn_replacefirst },
-        { "trim", mc_scriptfn_trim },
 
         /* Type checks */
         { "isstring", mc_scriptfn_isstring },
