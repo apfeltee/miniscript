@@ -27,7 +27,7 @@ for(var y = 0; y < ysize; y++)
             zi = 2 * zr * zi + im;
             zr = a - b + re;
         }
-        print(chr(62 - n));
+        print((62 - n).chr());
     }
     println();
 }

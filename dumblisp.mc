@@ -108,7 +108,7 @@ function fp_tokenize(src)
         if(ch != "\n")
         {
             // Support the ability to escape symbols
-            if(ch == chr(92))
+            if(ch == (92).chr())
             {
                 buffer.push(ch + nextch);
                 // skip lexing the next character altogether
@@ -117,7 +117,7 @@ function fp_tokenize(src)
             else
             {
                 // Tokenize grouping symbols
-                if((ch == chr(40)) || (ch == chr(41)) || (ch == chr(34)))
+                if((ch == (40).chr()) || (ch == (41).chr()) || (ch == (34).chr()))
                 {
                     flushbuffer();
                     buffer.push(ch);
@@ -152,7 +152,7 @@ function fp_quote(x, s)
     if(s.length != 0)
     {
         var piece = s[s.length - 1];
-        if(piece == chr(39))
+        if(piece == (39).chr())
         {
             s.pop();
             var tmp = [x, null];

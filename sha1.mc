@@ -191,7 +191,7 @@ function str2binb(str)
         {
             bin[i>>5] = 0;
         }
-        bin[i>>5] |= (ord(str[(i / chrsz)]) & mask) << (24 - i%32);
+        bin[i>>5] |= (str[(i / chrsz)].ord() & mask) << (24 - i%32);
         i += chrsz;
     }
     return bin;
@@ -229,7 +229,7 @@ function binb2str(bin)
     var i = 0;
     while(i < (bin.length * 32))
     {
-        str += chr(unshiftright(bin[i>>5], (24 - i%32)) & mask);
+        str += (unshiftright(bin[i>>5], (24 - i%32)) & mask).chr();
         i += chrsz;
     }
     return str;

@@ -334,7 +334,7 @@ void mc_astprint_printrecoverexpr(mcastprinter_t* apr, mcastexpression_t* astexp
 
 void mc_astprint_expression(mcastprinter_t* apr, mcastexpression_t* astexpr)
 {
-    switch(astexpr->type)
+    switch(astexpr->exprtype)
     {
         case MC_EXPR_IDENT:
             {

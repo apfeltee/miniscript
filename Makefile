@@ -22,12 +22,12 @@ WFLAGS = -Wall -Wextra -Wshadow -Wpointer-arith $(unflags)
 #WFLAGS += -ansi -pedantic
 #WFLAGS = -w
 
-OPTFLAGS = -Og
+OPTFLAGS = -O0
 #OPTFLAGS = -O5 -funroll-loops -march=native -flto -ffast-math 
 
 #EXTRAFLAGS = -fsanitize=address -fsanitize=undefined -fstack-protector-all -ftrapv
 
-CC = g++ $(WFLAGS) $(EXTRAFLAGS)
+CC = gcc $(WFLAGS) $(EXTRAFLAGS)
 #CC = clang -gdwarf-4 $(WFLAGS) $(EXTRAFLAGS)
 
 #CFLAGS = $(INCFLAGS) -Ofast -march=native -flto -ffast-math -funroll-loops

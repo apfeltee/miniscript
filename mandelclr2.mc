@@ -24,7 +24,7 @@ var mandelbrot = function(x1,y1, x2,y2, size_x,size_y, max_iter)
     var step_x = (x2-x1)/(size_x-1);
     var step_y = (y2-y1)/(size_y-1);
     var y = y1;
-    var ec = chr(27);
+    var ec = (27).chr();
     while (y <= y2)
     {
         var x = x1;

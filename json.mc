@@ -30,6 +30,11 @@ MyJSON.skipWhiteSpace = function(state)
     }
 };
 
+function indexof(src, ch)
+{
+    return src.indexOf(ch)
+}
+
 MyJSON.parseValue = function(state)
 {
     MyJSON.skipWhiteSpace(state);
@@ -54,7 +59,7 @@ MyJSON.parseValue = function(state)
     {
         return MyJSON.parseString(state, "\"");
     }
-    else if (indexof(state.nfirstchars, c) != -1)
+    else if (state.nfirstchars.indexOf(c) != -1)
     {
         return MyJSON.parseNumber(state);
     }
@@ -93,7 +98,8 @@ MyJSON.parseNumber = function (state)
 {
     var startIndex = state.m_index;
     var c = 0;
-    while(indexof(state.nchars, state.m_source[state.m_index]) != -1)
+    while(state.nchars.indexOf(state.m_source[state.m_index]) != -1)
+    //while(indexof(state.nchars, state.m_source[state.m_index]) != -1)
     {
         state.m_index++;
     }
