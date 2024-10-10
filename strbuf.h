@@ -16,6 +16,7 @@
 #include <stddef.h>
 #include <string.h>
 
+
 #if defined(__GNUC__)
     #define DYN_STRBUF_ATTRIBUTE(x) __attribute__(x)
 #else
@@ -27,7 +28,6 @@ typedef struct StringBuffer StringBuffer;
 
 struct StringBuffer
 {
-    bool isborrowed;
 
     char* data;
 
@@ -43,7 +43,7 @@ size_t dyn_strutil_rndup2pow64(uint64_t x);
 char *dyn_strutil_safencpy(char *dst, const char *src, size_t n);
 size_t dyn_strutil_splitstr(char *str, char sep, char **ptrs, size_t nptrs);
 size_t dyn_strutil_charreplace(char *str, char from, char to);
-void dyn_strutil_reverseregion(char *str, size_t length);
+void dyn_strutil_reverseregion(char *str, size_t len);
 bool dyn_strutil_isallspace(const char *s);
 char *dyn_strutil_nextspace(char *s);
 char *dyn_strutil_trim(char *str);

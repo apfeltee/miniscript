@@ -152,9 +152,9 @@ function vec2(x, y) {
         __operator_sub__: vec2_sub,
         __operator_minus__: function(a) { return vec2(-a.x, -a.y) },
         __operator_mul__: function(a, b) {
-            if (isnumber(a)) {
+            if (a.isNumber()) {
                 return vec2(b.x * a, b.y * a)
-            } else if (isnumber(b)) {
+            } else if (b.isNumber()) {
                 return vec2(a.x * b, a.y * b)
             } else {
                 return vec2(a.x * b.x, a.y * b.y)

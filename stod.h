@@ -517,14 +517,14 @@ static double stod_strtod_internal(const unsigned char* start, size_t length, in
     return stod_diyfp_strtod(start, length, exp + shift);
 }
 
-double stod_strtod(const unsigned char** start, const unsigned char* end, bool literal)
+double stod_strtod(const unsigned char** start, const unsigned char* end, int literal)
 {
     int exponent;
     int exp;
     int insignf;
     unsigned char c;
     unsigned char* pos;
-    bool minus;
+    int minus;
     const unsigned char* e;
     const unsigned char* p;
     const unsigned char* last;
