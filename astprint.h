@@ -33,7 +33,7 @@ void mc_astprint_printfuncliteral(mcastprinter_t* apr, mcastexpression_t* astexp
 {
     size_t i;
     mcastfuncparam_t* param;
-    mcastliteralfunction_t* ex;
+    mcastexprliteralfunction_t* ex;
     ex = &astexpr->uexpr.exprlitfunction;
     if(apr->pseudolisp)
     {
@@ -80,7 +80,7 @@ void mc_astprint_printarrayliteral(mcastprinter_t* apr, mcastexpression_t* astex
 {
     size_t i;
     size_t len;
-    mcastliteralarray_t* ex;
+    mcastexprliteralarray_t* ex;
     mcastexpression_t* itemex;
     mcptrlist_t* vl;
     ex = &astexpr->uexpr.exprlitarray;
@@ -103,7 +103,7 @@ void mc_astprint_printstringliteral(mcastprinter_t* apr, mcastexpression_t* aste
 {
     size_t slen;
     const char* sdata;
-    mcastliteralstring_t* ex;
+    mcastexprliteralstring_t* ex;
     ex = &astexpr->uexpr.exprlitstring;
     sdata = ex->data;
     slen = ex->length;
@@ -122,7 +122,7 @@ void mc_astprint_printmapliteral(mcastprinter_t* apr, mcastexpression_t* astexpr
     size_t i;
     mcastexpression_t* keyexpr;
     mcastexpression_t* valexpr;
-    mcastliteralmap_t* ex;
+    mcastexprliteralmap_t* ex;
     ex = &astexpr->uexpr.exprlitmap;
     mc_printer_puts(apr->pdest, "{");
     for(i = 0; i < mc_ptrlist_count(ex->litmapkeys); i++)
@@ -241,17 +241,17 @@ void mc_astprint_printdefineexpr(mcastprinter_t* apr, mcastexpression_t* astexpr
 void mc_astprint_printifexpr(mcastprinter_t* apr, mcastexpression_t* astexpr)
 {
     size_t i;
-    mcastifcase_t* ifcase;
+    mcastexprifcase_t* ifcase;
     mcastexprstmtif_t* ex;
     ex = &astexpr->uexpr.exprifstmt;
-    ifcase = (mcastifcase_t*)mc_ptrlist_get(ex->cases, 0);
+    ifcase = (mcastexprifcase_t*)mc_ptrlist_get(ex->cases, 0);
     mc_printer_puts(apr->pdest, "if (");
     mc_astprint_expression(apr, ifcase->ifcond);
     mc_printer_puts(apr->pdest, ") ");
     mc_astprint_codeblock(apr, ifcase->consequence);
     for(i = 1; i < mc_ptrlist_count(ex->cases); i++)
     {
-        mcastifcase_t* elifcase = (mcastifcase_t*)mc_ptrlist_get(ex->cases, i);
+        mcastexprifcase_t* elifcase = (mcastexprifcase_t*)mc_ptrlist_get(ex->cases, i);
         mc_printer_puts(apr->pdest, " elif (");
         mc_astprint_expression(apr, elifcase->ifcond);
         mc_printer_puts(apr->pdest, ") ");
@@ -338,7 +338,7 @@ void mc_astprint_expression(mcastprinter_t* apr, mcastexpression_t* astexpr)
     {
         case MC_EXPR_IDENT:
             {
-                mcastident_t* ex;
+                mcastexprident_t* ex;
                 ex = astexpr->uexpr.exprident;
                 mc_printer_puts(apr->pdest, ex->value);
             }
@@ -470,7 +470,7 @@ void mc_astprint_expression(mcastprinter_t* apr, mcastexpression_t* astexpr)
             break;
         case MC_EXPR_STMTBLOCK:
             {
-                mcastcodeblock_t* ex;
+                mcastexprcodeblock_t* ex;
                 ex = astexpr->uexpr.exprblockstmt;
                 mc_astprint_codeblock(apr, ex);
             }
@@ -505,7 +505,7 @@ void mc_astprint_expression(mcastprinter_t* apr, mcastexpression_t* astexpr)
     }
 }
 
-void mc_astprint_codeblock(mcastprinter_t* apr, mcastcodeblock_t* blockexpr)
+void mc_astprint_codeblock(mcastprinter_t* apr, mcastexprcodeblock_t* blockexpr)
 {
     size_t i;
     size_t cnt;
