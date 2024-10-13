@@ -889,7 +889,7 @@ struct mcgcmemory_t
     int allocssincesweep;
     mcptrlist_t* gcobjlist;
     mcptrlist_t* gcobjlistback;
-    mcbasicarray_t* gcobjlistremains;
+    mcptrlist_t* gcobjlistremains;
     mcgcobjdatapool_t onlydatapool;
     mcgcobjdatapool_t mempools[MC_CONF_GCMEMPOOLCOUNT];
 };
@@ -906,7 +906,7 @@ struct mcastscopecomp_t
 {
     mcstate_t* pstate;
     mcastscopecomp_t* outer;
-    mcbasicarray_t* bytecode;
+    mcbasicarray_t* compiledscopebytecode;
     mcbasicarray_t* scopesrcposlist;
     mcbasicarray_t* ipstackbreak;
     mcbasicarray_t* ipstackcontinue;
@@ -997,7 +997,7 @@ struct mctraceitem_t
 struct mctraceback_t
 {
     mcstate_t* pstate;
-    mcbasicarray_t* items;
+    mcptrlist_t* tbitems;
 };
 
 struct mcconfig_t
@@ -5217,13 +5217,13 @@ mctraceback_t* mc_error_gettraceback(mcerror_t* error)
 
 int mc_traceback_getdepth(mctraceback_t* traceback)
 {
-    return mc_basicarray_count(traceback->items);
+    return mc_ptrlist_count(traceback->tbitems);
 }
 
 const char* mc_traceback_getsourcefilepath(mctraceback_t* traceback, int depth)
 {
     mctraceitem_t* item;
-    item = (mctraceitem_t*)mc_basicarray_get(traceback->items, depth);
+    item = (mctraceitem_t*)mc_ptrlist_get(traceback->tbitems, depth);
     if(!item)
     {
         return NULL;
@@ -5234,7 +5234,7 @@ const char* mc_traceback_getsourcefilepath(mctraceback_t* traceback, int depth)
 const char* mc_traceback_getsourcelinecode(mctraceback_t* traceback, int depth)
 {
     mctraceitem_t* item;
-    item = (mctraceitem_t*)mc_basicarray_get(traceback->items, depth);
+    item = (mctraceitem_t*)mc_ptrlist_get(traceback->tbitems, depth);
     if(!item)
     {
         return NULL;
@@ -5245,7 +5245,7 @@ const char* mc_traceback_getsourcelinecode(mctraceback_t* traceback, int depth)
 int mc_traceback_getsourcelinenumber(mctraceback_t* traceback, int depth)
 {
     mctraceitem_t* item;
-    item = (mctraceitem_t*)mc_basicarray_get(traceback->items, depth);
+    item = (mctraceitem_t*)mc_ptrlist_get(traceback->tbitems, depth);
     if(!item)
     {
         return -1;
@@ -5256,7 +5256,7 @@ int mc_traceback_getsourcelinenumber(mctraceback_t* traceback, int depth)
 int mc_traceback_getsourcecolumn(mctraceback_t* traceback, int depth)
 {
     mctraceitem_t* item;
-    item = (mctraceitem_t*)mc_basicarray_get(traceback->items, depth);
+    item = (mctraceitem_t*)mc_ptrlist_get(traceback->tbitems, depth);
     if(!item)
     {
         return -1;
@@ -5267,7 +5267,7 @@ int mc_traceback_getsourcecolumn(mctraceback_t* traceback, int depth)
 const char* mc_traceback_getfunctionname(mctraceback_t* traceback, int depth)
 {
     mctraceitem_t* item;
-    item = (mctraceitem_t*)mc_basicarray_get(traceback->items, depth);
+    item = (mctraceitem_t*)mc_ptrlist_get(traceback->tbitems, depth);
     if(!item)
     {
         return "";
@@ -5567,7 +5567,7 @@ mcgcmemory_t* mc_gcmemory_make(mcstate_t* state)
     {
         goto error;
     }
-    mem->gcobjlistremains = mc_basicarray_make(state, sizeof(mcvalue_t));
+    mem->gcobjlistremains = mc_ptrlist_make(state, 32, sizeof(mcvalue_t));
     if(!mem->gcobjlistremains)
     {
         goto error;
@@ -5597,7 +5597,7 @@ void mc_gcmemory_destroy(mcgcmemory_t* mem)
     {
         return;
     }
-    mc_basicarray_destroy(mem->gcobjlistremains);
+    mc_ptrlist_destroy(mem->gcobjlistremains, NULL);
     mc_ptrlist_destroy(mem->gcobjlistback, NULL);
     for(i = 0; i < mc_ptrlist_count(mem->gcobjlist); i++)
     {
@@ -5819,7 +5819,7 @@ void mc_state_gcsweep(mcstate_t* state)
     mcobjdata_t* data;
     mcptrlist_t* objstemp;
     mcgcobjdatapool_t* pool;
-    mc_state_gcmarkobjlist((mcvalue_t*)mc_basicarray_data(state->mem->gcobjlistremains), mc_basicarray_count(state->mem->gcobjlistremains));
+    mc_state_gcmarkobjlist((mcvalue_t*)mc_ptrlist_data(state->mem->gcobjlistremains), mc_ptrlist_count(state->mem->gcobjlistremains));
     MC_ASSERT(mc_ptrlist_count(state->mem->gcobjlistback) >= mc_ptrlist_count(state->mem->gcobjlist));
     mc_ptrlist_clear(state->mem->gcobjlistback);
     for(i = 0; i < mc_ptrlist_count(state->mem->gcobjlist); i++)
@@ -5879,11 +5879,11 @@ bool mc_state_gcdisablefor(mcvalue_t obj)
         return false;
     }
     data = mc_value_getallocateddata(obj);
-    if(mc_basicarray_contains(data->mem->gcobjlistremains, &obj))
+    if(mc_ptrlist_contains(data->mem->gcobjlistremains, &obj))
     {
         return false;
     }
-    ok = mc_basicarray_push(data->mem->gcobjlistremains, &obj);
+    ok = mc_ptrlist_push(data->mem->gcobjlistremains, &obj);
     return ok;
 }
 
@@ -5895,7 +5895,7 @@ void mc_state_gcenablefor(mcvalue_t obj)
         return;
     }
     data = mc_value_getallocateddata(obj);
-    mc_basicarray_removeitem(data->mem->gcobjlistremains, &obj);
+    mc_ptrlist_removeitem(data->mem->gcobjlistremains, &obj);
 }
 
 mcgcobjdatapool_t* mc_state_gcgetpoolfortype(mcstate_t* state, mcvaltype_t type)
@@ -6747,8 +6747,8 @@ mctraceback_t* mc_traceback_make(mcstate_t* state)
     }
     memset(traceback, 0, sizeof(mctraceback_t));
     traceback->pstate = state;
-    traceback->items = mc_basicarray_make(state, sizeof(mctraceitem_t));
-    if(!traceback->items)
+    traceback->tbitems = mc_ptrlist_make(state, 32, sizeof(mctraceitem_t));
+    if(!traceback->tbitems)
     {
         mc_traceback_destroy(traceback);
         return NULL;
@@ -6764,13 +6764,13 @@ void mc_traceback_destroy(mctraceback_t* traceback)
     {
         return;
     }
-    for(i = 0; i < mc_basicarray_count(traceback->items); i++)
+    for(i = 0; i < mc_ptrlist_count(traceback->tbitems); i++)
     {
-        item = (mctraceitem_t*)mc_basicarray_get(traceback->items, i);
+        item = (mctraceitem_t*)mc_ptrlist_get(traceback->tbitems, i);
         mc_memory_free(item->trfuncname);
         item->trfuncname = NULL;
     }
-    mc_basicarray_destroy(traceback->items);
+    mc_ptrlist_destroy(traceback->tbitems, NULL);
     mc_memory_free(traceback);
     traceback = NULL;
 }
@@ -6785,7 +6785,7 @@ bool mc_traceback_push(mctraceback_t* traceback, const char* fname, mcastlocatio
         return false;
     }
     item.pos = pos;
-    ok = mc_basicarray_push(traceback->items, &item);
+    ok = mc_ptrlist_push(traceback->tbitems, &item);
     if(!ok)
     {
         mc_memory_free(item.trfuncname);
@@ -6818,10 +6818,10 @@ bool mc_printer_printtraceback(mcprinter_t* pr, mctraceback_t* traceback)
     int depth;
     const char* filename;
     mctraceitem_t* item;
-    depth = mc_basicarray_count(traceback->items);
+    depth = mc_ptrlist_count(traceback->tbitems);
     for(i = 0; i < depth; i++)
     {
-        item = (mctraceitem_t*)mc_basicarray_get(traceback->items, i);
+        item = (mctraceitem_t*)mc_ptrlist_get(traceback->tbitems, i);
         filename = mc_traceitem_getsourcefilepath(item);
         if(item->pos.line >= 0 && item->pos.column >= 0)
         {
