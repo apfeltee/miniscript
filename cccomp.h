@@ -2502,7 +2502,7 @@ bool mc_compiler_filescopepush(mcastcompiler_t* comp, const char* filepath)
     ok = mc_compiler_pushsymtable(comp, globaloffset);
     if(!ok)
     {
-        mc_ptrlist_pop(comp->filescopelist);
+        mc_ptrlist_pop(comp->filescopelist, NULL);
         mc_compiler_filescopedestroy(filescope);
         return false;
     }
@@ -2531,7 +2531,7 @@ void mc_compiler_filescopepop(mcastcompiler_t* comp)
         return;
     }
     mc_compiler_filescopedestroy(scope);
-    mc_ptrlist_pop(comp->filescopelist);
+    mc_ptrlist_pop(comp->filescopelist, NULL);
     if(mc_ptrlist_count(comp->filescopelist) > 0)
     {
         currentst = mc_compiler_getsymtable(comp);
