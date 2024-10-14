@@ -31,6 +31,7 @@ void mc_vallist_destroy(mcvallist_t* list)
     }
 }
 
+
 MC_INLINE size_t mc_vallist_count(mcvallist_t* list)
 {
     return list->listcount;
@@ -41,15 +42,18 @@ MC_INLINE mcvalue_t* mc_vallist_data(mcvallist_t* list)
     return list->listitems;
 }
 
+
 MC_INLINE mcvalue_t mc_vallist_get(mcvallist_t* list, size_t idx)
 {
     return list->listitems[idx];
 }
 
+
 MC_INLINE mcvalue_t* mc_vallist_getp(mcvallist_t* list, size_t idx)
 {
     return &list->listitems[idx];
 }
+
 
 MC_INLINE bool mc_vallist_set(mcvallist_t* list, size_t idx, mcvalue_t val)
 {
@@ -70,6 +74,7 @@ MC_INLINE bool mc_vallist_set(mcvallist_t* list, size_t idx, mcvalue_t val)
     }
     return true;
 }
+
 
 MC_INLINE bool mc_vallist_push(mcvallist_t* list, mcvalue_t value)
 {
@@ -93,6 +98,7 @@ MC_INLINE bool mc_vallist_push(mcvallist_t* list, mcvalue_t value)
     return true;
 }
 
+
 MC_INLINE bool mc_vallist_pop(mcvallist_t* list, mcvalue_t* dest)
 {
     if(list->listcount > 0)
@@ -104,39 +110,41 @@ MC_INLINE bool mc_vallist_pop(mcvallist_t* list, mcvalue_t* dest)
     return false;
 }
 
-bool mc_vallist_removeatintern(mcvallist_t* arr, unsigned int ix)
+
+bool mc_vallist_removeatintern(mcvallist_t* list, unsigned int ix)
 {
     size_t tomovebytes;
     void* src;
     void* dest;
-    if(ix == (arr->listcount - 1))
+    if(ix == (list->listcount - 1))
     {
-        arr->listcount--;
+        list->listcount--;
         return true;
     }
-    tomovebytes = (arr->listcount - 1 - ix) * sizeof(mcvalue_t);
-    dest = arr->listitems + (ix * sizeof(mcvalue_t));
-    src = arr->listitems + ((ix + 1) * sizeof(mcvalue_t));
+    tomovebytes = (list->listcount - 1 - ix) * sizeof(mcvalue_t);
+    dest = list->listitems + (ix * sizeof(mcvalue_t));
+    src = list->listitems + ((ix + 1) * sizeof(mcvalue_t));
     memmove(dest, src, tomovebytes);
-    arr->listcount--;
+    list->listcount--;
     return true;
 }
 
-MC_INLINE bool mc_vallist_removeat(mcvallist_t* arr, unsigned int ix)
+MC_INLINE bool mc_vallist_removeat(mcvallist_t* list, unsigned int ix)
 {
-    if(ix >= arr->listcount)
+    if(ix >= list->listcount)
     {
         return false;
     }
     if(ix == 0)
     {
-        arr->listitems += sizeof(mcvalue_t);
-        arr->listcapacity--;
-        arr->listcount--;
+        list->listitems += sizeof(mcvalue_t);
+        list->listcapacity--;
+        list->listcount--;
         return true;
     }
-    return mc_vallist_removeatintern(arr, ix);
+    return mc_vallist_removeatintern(list, ix);
 }
+
 
 void mc_vallist_ensurecapacity(mcvallist_t* list, size_t needsize, mcvalue_t fillval, bool first)
 {
@@ -171,6 +179,7 @@ void mc_vallist_ensurecapacity(mcvallist_t* list, size_t needsize, mcvalue_t fil
     }
 }
 
+
 MC_INLINE mcvallist_t* mc_vallist_copy(mcvallist_t* list)
 {
     size_t i;
@@ -192,3 +201,4 @@ MC_INLINE void mc_vallist_setempty(mcvallist_t* list)
     list->listcount = 0;
     list->listcapacity = 0;
 }
+

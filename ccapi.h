@@ -218,7 +218,7 @@ mcastexpression_t* mc_parser_makefunccallexpr(mcstate_t* state, mcastexpression_
     }
     functionidentexpr->pos = expr->pos;
     ident = NULL;
-    args = mc_ptrlist_make(state, 0, sizeof(void*));
+    args = mc_ptrlist_make(state, sizeof(void*), true);
     if(!args)
     {
         mc_astexpr_destroy(functionidentexpr);

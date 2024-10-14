@@ -16,7 +16,7 @@ mcmodule_t* mc_module_make(mcstate_t* state, const char* name)
         mc_module_destroy(module);
         return NULL;
     }
-    module->modsymbols = mc_ptrlist_make(state, 0, sizeof(void*));
+    module->modsymbols = mc_ptrlist_make(state, sizeof(void*), true);
     if(!module->modsymbols)
     {
         mc_module_destroy(module);

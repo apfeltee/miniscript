@@ -300,7 +300,7 @@ mcptrlist_t* mc_astparser_parseall(mcastparser_t* parser, const char* input, mca
     }
     mc_lexer_nexttoken(&parser->lexer);
     mc_lexer_nexttoken(&parser->lexer);
-    statements = mc_ptrlist_make(parser->pstate, 0, sizeof(void*));
+    statements = mc_ptrlist_make(parser->pstate, sizeof(void*), true);
     if(!statements)
     {
         return NULL;
@@ -491,7 +491,7 @@ mcastexpression_t* mc_parser_parseifstmt(mcastparser_t* p)
     mcastexpression_t* res;
     cases = NULL;
     alternative = NULL;
-    cases = mc_ptrlist_make(p->pstate, 0, sizeof(void*));
+    cases = mc_ptrlist_make(p->pstate, sizeof(void*), true);
     if(!cases)
     {
         goto err;
@@ -930,7 +930,7 @@ mcastexprcodeblock_t* mc_parser_parsecodeblock(mcastparser_t* p)
     }
     mc_lexer_nexttoken(&p->lexer);
     p->depth++;
-    statements = mc_ptrlist_make(p->pstate, 0, sizeof(void*));
+    statements = mc_ptrlist_make(p->pstate, sizeof(void*), true);
     if(!statements)
     {
         goto err;
@@ -1222,8 +1222,8 @@ mcastexpression_t* mc_parser_parseliteralmap(mcastparser_t* p)
     mcastexpression_t* res;
     mcastexpression_t* key;
     mcastexpression_t* value;
-    keys = mc_ptrlist_make(p->pstate, 0, sizeof(void*));
-    values = mc_ptrlist_make(p->pstate, 0, sizeof(void*));
+    keys = mc_ptrlist_make(p->pstate, sizeof(void*), true);
+    values = mc_ptrlist_make(p->pstate, sizeof(void*), true);
     if(!keys || !values)
     {
         goto err;
@@ -1447,7 +1447,7 @@ mcastexpression_t* mc_parser_parseliteralfunction(mcastparser_t* p)
     {
         mc_lexer_nexttoken(&p->lexer);
     }
-    params = mc_ptrlist_make(p->pstate, 0, sizeof(void*));
+    params = mc_ptrlist_make(p->pstate, sizeof(void*), true);
     ok = mc_parser_parsefuncparams(p, params);
     if(!ok)
     {
@@ -1546,7 +1546,7 @@ mcptrlist_t* mc_parser_parseexprlist(mcastparser_t* p, mcasttoktype_t starttoken
         return NULL;
     }
     mc_lexer_nexttoken(&p->lexer);
-    res = mc_ptrlist_make(p->pstate, 0, sizeof(void*));
+    res = mc_ptrlist_make(p->pstate, sizeof(void*), true);
     if(mc_lexer_currtokenis(&p->lexer, endtoken))
     {
         mc_lexer_nexttoken(&p->lexer);

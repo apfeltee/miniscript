@@ -10,22 +10,22 @@ mcastscopecomp_t* mc_astcompscope_make(mcstate_t* state, mcastscopecomp_t* outer
     memset(scope, 0, sizeof(mcastscopecomp_t));
     scope->pstate = state;
     scope->outer = outer;
-    scope->compiledscopebytecode = mc_basicarray_make(state, sizeof(uint16_t));
+    scope->compiledscopebytecode = mc_ptrlist_make(state, sizeof(uint16_t), false);
     if(!scope->compiledscopebytecode)
     {
         goto scopemakefailed;
     }
-    scope->scopesrcposlist = mc_basicarray_make(state, sizeof(mcastlocation_t));
+    scope->scopesrcposlist = mc_ptrlist_make(state, sizeof(mcastlocation_t), false);
     if(!scope->scopesrcposlist)
     {
         goto scopemakefailed;
     }
-    scope->ipstackbreak = mc_basicarray_make(state, sizeof(int));
+    scope->ipstackbreak = mc_ptrlist_make(state, sizeof(int), false);
     if(!scope->ipstackbreak)
     {
         goto scopemakefailed;
     }
-    scope->ipstackcontinue = mc_basicarray_make(state, sizeof(int));
+    scope->ipstackcontinue = mc_ptrlist_make(state, sizeof(int), false);
     if(!scope->ipstackcontinue)
     {
         goto scopemakefailed;
@@ -38,10 +38,10 @@ scopemakefailed:
 
 void mc_astcompscope_destroy(mcastscopecomp_t* scope)
 {
-    mc_basicarray_destroy(scope->ipstackcontinue);
-    mc_basicarray_destroy(scope->ipstackbreak);
-    mc_basicarray_destroy(scope->compiledscopebytecode);
-    mc_basicarray_destroy(scope->scopesrcposlist);
+    mc_ptrlist_destroy(scope->ipstackcontinue, NULL);
+    mc_ptrlist_destroy(scope->ipstackbreak, NULL);
+    mc_ptrlist_destroy(scope->compiledscopebytecode, NULL);
+    mc_ptrlist_destroy(scope->scopesrcposlist, NULL);
     mc_memory_free(scope);
 }
 
@@ -50,15 +50,15 @@ mccompiledprogram_t* mc_astcompscope_orphanresult(mcastscopecomp_t* scope)
     uint16_t* bcdata;
     mcastlocation_t* astlocdata;
     mccompiledprogram_t* res;
-    bcdata = (uint16_t*)mc_basicarray_data(scope->compiledscopebytecode);
-    astlocdata = (mcastlocation_t*)mc_basicarray_data(scope->scopesrcposlist);
-    res = mc_astcompresult_make(scope->pstate, bcdata, astlocdata, mc_basicarray_count(scope->compiledscopebytecode));
+    bcdata = (uint16_t*)mc_ptrlist_data(scope->compiledscopebytecode);
+    astlocdata = (mcastlocation_t*)mc_ptrlist_data(scope->scopesrcposlist);
+    res = mc_astcompresult_make(scope->pstate, bcdata, astlocdata, mc_ptrlist_count(scope->compiledscopebytecode));
     if(!res)
     {
         return NULL;
     }
-    mc_basicarray_orphandata(scope->compiledscopebytecode);
-    mc_basicarray_orphandata(scope->scopesrcposlist);
+    mc_ptrlist_orphandata(scope->compiledscopebytecode);
+    mc_ptrlist_orphandata(scope->scopesrcposlist);
     return res;
 }
 
@@ -100,7 +100,7 @@ bool mc_compiler_init(mcastcompiler_t* comp, mcstate_t* state, mcconfig_t* cfg, 
     comp->errors = errors;
     comp->files = files;
     comp->compglobalstore = gstor;
-    comp->filescopelist = mc_ptrlist_make(state, 0, sizeof(void*));
+    comp->filescopelist = mc_ptrlist_make(state, sizeof(void*), true);
     if(!comp->filescopelist)
     {
         goto compilerinitfailed;
@@ -110,7 +110,7 @@ bool mc_compiler_init(mcastcompiler_t* comp, mcstate_t* state, mcconfig_t* cfg, 
     {
         goto compilerinitfailed;
     }
-    comp->srcposstack = mc_basicarray_make(state, sizeof(mcastlocation_t));
+    comp->srcposstack = mc_ptrlist_make(state, sizeof(mcastlocation_t), false);
     if(!comp->srcposstack)
     {
         goto compilerinitfailed;
@@ -165,7 +165,7 @@ void mc_compiler_deinit(mcastcompiler_t* comp)
         mc_compiler_popcompilationscope(comp);
     }
     mc_ptrdict_destroyitemsanddict(comp->modules);
-    mc_basicarray_destroy(comp->srcposstack);
+    mc_ptrlist_destroy(comp->srcposstack, NULL);
     mc_vallist_destroy(comp->constants);
     mc_ptrlist_destroy(comp->filescopelist, NULL);
     memset(comp, 0, sizeof(mcastcompiler_t));
@@ -358,14 +358,14 @@ const char* mc_opdef_getname(mcinternopcode_t op)
     do \
     { \
         val = (uint16_t)(operands[i] >> (n * 8)); \
-        ok = mc_basicarray_push(res, &val); \
+        ok = mc_ptrlist_push(res, &val); \
         if(!ok) \
         { \
             return 0; \
         } \
     } while(0)
 
-int mc_compiler_gencode(mcinternopcode_t op, int operandscount, const uint64_t* operands, mcbasicarray_t* res)
+int mc_compiler_gencode(mcinternopcode_t op, int operandscount, const uint64_t* operands, mcptrlist_t* res)
 {
     bool ok;
     int i;
@@ -386,7 +386,7 @@ int mc_compiler_gencode(mcinternopcode_t op, int operandscount, const uint64_t* 
     }
     val = op;
     ok = false;
-    ok = mc_basicarray_push(res, &val);
+    ok = mc_ptrlist_push(res, &val);
     if(!ok)
     {
         return 0;
@@ -455,12 +455,12 @@ int mc_compiler_emit(mcastcompiler_t* comp, mcinternopcode_t op, int operandscou
     }
     for(i = 0; i < len; i++)
     {
-        srcpos = (mcastlocation_t*)mc_basicarray_top(comp->srcposstack);
+        srcpos = (mcastlocation_t*)mc_ptrlist_top(comp->srcposstack);
         /*
         MC_ASSERT(srcpos->line >= 0);
         MC_ASSERT(srcpos->column >= 0);
         */
-        ok = mc_basicarray_push(mc_compiler_getsrcpositions(comp), srcpos);
+        ok = mc_ptrlist_push(mc_compiler_getsrcpositions(comp), srcpos);
         if(!ok)
         {
             return -1;
@@ -570,9 +570,9 @@ bool mc_compiler_docompilesource(mcastcompiler_t* comp, const char* code)
     if(comp->pstate->config.dumpbytecode)
     {
         mc_printer_printbytecode(state->stderrprinter,
-            (uint16_t*)mc_basicarray_data(comp->compilationscope->compiledscopebytecode),
-            (mcastlocation_t*)mc_basicarray_data(comp->compilationscope->scopesrcposlist),
-            mc_basicarray_count(comp->compilationscope->compiledscopebytecode), false);
+            (uint16_t*)mc_ptrlist_data(comp->compilationscope->compiledscopebytecode),
+            (mcastlocation_t*)mc_ptrlist_data(comp->compilationscope->scopesrcposlist),
+            mc_ptrlist_count(comp->compilationscope->compiledscopebytecode), false);
     }
     return ok;
 }
@@ -822,9 +822,9 @@ bool mc_compiler_compileifstmt(mcastcompiler_t* comp, uint64_t* opbuf, mcastexpr
     int* pos;
     mcastexprifcase_t* ifcase;
     mcastexprstmtif_t* ifstmt;
-    mcbasicarray_t* jumptoendips;
+    mcptrlist_t* jumptoendips;
     ifstmt = &expr->uexpr.exprifstmt;
-    jumptoendips = mc_basicarray_make(comp->pstate, sizeof(int));
+    jumptoendips = mc_ptrlist_make(comp->pstate, sizeof(int), false);
     if(!jumptoendips)
     {
         goto statementiferror;
@@ -849,7 +849,7 @@ bool mc_compiler_compileifstmt(mcastcompiler_t* comp, uint64_t* opbuf, mcastexpr
         {
             opbuf[0] = 0xbeef;
             jumptoendip = mc_compiler_emit(comp, MC_OPCODE_JUMP, 1, opbuf);
-            ok = mc_basicarray_push(jumptoendips, &jumptoendip);
+            ok = mc_ptrlist_push(jumptoendips, &jumptoendip);
             if(!ok)
             {
                 goto statementiferror;
@@ -867,15 +867,15 @@ bool mc_compiler_compileifstmt(mcastcompiler_t* comp, uint64_t* opbuf, mcastexpr
         }
     }
     afteraltip = mc_compiler_getip(comp);
-    for(i = 0; i < mc_basicarray_count(jumptoendips); i++)
+    for(i = 0; i < mc_ptrlist_count(jumptoendips); i++)
     {
-        pos = (int*)mc_basicarray_get(jumptoendips, i);
+        pos = (int*)mc_ptrlist_get(jumptoendips, i);
         mc_compiler_changeuint16operand(comp, *pos + 1, afteraltip);
     }
-    mc_basicarray_destroy(jumptoendips);
+    mc_ptrlist_destroy(jumptoendips, NULL);
     return true;
 statementiferror:
-    mc_basicarray_destroy(jumptoendips);
+    mc_ptrlist_destroy(jumptoendips, NULL);
     return false;
 }
 
@@ -1013,7 +1013,7 @@ bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpression_t* expr
     mcastsymtable_t* symtab;
     ok = false;
     ip = -1;
-    ok = mc_basicarray_push(comp->srcposstack, &expr->pos);
+    ok = mc_ptrlist_push(comp->srcposstack, &expr->pos);
     if(!ok)
     {
         return false;
@@ -1179,7 +1179,7 @@ bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpression_t* expr
                 afterupdateip = mc_compiler_getip(comp);
                 mc_compiler_changeuint16operand(comp, jumptoafterupdateip + 1, afterupdateip);
                 /* Test */
-                ok = mc_basicarray_push(comp->srcposstack, &foreach->source->pos);
+                ok = mc_ptrlist_push(comp->srcposstack, &foreach->source->pos);
                 if(!ok)
                 {
                     return false;
@@ -1194,7 +1194,7 @@ bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpression_t* expr
                 {
                     return false;
                 }
-                mc_basicarray_pop(comp->srcposstack, NULL);
+                mc_ptrlist_pop(comp->srcposstack, NULL);
                 ok = mc_compiler_readsymbol(comp, indexsymbol);
                 if(!ok)
                 {
@@ -1483,7 +1483,7 @@ bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpression_t* expr
             }
             break;
     }
-    mc_basicarray_pop(comp->srcposstack, NULL);
+    mc_ptrlist_pop(comp->srcposstack, NULL);
     return true;
 }
 
@@ -1506,7 +1506,7 @@ bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexpression_t* exp
         expr = exproptimized;
     }
     #endif
-    ok = mc_basicarray_push(comp->srcposstack, &expr->pos);
+    ok = mc_ptrlist_push(comp->srcposstack, &expr->pos);
     if(!ok)
     {
         return false;
@@ -2020,7 +2020,7 @@ bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexpression_t* exp
                 {
                     goto error;
                 }
-                ok = mc_basicarray_push(comp->srcposstack, &assign->dest->pos);
+                ok = mc_ptrlist_push(comp->srcposstack, &assign->dest->pos);
                 if(!ok)
                 {
                     goto error;
@@ -2082,7 +2082,7 @@ bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexpression_t* exp
                         goto error;
                     }
                 }
-                mc_basicarray_pop(comp->srcposstack, NULL);
+                mc_ptrlist_pop(comp->srcposstack, NULL);
             }
             break;
 
@@ -2175,7 +2175,7 @@ bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexpression_t* exp
 error:
     res = false;
 end:
-    mc_basicarray_pop(comp->srcposstack, NULL);
+    mc_ptrlist_pop(comp->srcposstack, NULL);
     mc_astexpr_destroy(exproptimized);
     return res;
 }
@@ -2240,17 +2240,17 @@ void mc_compiler_changeuint16operand(mcastcompiler_t* comp, int ip, uint16_t ope
 {
     uint16_t hi;
     uint16_t lo;
-    mcbasicarray_t* bytecode;
+    mcptrlist_t* bytecode;
     bytecode = mc_compiler_getbytecode(comp);
-    if((ip + 1) >= (int)mc_basicarray_count(bytecode))
+    if((ip + 1) >= (int)mc_ptrlist_count(bytecode))
     {
         MC_ASSERT(false);
         return;
     }
     hi = operand >> 8;
-    mc_basicarray_set(bytecode, ip, &hi);
+    mc_ptrlist_set(bytecode, ip, &hi);
     lo = operand;
-    mc_basicarray_set(bytecode, ip + 1, &lo);
+    mc_ptrlist_set(bytecode, ip + 1, &lo);
 }
 
 bool mc_compiler_lastopcodeis(mcastcompiler_t* comp, mcinternopcode_t op)
@@ -2339,19 +2339,19 @@ bool mc_compiler_pushbreakip(mcastcompiler_t* comp, int ip)
 {
     mcastscopecomp_t* compscope;
     compscope = mc_compiler_getcompilationscope(comp);
-    return mc_basicarray_push(compscope->ipstackbreak, &ip);
+    return mc_ptrlist_push(compscope->ipstackbreak, &ip);
 }
 
 void mc_compiler_popbreakip(mcastcompiler_t* comp)
 {
     mcastscopecomp_t* compscope;
     compscope = mc_compiler_getcompilationscope(comp);
-    if(mc_basicarray_count(compscope->ipstackbreak) == 0)
+    if(mc_ptrlist_count(compscope->ipstackbreak) == 0)
     {
         MC_ASSERT(false);
         return;
     }
-    mc_basicarray_pop(compscope->ipstackbreak, NULL);
+    mc_ptrlist_pop(compscope->ipstackbreak, NULL);
 }
 
 int mc_compiler_getbreakip(mcastcompiler_t* comp)
@@ -2359,11 +2359,11 @@ int mc_compiler_getbreakip(mcastcompiler_t* comp)
     int* res;
     mcastscopecomp_t* compscope;
     compscope = mc_compiler_getcompilationscope(comp);
-    if(mc_basicarray_count(compscope->ipstackbreak) == 0)
+    if(mc_ptrlist_count(compscope->ipstackbreak) == 0)
     {
         return -1;
     }
-    res = (int*)mc_basicarray_top(compscope->ipstackbreak);
+    res = (int*)mc_ptrlist_top(compscope->ipstackbreak);
     return *res;
 }
 
@@ -2371,19 +2371,19 @@ bool mc_compiler_pushcontinueip(mcastcompiler_t* comp, int ip)
 {
     mcastscopecomp_t* compscope;
     compscope = mc_compiler_getcompilationscope(comp);
-    return mc_basicarray_push(compscope->ipstackcontinue, &ip);
+    return mc_ptrlist_push(compscope->ipstackcontinue, &ip);
 }
 
 void mc_compiler_popcontinueip(mcastcompiler_t* comp)
 {
     mcastscopecomp_t* compscope;
     compscope = mc_compiler_getcompilationscope(comp);
-    if(mc_basicarray_count(compscope->ipstackcontinue) == 0)
+    if(mc_ptrlist_count(compscope->ipstackcontinue) == 0)
     {
         MC_ASSERT(false);
         return;
     }
-    mc_basicarray_pop(compscope->ipstackcontinue, NULL);
+    mc_ptrlist_pop(compscope->ipstackcontinue, NULL);
 }
 
 int mc_compiler_getcontinueip(mcastcompiler_t* comp)
@@ -2391,12 +2391,12 @@ int mc_compiler_getcontinueip(mcastcompiler_t* comp)
     int* res;
     mcastscopecomp_t* compscope;
     compscope = mc_compiler_getcompilationscope(comp);
-    if(mc_basicarray_count(compscope->ipstackcontinue) == 0)
+    if(mc_ptrlist_count(compscope->ipstackcontinue) == 0)
     {
         MC_ASSERT(false);
         return -1;
     }
-    res = (int*)mc_basicarray_top(compscope->ipstackcontinue);
+    res = (int*)mc_ptrlist_top(compscope->ipstackcontinue);
     return *res;
 }
 
@@ -2404,17 +2404,17 @@ int mc_compiler_getip(mcastcompiler_t* comp)
 {
     mcastscopecomp_t* compscope;
     compscope = mc_compiler_getcompilationscope(comp);
-    return mc_basicarray_count(compscope->compiledscopebytecode);
+    return mc_ptrlist_count(compscope->compiledscopebytecode);
 }
 
-mcbasicarray_t* mc_compiler_getsrcpositions(mcastcompiler_t* comp)
+mcptrlist_t* mc_compiler_getsrcpositions(mcastcompiler_t* comp)
 {
     mcastscopecomp_t* compscope;
     compscope = mc_compiler_getcompilationscope(comp);
     return compscope->scopesrcposlist;
 }
 
-mcbasicarray_t* mc_compiler_getbytecode(mcastcompiler_t* comp)
+mcptrlist_t* mc_compiler_getbytecode(mcastcompiler_t* comp)
 {
     mcastscopecomp_t* compscope;
     compscope = mc_compiler_getcompilationscope(comp);
@@ -2439,7 +2439,7 @@ mcastscopefile_t* mc_compiler_filescopemake(mcastcompiler_t* comp, mcastcompiled
     }
     filescope->filesymtab = NULL;
     filescope->file = file;
-    filescope->loadedmodnames = mc_ptrlist_make(comp->pstate, 0, sizeof(void*));
+    filescope->loadedmodnames = mc_ptrlist_make(comp->pstate, sizeof(void*), true);
     if(!filescope->loadedmodnames)
     {
         goto err;
@@ -2582,7 +2582,7 @@ mcastcompiledfile_t* mc_compiledfile_make(mcstate_t* state, const char* path)
     {
         goto error;
     }
-    file->lines = mc_ptrlist_make(state, 0, sizeof(void*));
+    file->lines = mc_ptrlist_make(state, sizeof(void*), true);
     if(!file->lines)
     {
         goto error;
@@ -2647,15 +2647,15 @@ mccompiledprogram_t* mc_compiler_compilesource(mcastcompiler_t* comp, const char
     mcastscopecomp_t* compscope;
     mccompiledprogram_t* res;
     compscope = mc_compiler_getcompilationscope(comp);
-    MC_ASSERT(mc_basicarray_count(comp->srcposstack) == 0);
-    MC_ASSERT(mc_basicarray_count(compscope->compiledscopebytecode) == 0);
-    MC_ASSERT(mc_basicarray_count(compscope->ipstackbreak) == 0);
-    MC_ASSERT(mc_basicarray_count(compscope->ipstackcontinue) == 0);
-    mc_basicarray_clear(comp->srcposstack);
-    mc_basicarray_clear(compscope->compiledscopebytecode);
-    mc_basicarray_clear(compscope->scopesrcposlist);
-    mc_basicarray_clear(compscope->ipstackbreak);
-    mc_basicarray_clear(compscope->ipstackcontinue);
+    MC_ASSERT(mc_ptrlist_count(comp->srcposstack) == 0);
+    MC_ASSERT(mc_ptrlist_count(compscope->compiledscopebytecode) == 0);
+    MC_ASSERT(mc_ptrlist_count(compscope->ipstackbreak) == 0);
+    MC_ASSERT(mc_ptrlist_count(compscope->ipstackcontinue) == 0);
+    mc_ptrlist_clear(comp->srcposstack);
+    mc_ptrlist_clear(compscope->compiledscopebytecode);
+    mc_ptrlist_clear(compscope->scopesrcposlist);
+    mc_ptrlist_clear(compscope->ipstackbreak);
+    mc_ptrlist_clear(compscope->ipstackcontinue);
     ok = mc_compiler_initshallowcopy(&compshallowcopy, comp);
     if(!ok)
     {
