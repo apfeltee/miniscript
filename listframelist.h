@@ -95,4 +95,3 @@ void mc_framelist_ensurecapacity(mcframelist_t* list, size_t needsize, mcvmframe
         }
     }
 }
-

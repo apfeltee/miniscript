@@ -119,10 +119,10 @@ static inline const char *mc_ptrdict_getkeyat(mcptrdict_t *dict, unsigned int ix
 static inline size_t mc_ptrdict_count(mcptrdict_t *dict);
 static inline bool mc_ptrdict_remove(mcptrdict_t *dict, const char *key);
 mcptrdict_t *mc_ptrdict_copy(mcptrdict_t *dict);
-bool mc_valdict_init(mcstate_t *state, mcvaldict_t *dict, unsigned int initialcapacity);
+bool mc_valdict_init(mcstate_t *state, mcvaldict_t *dict, unsigned int initialcapacity, size_t ktsz, size_t vtsz, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn);
 void mc_valdict_deinit(mcvaldict_t *dict);
-mcvaldict_t *mc_valdict_makedefault(mcstate_t *state);
-mcvaldict_t *mc_valdict_makecapacity(mcstate_t *state, unsigned int mincapacity);
+mcvaldict_t *mc_valdict_makedefault(mcstate_t *state, size_t ktsz, size_t vtsz, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn);
+mcvaldict_t *mc_valdict_makecapacity(mcstate_t *state, unsigned int mincapacity, size_t ktsz, size_t vtsz, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn);
 void mc_valdict_destroy(mcvaldict_t *dict);
 static inline void mc_valdict_sethashfunction(mcvaldict_t *dict, mcitemhashfn_t hashfn);
 static inline void mc_valdict_setequalsfunction(mcvaldict_t *dict, mcitemcomparefn_t equalsfn);
@@ -783,6 +783,8 @@ bool mc_lexer_charisdigit(char ch);
 bool mc_lexer_charisoneof(char ch, const char *allowed, int allowedlen);
 /* ccparse.h */
 char mc_parser_getescapechar(char c);
+/* dictptrdict.h */
+/* dictvaldict.h */
 /* listbasiclist.h */
 /* listframelist.h */
 /* listvallist.h */

@@ -27,11 +27,16 @@ mcptrlist_t* mc_ptrlist_makecapacity(mcstate_t* state, unsigned int capacity, si
 
 bool mc_ptrlist_initcapacity(mcptrlist_t* list, mcstate_t* state, unsigned int capacity, size_t tsz, bool isptr)
 {
+    if(isptr)
+    {
+        tsz = 8;
+    }
     list->pstate = state;
+    list->typesize = tsz;
     list->isptr = isptr;
     if(capacity > 0)
     {
-        list->allocdata = (unsigned char*)mc_allocator_malloc(list->pstate, capacity * tsz);
+        list->allocdata = (unsigned char*)mc_allocator_malloc(list->pstate, capacity * list->typesize);
         list->listitems = list->allocdata;
         if(!list->allocdata)
         {
@@ -45,7 +50,6 @@ bool mc_ptrlist_initcapacity(mcptrlist_t* list, mcstate_t* state, unsigned int c
     }
     list->listcapacity = capacity;
     list->listcount = 0;
-    list->typesize = tsz;
     list->caplocked = false;
     return true;
 }
