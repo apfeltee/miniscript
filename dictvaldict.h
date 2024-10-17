@@ -1,5 +1,5 @@
 
-bool mc_valdict_init(mcstate_t* state, mcvaldict_t* dict, unsigned int initialcapacity, size_t ktsz, size_t vtsz, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
+bool mc_valdict_init(mcstate_t* state, mcvaldict_t* dict, unsigned int initialcapacity, size_t ktsz, size_t vtsz)
 {
     unsigned int i;
     dict->pstate = state;
@@ -11,8 +11,6 @@ bool mc_valdict_init(mcstate_t* state, mcvaldict_t* dict, unsigned int initialca
     dict->vdcellindices = NULL;
     dict->vdhashes = NULL;
     dict->vdcount = 0;
-    dict->funccopyfn = copyfn;
-    dict->funcdestroyfn = dfn;
     dict->vdcellcapacity = initialcapacity;
     dict->vditemcapacity = (unsigned int)(initialcapacity * 0.7f);
     dict->funckeyequalsfn = NULL;
@@ -59,12 +57,12 @@ void mc_valdict_deinit(mcvaldict_t* dict)
     dict->vdhashes = NULL;
 }
 
-mcvaldict_t* mc_valdict_makedefault(mcstate_t* state, size_t ktsz, size_t vtsz, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
+mcvaldict_t* mc_valdict_makedefault(mcstate_t* state, size_t ktsz, size_t vtsz)
 {
-    return mc_valdict_makecapacity(state, MC_CONF_GENERICDICTINITSIZE, ktsz, vtsz, copyfn, dfn);
+    return mc_valdict_makecapacity(state, MC_CONF_GENERICDICTINITSIZE, ktsz, vtsz);
 }
 
-mcvaldict_t* mc_valdict_makecapacity(mcstate_t* state, unsigned int mincapacity, size_t ktsz, size_t vtsz, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
+mcvaldict_t* mc_valdict_makecapacity(mcstate_t* state, unsigned int mincapacity, size_t ktsz, size_t vtsz)
 {
     bool ok;
     unsigned int capacity;
@@ -75,7 +73,7 @@ mcvaldict_t* mc_valdict_makecapacity(mcstate_t* state, unsigned int mincapacity,
     {
         return NULL;
     }
-    ok = mc_valdict_init(state, dict, capacity, ktsz, vtsz, copyfn, dfn);
+    ok = mc_valdict_init(state, dict, capacity, ktsz, vtsz);
     if(!ok)
     {
         mc_memory_free(dict);
@@ -320,7 +318,7 @@ MC_INLINE bool mc_valdict_growandrehash(mcvaldict_t* dict)
     char* key;
     void* value;
     ncap = MC_UTIL_INCCAPACITY(dict->vdcellcapacity);    
-    ok = mc_valdict_init(dict->pstate, &newdict, ncap, dict->keytypesize, dict->valtypesize, dict->funccopyfn, dict->funcdestroyfn);
+    ok = mc_valdict_init(dict->pstate, &newdict, ncap, dict->keytypesize, dict->valtypesize);
     if(!ok)
     {
         return false;

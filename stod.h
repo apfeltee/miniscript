@@ -26,20 +26,6 @@
 #define STOD_DENOM_LOG 3
 #define STOD_DENOM (1 << STOD_DENOM_LOG)
 
-/*
-
-    uint64_t    significand;
-    int         exp;
-*/
-#if defined(__cplusplus)
-    #define stod_makediyfp(_s, _e) \
-        /*(mcstoddiyfp_t)*/{(_s), (_e)}
-        
-#else
-    #define stod_makediyfp(_s, _e) \
-        (mcstoddiyfp_t){(_s), (_e)}
-#endif
-
 #define stod_makeuint64(h, l) (((uint64_t)(h) << 32) + (l))
 
 #define STOD_DBL_SIGNIFICAND_SIZE 52
@@ -66,14 +52,29 @@
 
 #define STOD_D_1_LOG2_10 0.30102999566398114 /* 1 / log2(10). */
 
-
 typedef struct mcstodcpe_t mcstodcpe_t;
+
+struct mcstoddiyfp_t
+{
+    uint64_t significand;
+    int exp;
+};
+
 struct mcstodcpe_t
 {
     uint64_t significand;
     int16_t bin_exp;
     int16_t dec_exp;
 };
+
+
+MC_INLINE mcstoddiyfp_t stod_makediyfp(uint64_t sign, int exp)
+{
+    mcstoddiyfp_t r;
+    r.significand = sign;
+    r.exp = exp;
+    return r;
+}
 
 uint64_t stod_leading_zeros64(uint64_t x)
 {

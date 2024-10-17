@@ -73,7 +73,6 @@ void mc_ptrlist_destroy(mcptrlist_t* list, mcitemdestroyfn_t dfn)
     mc_memory_free(list);
 }
 
-
 void mc_ptrlist_clearanddestroy(mcptrlist_t* list, mcitemdestroyfn_t dfn)
 {
     size_t i;
@@ -85,8 +84,6 @@ void mc_ptrlist_clearanddestroy(mcptrlist_t* list, mcitemdestroyfn_t dfn)
     }
     mc_ptrlist_clear(list);
 }
-
-
 
 void mc_ptrlist_orphandata(mcptrlist_t* list)
 {
@@ -167,23 +164,11 @@ MC_INLINE bool mc_ptrlist_push(mcptrlist_t* list, void* value)
             return false;
         }
         ncap = MC_UTIL_INCCAPACITY(list->listcapacity);
-        #if 1
-            newdata = (unsigned char*)mc_allocator_realloc(list->pstate, list->allocdata, ncap * list->typesize);
-            if(!newdata)
-            {
-                return false;
-            }
-        #else
-            /*
-            newdata = (unsigned char*)mc_allocator_malloc(list->pstate, ncap * list->typesize);
-            if(!newdata)
-            {
-                return false;
-            }
-            memcpy(newdata, list->listitems, list->listcount * list->typesize);
-            mc_memory_free(list->allocdata);
-            */
-        #endif
+        newdata = (unsigned char*)mc_allocator_realloc(list->pstate, list->allocdata, ncap * list->typesize);
+        if(!newdata)
+        {
+            return false;
+        }
         list->allocdata = newdata;
         list->listitems = list->allocdata;
         list->listcapacity = ncap;
