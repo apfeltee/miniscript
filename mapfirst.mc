@@ -2,7 +2,8 @@
 function callme(v)
 {
     println("**in callback** v = <<<", v, ">>>");
-    return v*2
+    var tmp = v * 2
+    return tmp
 }
 
 a=[44, 55, 66, 77, 88]

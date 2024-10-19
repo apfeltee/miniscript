@@ -478,6 +478,8 @@ typedef struct mcobjfuncnative_t mcobjfuncnative_t;
 typedef struct mcobjuserdata_t mcobjuserdata_t;
 typedef struct mcobjerror_t mcobjerror_t;
 typedef struct mcobjstring_t mcobjstring_t;
+typedef struct mcobjmap_t mcobjmap_t;
+typedef struct mcobjarray_t mcobjarray_t;
 
 
 typedef struct mcopdefinition_t mcopdefinition_t;
@@ -870,18 +872,34 @@ struct mcobjerror_t
     mctraceback_t* traceback;
 };
 
+struct mcobjpointer
+{
+    const char* name;
+    void* userptr;
+};
+
 struct mcobjstring_t
 {
     unsigned long hash;
     StringBuffer* strbuf;
 };
 
+struct mcobjmap_t
+{
+    mcvaldict_t* actualmap;
+};
+
+struct mcobjarray_t
+{
+    mcvallist_t* actualarray;
+};
+
 union mcobjunion_t
 {
     mcobjstring_t valstring;
     mcobjerror_t valerror;
-    mcvallist_t* valarray;
-    mcvaldict_t* valmap;
+    mcobjarray_t* valarray;
+    mcobjmap_t* valmap;
     mcobjfuncscript_t valscriptfunc;
     mcobjfuncnative_t valnativefunc;
     mcobjuserdata_t valuserobject;
@@ -1404,47 +1422,6 @@ mcfloat_t mc_util_strtod(const char* str, size_t slen, char** endptr)
     return stod_strtod(&p, end, true);
 }
 
-MC_FORCEINLINE mcvalue_t mc_object_makedatafrom(mcvaltype_t type, mcobjdata_t* data)
-{
-    mcvalue_t object;
-    memset(&object, 0, sizeof(mcvalue_t));
-    object.valtype = type;
-    data->odtype = type;
-    object.isallocated = true;
-    object.uval.odata = data;
-    return object;
-}
-
-MC_FORCEINLINE mcvalue_t mc_value_makeempty(mcvaltype_t t)
-{
-    mcvalue_t o = {};
-    o.valtype = t;
-    o.isallocated = false;
-    return o;
-}
-
-MC_FORCEINLINE mcvalue_t mc_value_makenumber(mcfloat_t val)
-{
-    mcvalue_t o;
-    o = mc_value_makeempty(MC_VAL_NUMBER);
-    o.uval.valnumber = val;
-    return o;
-}
-
-MC_FORCEINLINE mcvalue_t mc_value_makebool(bool val)
-{
-    mcvalue_t o;
-    o = mc_value_makeempty(MC_VAL_BOOL);
-    o.uval.valbool = val;
-    return o;
-}
-
-MC_FORCEINLINE mcvalue_t mc_value_makenull()
-{
-    mcvalue_t o;
-    o = mc_value_makeempty(MC_VAL_NULL);
-    return o;
-}
 
 MC_FORCEINLINE mcshiftint_t mc_mathutil_binshiftleft(mcfloat_t dnleft, mcfloat_t dnright)
 {
@@ -1539,6 +1516,7 @@ MC_FORCEINLINE mcfloat_t mc_mathutil_mod(mcfloat_t dnleft, mcfloat_t dnright)
 #include "listframelist.h"
 #include "dictptrdict.h"
 #include "dictvaldict.h"
+#include "value.h"
 
 mcprinter_t* mc_printer_make(mcstate_t* state, FILE* ofh)
 {
@@ -2021,12 +1999,12 @@ void mc_printer_printobjmap(mcprinter_t* pr, mcvalue_t obj)
     size_t alen;
     mcvalue_t key;
     mcvalue_t val;
-    alen = mc_valmap_getlength(obj);
+    alen = mc_value_mapgetlength(obj);
     mc_printer_puts(pr, "{");
     for(i = 0; i < alen; i++)
     {
-        key = mc_valmap_getkeyat(obj, i);
-        val = mc_valmap_getvalueat(obj, i);
+        key = mc_value_mapgetkeyat(obj, i);
+        val = mc_value_mapgetvalueat(obj, i);
         prevquot = pr->config.quotstring;
         pr->config.quotstring = true;
         mc_printer_printvalue(pr, key, false);
@@ -2238,579 +2216,12 @@ mcfloat_t mc_util_uint64todouble(uint64_t val)
     return temp.val_double;
 }
 
-const char* mc_valtype_getname(mcvaltype_t type)
-{
-    switch(type)
-    {
-        case MC_VAL_NONE:
-        case MC_VAL_FREED:
-        case MC_VAL_NULL:
-            return "null";
-        case MC_VAL_NUMBER:
-            return "number";
-        case MC_VAL_BOOL:
-            return "boolean";
-        case MC_VAL_STRING:
-            return "string";
-        case MC_VAL_FUNCNATIVE:
-        case MC_VAL_FUNCSCRIPT:
-            return "function";
-        case MC_VAL_ARRAY:
-            return "array";
-        case MC_VAL_MAP:
-            return "object";
-        case MC_VAL_EXTERNAL:
-            return "extern";
-        case MC_VAL_ERROR:
-            return "error";
-        case MC_VAL_ANY:
-            return "any";
-    }
-    return "invalid";
-}
-
-
-const char* mc_util_objtypename(mcvaltype_t type)
-{
-    switch(type)
-    {
-        case MC_VAL_NONE:
-            return "NONE";
-        case MC_VAL_ERROR:
-            return "ERROR";
-        case MC_VAL_NUMBER:
-            return "NUMBER";
-        case MC_VAL_BOOL:
-            return "BOOL";
-        case MC_VAL_STRING:
-            return "STRING";
-        case MC_VAL_NULL:
-            return "NULL";
-        case MC_VAL_FUNCNATIVE:
-            return "NATIVE_FUNCTION";
-        case MC_VAL_ARRAY:
-            return "ARRAY";
-        case MC_VAL_MAP:
-            return "MAP";
-        case MC_VAL_FUNCSCRIPT:
-            return "FUNCTION";
-        case MC_VAL_EXTERNAL:
-            return "EXTERNAL";
-        case MC_VAL_FREED:
-            return "FREED";
-        case MC_VAL_ANY:
-            return "ANY";
-        default:
-            break;
-    }
-    return "NONE";
-}
-
-MC_FORCEINLINE bool mc_value_isallocated(mcvalue_t object)
-{
-    return object.isallocated;
-}
-
-MC_FORCEINLINE bool mc_value_isnumeric(mcvalue_t obj)
-{
-    mcvaltype_t type;
-    type = mc_value_gettype(obj);
-    return type == MC_VAL_NUMBER || type == MC_VAL_BOOL;
-}
-
-MC_FORCEINLINE bool mc_value_isnumber(mcvalue_t o)
-{
-    return (mc_value_gettype(o) == MC_VAL_NUMBER || mc_value_gettype(o) == MC_VAL_BOOL);
-}
-
-MC_FORCEINLINE bool mc_value_isnull(mcvalue_t obj)
-{
-    return mc_value_gettype(obj) == MC_VAL_NULL;
-}
-
-MC_FORCEINLINE bool mc_value_isfuncnative(mcvalue_t obj)
-{
-    mcvaltype_t type;
-    type = mc_value_gettype(obj);
-    return (type == MC_VAL_FUNCNATIVE);
-}
-
-MC_FORCEINLINE bool mc_value_isfuncscript(mcvalue_t obj)
-{
-    mcvaltype_t type;
-    type = mc_value_gettype(obj);
-    return (type == MC_VAL_FUNCSCRIPT);
-}
-
-MC_FORCEINLINE bool mc_value_iscallable(mcvalue_t obj)
-{
-    return (mc_value_isfuncnative(obj) || mc_value_isfuncscript(obj));
-}
-
-MC_FORCEINLINE bool mc_value_isstring(mcvalue_t obj)
-{
-    mcvaltype_t type;
-    type = mc_value_gettype(obj);
-    return (type == MC_VAL_STRING);
-}
-
-MC_FORCEINLINE bool mc_value_ishashable(mcvalue_t obj)
-{
-    mcvaltype_t type = mc_value_gettype(obj);
-    switch(type)
-    {
-        case MC_VAL_STRING:
-        case MC_VAL_NUMBER:
-        case MC_VAL_BOOL:
-            return true;
-        default:
-            break;
-    }
-    return false;
-}
-
-MC_FORCEINLINE bool mc_value_compare(mcvalue_t a, mcvalue_t b, mcvalcmpresult_t* cres)
-{
-    const char* astring;
-    const char* bstring;
-    int alen;
-    int blen;
-    intptr_t adataval;
-    intptr_t bdataval;
-    mcfloat_t dnleft;
-    mcfloat_t dnright;
-    size_t ahash;
-    size_t bhash;
-    mcvaltype_t atype;
-    mcvaltype_t btype;
-    /*
-    if(a.odata == b.odata)
-    {
-        return 0;
-    }
-    */
-    cres->result = 1;
-    atype = mc_value_gettype(a);
-    btype = mc_value_gettype(b);
-    if((atype == MC_VAL_NUMBER || atype == MC_VAL_BOOL || atype == MC_VAL_NULL) && (btype == MC_VAL_NUMBER || btype == MC_VAL_BOOL || btype == MC_VAL_NULL))
-    {
-        dnleft = mc_value_asnumber(a);
-        dnright = mc_value_asnumber(b);
-        cres->result = (dnleft - dnright);
-        return true;
-    }
-    if(atype == btype && atype == MC_VAL_STRING)
-    {
-        alen = mc_value_getstringlength(a);
-        blen = mc_value_getstringlength(b);
-        #if 0
-        fprintf(stderr, "mc_value_compare: alen=%d, blen=%d\n", alen, blen);
-        #endif
-        if(alen != blen)
-        {
-            cres->result = alen - blen;
-            return false;
-        }
-        ahash = mc_valstring_gethash(a);
-        bhash = mc_valstring_gethash(b);
-        if(ahash != bhash)
-        {
-            cres->result = ahash - bhash;
-            return false;
-        }
-        astring = mc_value_getstringdata(a);
-        bstring = mc_value_getstringdata(b);
-        if(strncmp(astring, bstring, alen) == 0)
-        {
-            cres->result = 0;
-            return true;
-        }
-        else
-        {
-            cres->result = 1;
-        }
-        return true;
-    }
-    if((mc_value_isallocated(a) || mc_value_isnull(a)) && (mc_value_isallocated(b) || mc_value_isnull(b)))
-    {
-        adataval = (intptr_t)mc_value_getallocateddata(a);
-        bdataval = (intptr_t)mc_value_getallocateddata(b);
-        cres->result = (mcfloat_t)(adataval - bdataval);
-        return true;
-    }
-    return false;
-}
-
-MC_FORCEINLINE bool mc_value_equals(mcvalue_t a, mcvalue_t b)
-{
-    bool ok;
-    mcvalcmpresult_t cres;
-    mcvaltype_t atype;
-    mcvaltype_t btype;
-    (void)ok;
-    atype = mc_value_gettype(a);
-    btype = mc_value_gettype(b);
-    if(atype != btype)
-    {
-        return false;
-    }
-    ok = mc_value_compare(a, b, &cres);
-    return MC_UTIL_CMPFLOAT(cres.result, 0);
-}
-
-
-mcvalue_t mc_value_copydeepfuncscript(mcstate_t* state, mcvalue_t obj, mcvaldict_t* targetdict)
-{
-    bool ok;
-    int i;
-    uint16_t* bytecodecopy;
-    mcobjfuncscript_t* functioncopy;
-    mcvalue_t copy;
-    mcvalue_t freeval;
-    mcvalue_t freevalcopy;
-    mcobjfuncscript_t* function;
-    mcastlocation_t* srcpositionscopy;
-    mccompiledprogram_t* comprescopy;
-    function = mc_value_functiongetscriptfunction(obj);
-    bytecodecopy = NULL;
-    srcpositionscopy = NULL;
-    comprescopy = NULL;
-    bytecodecopy = (uint16_t*)mc_allocator_malloc(state, sizeof(uint16_t) * function->compiledprogcode->count);
-    if(!bytecodecopy)
-    {
-        return mc_value_makenull();
-    }
-    memcpy(bytecodecopy, function->compiledprogcode->bytecode, sizeof(uint16_t) * function->compiledprogcode->count);
-    srcpositionscopy = (mcastlocation_t*)mc_allocator_malloc(state, sizeof(mcastlocation_t) * function->compiledprogcode->count);
-    if(!srcpositionscopy)
-    {
-        mc_memory_free(bytecodecopy);
-        return mc_value_makenull();
-    }
-    memcpy(srcpositionscopy, function->compiledprogcode->progsrcposlist, sizeof(mcastlocation_t) * function->compiledprogcode->count);
-    comprescopy = mc_astcompresult_make(state, bytecodecopy, srcpositionscopy, function->compiledprogcode->count);
-    /*
-    * todo: add compilation result copy function
-    */
-    if(!comprescopy)
-    {
-        mc_memory_free(srcpositionscopy);
-        mc_memory_free(bytecodecopy);
-        return mc_value_makenull();
-    }
-    copy = mc_value_makefuncscript(state, mc_value_functiongetname(obj), comprescopy, true, function->numlocals, function->numargs, 0);
-    if(mc_value_isnull(copy))
-    {
-        mc_astcompresult_destroy(comprescopy);
-        return mc_value_makenull();
-    }
-    ok = mc_valdict_setkv(targetdict, &obj, &copy);
-    if(!ok)
-    {
-        return mc_value_makenull();
-    }
-    functioncopy = mc_value_functiongetscriptfunction(copy);
-    if(mc_objfunction_freevalsareallocated(function))
-    {
-        functioncopy->ufv.freevalsallocated = (mcvalue_t*)mc_allocator_malloc(state, sizeof(mcvalue_t) * function->freevalscount);
-        if(!functioncopy->ufv.freevalsallocated)
-        {
-            return mc_value_makenull();
-        }
-    }
-    functioncopy->freevalscount = function->freevalscount;
-    for(i = 0; i < function->freevalscount; i++)
-    {
-        freeval = mc_value_functiongetfreevalat(obj, i);
-        freevalcopy = mc_value_copydeepintern(state, freeval, targetdict);
-        if(!mc_value_isnull(freeval) && mc_value_isnull(freevalcopy))
-        {
-            return mc_value_makenull();
-        }
-        mc_value_functionsetfreevalat(copy, i, freevalcopy);
-    }
-    return copy;
-}
-
-mcvalue_t mc_value_copydeeparray(mcstate_t* state, mcvalue_t obj, mcvaldict_t* targetdict)
-{
-    bool ok;
-    int i;
-    int len;
-    mcvalue_t copy;
-    mcvalue_t item;
-    mcvalue_t itemcopy;
-    len = mc_value_arraygetlength(obj);
-    copy = mc_value_makearraycapacity(state, len);
-    if(mc_value_isnull(copy))
-    {
-        return mc_value_makenull();
-    }
-    ok = mc_valdict_setkv(targetdict, &obj, &copy);
-    if(!ok)
-    {
-        return mc_value_makenull();
-    }
-    for(i = 0; i < len; i++)
-    {
-        item = mc_value_arraygetvalue(obj, i);
-        itemcopy = mc_value_copydeepintern(state, item, targetdict);
-        if(!mc_value_isnull(item) && mc_value_isnull(itemcopy))
-        {
-            return mc_value_makenull();
-        }
-        ok = mc_value_arraypush(copy, itemcopy);
-        if(!ok)
-        {
-            return mc_value_makenull();
-        }
-    }
-    return copy;
-}
-
-mcvalue_t mc_value_copydeepmap(mcstate_t* state, mcvalue_t obj, mcvaldict_t* targetdict)
-{
-    bool ok;
-    int i;
-    mcvalue_t key;
-    mcvalue_t val;
-    mcvalue_t copy;
-    mcvalue_t keycopy;
-    mcvalue_t valcopy;
-    copy = mc_value_makemap(state);
-    if(mc_value_isnull(copy))
-    {
-        return mc_value_makenull();
-    }
-    ok = mc_valdict_setkv(targetdict, &obj, &copy);
-    if(!ok)
-    {
-        return mc_value_makenull();
-    }
-    for(i = 0; i < mc_valmap_getlength(obj); i++)
-    {
-        key = mc_valmap_getkeyat(obj, i);
-        val = mc_valmap_getvalueat(obj, i);
-        keycopy = mc_value_copydeepintern(state, key, targetdict);
-        if(!mc_value_isnull(key) && mc_value_isnull(keycopy))
-        {
-            return mc_value_makenull();
-        }
-        valcopy = mc_value_copydeepintern(state, val, targetdict);
-        if(!mc_value_isnull(val) && mc_value_isnull(valcopy))
-        {
-            return mc_value_makenull();
-        }
-        ok = mc_valmap_setvalue(copy, keycopy, valcopy);
-        if(!ok)
-        {
-            return mc_value_makenull();
-        }
-    }
-    return copy;
-}
-
-mcvalue_t mc_value_copydeepintern(mcstate_t* state, mcvalue_t obj, mcvaldict_t* targetdict)
-{
-    mcvaltype_t type;
-    mcvalue_t copy;
-    mcvalue_t* copyptr;
-    copyptr = (mcvalue_t*)mc_valdict_get(targetdict, &obj);
-    if(copyptr)
-    {
-        return *copyptr;
-    }
-    copy = mc_value_makenull();
-    type = mc_value_gettype(obj);
-    switch(type)
-    {
-        case MC_VAL_FREED:
-        case MC_VAL_ANY:
-        case MC_VAL_NONE:
-            {
-                MC_ASSERT(false);
-                copy = mc_value_makenull();
-            }
-            break;
-        case MC_VAL_NUMBER:
-        case MC_VAL_BOOL:
-        case MC_VAL_NULL:
-        case MC_VAL_FUNCNATIVE:
-            {
-                copy = obj;
-            }
-            break;
-        case MC_VAL_STRING:
-            {
-                bool ok;
-                int len;
-                const char* str;
-                str = mc_value_getstringdata(obj);
-                len = mc_value_getstringlength(obj);
-                copy = mc_value_makestringlen(state, str, len);
-                ok = mc_valdict_setkv(targetdict, &obj, &copy);
-                if(!ok)
-                {
-                    return mc_value_makenull();
-                }
-                return copy;
-            }
-            break;
-        case MC_VAL_FUNCSCRIPT:
-            {
-                return mc_value_copydeepfuncscript(state, obj, targetdict);
-            }
-            break;
-        case MC_VAL_ARRAY:
-            {
-                return mc_value_copydeeparray(state, obj, targetdict);
-            }
-            break;
-        case MC_VAL_MAP:
-            {
-                return mc_value_copydeepmap(state, obj, targetdict);
-            }
-            break;
-        case MC_VAL_EXTERNAL:
-            {
-                copy = mc_value_copyflat(state, obj);
-            }
-            break;
-        case MC_VAL_ERROR:
-            {
-                copy = obj;
-            }
-            break;
-    }
-    return copy;
-}
-
-mcvalue_t mc_value_copydeep(mcstate_t* state, mcvalue_t obj)
-{
-    mcvalue_t res;
-    mcvaldict_t* targetdict;
-    targetdict = mc_valdict_makedefault(state, sizeof(mcvalue_t), sizeof(mcvalue_t));
-    if(!targetdict)
-    {
-        return mc_value_makenull();
-    }
-    res = mc_value_copydeepintern(state, obj, targetdict);
-    mc_valdict_destroy(targetdict);
-    return res;
-}
-
-mcvalue_t mc_value_copyflat(mcstate_t* state, mcvalue_t obj)
-{
-    bool ok;
-    mcvalue_t copy;
-    mcvaltype_t type;
-    copy = mc_value_makenull();
-    type = mc_value_gettype(obj);
-    switch(type)
-    {
-        case MC_VAL_ANY:
-        case MC_VAL_FREED:
-        case MC_VAL_NONE:
-            {
-                MC_ASSERT(false);
-                copy = mc_value_makenull();
-            }
-            break;
-        case MC_VAL_NUMBER:
-        case MC_VAL_BOOL:
-        case MC_VAL_NULL:
-        case MC_VAL_FUNCSCRIPT:
-        case MC_VAL_FUNCNATIVE:
-        case MC_VAL_ERROR:
-            {
-                copy = obj;
-            }
-            break;
-        case MC_VAL_STRING:
-            {
-                size_t len;
-                const char* str;
-                str = mc_value_getstringdata(obj);
-                len = mc_value_getstringlength(obj);
-                copy = mc_value_makestringlen(state, str, len);
-            }
-            break;
-        case MC_VAL_ARRAY:
-            {
-                int i;
-                int len;
-                mcvalue_t item;
-                len = mc_value_arraygetlength(obj);
-                copy = mc_value_makearraycapacity(state, len);
-                if(mc_value_isnull(copy))
-                {
-                    return mc_value_makenull();
-                }
-                for(i = 0; i < len; i++)
-                {
-                    item = mc_value_arraygetvalue(obj, i);
-                    ok = mc_value_arraypush(copy, item);
-                    if(!ok)
-                    {
-                        return mc_value_makenull();
-                    }
-                }
-            }
-            break;
-        case MC_VAL_MAP:
-            {
-                int i;
-                mcvalue_t key;
-                mcvalue_t val;
-                copy = mc_value_makemap(state);
-                for(i = 0; i < mc_valmap_getlength(obj); i++)
-                {
-                    key = mc_valmap_getkeyat(obj, i);
-                    val = mc_valmap_getvalueat(obj, i);
-                    ok = mc_valmap_setvalue(copy, key, val);
-                    if(!ok)
-                    {
-                        return mc_value_makenull();
-                    }
-                }
-            }
-            break;
-        case MC_VAL_EXTERNAL:
-            {
-                void* datacopy;
-                mcobjuserdata_t* objext;
-                copy = mc_value_makeuserobject(state, NULL);
-                if(mc_value_isnull(copy))
-                {
-                    return mc_value_makenull();
-                }
-                objext = mc_valuserobject_getdata(obj);
-                datacopy = NULL;
-                if(objext->datacopyfn)
-                {
-                    datacopy = objext->datacopyfn(objext->data);
-                }
-                else
-                {
-                    datacopy = objext->data;
-                }
-                mc_valuserobject_setdata(copy, datacopy);
-                mc_valuserobject_setdestroyfunction(copy, objext->datadestroyfn);
-                mc_valuserobject_setcopyfunction(copy, objext->datacopyfn);
-            }
-            break;
-    }
-    return copy;
-}
-
-
 mcgcmemory_t* mc_value_getmem(mcvalue_t obj)
 {
     mcobjdata_t* data;
     data = mc_value_getallocateddata(obj);
     return data->mem;
 }
-
 
 char* mc_valtype_getunionname(mcstate_t* state, mcvaltype_t type)
 {
@@ -2853,511 +2264,7 @@ char* mc_valtype_getunionname(mcstate_t* state, mcvaltype_t type)
     return mc_printer_getstringanddestroy(res, NULL);
 }
 
-mcobjuserdata_t* mc_valuserobject_getdata(mcvalue_t object)
-{
-    mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_EXTERNAL);
-    data = mc_value_getallocateddata(object);
-    return &data->uvobj.valuserobject;
-}
 
-bool mc_valuserobject_setdestroyfunction(mcvalue_t object, mcitemdestroyfn_t dfn)
-{
-    mcobjuserdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_EXTERNAL);
-    data = mc_valuserobject_getdata(object);
-    if(!data)
-    {
-        return false;
-    }
-    data->datadestroyfn = dfn;
-    return true;
-}
-
-bool mc_value_asbool(mcvalue_t obj)
-{
-    if(mc_value_isnumber(obj))
-    {
-        return obj.uval.valnumber;
-    }
-    return obj.uval.valbool;
-}
-
-mcfloat_t mc_value_asnumber(mcvalue_t obj)
-{
-    if(mc_value_isnumber(obj))
-    {
-        if(mc_value_gettype(obj) == MC_VAL_BOOL)
-        {
-            return obj.uval.valbool;
-        }
-        return obj.uval.valnumber;
-    }
-    return obj.uval.valnumber;
-}
-
-MC_INLINE const char* mc_value_getstringdata(mcvalue_t object)
-{
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_STRING);
-    return mc_value_getstringdataintern(object);
-}
-
-int mc_value_getstringlength(mcvalue_t object)
-{
-    mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_STRING);
-    data = mc_value_getallocateddata(object);
-    return data->uvobj.valstring.strbuf->length;
-}
-
-void mc_string_setlength(mcvalue_t object, int len)
-{
-    mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_STRING);
-    data = mc_value_getallocateddata(object);
-    data->uvobj.valstring.strbuf->length = len;
-}
-
-MC_INLINE char* mc_valstring_getmutabledata(mcvalue_t object)
-{
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_STRING);
-    return mc_value_getstringdataintern(object);
-}
-
-bool mc_valstring_appendlen(mcvalue_t obj, const char* src, size_t len)
-{
-    mcobjdata_t* data;
-    mcobjstring_t* string;
-    MC_ASSERT(mc_value_gettype(obj) == MC_VAL_STRING);
-    data = mc_value_getallocateddata(obj);
-    string = &data->uvobj.valstring;
-    dyn_strbuf_appendstrn(string->strbuf, src, len);
-    return true;
-}
-
-bool mc_valstring_appendformatv(mcvalue_t obj, const char* fmt, va_list va)
-{
-    mcobjdata_t* data;
-    mcobjstring_t* string;
-    MC_ASSERT(mc_value_gettype(obj) == MC_VAL_STRING);
-    data = mc_value_getallocateddata(obj);
-    string = &data->uvobj.valstring;
-    dyn_strbuf_appendformatv(string->strbuf, fmt, va);
-    return true;
-}
-
-bool mc_valstring_appendformat(mcvalue_t obj, const char* fmt, ...)
-{
-    bool r;
-    va_list va;
-    va_start(va, fmt);
-    r = mc_valstring_appendformatv(obj, fmt, va);
-    va_end(va);
-    return r;
-}
-
-bool mc_valstring_appendvalue(mcvalue_t destval, mcvalue_t val)
-{
-    bool ok;
-    int vlen;
-    const char* vstr;
-    if(mc_value_gettype(val) == MC_VAL_NUMBER)
-    {
-        mc_valstring_appendformat(destval, "%g", mc_value_asnumber(val));
-        return true;
-    }
-    if(mc_value_gettype(val) == MC_VAL_STRING)
-    {
-        vlen = mc_value_getstringlength(val);
-        vstr = mc_value_getstringdata(val);
-        ok = mc_valstring_appendlen(destval, vstr, vlen);
-        if(!ok)
-        {
-            return false;
-        }
-    
-        return true;
-    }
-    return false;
-}
-
-size_t mc_valstring_gethash(mcvalue_t obj)
-{
-    size_t len;
-    const char* str;
-    mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(obj) == MC_VAL_STRING);
-    data = mc_value_getallocateddata(obj);
-    if(data->uvobj.valstring.hash == 0)
-    {
-        len = mc_value_getstringlength(obj);
-        str = mc_value_getstringdata(obj);
-        data->uvobj.valstring.hash = mc_util_hashdata(str, len);
-        if(data->uvobj.valstring.hash == 0)
-        {
-            data->uvobj.valstring.hash = 1;
-        }
-    }
-    return data->uvobj.valstring.hash;
-}
-
-mcobjfuncscript_t* mc_value_functiongetscriptfunction(mcvalue_t object)
-{
-    mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_FUNCSCRIPT);
-    data = mc_value_getallocateddata(object);
-    return &data->uvobj.valscriptfunc;
-}
-
-MC_INLINE mcobjfuncnative_t* mc_value_functiongetnativefunction(mcvalue_t obj)
-{
-    mcobjdata_t* data = mc_value_getallocateddata(obj);
-    return &data->uvobj.valnativefunc;
-}
-
-const char* mc_value_functiongetname(mcvalue_t obj)
-{
-    mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(obj) == MC_VAL_FUNCSCRIPT);
-    data = mc_value_getallocateddata(obj);
-    MC_ASSERT(data);
-    if(!data)
-    {
-        return NULL;
-    }
-    if(data->uvobj.valscriptfunc.ownsdata)
-    {
-        return data->uvobj.valscriptfunc.unamev.fallocname;
-    }
-    return data->uvobj.valscriptfunc.unamev.fconstname;
-}
-
-mcvalue_t mc_value_functiongetfreevalat(mcvalue_t obj, int ix)
-{
-    mcobjdata_t* data;
-    mcobjfuncscript_t* fun;
-    MC_ASSERT(mc_value_gettype(obj) == MC_VAL_FUNCSCRIPT);
-    data = mc_value_getallocateddata(obj);
-    MC_ASSERT(data);
-    if(!data)
-    {
-        return mc_value_makenull();
-    }
-    fun = &data->uvobj.valscriptfunc;
-    MC_ASSERT(ix >= 0 && ix < fun->freevalscount);
-    if(ix < 0 || ix >= fun->freevalscount)
-    {
-        return mc_value_makenull();
-    }
-    if(mc_objfunction_freevalsareallocated(fun))
-    {
-        return fun->ufv.freevalsallocated[ix];
-    }
-    return fun->ufv.freevalsstack[ix];
-}
-
-void mc_value_functionsetfreevalat(mcvalue_t obj, int ix, mcvalue_t val)
-{
-    mcobjdata_t* data;
-    mcobjfuncscript_t* fun;
-    MC_ASSERT(mc_value_gettype(obj) == MC_VAL_FUNCSCRIPT);
-    data = mc_value_getallocateddata(obj);
-    MC_ASSERT(data);
-    if(!data)
-    {
-        return;
-    }
-    fun = &data->uvobj.valscriptfunc;
-    MC_ASSERT(ix >= 0 && ix < fun->freevalscount);
-    if(ix < 0 || ix >= fun->freevalscount)
-    {
-        return;
-    }
-    if(mc_objfunction_freevalsareallocated(fun))
-    {
-        fun->ufv.freevalsallocated[ix] = val;
-    }
-    else
-    {
-        fun->ufv.freevalsstack[ix] = val;
-    }
-}
-
-mcvalue_t* mc_value_functiongetfreevals(mcvalue_t obj)
-{
-    mcobjdata_t* data;
-    mcobjfuncscript_t* fun;
-    MC_ASSERT(mc_value_gettype(obj) == MC_VAL_FUNCSCRIPT);
-    data = mc_value_getallocateddata(obj);
-    MC_ASSERT(data);
-    if(!data)
-    {
-        return NULL;
-    }
-    fun = &data->uvobj.valscriptfunc;
-    if(mc_objfunction_freevalsareallocated(fun))
-    {
-        return fun->ufv.freevalsallocated;
-    }
-    return fun->ufv.freevalsstack;
-}
-
-const char* mc_value_errorgetmessage(mcvalue_t object)
-{
-    mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_ERROR);
-    data = mc_value_getallocateddata(object);
-    return data->uvobj.valerror.message;
-}
-
-void mc_value_errorsettraceback(mcvalue_t object, mctraceback_t* traceback)
-{
-    mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_ERROR);
-    if(mc_value_gettype(object) != MC_VAL_ERROR)
-    {
-        return;
-    }
-    data = mc_value_getallocateddata(object);
-    MC_ASSERT(data->uvobj.valerror.traceback == NULL);
-    data->uvobj.valerror.traceback = traceback;
-}
-
-mctraceback_t* mc_value_errorgettraceback(mcvalue_t object)
-{
-    mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_ERROR);
-    data = mc_value_getallocateddata(object);
-    return data->uvobj.valerror.traceback;
-}
-
-bool mc_valuserobject_setdata(mcvalue_t object, void* extdata)
-{
-    mcobjuserdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_EXTERNAL);
-    data = mc_valuserobject_getdata(object);
-    if(!data)
-    {
-        return false;
-    }
-    data->data = extdata;
-    return true;
-}
-
-bool mc_valuserobject_setcopyfunction(mcvalue_t object, mcitemcopyfn_t copyfn)
-{
-    mcobjuserdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_EXTERNAL);
-    data = mc_valuserobject_getdata(object);
-    if(!data)
-    {
-        return false;
-    }
-    data->datacopyfn = copyfn;
-    return true;
-}
-
-mcvalue_t mc_value_arraygetvalue(mcvalue_t object, size_t ix)
-{
-    mcvalue_t* res;
-    mcvallist_t* array;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_ARRAY);
-    array = mc_value_arraygetactualarray(object);
-    if(ix >= mc_vallist_count(array))
-    {
-        return mc_value_makenull();
-    }
-    res = (mcvalue_t*)mc_vallist_getp(array, ix);
-    if(!res)
-    {
-        return mc_value_makenull();
-    }
-    return *res;
-}
-
-bool mc_value_arraysetvalue(mcvalue_t object, size_t ix, mcvalue_t val)
-{
-    size_t len;
-    size_t toadd;
-    mcvallist_t* array;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_ARRAY);
-    array = mc_value_arraygetactualarray(object);
-    len = mc_vallist_count(array);
-    if((ix >= len) || (len == 0))
-    {
-        toadd = len+1;
-        #if 0
-            fprintf(stderr, "ix=%d toadd=%d len=%d\n", ix, toadd, len);
-        #endif
-        while(toadd != (ix+2))
-        {
-            mc_value_arraypush(object, mc_value_makenull());
-            toadd++;
-        }
-    }
-    return mc_vallist_set(array, ix, val);
-}
-
-bool mc_value_arraypush(mcvalue_t object, mcvalue_t val)
-{
-    mcvallist_t* array;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_ARRAY);
-    array = mc_value_arraygetactualarray(object);
-    return mc_vallist_push(array, val);
-}
-
-int mc_value_arraygetlength(mcvalue_t object)
-{
-    mcvallist_t* array;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_ARRAY);
-    array = mc_value_arraygetactualarray(object);
-    return mc_vallist_count(array);
-}
-
-mcvalue_t mc_valarray_pop(mcvalue_t object)
-{
-    mcvalue_t dest;
-    mcvallist_t* array;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_ARRAY);
-    array = mc_value_arraygetactualarray(object);
-    if(mc_vallist_pop(array, &dest))
-    {
-        return dest;
-    }
-    return mc_value_makenull();
-}
-
-bool mc_value_arrayremoveat(mcvalue_t object, int ix)
-{
-    mcvallist_t* array;
-    array = mc_value_arraygetactualarray(object);
-    return mc_vallist_removeat(array, ix);
-}
-
-int mc_valmap_getlength(mcvalue_t object)
-{
-    mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
-    data = mc_value_getallocateddata(object);
-    return mc_valdict_count(data->uvobj.valmap);
-}
-
-mcvalue_t mc_valmap_getkeyat(mcvalue_t object, int ix)
-{
-    mcvalue_t* res;
-    mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
-    data = mc_value_getallocateddata(object);
-    res = (mcvalue_t*)mc_valdict_getkeyat(data->uvobj.valmap, ix);
-    if(!res)
-    {
-        return mc_value_makenull();
-    }
-    return *res;
-}
-
-mcvalue_t mc_valmap_getvalueat(mcvalue_t object, int ix)
-{
-    mcvalue_t* res;
-    mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
-    data = mc_value_getallocateddata(object);
-    res = (mcvalue_t*)mc_valdict_getvalueat(data->uvobj.valmap, ix);
-    if(!res)
-    {
-        return mc_value_makenull();
-    }
-    return *res;
-}
-
-bool mc_valmap_setvalueat(mcvalue_t object, int ix, mcvalue_t val)
-{
-    mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
-    if(ix >= mc_valmap_getlength(object))
-    {
-        return false;
-    }
-    data = mc_value_getallocateddata(object);
-    return mc_valdict_setvalueat(data->uvobj.valmap, ix, &val);
-}
-
-mcvalue_t mc_valmap_getkvpairat(mcstate_t* state, mcvalue_t object, int ix)
-{
-    mcvalue_t key;
-    mcvalue_t val;
-    mcvalue_t res;
-    mcvalue_t valobj;
-    mcvalue_t keyobj;
-    mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
-    data = mc_value_getallocateddata(object);
-    if(ix >= mc_valdict_count(data->uvobj.valmap))
-    {
-        return mc_value_makenull();
-    }
-    key = mc_valmap_getkeyat(object, ix);
-    val = mc_valmap_getvalueat(object, ix);
-    res = mc_value_makemap(state);
-    if(mc_value_isnull(res))
-    {
-        return mc_value_makenull();
-    }
-    keyobj = mc_value_makestring(state, "key");
-    if(mc_value_isnull(keyobj))
-    {
-        return mc_value_makenull();
-    }
-    mc_valmap_setvalue(res, keyobj, key);
-    valobj = mc_value_makestring(state, "value");
-    if(mc_value_isnull(valobj))
-    {
-        return mc_value_makenull();
-    }
-    mc_valmap_setvalue(res, valobj, val);
-    return res;
-}
-
-bool mc_valmap_setvalue(mcvalue_t object, mcvalue_t key, mcvalue_t val)
-{
-    mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
-    data = mc_value_getallocateddata(object);
-    return mc_valdict_setkv(data->uvobj.valmap, &key, &val);
-}
-
-bool mc_valmap_setvalstring(mcvalue_t object, const char* strkey, mcvalue_t val)
-{
-    mcstate_t* state;
-    mcvalue_t vkey;
-    state = mc_value_getallocateddata(object)->pstate;
-    vkey = mc_value_makestring(state, strkey);
-    return mc_valmap_setvalue(object, vkey, val);
-}
-
-mcvalue_t mc_valmap_getvalue(mcvalue_t object, mcvalue_t key)
-{
-    mcvalue_t* res;
-    mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
-    data = mc_value_getallocateddata(object);
-    res = (mcvalue_t*)mc_valdict_get(data->uvobj.valmap, &key);
-    if(!res)
-    {
-        return mc_value_makenull();
-    }
-    return *res;
-}
-
-bool mc_valmap_haskey(mcvalue_t object, mcvalue_t key)
-{
-    mcvalue_t* res;
-    mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
-    data = mc_value_getallocateddata(object);
-    res = (mcvalue_t*)mc_valdict_get(data->uvobj.valmap, &key);
-    return res != NULL;
-}
 
 void mc_errlist_init(mcerrlist_t* errors)
 {
@@ -3472,382 +2379,6 @@ mcerror_t* mc_errlist_getlast(mcerrlist_t* errors)
     }
     return &errors->errors[errors->count - 1];
 }
-
-mcvalue_t mc_value_makestrcapacity(mcstate_t* state, int capacity)
-{
-    mcobjdata_t* data;
-    data = mc_gcmemory_getdatafrompool(state, MC_VAL_STRING);
-    if(!data)
-    {
-        data = mc_gcmemory_allocobjectdata(state);
-        if(!data)
-        {
-            return mc_value_makenull();
-        }
-    }
-    data->uvobj.valstring.hash = 0;
-    data->uvobj.valstring.strbuf = dyn_strbuf_makeempty(capacity);
-    return mc_object_makedatafrom(MC_VAL_STRING, data);
-}
-
-mcvalue_t mc_value_makestrformat(mcstate_t* state, const char* fmt, ...)
-{
-    va_list args;
-    mcvalue_t res;
-    mcobjdata_t* data;
-    data = mc_gcmemory_getdatafrompool(state, MC_VAL_STRING);
-    res = mc_value_makestrcapacity(state, 0);
-    if(mc_value_isnull(res))
-    {
-        return mc_value_makenull();
-    }
-    va_start(args, fmt);
-    dyn_strbuf_appendformatv(data->uvobj.valstring.strbuf, fmt, args);
-    va_end(args);
-    return res;
-}
-
-mcvalue_t mc_value_makestringlen(mcstate_t* state, const char* string, size_t len)
-{
-    bool ok;
-    mcvalue_t res;
-    res = mc_value_makestrcapacity(state, len);
-    if(mc_value_isnull(res))
-    {
-        return res;
-    }
-    ok = mc_valstring_appendlen(res, string, len);
-    if(!ok)
-    {
-        return mc_value_makenull();
-    }
-    return res;
-}
-
-mcvalue_t mc_value_makestring(mcstate_t* state, const char* string)
-{
-    return mc_value_makestringlen(state, string, mc_util_strlen(string));
-}
-
-mcvalue_t mc_value_makefuncnative(mcstate_t* state, const char* name, mcnativefn_t fn, void* data)
-{
-    mcobjdata_t* obj;
-    obj = mc_gcmemory_allocobjectdata(state);
-    if(!obj)
-    {
-        return mc_value_makenull();
-    }
-    obj->uvobj.valnativefunc.name = mc_util_strdup(state, name);
-    if(!obj->uvobj.valnativefunc.name)
-    {
-        return mc_value_makenull();
-    }
-    obj->uvobj.valnativefunc.natptrfn = fn;
-    if(data)
-    {
-        obj->uvobj.valnativefunc.userpointer = data;
-    }
-    return mc_object_makedatafrom(MC_VAL_FUNCNATIVE, obj);
-}
-
-mcvalue_t mc_value_makearray(mcstate_t* state)
-{
-    return mc_value_makearraycapacity(state, 8);
-}
-
-mcvalue_t mc_value_makearraycapacity(mcstate_t* state, size_t capacity)
-{
-    mcobjdata_t* data;
-    data = mc_gcmemory_getdatafrompool(state, MC_VAL_ARRAY);
-    if(data)
-    {
-        mc_vallist_setempty(data->uvobj.valarray);
-        return mc_object_makedatafrom(MC_VAL_ARRAY, data);
-    }
-    data = mc_gcmemory_allocobjectdata(state);
-    if(!data)
-    {
-        return mc_value_makenull();
-    }
-    data->uvobj.valarray = mc_vallist_make(state, NULL, capacity);
-    if(!data->uvobj.valarray)
-    {
-        return mc_value_makenull();
-    }
-    return mc_object_makedatafrom(MC_VAL_ARRAY, data);
-}
-
-mcvalue_t mc_value_makemap(mcstate_t* state)
-{
-    return mc_value_makemapcapacity(state, 32);
-}
-
-mcvalue_t mc_value_makemapcapacity(mcstate_t* state, size_t capacity)
-{
-    mcobjdata_t* data;
-    data = mc_gcmemory_getdatafrompool(state, MC_VAL_MAP);
-    if(data)
-    {
-        mc_valdict_clear(data->uvobj.valmap);
-        return mc_object_makedatafrom(MC_VAL_MAP, data);
-    }
-    data = mc_gcmemory_allocobjectdata(state);
-    if(!data)
-    {
-        return mc_value_makenull();
-    }
-    data->uvobj.valmap = mc_valdict_makecapacity(state, capacity, sizeof(mcvalue_t), sizeof(mcvalue_t));
-    if(!data->uvobj.valmap)
-    {
-        return mc_value_makenull();
-    }
-    mc_valdict_sethashfunction(data->uvobj.valmap, (mcitemhashfn_t)mc_value_callbackhash);
-    mc_valdict_setequalsfunction(data->uvobj.valmap, (mcitemcomparefn_t)mc_value_callbackequals);
-    return mc_object_makedatafrom(MC_VAL_MAP, data);
-}
-
-mcvalue_t mc_value_makeerror(mcstate_t* state, const char* error)
-{
-    char* errorstr;
-    mcvalue_t res;
-    errorstr = mc_util_strdup(state, error);
-    if(!errorstr)
-    {
-        return mc_value_makenull();
-    }
-    res = mc_value_makeerrornocopy(state, errorstr);
-    if(mc_value_isnull(res))
-    {
-        mc_memory_free(errorstr);
-        return mc_value_makenull();
-    }
-    return res;
-}
-
-mcvalue_t mc_value_makeerrornocopy(mcstate_t* state, char* error)
-{
-    mcobjdata_t* data;
-    data = mc_gcmemory_allocobjectdata(state);
-    if(!data)
-    {
-        return mc_value_makenull();
-    }
-    data->uvobj.valerror.message = error;
-    data->uvobj.valerror.traceback = NULL;
-    return mc_object_makedatafrom(MC_VAL_ERROR, data);
-}
-
-mcvalue_t mc_value_makeerrorf(mcstate_t* state, const char* fmt, ...)
-{
-    int needsz;
-    int printedsz;
-    char* res;
-    va_list args;
-    mcvalue_t resobj;
-    (void)printedsz;
-    va_start(args, fmt);
-    needsz = vsnprintf(NULL, 0, fmt, args);
-    va_end(args);
-    va_start(args, fmt);
-    res = (char*)mc_memory_malloc(needsz + 1);
-    if(!res)
-    {
-        return mc_value_makenull();
-    }
-    printedsz = vsprintf(res, fmt, args);
-    MC_ASSERT(printedsz == needsz);
-    va_end(args);
-    resobj = mc_value_makeerrornocopy(state, res);
-    if(mc_value_isnull(resobj))
-    {
-        mc_memory_free(res);
-        return mc_value_makenull();
-    }
-    return resobj;
-}
-
-mcvalue_t mc_value_makefuncscript(mcstate_t* state, const char* name, mccompiledprogram_t* cres, bool ownsdt, int nlocals, int nargs, int fvc)
-{
-    mcobjdata_t* data;
-    data = mc_gcmemory_allocobjectdata(state);
-    if(!data)
-    {
-        return mc_value_makenull();
-    }
-    if(ownsdt)
-    {
-        data->uvobj.valscriptfunc.unamev.fallocname = name ? mc_util_strdup(state, name) : mc_util_strdup(state, "anonymous");
-        if(!data->uvobj.valscriptfunc.unamev.fallocname)
-        {
-            return mc_value_makenull();
-        }
-    }
-    else
-    {
-        data->uvobj.valscriptfunc.unamev.fconstname = name ? name : "anonymous";
-    }
-    data->uvobj.valscriptfunc.compiledprogcode = cres;
-    data->uvobj.valscriptfunc.ownsdata = ownsdt;
-    data->uvobj.valscriptfunc.numlocals = nlocals;
-    data->uvobj.valscriptfunc.numargs = nargs;
-    if(fvc >= MC_UTIL_STATICARRAYSIZE(data->uvobj.valscriptfunc.ufv.freevalsstack))
-    {
-        data->uvobj.valscriptfunc.ufv.freevalsallocated = (mcvalue_t*)mc_memory_malloc(sizeof(mcvalue_t) * fvc);
-        if(!data->uvobj.valscriptfunc.ufv.freevalsallocated)
-        {
-            return mc_value_makenull();
-        }
-    }
-    data->uvobj.valscriptfunc.freevalscount = fvc;
-    return mc_object_makedatafrom(MC_VAL_FUNCSCRIPT, data);
-}
-
-mcvalue_t mc_value_makeuserobject(mcstate_t* state, void* data)
-{
-    mcobjdata_t* obj;
-    obj = mc_gcmemory_allocobjectdata(state);
-    if(!obj)
-    {
-        return mc_value_makenull();
-    }
-    obj->uvobj.valuserobject.data = data;
-    obj->uvobj.valuserobject.datadestroyfn = NULL;
-    obj->uvobj.valuserobject.datacopyfn = NULL;
-    return mc_object_makedatafrom(MC_VAL_EXTERNAL, obj);
-}
-
-
-void mc_objectdata_deinit(mcobjdata_t* data)
-{
-    switch(data->odtype)
-    {
-        case MC_VAL_FREED:
-            {
-                MC_ASSERT(false);
-                return;
-            }
-            break;
-        case MC_VAL_STRING:
-            {
-                dyn_strbuf_destroy(data->uvobj.valstring.strbuf);
-            }
-            break;
-        case MC_VAL_FUNCSCRIPT:
-            {
-                if(data->uvobj.valscriptfunc.ownsdata)
-                {
-                    mc_memory_free(data->uvobj.valscriptfunc.unamev.fallocname);
-                    mc_astcompresult_destroy(data->uvobj.valscriptfunc.compiledprogcode);
-                }
-                if(mc_objfunction_freevalsareallocated(&data->uvobj.valscriptfunc))
-                {
-                    mc_memory_free(data->uvobj.valscriptfunc.ufv.freevalsallocated);
-                }
-            }
-            break;
-        case MC_VAL_ARRAY:
-            {
-                mc_vallist_destroy(data->uvobj.valarray);
-            }
-            break;
-        case MC_VAL_MAP:
-            {
-                mc_valdict_destroy(data->uvobj.valmap);
-            }
-            break;
-        case MC_VAL_FUNCNATIVE:
-            {
-                mc_memory_free(data->uvobj.valnativefunc.name);
-            }
-            break;
-        case MC_VAL_EXTERNAL:
-            {
-                if(data->uvobj.valuserobject.datadestroyfn)
-                {
-                    data->uvobj.valuserobject.datadestroyfn(data->uvobj.valuserobject.data);
-                }
-            }
-            break;
-        case MC_VAL_ERROR:
-            {
-                mc_memory_free(data->uvobj.valerror.message);
-                mc_traceback_destroy(data->uvobj.valerror.traceback);
-            }
-            break;
-        default:
-            {
-            }
-            break;
-    }
-    data->odtype = MC_VAL_FREED;
-}
-
-
-bool mc_value_callbackequals(mcvalue_t* aptr, mcvalue_t* bptr)
-{
-    mcvalue_t a;
-    mcvalue_t b;
-    a = *aptr;
-    b = *bptr;
-    return mc_value_equals(a, b);
-}
-
-size_t mc_value_callbackhash(mcvalue_t* objptr)
-{
-    bool bval;
-    mcfloat_t dval;
-    mcvalue_t obj;
-    mcvaltype_t type;
-    obj = *objptr;
-    type = mc_value_gettype(obj);
-    switch(type)
-    {
-        case MC_VAL_NUMBER:
-            {
-                dval = mc_value_asnumber(obj);
-                return mc_util_hashdouble(dval);
-            }
-            break;
-        case MC_VAL_BOOL:
-            {
-                bval = mc_value_asbool(obj);
-                return bval;
-            }
-            break;
-        case MC_VAL_STRING:
-            {
-                return mc_valstring_gethash(obj);
-            }
-            break;
-        default:
-            {
-            }
-            break;
-    }
-    return 0;
-}
-
-mcvallist_t* mc_value_arraygetactualarray(mcvalue_t object)
-{
-    mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_ARRAY);
-    data = mc_value_getallocateddata(object);
-    return data->uvobj.valarray;
-}
-
-bool mc_objfunction_freevalsareallocated(mcobjfuncscript_t* fun)
-{
-    return fun->freevalscount >= MC_UTIL_STATICARRAYSIZE(fun->ufv.freevalsstack);
-}
-
-MC_INLINE char* mc_value_getstringdataintern(mcvalue_t object)
-{
-    mcobjdata_t* data;
-    data = mc_value_getallocateddata(object);
-    MC_ASSERT(data->odtype == MC_VAL_STRING);
-    return data->uvobj.valstring.strbuf->data;
-}
-
 
 #include "modapi.h"
 
@@ -4085,11 +2616,12 @@ void mc_state_printerrors(mcstate_t* state)
     }
 }
 
-mccompiledprogram_t* mc_state_compilesource(mcstate_t* state, const char* code)
+mccompiledprogram_t* mc_state_compilesource(mcstate_t* state, const char* code, const char* filename)
 {
+    bool ok;
     mccompiledprogram_t* compres;
     mc_state_clearerrors(state);
-    compres = mc_compiler_compilesource(state->compiler, code);
+    compres = mc_compiler_compilesource(state->compiler, code, filename);
     if(state->errors.count > 0)
     {
         goto err;
@@ -4121,7 +2653,7 @@ mcvalue_t mc_program_execute(mcstate_t* state, mccompiledprogram_t* program)
         return mc_value_makenull();
     }
     //MC_ASSERT(state->execstate.vsposition == 0);
-    res = mc_vm_getlastpopped(state);
+    res = state->execstate.lastpopped;
     if(mc_value_gettype(res) == MC_VAL_NONE)
     {
         return mc_value_makenull();
@@ -4138,13 +2670,13 @@ void mc_program_destroy(mccompiledprogram_t* program)
     mc_astcompresult_destroy(program);
 }
 
-mcvalue_t mc_state_execcode(mcstate_t* state, const char* code)
+mcvalue_t mc_state_execcode(mcstate_t* state, const char* code, const char* filename)
 {
     bool ok;
     mcvalue_t res;
     mccompiledprogram_t* compres;
     mc_state_reset(state);
-    compres = mc_compiler_compilesource(state->compiler, code);
+    compres = mc_compiler_compilesource(state->compiler, code, filename);
     if(!compres || state->errors.count > 0)
     {
         goto err;
@@ -4155,7 +2687,7 @@ mcvalue_t mc_state_execcode(mcstate_t* state, const char* code)
         goto err;
     }
     MC_ASSERT(state->execstate.vsposition == 0);
-    res = mc_vm_getlastpopped(state);
+    res = state->execstate.lastpopped;
     if(mc_value_gettype(res) == MC_VAL_NONE)
     {
         goto err;
@@ -4448,7 +2980,7 @@ bool mc_error_printusererror(mcprinter_t* pr, mcvalue_t obj)
     mc_consolecolor_init(&mcc, fileno(stdout));
     cred = mc_consolecolor_get(&mcc, 'r');
     creset = mc_consolecolor_get(&mcc, '0');
-    mc_printer_printf(pr, "%sERROR: %s%\n", cred, mc_value_errorgetmessage(obj), creset);
+    mc_printer_printf(pr, "%sERROR:%s %s\n", cred, creset, mc_value_errorgetmessage(obj));
     traceback = mc_value_errorgettraceback(obj);
     MC_ASSERT(traceback != NULL);
     if(traceback)
@@ -5043,10 +3575,10 @@ void mc_state_gcmarkobject(mcvalue_t obj)
     {
         case MC_VAL_MAP:
             {
-                len = mc_valmap_getlength(obj);
+                len = mc_value_mapgetlength(obj);
                 for(i = 0; i < len; i++)
                 {
-                    key = mc_valmap_getkeyat(obj, i);
+                    key = mc_value_mapgetkeyat(obj, i);
                     if(mc_value_isallocated(key))
                     {
                         keydata = mc_value_getallocateddata(key);
@@ -5055,7 +3587,7 @@ void mc_state_gcmarkobject(mcvalue_t obj)
                             mc_state_gcmarkobject(key);
                         }
                     }
-                    val = mc_valmap_getvalueat(obj, i);
+                    val = mc_value_mapgetvalueat(obj, i);
                     if(mc_value_isallocated(val))
                     {
                         valdata = mc_value_getallocateddata(val);
@@ -5231,7 +3763,7 @@ bool mc_state_gccandatabeputinpool(mcstate_t* state, mcobjdata_t* data)
             break;
         case MC_VAL_MAP:
             {
-                if(mc_valmap_getlength(obj) > 1024)
+                if(mc_value_mapgetlength(obj) > 1024)
                 {
                     return false;
                 }
@@ -6242,13 +4774,13 @@ MC_FORCEINLINE bool mc_vmdo_tryoverloadoperator(mcstate_t* state, mcvalue_t left
     callee = mc_value_makenull();
     if(lefttype == MC_VAL_MAP)
     {
-        callee = mc_valmap_getvalue(left, key);
+        callee = mc_value_mapgetvalue(left, key);
     }
     if(!mc_value_iscallable(callee))
     {
         if(righttype == MC_VAL_MAP)
         {
-            callee = mc_valmap_getvalue(right, key);
+            callee = mc_value_mapgetvalue(right, key);
         }
 
         if(!mc_value_iscallable(callee))
@@ -6267,10 +4799,6 @@ MC_FORCEINLINE bool mc_vmdo_tryoverloadoperator(mcstate_t* state, mcvalue_t left
     return mc_vmdo_callobject(state, callee, numoper);
 }
 
-MC_FORCEINLINE mcvalue_t mc_vm_getlastpopped(mcstate_t* state)
-{
-    return state->execstate.lastpopped;
-}
 
 MC_FORCEINLINE bool mc_vm_haserrors(mcstate_t* state)
 {
@@ -6871,14 +5399,17 @@ MC_FORCEINLINE bool mc_vmdo_getindexpartial(mcstate_t* state, mcvalue_t left, mc
 {
     int leftlen;
     int ix;
+    bool triedmember;
     char resstr[2];
     const char* str;
     const char* indextypename;
     const char* lefttypename;
     mcvalue_t res;
     (void)fromdot;
+    triedmember = false;
     if(mc_value_isstring(index))
     {
+        triedmember = true;
         if(mc_vmdo_findclassmembervalue(state, left, index, mc_value_makenull()))
         {
             #if 0
@@ -6893,6 +5424,17 @@ MC_FORCEINLINE bool mc_vmdo_getindexpartial(mcstate_t* state, mcvalue_t left, mc
                 mc_printer_printf(state->stderrprinter, ">\n");
             #endif
             return true;
+        }
+        else
+        {
+            if(!mc_value_ismap(left))
+            {
+                res = mc_value_makenull();
+                lefttypename = mc_valtype_getname(lefttype);
+                mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->execstate.currframe), "object type '%s' has no field '%s'", lefttypename, mc_value_getstringdata(index));
+                goto failed;
+
+            }
         }
     }
     if(lefttype != MC_VAL_ARRAY && lefttype != MC_VAL_MAP && lefttype != MC_VAL_STRING)
@@ -6923,7 +5465,7 @@ MC_FORCEINLINE bool mc_vmdo_getindexpartial(mcstate_t* state, mcvalue_t left, mc
     }
     else if(lefttype == MC_VAL_MAP)
     {
-        res = mc_valmap_getvalue(left, index);
+        res = mc_value_mapgetvalue(left, index);
     }
     else if(lefttype == MC_VAL_STRING)
     {
@@ -6943,6 +5485,7 @@ MC_FORCEINLINE bool mc_vmdo_getindexpartial(mcstate_t* state, mcvalue_t left, mc
             res = mc_value_makestringlen(state, resstr, 1);
         }
     }
+    failed:
     mc_vm_stackpush(state, res);
     return true;
 }
@@ -7007,12 +5550,12 @@ MC_FORCEINLINE bool mc_vmdo_setindexpartial(mcstate_t* state, mcvalue_t left, mc
     }
     else if(lefttype == MC_VAL_MAP)
     {
-        oldvalue = mc_valmap_getvalue(left, index);
+        oldvalue = mc_value_mapgetvalue(left, index);
         if(!mc_vm_checkassign(state, oldvalue, nvalue))
         {
             return false;
         }
-        ok = mc_valmap_setvalue(left, index, nvalue);
+        ok = mc_value_mapsetvalue(left, index, nvalue);
         if(!ok)
         {
             return false;
@@ -7074,7 +5617,7 @@ MC_FORCEINLINE bool mc_vmdo_getvalueatfull(mcstate_t* state)
     }
     else if(lefttype == MC_VAL_MAP)
     {
-        res = mc_valmap_getkvpairat(state, left, ix);
+        res = mc_value_mapgetkvpairat(state, left, ix);
     }
     else if(lefttype == MC_VAL_STRING)
     {
@@ -7287,7 +5830,7 @@ MC_FORCEINLINE bool mc_vmdo_makemapend(mcstate_t* state)
             return false;
         }
         val = kvpairs[i + 1];
-        ok = mc_valmap_setvalue(mapobj, key, val);
+        ok = mc_value_mapsetvalue(mapobj, key, val);
         if(!ok)
         {
             return false;
@@ -7913,7 +6456,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
                     }
                     else if(type == MC_VAL_MAP)
                     {
-                        len = mc_valmap_getlength(val);
+                        len = mc_value_mapgetlength(val);
                     }
                     else if(type == MC_VAL_STRING)
                     {
@@ -8265,17 +6808,17 @@ mcvalue_t mc_scriptfn_vec2add(mcstate_t *state, void *data, mcvalue_t thisval, s
     }
     keyx = mc_value_makestring(state, "x");
     keyy = mc_value_makestring(state, "y");
-    a_x = mc_value_asnumber(mc_valmap_getvalue(args[0], keyx));
-    a_y = mc_value_asnumber(mc_valmap_getvalue(args[0], keyy));
-    b_x = mc_value_asnumber(mc_valmap_getvalue(args[1], keyx));
-    b_y = mc_value_asnumber(mc_valmap_getvalue(args[1], keyy));
+    a_x = mc_value_asnumber(mc_value_mapgetvalue(args[0], keyx));
+    a_y = mc_value_asnumber(mc_value_mapgetvalue(args[0], keyy));
+    b_x = mc_value_asnumber(mc_value_mapgetvalue(args[1], keyx));
+    b_y = mc_value_asnumber(mc_value_mapgetvalue(args[1], keyy));
     res = mc_value_makemap(state);
     if (mc_value_gettype(res) == MC_VAL_NULL)
     {
         return res;
     }
-    mc_valmap_setvalue(res, keyx, mc_value_makenumber(a_x + b_x));
-    mc_valmap_setvalue(res, keyy, mc_value_makenumber(a_y + b_y));
+    mc_value_mapsetvalue(res, keyx, mc_value_makenumber(a_x + b_x));
+    mc_value_mapsetvalue(res, keyy, mc_value_makenumber(a_y + b_y));
     return res;
 }
 
@@ -8298,13 +6841,13 @@ mcvalue_t mc_scriptfn_vec2sub(mcstate_t *state, void *data, mcvalue_t thisval, s
     }
     keyx = mc_value_makestring(state, "x");
     keyy = mc_value_makestring(state, "y");
-    a_x = mc_value_asnumber(mc_valmap_getvalue(args[0], keyx));
-    a_y = mc_value_asnumber(mc_valmap_getvalue(args[0], keyy));
-    b_x = mc_value_asnumber(mc_valmap_getvalue(args[1], keyx));
-    b_y = mc_value_asnumber(mc_valmap_getvalue(args[1], keyy));
+    a_x = mc_value_asnumber(mc_value_mapgetvalue(args[0], keyx));
+    a_y = mc_value_asnumber(mc_value_mapgetvalue(args[0], keyy));
+    b_x = mc_value_asnumber(mc_value_mapgetvalue(args[1], keyx));
+    b_y = mc_value_asnumber(mc_value_mapgetvalue(args[1], keyy));
     res = mc_value_makemap(state);
-    mc_valmap_setvalue(res, keyx, mc_value_makenumber(a_x - b_x));
-    mc_valmap_setvalue(res, keyy, mc_value_makenumber(a_y - b_y));
+    mc_value_mapsetvalue(res, keyx, mc_value_makenumber(a_x - b_x));
+    mc_value_mapsetvalue(res, keyy, mc_value_makenumber(a_y - b_y));
     return res;
 }
 
@@ -8364,7 +6907,7 @@ mcvalue_t mc_scriptfn_maketestdict(mcstate_t *state, void *data, mcvalue_t thisv
         blen = sprintf(keybuf, "%d", i);
         key = mc_value_makestringlen(state, keybuf, blen);
         val = mc_value_makenumber(i);
-        mc_valmap_setvalue(res, key, val);
+        mc_value_mapsetvalue(res, key, val);
     }
     return res;
 }
@@ -9078,11 +7621,15 @@ mcvalue_t mc_vm_callvalue(mcstate_t* state, mcvallist_t* constants, mcvalue_t ca
     mcvaltype_t type;
     (void)oldsp;
     (void)oldframescount;
+    if(constants == NULL)
+    {
+        constants = mc_compiler_getconstants(state->compiler);
+    }
     type = mc_value_gettype(callee);
     if(type == MC_VAL_FUNCSCRIPT)
     {
-        mc_callframe_init(&tempframe, callee, 0);
-        //mc_callframe_init(&tempframe, callee, state->execstate.vsposition - 1);
+        //mc_callframe_init(&tempframe, callee, 0);
+        mc_callframe_init(&tempframe, callee, state->execstate.vsposition - argc);
         mc_vm_savestate(state, &est);
         oldsp = state->execstate.vsposition;
         oldthissp = state->execstate.thisstpos;
@@ -9107,7 +7654,7 @@ mcvalue_t mc_vm_callvalue(mcstate_t* state, mcvallist_t* constants, mcvalue_t ca
         #endif
         //MC_ASSERTF(state->execstate.vsposition == oldsp, "oldsp=%ld state->execstate.vsposition=%ld", oldsp, state->execstate.vsposition);
         state->execstate.thisstpos = oldthissp;
-        retv = mc_vm_getlastpopped(state);
+        retv = state->execstate.lastpopped;
         mc_vm_restorestate(state, &est);
         return retv;
     }
@@ -9126,19 +7673,13 @@ mcvalue_t mc_objfnarray_map(mcstate_t* state, void* data, mcvalue_t thisval, siz
     mcvalue_t val;
     mcvalue_t res;
     mcvalue_t callee;
-    mcvalue_t pseudothis;
     mcvalue_t vargs[3];
     mcvalue_t narr;
     mcvallist_t* ary;
     mcvallist_t* nary;
-    mcprinter_t* pr;
     (void)state;
     (void)data;
     (void)argc;
-    (void)pr;
-    pseudothis = mc_value_makenull();
-    pr = state->stderrprinter;
-    //callee = mc_value_copyflat(state, args[0]);
     callee = args[0];
     narr = mc_value_makearray(state);
     nary = mc_value_arraygetactualarray(narr);
@@ -9148,17 +7689,8 @@ mcvalue_t mc_objfnarray_map(mcstate_t* state, void* data, mcvalue_t thisval, siz
     {
         val = ary->listitems[i];
         vargs[0] = val;
-        vargs[1] = mc_value_makenull();
-        res = mc_vm_callvalue(state, mc_compiler_getconstants(state->compiler), callee, thisval, 1, vargs);        
-        #if 0
-        {
-            mc_printer_printf(pr, "map(): value at %ld =<<<", i);
-            mc_printer_printvalue(pr, res, true);
-            mc_printer_printf(pr, ">>> (before: <<<");
-            mc_printer_printvalue(pr, val, true);
-            mc_printer_printf(pr,">>>)\n");
-        }
-        #endif
+        vargs[1] = mc_value_makenumber(i);
+        res = mc_vm_callvalue(state, NULL, callee, thisval, 1, vargs);
         mc_vallist_push(nary, res);
     }
     return narr;
@@ -9260,7 +7792,7 @@ mcvalue_t mc_objfnmap_length(mcstate_t* state, void* data, mcvalue_t thisval, si
     (void)data;
     (void)argc;
     (void)args;
-    len = mc_valmap_getlength(thisval);
+    len = mc_value_mapgetlength(thisval);
     return mc_value_makenumber(len);
 }
 
@@ -9502,10 +8034,10 @@ mcvalue_t mc_scriptfn_keys(mcstate_t* state, void* data, mcvalue_t thisval, size
     {
         return mc_value_makenull();
     }
-    len = mc_valmap_getlength(arg);
+    len = mc_value_mapgetlength(arg);
     for(i = 0; i < len; i++)
     {
-        key = mc_valmap_getkeyat(arg, i);
+        key = mc_value_mapgetkeyat(arg, i);
         ok = mc_value_arraypush(res, key);
         if(!ok)
         {
@@ -9537,10 +8069,10 @@ mcvalue_t mc_scriptfn_values(mcstate_t* state, void* data, mcvalue_t thisval, si
     {
         return mc_value_makenull();
     }
-    len = mc_valmap_getlength(arg);
+    len = mc_value_mapgetlength(arg);
     for(i = 0; i < len; i++)
     {
-        key = mc_valmap_getvalueat(arg, i);
+        key = mc_value_mapgetvalueat(arg, i);
         ok = mc_value_arraypush(res, key);
         if(!ok)
         {
@@ -10054,7 +8586,7 @@ void mc_cli_installjsondummy(mcstate_t* state)
 {
     mcvalue_t jmap;
     jmap = mc_value_makemap(state);
-    mc_valmap_setvalstring(jmap, "stringify", mc_value_makefuncnative(state, "stringify", mc_nsfnjson_stringify, NULL));
+    mc_value_mapsetvalstring(jmap, "stringify", mc_value_makefuncnative(state, "stringify", mc_nsfnjson_stringify, NULL));
     mc_state_setglobalconstant(state, "JSON", jmap);
 }
 
@@ -10062,7 +8594,7 @@ void mc_cli_installjsconsole(mcstate_t* state)
 {
     mcvalue_t jmap;
     jmap = mc_value_makemap(state);
-    mc_valmap_setvalstring(jmap, "log", mc_value_makefuncnative(state, "log", mc_scriptfn_println, NULL));
+    mc_value_mapsetvalstring(jmap, "log", mc_value_makefuncnative(state, "log", mc_scriptfn_println, NULL));
     mc_state_setglobalconstant(state, "console", jmap);
 }
 
@@ -10070,15 +8602,15 @@ void mc_cli_installmath(mcstate_t* state)
 {
     mcvalue_t jmap;
     jmap = mc_value_makemap(state);
-    mc_valmap_setvalstring(jmap, "sqrt", mc_value_makefuncnative(state, "sqrt", mc_nsfnmath_sqrt, NULL));
-    mc_valmap_setvalstring(jmap, "pow", mc_value_makefuncnative(state, "pow", mc_nsfnmath_pow, NULL));
-    mc_valmap_setvalstring(jmap, "sin", mc_value_makefuncnative(state, "sin", mc_nsfnmath_sin, NULL));
-    mc_valmap_setvalstring(jmap, "cos", mc_value_makefuncnative(state, "cos", mc_nsfnmath_cos, NULL));
-    mc_valmap_setvalstring(jmap, "tan", mc_value_makefuncnative(state, "tan", mc_nsfnmath_tan, NULL));
-    mc_valmap_setvalstring(jmap, "log", mc_value_makefuncnative(state, "log", mc_nsfnmath_log, NULL));
-    mc_valmap_setvalstring(jmap, "ceil", mc_value_makefuncnative(state, "ceil", mc_nsfnmath_ceil, NULL));
-    mc_valmap_setvalstring(jmap, "floor", mc_value_makefuncnative(state, "floor", mc_nsfnmath_floor, NULL));
-    mc_valmap_setvalstring(jmap, "abs", mc_value_makefuncnative(state, "abs", mc_nsfnmath_abs, NULL));
+    mc_value_mapsetvalstring(jmap, "sqrt", mc_value_makefuncnative(state, "sqrt", mc_nsfnmath_sqrt, NULL));
+    mc_value_mapsetvalstring(jmap, "pow", mc_value_makefuncnative(state, "pow", mc_nsfnmath_pow, NULL));
+    mc_value_mapsetvalstring(jmap, "sin", mc_value_makefuncnative(state, "sin", mc_nsfnmath_sin, NULL));
+    mc_value_mapsetvalstring(jmap, "cos", mc_value_makefuncnative(state, "cos", mc_nsfnmath_cos, NULL));
+    mc_value_mapsetvalstring(jmap, "tan", mc_value_makefuncnative(state, "tan", mc_nsfnmath_tan, NULL));
+    mc_value_mapsetvalstring(jmap, "log", mc_value_makefuncnative(state, "log", mc_nsfnmath_log, NULL));
+    mc_value_mapsetvalstring(jmap, "ceil", mc_value_makefuncnative(state, "ceil", mc_nsfnmath_ceil, NULL));
+    mc_value_mapsetvalstring(jmap, "floor", mc_value_makefuncnative(state, "floor", mc_nsfnmath_floor, NULL));
+    mc_value_mapsetvalstring(jmap, "abs", mc_value_makefuncnative(state, "abs", mc_nsfnmath_abs, NULL));
     mc_state_setglobalconstant(state, "Math", jmap);
 }
 
@@ -10093,9 +8625,9 @@ void mc_cli_installfileio(mcstate_t* state)
 {
     mcvalue_t map;
     map = mc_value_makemap(state);
-    mc_valmap_setvalstring(map, "read", mc_value_makefuncnative(state, "read", mc_nsfnfile_readfile, NULL));
-    mc_valmap_setvalstring(map, "write", mc_value_makefuncnative(state, "write", mc_nsfnfile_writefile, NULL));
-    mc_valmap_setvalstring(map, "put", mc_value_makefuncnative(state, "put", mc_nsfnfile_writefile, NULL));
+    mc_value_mapsetvalstring(map, "read", mc_value_makefuncnative(state, "read", mc_nsfnfile_readfile, NULL));
+    mc_value_mapsetvalstring(map, "write", mc_value_makefuncnative(state, "write", mc_nsfnfile_writefile, NULL));
+    mc_value_mapsetvalstring(map, "put", mc_value_makefuncnative(state, "put", mc_nsfnfile_writefile, NULL));
     mc_state_setglobalconstant(state, "File", map);
 }
 
@@ -10181,13 +8713,13 @@ void mc_cli_printusage(char* argv[], optlongflags_t* flags, bool fail)
     optprs_fprintusage(out, flags);
 }
 
-bool mc_cli_compileandrunsource(mcstate_t* state, mcvalue_t* vdest, const char* source)
+bool mc_cli_compileandrunsource(mcstate_t* state, mcvalue_t* vdest, const char* source, const char* filename)
 {
     bool ok;
     mcvalue_t tmp;
     mccompiledprogram_t* program;
     ok = false;
-    program = mc_state_compilesource(state, source);
+    program = mc_state_compilesource(state, source, filename);
     if(state->config.exitaftercompiling)
     {
         mc_program_destroy(program);
@@ -10220,7 +8752,7 @@ bool mc_cli_compileandrunfile(mcstate_t* state, const char* filename)
     {
         return false;
     }
-    ok = mc_cli_compileandrunsource(state, NULL, code);
+    ok = mc_cli_compileandrunsource(state, NULL, code, filename);
     free(code);
     return ok;
 }
@@ -10422,7 +8954,7 @@ int main(int argc, char* argv[])
     mc_cli_installfauxjavascript(state);
     if(evalcode != NULL)
     {
-        mc_cli_compileandrunsource(state, &tmp, evalcode);
+        mc_cli_compileandrunsource(state, &tmp, evalcode, "<-e>");
     }
     else
     {

@@ -93,6 +93,7 @@ void mc_astcompresult_destroy(mccompiledprogram_t* res)
 bool mc_compiler_init(mcastcompiler_t* comp, mcstate_t* state, mcconfig_t* cfg, mcgcmemory_t* mem, mcerrlist_t* errors, mcptrlist_t* files, mcglobalstore_t* gstor)
 {
     bool ok;
+    const char* filename;
     memset(comp, 0, sizeof(mcastcompiler_t));
     comp->pstate = state;
     comp->config = cfg;
@@ -125,11 +126,18 @@ bool mc_compiler_init(mcastcompiler_t* comp, mcstate_t* state, mcconfig_t* cfg, 
     {
         goto compilerinitfailed;
     }
-    ok = mc_compiler_filescopepush(comp, "none");
+    filename = "<none>";
+    if(files->listcount > 0)
+    {
+        filename = mc_ptrlist_top(files);
+    }
+    #if 1
+    ok = mc_compiler_filescopepush(comp, filename);
     if(!ok)
     {
         goto compilerinitfailed;
     }
+    #endif
     comp->stringconstposdict = mc_ptrdict_make(comp->pstate, NULL, NULL);
     if(!comp->stringconstposdict)
     {
@@ -195,7 +203,7 @@ bool mc_compiler_initshallowcopy(mcastcompiler_t* copy, mcastcompiler_t* src)
         return false;
     }
     srcst = mc_compiler_getsymtable(src);
-    MC_ASSERT(mc_ptrlist_count(src->filescopelist) == 1);
+    //MC_ASSERT(mc_ptrlist_count(src->filescopelist) == 1);
     MC_ASSERT(srcst->outer == NULL);
     srcstocopy = mc_symtable_copy(srcst);
     if(!srcstocopy)
@@ -2640,7 +2648,7 @@ void mc_compiler_destroy(mcastcompiler_t* comp)
     mc_memory_free(comp);
 }
 
-mccompiledprogram_t* mc_compiler_compilesource(mcastcompiler_t* comp, const char* code)
+mccompiledprogram_t* mc_compiler_compilesource(mcastcompiler_t* comp, const char* code, const char* filename)
 {
     bool ok;
     mcastcompiler_t compshallowcopy;
@@ -2656,6 +2664,11 @@ mccompiledprogram_t* mc_compiler_compilesource(mcastcompiler_t* comp, const char
     mc_ptrlist_clear(compscope->scopesrcposlist);
     mc_ptrlist_clear(compscope->ipstackbreak);
     mc_ptrlist_clear(compscope->ipstackcontinue);
+    ok = mc_compiler_filescopepush(comp, filename);
+    if(!ok)
+    {
+        goto compilefailed;
+    }
     ok = mc_compiler_initshallowcopy(&compshallowcopy, comp);
     if(!ok)
     {

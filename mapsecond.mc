@@ -5,8 +5,8 @@ function add(i, n) {
 }
 
 function callme(i) {
-    var v = add(i, 1)
-    //var v = i + 1
+    var v = null
+    v = add(i, 1)
     println("****** callme() being called? i=", i, ", v=", v)
     return v
 }

@@ -1,8 +1,8 @@
 
-const outerone = 1;
 
 function otherthing(n)
 {
+    var outerone = 1;
     //println("n=", n);
     return n + outerone;
 }
