@@ -1,30 +1,29 @@
 
 
-const vowels = ['a', 'e', 'i', 'o', 'u'];
-const num_vowels = vowels.length;
+const voweldata = ['a', 'e', 'i', 'o', 'u'];
+const vowelcount = voweldata.length;
 
-function pig_latin(word)
+function pig_latin(str)
 {
-    word = word.toLower();
-    var first = word[0];
-    for (var i = 0; i < num_vowels; i++)
+    str = str.toLower();
+    var first = str[0];
+    for(var i = 0; i < vowelcount; i++)
     {
-        if (first != vowels[i])
+        if (first != voweldata[i])
         {
             continue;
         }
-        word += "way";
-        return word
+        str += "way";
+        return str
     }
-    word = slice(word, 1, word.length - 1);
-    word += first + "ay";
-    return word;
+    str = slice(str, 1, str.length - 1);
+    str += first + "ay";
+    return str;
 }
 
-println(pig_latin("Apple"));
-println(pig_latin("Banana"));
-println(pig_latin("Cherry"));
-println(pig_latin("Damascus"));
-println(pig_latin("Eggplant"));
-println(pig_latin("Fig"));
+const terms = [ "Apple", "Banana", "Cherry", "Damascus", "Eggplant", "Fig"]
 
+for(term in terms)
+{
+    println("'", term, "' = ", pig_latin(term));
+}

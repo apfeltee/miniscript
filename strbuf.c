@@ -412,8 +412,9 @@ void dyn_strbuf_reset(StringBuffer* sb)
 {
     if(sb->data)
     {
-        sb->data[sb->length = 0] = '\0';
+        memset(sb->data, 0, sb->length);
     }
+    sb->length = 0;
 }
 
 /*

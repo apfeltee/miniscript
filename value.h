@@ -236,7 +236,7 @@ mcvalue_t mc_value_makestringlen(mcstate_t* state, const char* string, size_t le
     {
         return res;
     }
-    ok = mc_valstring_appendlen(res, string, len);
+    ok = mc_value_stringappendlen(res, string, len);
     if(!ok)
     {
         return mc_value_makenull();
@@ -451,7 +451,7 @@ bool mc_objfunction_freevalsareallocated(mcobjfuncscript_t* fun)
     return fun->freevalscount >= MC_UTIL_STATICARRAYSIZE(fun->ufv.freevalsstack);
 }
 
-MC_INLINE char* mc_value_getstringdataintern(mcvalue_t object)
+MC_INLINE char* mc_value_stringgetdataintern(mcvalue_t object)
 {
     mcobjdata_t* data;
     data = mc_value_getallocateddata(object);
@@ -528,13 +528,13 @@ mcfloat_t mc_value_asnumber(mcvalue_t obj)
     return obj.uval.valnumber;
 }
 
-MC_INLINE const char* mc_value_getstringdata(mcvalue_t object)
+MC_INLINE const char* mc_value_stringgetdata(mcvalue_t object)
 {
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_STRING);
-    return mc_value_getstringdataintern(object);
+    return mc_value_stringgetdataintern(object);
 }
 
-int mc_value_getstringlength(mcvalue_t object)
+int mc_value_stringgetlength(mcvalue_t object)
 {
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_STRING);
@@ -542,21 +542,31 @@ int mc_value_getstringlength(mcvalue_t object)
     return data->uvobj.valstring.strbuf->length;
 }
 
-void mc_string_setlength(mcvalue_t object, int len)
+void mc_value_stringsetlength(mcvalue_t object, int len)
 {
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_STRING);
     data = mc_value_getallocateddata(object);
     data->uvobj.valstring.strbuf->length = len;
+    mc_value_stringrehash(object);
 }
 
-MC_INLINE char* mc_valstring_getmutabledata(mcvalue_t object)
+bool mc_value_stringreset(mcvalue_t object)
+{
+    mcobjdata_t* data;
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_STRING);
+    data = mc_value_getallocateddata(object);
+    dyn_strbuf_reset(data->uvobj.valstring.strbuf);
+    return true;
+}
+
+MC_INLINE char* mc_value_stringgetmutabledata(mcvalue_t object)
 {
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_STRING);
-    return mc_value_getstringdataintern(object);
+    return mc_value_stringgetdataintern(object);
 }
 
-bool mc_valstring_appendlen(mcvalue_t obj, const char* src, size_t len)
+bool mc_value_stringappendlen(mcvalue_t obj, const char* src, size_t len)
 {
     mcobjdata_t* data;
     mcobjstring_t* string;
@@ -564,10 +574,16 @@ bool mc_valstring_appendlen(mcvalue_t obj, const char* src, size_t len)
     data = mc_value_getallocateddata(obj);
     string = &data->uvobj.valstring;
     dyn_strbuf_appendstrn(string->strbuf, src, len);
+    mc_value_stringrehash(obj);
     return true;
 }
 
-bool mc_valstring_appendformatv(mcvalue_t obj, const char* fmt, va_list va)
+bool mc_value_stringappend(mcvalue_t obj, const char* src)
+{
+    return mc_value_stringappendlen(obj, src, strlen(src));
+}
+
+bool mc_value_stringappendformatv(mcvalue_t obj, const char* fmt, va_list va)
 {
     mcobjdata_t* data;
     mcobjstring_t* string;
@@ -575,45 +591,48 @@ bool mc_valstring_appendformatv(mcvalue_t obj, const char* fmt, va_list va)
     data = mc_value_getallocateddata(obj);
     string = &data->uvobj.valstring;
     dyn_strbuf_appendformatv(string->strbuf, fmt, va);
+    mc_value_stringrehash(obj);
     return true;
 }
 
-bool mc_valstring_appendformat(mcvalue_t obj, const char* fmt, ...)
+bool mc_value_stringappendformat(mcvalue_t obj, const char* fmt, ...)
 {
     bool r;
     va_list va;
     va_start(va, fmt);
-    r = mc_valstring_appendformatv(obj, fmt, va);
+    r = mc_value_stringappendformatv(obj, fmt, va);
     va_end(va);
     return r;
 }
 
-bool mc_valstring_appendvalue(mcvalue_t destval, mcvalue_t val)
+bool mc_value_stringappendvalue(mcvalue_t destval, mcvalue_t val)
 {
     bool ok;
     int vlen;
     const char* vstr;
     if(mc_value_gettype(val) == MC_VAL_NUMBER)
     {
-        mc_valstring_appendformat(destval, "%g", mc_value_asnumber(val));
-        return true;
+        mc_value_stringappendformat(destval, "%g", mc_value_asnumber(val));
+        goto finished;
     }
     if(mc_value_gettype(val) == MC_VAL_STRING)
     {
-        vlen = mc_value_getstringlength(val);
-        vstr = mc_value_getstringdata(val);
-        ok = mc_valstring_appendlen(destval, vstr, vlen);
+        vlen = mc_value_stringgetlength(val);
+        vstr = mc_value_stringgetdata(val);
+        ok = mc_value_stringappendlen(destval, vstr, vlen);
         if(!ok)
         {
             return false;
         }
-    
-        return true;
+        goto finished;
     }
     return false;
+    finished:
+    mc_value_stringrehash(destval);
+    return true;
 }
 
-size_t mc_valstring_gethash(mcvalue_t obj)
+size_t mc_value_stringgethash(mcvalue_t obj)
 {
     size_t len;
     const char* str;
@@ -622,18 +641,27 @@ size_t mc_valstring_gethash(mcvalue_t obj)
     data = mc_value_getallocateddata(obj);
     if(data->uvobj.valstring.hash == 0)
     {
-        len = mc_value_getstringlength(obj);
-        str = mc_value_getstringdata(obj);
+        len = mc_value_stringgetlength(obj);
+        str = mc_value_stringgetdata(obj);
         data->uvobj.valstring.hash = mc_util_hashdata(str, len);
-        if(data->uvobj.valstring.hash == 0)
-        {
-            data->uvobj.valstring.hash = 1;
-        }
     }
     return data->uvobj.valstring.hash;
 }
 
-mcobjfuncscript_t* mc_value_functiongetscriptfunction(mcvalue_t object)
+bool mc_value_stringrehash(mcvalue_t obj)
+{
+    size_t len;
+    const char* str;
+    mcobjdata_t* data;
+    MC_ASSERT(mc_value_gettype(obj) == MC_VAL_STRING);
+    data = mc_value_getallocateddata(obj);
+    len = mc_value_stringgetlength(obj);
+    str = mc_value_stringgetdata(obj);
+    data->uvobj.valstring.hash = mc_util_hashdata(str, len);
+    return true;
+}
+
+mcobjfuncscript_t* mc_value_asscriptfunction(mcvalue_t object)
 {
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_FUNCSCRIPT);
@@ -641,7 +669,7 @@ mcobjfuncscript_t* mc_value_functiongetscriptfunction(mcvalue_t object)
     return &data->uvobj.valscriptfunc;
 }
 
-MC_INLINE mcobjfuncnative_t* mc_value_functiongetnativefunction(mcvalue_t obj)
+MC_INLINE mcobjfuncnative_t* mc_value_asnativefunction(mcvalue_t obj)
 {
     mcobjdata_t* data = mc_value_getallocateddata(obj);
     return &data->uvobj.valnativefunc;
@@ -933,7 +961,7 @@ bool mc_value_mapsetvalue(mcvalue_t object, mcvalue_t key, mcvalue_t val)
     return mc_valdict_setkv(data->uvobj.valmap->actualmap, &key, &val);
 }
 
-bool mc_value_mapsetvalstring(mcvalue_t object, const char* strkey, mcvalue_t val)
+bool mc_value_mapsetvaluestring(mcvalue_t object, const char* strkey, mcvalue_t val)
 {
     mcstate_t* state;
     mcvalue_t vkey;
@@ -954,6 +982,22 @@ mcvalue_t mc_value_mapgetvalue(mcvalue_t object, mcvalue_t key)
         return mc_value_makenull();
     }
     return *res;
+}
+
+bool mc_value_mapgetvaluechecked(mcvalue_t object, mcvalue_t key, mcvalue_t* dest)
+{
+    mcvalue_t* res;
+    mcobjdata_t* data;
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
+    data = mc_value_getallocateddata(object);
+    res = (mcvalue_t*)mc_valdict_get(data->uvobj.valmap->actualmap, &key);
+    if(!res)
+    {
+        *dest = mc_value_makenull();
+        return false;
+    }
+    *dest = *res;
+    return true;
 }
 
 bool mc_value_maphaskey(mcvalue_t object, mcvalue_t key)
@@ -1066,8 +1110,8 @@ MC_FORCEINLINE bool mc_value_compare(mcvalue_t a, mcvalue_t b, mcvalcmpresult_t*
     }
     if(atype == btype && atype == MC_VAL_STRING)
     {
-        alen = mc_value_getstringlength(a);
-        blen = mc_value_getstringlength(b);
+        alen = mc_value_stringgetlength(a);
+        blen = mc_value_stringgetlength(b);
         #if 0
         fprintf(stderr, "mc_value_compare: alen=%d, blen=%d\n", alen, blen);
         #endif
@@ -1076,15 +1120,15 @@ MC_FORCEINLINE bool mc_value_compare(mcvalue_t a, mcvalue_t b, mcvalcmpresult_t*
             cres->result = alen - blen;
             return false;
         }
-        ahash = mc_valstring_gethash(a);
-        bhash = mc_valstring_gethash(b);
+        ahash = mc_value_stringgethash(a);
+        bhash = mc_value_stringgethash(b);
         if(ahash != bhash)
         {
             cres->result = ahash - bhash;
             return false;
         }
-        astring = mc_value_getstringdata(a);
-        bstring = mc_value_getstringdata(b);
+        astring = mc_value_stringgetdata(a);
+        bstring = mc_value_stringgetdata(b);
         if(strncmp(astring, bstring, alen) == 0)
         {
             cres->result = 0;
@@ -1157,7 +1201,7 @@ size_t mc_value_callbackhash(mcvalue_t* objptr)
             break;
         case MC_VAL_STRING:
             {
-                return mc_valstring_gethash(obj);
+                return mc_value_stringgethash(obj);
             }
             break;
         default:
@@ -1181,7 +1225,7 @@ mcvalue_t mc_value_copydeepfuncscript(mcstate_t* state, mcvalue_t obj, mcvaldict
     mcobjfuncscript_t* function;
     mcastlocation_t* srcpositionscopy;
     mccompiledprogram_t* comprescopy;
-    function = mc_value_functiongetscriptfunction(obj);
+    function = mc_value_asscriptfunction(obj);
     bytecodecopy = NULL;
     srcpositionscopy = NULL;
     comprescopy = NULL;
@@ -1219,7 +1263,7 @@ mcvalue_t mc_value_copydeepfuncscript(mcstate_t* state, mcvalue_t obj, mcvaldict
     {
         return mc_value_makenull();
     }
-    functioncopy = mc_value_functiongetscriptfunction(copy);
+    functioncopy = mc_value_asscriptfunction(copy);
     if(mc_objfunction_freevalsareallocated(function))
     {
         functioncopy->ufv.freevalsallocated = (mcvalue_t*)mc_allocator_malloc(state, sizeof(mcvalue_t) * function->freevalscount);
@@ -1355,8 +1399,8 @@ mcvalue_t mc_value_copydeepintern(mcstate_t* state, mcvalue_t obj, mcvaldict_t* 
                 bool ok;
                 int len;
                 const char* str;
-                str = mc_value_getstringdata(obj);
-                len = mc_value_getstringlength(obj);
+                str = mc_value_stringgetdata(obj);
+                len = mc_value_stringgetlength(obj);
                 copy = mc_value_makestringlen(state, str, len);
                 ok = mc_valdict_setkv(targetdict, &obj, &copy);
                 if(!ok)
@@ -1440,8 +1484,8 @@ mcvalue_t mc_value_copyflat(mcstate_t* state, mcvalue_t obj)
             {
                 size_t len;
                 const char* str;
-                str = mc_value_getstringdata(obj);
-                len = mc_value_getstringlength(obj);
+                str = mc_value_stringgetdata(obj);
+                len = mc_value_stringgetlength(obj);
                 copy = mc_value_makestringlen(state, str, len);
             }
             break;

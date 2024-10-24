@@ -2723,9 +2723,3 @@ mcvallist_t* mc_compiler_getconstants(mcastcompiler_t* comp)
 {
     return comp->constants;
 }
-
-
-
-
-
-

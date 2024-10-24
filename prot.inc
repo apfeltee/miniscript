@@ -14,6 +14,13 @@ static void optprs_init(optcontext_t *ox, int argc, char **argv);
 static int optprs_nextshortflag(optcontext_t *ox, const char *optstring);
 static int optprs_nextlongflag(optcontext_t *ox, const optlongflags_t *longopts, int *longindex);
 static char *optprs_nextpositional(optcontext_t *ox);
+static inline int strfnmint_nextstring(const char *str, size_t n, size_t *step);
+static inline int strfnmint_nextpattern(const char *pat, size_t ofs, size_t *step, int flags);
+static inline int strfnmint_casefold(int k);
+static inline int strfnmint_dobracket(const char *patptr, int k, int kfold);
+static inline int strfnmint_perform(const char *pat, size_t ofs, const char *str, size_t n, int flags);
+static inline int strfnmint_textmatchlen(const char *pat, size_t patlen, const char *str, size_t slen, int flags);
+static inline bool strfnm_match(const char *pat, size_t patlen, const char *str, size_t slen, int flags);
 void *mc_allocator_malloc(mcstate_t *state, size_t size);
 void *mc_allocator_realloc(mcstate_t *state, void *ptr, size_t size);
 static inline void mc_util_assertva(bool x, const char *exprstr, const char *file, int line, const char *fmt, va_list va);
@@ -172,24 +179,27 @@ mcvalue_t mc_value_makefuncscript(mcstate_t *state, const char *name, mccompiled
 mcvalue_t mc_value_makeuserobject(mcstate_t *state, void *data);
 mcvallist_t *mc_value_arraygetactualarray(mcvalue_t object);
 bool mc_objfunction_freevalsareallocated(mcobjfuncscript_t *fun);
-static inline char *mc_value_getstringdataintern(mcvalue_t object);
+static inline char *mc_value_stringgetdataintern(mcvalue_t object);
 mcobjuserdata_t *mc_value_userdatagetdata(mcvalue_t object);
 bool mc_value_userdatasetdata(mcvalue_t object, void *extdata);
 bool mc_value_userdatasetdestroyfunction(mcvalue_t object, mcitemdestroyfn_t dfn);
 bool mc_value_userdatasetcopyfunction(mcvalue_t object, mcitemcopyfn_t copyfn);
 bool mc_value_asbool(mcvalue_t obj);
 mcfloat_t mc_value_asnumber(mcvalue_t obj);
-static inline const char *mc_value_getstringdata(mcvalue_t object);
-int mc_value_getstringlength(mcvalue_t object);
-void mc_string_setlength(mcvalue_t object, int len);
-static inline char *mc_valstring_getmutabledata(mcvalue_t object);
-bool mc_valstring_appendlen(mcvalue_t obj, const char *src, size_t len);
-bool mc_valstring_appendformatv(mcvalue_t obj, const char *fmt, va_list va);
-bool mc_valstring_appendformat(mcvalue_t obj, const char *fmt, ...);
-bool mc_valstring_appendvalue(mcvalue_t destval, mcvalue_t val);
-size_t mc_valstring_gethash(mcvalue_t obj);
-mcobjfuncscript_t *mc_value_functiongetscriptfunction(mcvalue_t object);
-static inline mcobjfuncnative_t *mc_value_functiongetnativefunction(mcvalue_t obj);
+static inline const char *mc_value_stringgetdata(mcvalue_t object);
+int mc_value_stringgetlength(mcvalue_t object);
+void mc_value_stringsetlength(mcvalue_t object, int len);
+bool mc_value_stringreset(mcvalue_t object);
+static inline char *mc_value_stringgetmutabledata(mcvalue_t object);
+bool mc_value_stringappendlen(mcvalue_t obj, const char *src, size_t len);
+bool mc_value_stringappend(mcvalue_t obj, const char *src);
+bool mc_value_stringappendformatv(mcvalue_t obj, const char *fmt, va_list va);
+bool mc_value_stringappendformat(mcvalue_t obj, const char *fmt, ...);
+bool mc_value_stringappendvalue(mcvalue_t destval, mcvalue_t val);
+size_t mc_value_stringgethash(mcvalue_t obj);
+bool mc_value_stringrehash(mcvalue_t obj);
+mcobjfuncscript_t *mc_value_asscriptfunction(mcvalue_t object);
+static inline mcobjfuncnative_t *mc_value_asnativefunction(mcvalue_t obj);
 const char *mc_value_functiongetname(mcvalue_t obj);
 mcvalue_t mc_value_functiongetfreevalat(mcvalue_t obj, int ix);
 void mc_value_functionsetfreevalat(mcvalue_t obj, int ix, mcvalue_t val);
@@ -209,8 +219,9 @@ mcvalue_t mc_value_mapgetvalueat(mcvalue_t object, int ix);
 bool mc_value_mapsetvalueat(mcvalue_t object, int ix, mcvalue_t val);
 mcvalue_t mc_value_mapgetkvpairat(mcstate_t *state, mcvalue_t object, int ix);
 bool mc_value_mapsetvalue(mcvalue_t object, mcvalue_t key, mcvalue_t val);
-bool mc_value_mapsetvalstring(mcvalue_t object, const char *strkey, mcvalue_t val);
+bool mc_value_mapsetvaluestring(mcvalue_t object, const char *strkey, mcvalue_t val);
 mcvalue_t mc_value_mapgetvalue(mcvalue_t object, mcvalue_t key);
+bool mc_value_mapgetvaluechecked(mcvalue_t object, mcvalue_t key, mcvalue_t *dest);
 bool mc_value_maphaskey(mcvalue_t object, mcvalue_t key);
 void mc_objectdata_deinit(mcobjdata_t *data);
 static inline bool mc_value_compare(mcvalue_t a, mcvalue_t b, mcvalcmpresult_t *cres);
@@ -633,8 +644,6 @@ mcvalue_t mc_scriptfn_maketestdict(mcstate_t *state, void *data, mcvalue_t thisv
 mcvalue_t mc_scriptfn_squarearray(mcstate_t *state, void *data, mcvalue_t thisval, size_t argc, mcvalue_t *args);
 mcvalue_t mc_scriptfn_print(mcstate_t *state, void *data, mcvalue_t thisval, size_t argc, mcvalue_t *args);
 mcvalue_t mc_scriptfn_println(mcstate_t *state, void *data, mcvalue_t thisval, size_t argc, mcvalue_t *args);
-mcvalue_t mc_nsfnfile_writefile(mcstate_t *state, void *data, mcvalue_t thisval, size_t argc, mcvalue_t *args);
-mcvalue_t mc_nsfnfile_readfile(mcstate_t *state, void *data, mcvalue_t thisval, size_t argc, mcvalue_t *args);
 mcvalue_t mc_scriptfn_tostring(mcstate_t *state, void *data, mcvalue_t thisval, size_t argc, mcvalue_t *args);
 mcvalue_t mc_nsfnjson_stringify(mcstate_t *state, void *data, mcvalue_t thisval, size_t argc, mcvalue_t *args);
 mcvalue_t mc_objfnnumber_chr(mcstate_t *state, void *data, mcvalue_t thisval, size_t argc, mcvalue_t *args);
@@ -650,6 +659,11 @@ mcvalue_t mc_objfnstring_right(mcstate_t *state, void *data, mcvalue_t thisval, 
 mcvalue_t mc_objfnstring_replaceall(mcstate_t *state, void *data, mcvalue_t thisval, size_t argc, mcvalue_t *args);
 mcvalue_t mc_objfnstring_replacefirst(mcstate_t *state, void *data, mcvalue_t thisval, size_t argc, mcvalue_t *args);
 mcvalue_t mc_objfnstring_trim(mcstate_t *state, void *data, mcvalue_t thisval, size_t argc, mcvalue_t *args);
+mcvalue_t mc_objfnstring_matchhelper(mcstate_t *state, void *data, mcvalue_t thisval, size_t argc, mcvalue_t *args, bool icase);
+mcvalue_t mc_objfnstring_matchglobcase(mcstate_t *state, void *data, mcvalue_t thisval, size_t argc, mcvalue_t *args);
+mcvalue_t mc_objfnstring_matchglobicase(mcstate_t *state, void *data, mcvalue_t thisval, size_t argc, mcvalue_t *args);
+mcvalue_t mc_objfnstring_tolower(mcstate_t *state, void *data, mcvalue_t thisval, size_t argc, mcvalue_t *args);
+mcvalue_t mc_objfnstring_toupper(mcstate_t *state, void *data, mcvalue_t thisval, size_t argc, mcvalue_t *args);
 mcvalue_t mc_objfnarray_length(mcstate_t *state, void *data, mcvalue_t thisval, size_t argc, mcvalue_t *args);
 void mc_vm_savestate(mcstate_t *state, mcexecstate_t *est);
 void mc_vm_restorestate(mcstate_t *state, mcexecstate_t *est);
@@ -697,12 +711,20 @@ mcvalue_t mc_nsfnmath_log(mcstate_t *state, void *data, mcvalue_t thisval, size_
 mcvalue_t mc_nsfnmath_ceil(mcstate_t *state, void *data, mcvalue_t thisval, size_t argc, mcvalue_t *args);
 mcvalue_t mc_nsfnmath_floor(mcstate_t *state, void *data, mcvalue_t thisval, size_t argc, mcvalue_t *args);
 mcvalue_t mc_nsfnmath_abs(mcstate_t *state, void *data, mcvalue_t thisval, size_t argc, mcvalue_t *args);
+mcvalue_t mc_nsfnfile_writefile(mcstate_t *state, void *data, mcvalue_t thisval, size_t argc, mcvalue_t *args);
+mcvalue_t mc_nsfnfile_readfile(mcstate_t *state, void *data, mcvalue_t thisval, size_t argc, mcvalue_t *args);
+mcvalue_t mc_nsfnfile_join(mcstate_t *state, void *data, mcvalue_t thisval, size_t argc, mcvalue_t *args);
+mcvalue_t mc_nsfnfile_isdirectory(mcstate_t *state, void *data, mcvalue_t thisval, size_t argc, mcvalue_t *args);
+mcvalue_t mc_nsfnfile_isfile(mcstate_t *state, void *data, mcvalue_t thisval, size_t argc, mcvalue_t *args);
+mcvalue_t mc_nsfnfile_stat(mcstate_t *state, void *data, mcvalue_t thisval, size_t argc, mcvalue_t *args);
+mcvalue_t mc_nsfndir_readdir(mcstate_t *state, void *data, mcvalue_t thisval, size_t argc, mcvalue_t *args);
 void mc_cli_installbuiltins(mcstate_t *state);
 void mc_cli_installjsondummy(mcstate_t *state);
 void mc_cli_installjsconsole(mcstate_t *state);
 void mc_cli_installmath(mcstate_t *state);
 void mc_cli_installfauxjavascript(mcstate_t *state);
 void mc_cli_installfileio(mcstate_t *state);
+void mc_cli_installdir(mcstate_t *state);
 void mc_cli_installotherstuff(mcstate_t *state);
 void optprs_fprintmaybearg(FILE *out, const char *begin, const char *flagname, size_t flaglen, bool needval, bool maybeval, const char *delim);
 void optprs_fprintusage(FILE *out, optlongflags_t *flags);
@@ -784,6 +806,39 @@ int dyn_strbuf_appendformatnoterm(StringBuffer *sbuf, size_t pos, const char *fm
 void dyn_strbuf_triminplace(StringBuffer *sbuf);
 void dyn_strbuf_trimleftinplace(StringBuffer *sbuf, const char *list);
 void dyn_strbuf_trimrightinplace(StringBuffer *sbuf, const char *list);
+/* utilos.c */
+char *osfn_utilstrndup(const char *src, size_t len);
+char *osfn_utilstrdup(const char *src);
+bool fslib_diropen(FSDirReader *rd, const char *path);
+bool fslib_dirread(FSDirReader *rd, FSDirItem *itm);
+bool fslib_dirclose(FSDirReader *rd);
+int osfn_fdopen(const char *path, int flags, int mode);
+int osfn_fdcreat(const char *path, int mode);
+int osfn_fdclose(int fd);
+size_t osfn_fdread(int fd, void *buf, size_t count);
+size_t osfn_fdwrite(int fd, const void *buf, size_t count);
+size_t osfn_fdput(int fd, const void *buf, size_t count);
+int osfn_chmod(const char *path, int mode);
+char *osfn_realpath(const char *path, char *respath);
+char *osfn_dirname(const char *path);
+char *osfn_fallbackbasename(const char *opath);
+char *osfn_basename(const char *path);
+int osfn_isatty(int fd);
+int osfn_symlink(const char *path1, const char *path2);
+int osfn_symlinkat(const char *path1, int fd, const char *path2);
+char *osfn_getcwd(char *buf, size_t size);
+int osfn_lstat(const char *path, struct stat *buf);
+int osfn_truncate(const char *path, size_t length);
+unsigned int osfn_sleep(unsigned int seconds);
+int osfn_gettimeofday(struct timeval *tp, void *tzp);
+int osfn_mkdir(const char *path, size_t mode);
+int osfn_chdir(const char *path);
+bool osfn_fileexists(const char *filepath);
+bool osfn_stat(const char *path, struct stat *st);
+bool osfn_statisa(const char *path, struct stat *st, char kind);
+bool osfn_pathcheck(const char *path, char mode);
+bool osfn_pathisfile(const char *path);
+bool osfn_pathisdirectory(const char *path);
 /* astprint.h */
 /* ccapi.h */
 /* cccomp.h */
@@ -796,6 +851,14 @@ char mc_parser_getescapechar(char c);
 /* dictptrdict.h */
 /* dictvaldict.h */
 /* execfunc.h */
+/* fnmatch.h */
+static inline int strfnmint_nextstring(const char *str, size_t n, size_t *step);
+static inline int strfnmint_nextpattern(const char *pat, size_t ofs, size_t *step, int flags);
+static inline int strfnmint_casefold(int k);
+static inline int strfnmint_dobracket(const char *patptr, int k, int kfold);
+static inline int strfnmint_perform(const char *pat, size_t ofs, const char *str, size_t n, int flags);
+static inline int strfnmint_textmatchlen(const char *pat, size_t patlen, const char *str, size_t slen, int flags);
+static inline bool strfnm_match(const char *pat, size_t patlen, const char *str, size_t slen, int flags);
 /* listframelist.h */
 /* listptrlist.h */
 /* listvallist.h */
@@ -823,4 +886,5 @@ static char *optprs_nextpositional(optcontext_t *ox);
 int stod_diyfp_sgnd_size(int order);
 double stod_strtod(const unsigned char **start, const unsigned char *end, int literal);
 /* strbuf.h */
+/* utilos.h */
 /* value.h */

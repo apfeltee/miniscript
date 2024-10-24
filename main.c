@@ -26,6 +26,8 @@
 #include "mem.h"
 #include "optparse.h"
 #include "strbuf.h"
+#include "utilos.h"
+#include "fnmatch.h"
 
 /*
 SPDX-License-Identifier: MIT
@@ -1918,8 +1920,8 @@ void mc_printer_printobjstring(mcprinter_t* pr, mcvalue_t obj)
 {
     size_t len;
     const char* str;
-    str = mc_value_getstringdata(obj);
-    len = mc_value_getstringlength(obj);
+    str = mc_value_stringgetdata(obj);
+    len = mc_value_stringgetlength(obj);
     if(pr->config.quotstring)
     {
         mc_printer_printescapedstring(pr, str, len);
@@ -1934,7 +1936,7 @@ void mc_printer_printobjfuncscript(mcprinter_t* pr, mcvalue_t obj)
 {
     const char* fname;
     mcobjfuncscript_t* fn;
-    fn = mc_value_functiongetscriptfunction(obj);
+    fn = mc_value_asscriptfunction(obj);
     fname = mc_value_functiongetname(obj);
     mc_printer_printf(pr, "<scriptfunction '%s' locals=%d argc=%d fvc=%d", fname, fn->numlocals, fn->numargs, fn->freevalscount);
     if(pr->config.verbosefunc)
@@ -2618,7 +2620,6 @@ void mc_state_printerrors(mcstate_t* state)
 
 mccompiledprogram_t* mc_state_compilesource(mcstate_t* state, const char* code, const char* filename)
 {
-    bool ok;
     mccompiledprogram_t* compres;
     mc_state_clearerrors(state);
     compres = mc_compiler_compilesource(state->compiler, code, filename);
@@ -3305,7 +3306,7 @@ MC_FORCEINLINE bool mc_callframe_init(mcvmframe_t* frame, mcvalue_t functionobj,
     {
         return false;
     }
-    function = mc_value_functiongetscriptfunction(functionobj);
+    function = mc_value_asscriptfunction(functionobj);
     frame->function = functionobj;
     frame->bcposition = 0;
     frame->basepointer = baseptr;
@@ -3618,7 +3619,7 @@ void mc_state_gcmarkobject(mcvalue_t obj)
             break;
         case MC_VAL_FUNCSCRIPT:
             {
-                function = mc_value_functiongetscriptfunction(obj);
+                function = mc_value_asscriptfunction(obj);
                 for(i = 0; i < function->freevalscount; i++)
                 {
                     freeval = mc_value_functiongetfreevalat(obj, i);
@@ -4731,7 +4732,7 @@ bool mc_vm_runexecfunc(mcstate_t* state, mccompiledprogram_t* comp_res, mcvallis
     oldsp = state->execstate.vsposition;
     oldthissp = state->execstate.thisstpos;
     oldframescount = state->execstate.framestack->listcount;
-    mainfn = mc_value_makefuncscript(state, "main", comp_res, false, 0, 0, 0);
+    mainfn = mc_value_makefuncscript(state, "__main__", comp_res, false, 0, 0, 0);
     if(mc_value_isnull(mainfn))
     {
         return false;
@@ -4853,7 +4854,7 @@ MC_FORCEINLINE void mc_vm_stackpush(mcstate_t* state, mcvalue_t obj)
     if(state->execstate.currframe)
     {
         frame = state->execstate.currframe;
-        currentfunction = mc_value_functiongetscriptfunction(frame->function);
+        currentfunction = mc_value_asscriptfunction(frame->function);
         numlocals = currentfunction->numlocals;
         MC_ASSERT((size_t)state->execstate.vsposition >= (size_t)(frame->basepointer + numlocals));
     }
@@ -4885,7 +4886,7 @@ MC_FORCEINLINE mcvalue_t mc_vm_stackpop(mcstate_t* state)
     if(state->execstate.currframe)
     {
         frame = state->execstate.currframe;
-        currentfunction = mc_value_functiongetscriptfunction(frame->function);
+        currentfunction = mc_value_asscriptfunction(frame->function);
         numlocals = currentfunction->numlocals;
         MC_ASSERT((state->execstate.vsposition - 1) >= (frame->basepointer + numlocals));
     }
@@ -4943,7 +4944,7 @@ MC_FORCEINLINE bool mc_vm_pushframe(mcstate_t* state, mcvmframe_t frame)
     #endif
     state->execstate.currframe = mc_framelist_get(state->execstate.framestack, state->execstate.framestack->listcount);
     state->execstate.framestack->listcount += add;
-    framefunction = mc_value_functiongetscriptfunction(frame.function);
+    framefunction = mc_value_asscriptfunction(frame.function);
     mc_vm_setstackpos(state, frame.basepointer + framefunction->numlocals);
     return true;
 }
@@ -5024,7 +5025,7 @@ MC_FORCEINLINE bool mc_vmdo_callobject(mcstate_t* state, mcvalue_t callee, int n
     #endif
     if(calleetype == MC_VAL_FUNCSCRIPT)
     {
-        calleefunction = mc_value_functiongetscriptfunction(callee);
+        calleefunction = mc_value_asscriptfunction(callee);
         if(nargs != calleefunction->numargs)
         {
             #if 0
@@ -5079,7 +5080,7 @@ MC_FORCEINLINE mcvalue_t mc_vm_callnativefunction(mcstate_t* state, mcvalue_t ca
     mcerror_t* err; 
     mctraceback_t* traceback;
     mcobjfuncnative_t* nativefun;
-    nativefun = mc_value_functiongetnativefunction(callee);
+    nativefun = mc_value_asnativefunction(callee);
     res = nativefun->natptrfn(state, nativefun->userpointer, selfval, argc, args);
     if(mc_util_unlikely(state->errors.count > 0))
     {
@@ -5140,12 +5141,12 @@ MC_FORCEINLINE bool mc_vmdo_opaddstring(mcstate_t* state, mcvalue_t valleft, mcv
     (void)righttype;
     nstring = mc_value_makestrcapacity(state, 0);
     mc_vm_stackpush(state, nstring);
-    if(!mc_valstring_appendvalue(nstring, valleft))
+    if(!mc_value_stringappendvalue(nstring, valleft))
     {
         mc_vm_stackpush(state, valleft);
         return false;
     }
-    if(!mc_valstring_appendvalue(nstring, valright))
+    if(!mc_value_stringappendvalue(nstring, valright))
     {
         mc_vm_stackpush(state, valright);
         return false;
@@ -5321,7 +5322,7 @@ MC_FORCEINLINE mcclass_t* mc_vmdo_findclassforintern(mcstate_t* state, mcvaltype
             }
             break;
     }
-    return NULL;
+    return state->stdobjobject;
 }
 
 MC_FORCEINLINE mcclass_t* mc_vmdo_findclassfor(mcstate_t* state, mcvaltype_t typ)
@@ -5369,7 +5370,7 @@ MC_FORCEINLINE bool mc_vmdo_findclassmembervalue(mcstate_t* state, mcvalue_t lef
     cl = mc_vmdo_findclassfor(state, mc_value_gettype(left));
     if(cl != NULL)
     {
-        idxname = mc_value_getstringdata(index);
+        idxname = mc_value_stringgetdata(index);
         vdest = mc_vmdo_getclassmember(state, cl, idxname);
         if(vdest == NULL)
         {
@@ -5399,17 +5400,21 @@ MC_FORCEINLINE bool mc_vmdo_getindexpartial(mcstate_t* state, mcvalue_t left, mc
 {
     int leftlen;
     int ix;
-    bool triedmember;
     char resstr[2];
     const char* str;
     const char* indextypename;
     const char* lefttypename;
     mcvalue_t res;
     (void)fromdot;
-    triedmember = false;
+    if(lefttype == MC_VAL_MAP)
+    {
+        if(mc_value_mapgetvaluechecked(left, index, &res))
+        {
+            goto finished;
+        }
+    }
     if(mc_value_isstring(index))
     {
-        triedmember = true;
         if(mc_vmdo_findclassmembervalue(state, left, index, mc_value_makenull()))
         {
             #if 0
@@ -5431,9 +5436,9 @@ MC_FORCEINLINE bool mc_vmdo_getindexpartial(mcstate_t* state, mcvalue_t left, mc
             {
                 res = mc_value_makenull();
                 lefttypename = mc_valtype_getname(lefttype);
-                mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->execstate.currframe), "object type '%s' has no field '%s'", lefttypename, mc_value_getstringdata(index));
-                goto failed;
-
+                mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->execstate.currframe), "object type '%s' has no field '%s'", lefttypename, mc_value_stringgetdata(index));
+                mc_vm_stackpush(state, res);
+                return false;
             }
         }
     }
@@ -5463,10 +5468,6 @@ MC_FORCEINLINE bool mc_vmdo_getindexpartial(mcstate_t* state, mcvalue_t left, mc
             res = mc_value_arraygetvalue(left, ix);
         }
     }
-    else if(lefttype == MC_VAL_MAP)
-    {
-        res = mc_value_mapgetvalue(left, index);
-    }
     else if(lefttype == MC_VAL_STRING)
     {
         if(indextype != MC_VAL_NUMBER)
@@ -5476,8 +5477,8 @@ MC_FORCEINLINE bool mc_vmdo_getindexpartial(mcstate_t* state, mcvalue_t left, mc
             mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->execstate.currframe), "cannot index %s with %s", lefttypename, indextypename);
             return false;
         }
-        str = mc_value_getstringdata(left);
-        leftlen = mc_value_getstringlength(left);
+        str = mc_value_stringgetdata(left);
+        leftlen = mc_value_stringgetlength(left);
         ix = (int)mc_value_asnumber(index);
         if(ix >= 0 && ix < leftlen)
         {
@@ -5485,7 +5486,7 @@ MC_FORCEINLINE bool mc_vmdo_getindexpartial(mcstate_t* state, mcvalue_t left, mc
             res = mc_value_makestringlen(state, resstr, 1);
         }
     }
-    failed:
+    finished:
     mc_vm_stackpush(state, res);
     return true;
 }
@@ -5621,8 +5622,8 @@ MC_FORCEINLINE bool mc_vmdo_getvalueatfull(mcstate_t* state)
     }
     else if(lefttype == MC_VAL_STRING)
     {
-        str = mc_value_getstringdata(left);
-        leftlen = mc_value_getstringlength(left);
+        str = mc_value_stringgetdata(left);
+        leftlen = mc_value_stringgetlength(left);
         ix = (int)mc_value_asnumber(index);
         if(ix >= 0 && ix < leftlen)
         {
@@ -5661,7 +5662,7 @@ MC_FORCEINLINE bool mc_vmdo_makefunction(mcstate_t* state, mcvallist_t* constant
         mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->execstate.currframe), "%s is not a function", tname);
         return false;
     }
-    constfun = mc_value_functiongetscriptfunction(*constant);
+    constfun = mc_value_asscriptfunction(*constant);
     fname = mc_value_functiongetname(*constant);
     functionobj = mc_value_makefuncscript(state, fname, constfun->compiledprogcode, false, constfun->numlocals, constfun->numargs, numfree);
     if(mc_value_isnull(functionobj))
@@ -5880,12 +5881,14 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
     mcvmframe_t createdframe;
     mcvalue_t errobj;
     mcvmframe_t* frame;
-    mcerror_t* err;    
+    mcerror_t* err;
     const char* oname;
-    mcobjfuncscript_t* functionfunction;
+    const char* funcname;
+    mcobjfuncscript_t* targetfunction;
     (void)oname;
     (void)prevcode;
     #if defined(MC_CONF_USECOMPUTEDGOTOS) && (MC_CONF_USECOMPUTEDGOTOS == 1)
+        fprintf(stderr, "**using computed gotos**\n");
         static void* dispatchtable[] = {
             &&MAKELABEL(MC_OPCODE_HALT),
             &&MAKELABEL(MC_OPCODE_CONSTANT),
@@ -5951,9 +5954,9 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
     }
     #endif
     /* naming is hard */
-    functionfunction = mc_value_functiongetscriptfunction(function);
+    targetfunction = mc_value_asscriptfunction(function);
     ok = false;
-    ok = mc_callframe_init(&createdframe, function, state->execstate.vsposition - functionfunction->numargs);
+    ok = mc_callframe_init(&createdframe, function, state->execstate.vsposition - targetfunction->numargs);
     if(!ok)
     {
         fprintf(stderr, "failed to init frames!\n");
@@ -5965,7 +5968,18 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
         mc_errlist_addf(&state->errors, MC_ERROR_USER, srcposinvalid, "pushing frame failed");
         return false;
     }
-    fprintf(stderr, "**executing function**\n");
+    {
+        funcname = "unknown";
+        if(targetfunction->ownsdata)
+        {
+            funcname = targetfunction->unamev.fconstname;
+        }
+        else
+        {
+            funcname = targetfunction->unamev.fallocname;
+        }
+        fprintf(stderr, "**executing function '%s'**\n", funcname);
+    }
     state->running = true;
     state->execstate.lastpopped = mc_value_makenull();
     //while(state->execstate.currframe->bcposition < state->execstate.currframe->bcsize)
@@ -6460,7 +6474,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
                     }
                     else if(type == MC_VAL_STRING)
                     {
-                        len = mc_value_getstringlength(val);
+                        len = mc_value_stringgetlength(val);
                     }
                     else
                     {
@@ -6698,20 +6712,20 @@ mcvalue_t mc_scriptfn_reverse(mcstate_t* state, void* data, mcvalue_t thisval, s
     }
     if(type == MC_VAL_STRING)
     {
-        inpstr = mc_value_getstringdata(arg);
-        inplen = mc_value_getstringlength(arg);
+        inpstr = mc_value_stringgetdata(arg);
+        inplen = mc_value_stringgetlength(arg);
         res = mc_value_makestrcapacity(state, inplen);
         if(mc_value_isnull(res))
         {
             return mc_value_makenull();
         }
-        resbuf = mc_valstring_getmutabledata(res);
+        resbuf = mc_value_stringgetmutabledata(res);
         for(i = 0; i < inplen; i++)
         {
             resbuf[inplen - i - 1] = inpstr[i];
         }
         resbuf[inplen] = '\0';
-        mc_string_setlength(res, inplen);
+        mc_value_stringsetlength(res, inplen);
         return res;
     }
     return mc_value_makenull();
@@ -6961,53 +6975,6 @@ mcvalue_t mc_scriptfn_println(mcstate_t* state, void* data, mcvalue_t thisval, s
     return o;
 }
 
-mcvalue_t mc_nsfnfile_writefile(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
-{
-    int slen;
-    int printedsz;
-    const char* path;
-    const char* string;
-    (void)state;
-    (void)argc;
-    (void)data;
-    (void)thisval;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_STRING, MC_VAL_STRING))
-    {
-        return mc_value_makenull();
-    }
-    path = mc_value_getstringdata(args[0]);
-    string = mc_value_getstringdata(args[1]);
-    slen = mc_value_getstringlength(args[1]);
-    printedsz = mc_fsutil_filewrite(state, path, string, slen);
-    return mc_value_makenumber(printedsz);
-}
-
-mcvalue_t mc_nsfnfile_readfile(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
-{
-    size_t flen;
-    char* contents;
-    const char* path;
-    mcvalue_t res;
-    (void)state;
-    (void)argc;
-    (void)data;
-    (void)thisval;
-    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_STRING))
-    {
-        return mc_value_makenull();
-    }
-    path = mc_value_getstringdata(args[0]);
-    contents = mc_fsutil_fileread(state, path, &flen);
-    if(!contents)
-    {
-        return mc_value_makenull();
-    }
-    res = mc_value_makestringlen(state, contents, flen);
-    mc_memory_free(contents);
-    contents = NULL;
-    return res;
-}
-
 mcvalue_t mc_scriptfn_tostring(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
 {
     int reslen;
@@ -7083,7 +7050,7 @@ mcvalue_t mc_objfnstring_length(mcstate_t* state, void* data, mcvalue_t thisval,
     (void)data;
     (void)argc;
     (void)args;
-    len = mc_value_getstringlength(thisval);
+    len = mc_value_stringgetlength(thisval);
     return mc_value_makenumber(len);
 }
 
@@ -7120,8 +7087,8 @@ mcvalue_t mc_objfnstring_indexof(mcstate_t* state, void* data, mcvalue_t thisval
     }
     searchstr = NULL;
     searchlen = 0;
-    inpstr = mc_value_getstringdata(thisval);
-    inplen = mc_value_getstringlength(thisval);
+    inpstr = mc_value_stringgetdata(thisval);
+    inplen = mc_value_stringgetlength(thisval);
     MC_ASSERT((searchtype == MC_VAL_NUMBER) || (searchtype == MC_VAL_STRING));
     if(searchtype == MC_VAL_NUMBER)
     {
@@ -7131,8 +7098,8 @@ mcvalue_t mc_objfnstring_indexof(mcstate_t* state, void* data, mcvalue_t thisval
     }
     else if(searchtype == MC_VAL_STRING)
     {
-        searchstr = mc_value_getstringdata(searchval);
-        searchlen = mc_value_getstringlength(searchval);
+        searchstr = mc_value_stringgetdata(searchval);
+        searchlen = mc_value_stringgetlength(searchval);
     }
 
     result = (char*)strstr(inpstr + startindex, searchstr);
@@ -7155,8 +7122,8 @@ mcvalue_t mc_objfnstring_charcodefirst(mcstate_t* state, void* data, mcvalue_t t
     (void)argc;
     (void)args;
     sval = thisval;
-    str = mc_value_getstringdata(sval);
-    len = mc_value_getstringlength(sval);
+    str = mc_value_stringgetdata(sval);
+    len = mc_value_stringgetlength(sval);
     ch = 0;
     if(len > 0)
     {
@@ -7179,8 +7146,8 @@ mcvalue_t mc_objfnstring_charcodeat(mcstate_t* state, void* data, mcvalue_t this
     (void)argc;
     (void)args;
     sval = thisval;
-    str = mc_value_getstringdata(sval);
-    len = mc_value_getstringlength(sval);
+    str = mc_value_stringgetdata(sval);
+    len = mc_value_stringgetlength(sval);
     idx = mc_value_asnumber(args[0]);
     if(idx >= (long)len)
     {
@@ -7204,8 +7171,8 @@ mcvalue_t mc_objfnstring_charat(mcstate_t* state, void* data, mcvalue_t thisval,
     (void)argc;
     (void)args;
     sval = thisval;
-    str = mc_value_getstringdata(sval);
-    len = mc_value_getstringlength(sval);
+    str = mc_value_stringgetdata(sval);
+    len = mc_value_stringgetlength(sval);
     idx = mc_value_asnumber(args[0]);
     if(idx >= (long)len)
     {
@@ -7222,7 +7189,7 @@ mcvalue_t mc_objfnstring_getself(mcstate_t* state, void* data, mcvalue_t thisval
     (void)data;
     (void)argc;
     (void)args;
-    str = mc_value_getstringdata(thisval);
+    str = mc_value_stringgetdata(thisval);
     fprintf(stderr, "objfnstring_getself: str=\"%s\"\n", str);
     return thisval;
 }
@@ -7240,8 +7207,8 @@ mcvalue_t mc_objfnstring_tonumber(mcstate_t* state, void* data, mcvalue_t thisva
     (void)args;
     result = 0;
     string = "";
-    stringlen = mc_value_getstringlength(thisval);
-    string = mc_value_getstringdata(thisval);
+    stringlen = mc_value_stringgetlength(thisval);
+    string = mc_value_stringgetdata(thisval);
     errno = 0;
     result = mc_util_strtod(string, stringlen, &end);
     if(errno == ERANGE && (result <= -HUGE_VAL || result >= HUGE_VAL))
@@ -7285,8 +7252,8 @@ mcvalue_t mc_objfnstring_left(mcstate_t* state, void* data, mcvalue_t thisval, s
     {
         inpval = thisval;
         posval = args[0];
-        inpstr = mc_value_getstringdata(inpval);
-        inplen = mc_value_getstringlength(inpval);
+        inpstr = mc_value_stringgetdata(inpval);
+        inplen = mc_value_stringgetlength(inpval);
         startpos = mc_value_asnumber(posval);
         /*
         * If the requested startpos is longer than the string then return a new string
@@ -7334,8 +7301,8 @@ mcvalue_t mc_objfnstring_right(mcstate_t* state, void* data, mcvalue_t thisval, 
     {
         inpval = thisval;
         idxval = args[0];
-        inpstr = mc_value_getstringdata(inpval);
-        inplen = mc_value_getstringlength(inpval);
+        inpstr = mc_value_stringgetdata(inpval);
+        inplen = mc_value_stringgetlength(inpval);
         startpos = mc_value_asnumber(idxval);
         /*
         * If the requested startpos is longer than the string then return a new string
@@ -7393,12 +7360,12 @@ mcvalue_t mc_objfnstring_replaceall(mcstate_t* state, void* data, mcvalue_t this
         inpval = thisval;
         searchval = args[0];
         repval = args[1];
-        inpstr = mc_value_getstringdata(inpval);
-        searchstr = mc_value_getstringdata(searchval);
-        replacestr = mc_value_getstringdata(repval);
-        inplen = mc_value_getstringlength(inpval);
-        searchlen = mc_value_getstringlength(searchval);
-        replacelen = mc_value_getstringlength(repval);
+        inpstr = mc_value_stringgetdata(inpval);
+        searchstr = mc_value_stringgetdata(searchval);
+        replacestr = mc_value_stringgetdata(repval);
+        inplen = mc_value_stringgetlength(inpval);
+        searchlen = mc_value_stringgetlength(searchval);
+        replacelen = mc_value_stringgetlength(repval);
         count = 0;
         temp = inpstr;
         /* Count number of occurrences of searchstr in inpstr */
@@ -7465,12 +7432,12 @@ mcvalue_t mc_objfnstring_replacefirst(mcstate_t* state, void* data, mcvalue_t th
         inpval = thisval;
         searchval = args[0];
         repval = args[1];
-        inpstr = mc_value_getstringdata(inpval);
-        searchstr = mc_value_getstringdata(searchval);
-        replacestr = mc_value_getstringdata(repval);
-        inplen = mc_value_getstringlength(inpval);
-        searchlen = mc_value_getstringlength(searchval);
-        replacelen = mc_value_getstringlength(repval);
+        inpstr = mc_value_stringgetdata(inpval);
+        searchstr = mc_value_stringgetdata(searchval);
+        replacestr = mc_value_stringgetdata(repval);
+        inplen = mc_value_stringgetlength(inpval);
+        searchlen = mc_value_stringgetlength(searchval);
+        replacelen = mc_value_stringgetlength(repval);
         temp = strstr(inpstr, searchstr);
         if(temp == NULL)
         {
@@ -7517,8 +7484,8 @@ mcvalue_t mc_objfnstring_trim(mcstate_t* state, void* data, mcvalue_t thisval, s
     (void)argc;
     (void)args;
     inpval = thisval;
-    inpstr = mc_value_getstringdata(inpval);
-    inplen = mc_value_getstringlength(inpval);
+    inpstr = mc_value_stringgetdata(inpval);
+    inplen = mc_value_stringgetlength(inpval);
     if(inplen == 0)
     {
         return mc_value_makestringlen(state, "", 0);
@@ -7556,6 +7523,81 @@ mcvalue_t mc_objfnstring_trim(mcstate_t* state, void* data, mcvalue_t thisval, s
     return obj;
 }
 
+mcvalue_t mc_objfnstring_matchhelper(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args, bool icase)
+{
+    bool r;
+    int flags;
+    size_t inplen;
+    size_t patlen;
+    const char* inpstr;
+    const char* patstr;
+    mcvalue_t patval;
+    mcvalue_t inpval;
+    (void)data;
+    (void)argc;
+    (void)args;
+    flags = 0;
+    inpval = thisval;
+    patval = args[0];
+    inpstr = mc_value_stringgetdata(inpval);
+    inplen = mc_value_stringgetlength(inpval);
+    patstr = mc_value_stringgetdata(patval);
+    patlen = mc_value_stringgetlength(patval);
+    if(icase)
+    {
+        flags |= STRFNM_FLAG_CASEFOLD;
+    }
+    r  = strfnm_match(patstr, patlen, inpstr, inplen, flags);
+    return mc_value_makebool(r);
+}
+
+mcvalue_t mc_objfnstring_matchglobcase(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
+{
+    return mc_objfnstring_matchhelper(state, data, thisval, argc, args, false);
+}
+
+mcvalue_t mc_objfnstring_matchglobicase(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
+{
+    return mc_objfnstring_matchhelper(state, data, thisval, argc, args, false);
+}
+
+mcvalue_t mc_objfnstring_tolower(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
+{
+    int inplen;
+    const char* inpstr;
+    mcvalue_t resstr;
+    mcvalue_t inpval;
+    (void)data;
+    (void)argc;
+    (void)args;
+    inpval = thisval;
+    inpstr = mc_value_stringgetdata(inpval);
+    inplen = mc_value_stringgetlength(inpval);
+    resstr = mc_value_makestringlen(state, inpstr, inplen);
+    dyn_strbuf_tolowercase(mc_value_getallocateddata(resstr)->uvobj.valstring.strbuf);
+    return resstr;
+}
+
+
+mcvalue_t mc_objfnstring_toupper(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
+{
+    int inplen;
+    const char* inpstr;
+    mcvalue_t resstr;
+    mcvalue_t inpval;
+    (void)data;
+    (void)argc;
+    (void)args;
+    inpval = thisval;
+    inpstr = mc_value_stringgetdata(inpval);
+    inplen = mc_value_stringgetlength(inpval);
+    resstr = mc_value_makestringlen(state, inpstr, inplen);
+    dyn_strbuf_touppercase(mc_value_getallocateddata(resstr)->uvobj.valstring.strbuf);
+
+    return resstr;
+    
+}
+
 mcvalue_t mc_objfnarray_length(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
 {
     size_t len;
@@ -7567,18 +7609,6 @@ mcvalue_t mc_objfnarray_length(mcstate_t* state, void* data, mcvalue_t thisval, 
     return mc_value_makenumber(len);
 }
 
-/*
-
-    size_t vsposition;
-    mcvmframe_t* currframe;
-    mcvallist_t* valuestack;
-    mcvallist_t* valthisstack;
-    mcvallist_t* nativethisstack;
-    size_t thisstpos;
-    mcframelist_t* framestack;
-    mcvalue_t lastpopped;
-
-*/
 void mc_vm_savestate(mcstate_t* state, mcexecstate_t* est)
 {
     est->thisstpos = state->execstate.thisstpos;
@@ -7592,21 +7622,6 @@ void mc_vm_restorestate(mcstate_t* state, mcexecstate_t* est)
     state->execstate.vsposition = est->vsposition;
     state->execstate.currframe = est->currframe;
 }
-
-/*
-struct mcvmframe_t
-{
-    mcvalue_t function;
-    int64_t bcposition;
-    int64_t basepointer;
-    mcastlocation_t* framesrcposlist;
-    uint16_t* bytecode;
-    int64_t sourcebcpos;
-    int64_t bcsize;
-    int64_t recoverip;
-    bool isrecovering;
-
-*/
 
 mcvalue_t mc_vm_callvalue(mcstate_t* state, mcvallist_t* constants, mcvalue_t callee, mcvalue_t thisval, size_t argc, mcvalue_t* args)
 {
@@ -7646,7 +7661,7 @@ mcvalue_t mc_vm_callvalue(mcstate_t* state, mcvallist_t* constants, mcvalue_t ca
             mc_vm_restorestate(state, &est);
             return mc_value_makenull();
         }
-        #if 0
+        #if 1
         while(state->execstate.framestack->listcount > oldframescount)
         {
             mc_vm_popframe(state);
@@ -7695,7 +7710,6 @@ mcvalue_t mc_objfnarray_map(mcstate_t* state, void* data, mcvalue_t thisval, siz
     }
     return narr;
 }
-
 
 mcvalue_t mc_objfnarray_push(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
 {
@@ -7899,7 +7913,11 @@ void mc_state_makestdclasses(mcstate_t* state)
         mc_class_addmember(state, state->stdobjstring, "right", mc_objfnstring_right);
         mc_class_addmember(state, state->stdobjstring, "replace", mc_objfnstring_replaceall);
         mc_class_addmember(state, state->stdobjstring, "replacefirst", mc_objfnstring_replacefirst);
+        mc_class_addmember(state, state->stdobjstring, "match", mc_objfnstring_matchglobcase);
+        mc_class_addmember(state, state->stdobjstring, "imatch", mc_objfnstring_matchglobicase);
         mc_class_addmember(state, state->stdobjstring, "trim", mc_objfnstring_trim);
+        mc_class_addmember(state, state->stdobjstring, "toLower", mc_objfnstring_tolower);
+        mc_class_addmember(state, state->stdobjstring, "toUpper", mc_objfnstring_toupper);
 
 
     }
@@ -8177,7 +8195,7 @@ mcvalue_t mc_scriptfn_error(mcstate_t* state, void* data, mcvalue_t thisval, siz
     (void)thisval;
     if(argc == 1 && mc_value_gettype(args[0]) == MC_VAL_STRING)
     {
-        return mc_value_makeerror(state, mc_value_getstringdata(args[0]));
+        return mc_value_makeerror(state, mc_value_stringgetdata(args[0]));
     }
     return mc_value_makeerror(state, "");
 }
@@ -8188,7 +8206,7 @@ mcvalue_t mc_scriptfn_crash(mcstate_t* state, void* data, mcvalue_t thisval, siz
     (void)thisval;
     if(argc == 1 && mc_value_gettype(args[0]) == MC_VAL_STRING)
     {
-        mc_errlist_pushmessage(&state->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(state->execstate.currframe), mc_value_getstringdata(args[0]));
+        mc_errlist_pushmessage(&state->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(state->execstate.currframe), mc_value_stringgetdata(args[0]));
     }
     else
     {
@@ -8317,8 +8335,8 @@ mcvalue_t mc_scriptutil_slicestring(mcstate_t* state, void* data, mcvalue_t this
     (void)argc;
     (void)thisval;
     index = (int)mc_value_asnumber(args[1]);
-    str = mc_value_getstringdata(args[0]);
-    len = mc_value_getstringlength(args[0]);
+    str = mc_value_stringgetdata(args[0]);
+    len = mc_value_stringgetlength(args[0]);
     if(index < 0)
     {
         index = len + index;
@@ -8339,7 +8357,7 @@ mcvalue_t mc_scriptutil_slicestring(mcstate_t* state, void* data, mcvalue_t this
     for(i = index; i < len; i++)
     {
         c = str[i];
-        mc_valstring_appendlen(res, &c, 1);
+        mc_value_stringappendlen(res, &c, 1);
     }
     return res;
 }
@@ -8369,9 +8387,6 @@ mcvalue_t mc_scriptfn_slice(mcstate_t* state, void* data, mcvalue_t thisval, siz
     mc_state_pusherrorf(state, MC_ERROR_RUNTIME, srcposinvalid, "invalid argument 0 passed to slice, got %s instead", typestr);
     return mc_value_makenull();
 }
-
-
-
 
 mcvalue_t mc_nsfnmath_sqrt(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
 {
@@ -8528,6 +8543,204 @@ mcvalue_t mc_nsfnmath_abs(mcstate_t* state, void* data, mcvalue_t thisval, size_
     return mc_value_makenumber(res);
 }
 
+mcvalue_t mc_nsfnfile_writefile(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
+{
+    int slen;
+    int printedsz;
+    const char* path;
+    const char* string;
+    (void)state;
+    (void)argc;
+    (void)data;
+    (void)thisval;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_STRING, MC_VAL_STRING))
+    {
+        return mc_value_makenull();
+    }
+    path = mc_value_stringgetdata(args[0]);
+    string = mc_value_stringgetdata(args[1]);
+    slen = mc_value_stringgetlength(args[1]);
+    printedsz = mc_fsutil_filewrite(state, path, string, slen);
+    return mc_value_makenumber(printedsz);
+}
+
+mcvalue_t mc_nsfnfile_readfile(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
+{
+    size_t flen;
+    char* contents;
+    const char* path;
+    mcvalue_t res;
+    (void)state;
+    (void)argc;
+    (void)data;
+    (void)thisval;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_STRING))
+    {
+        return mc_value_makenull();
+    }
+    path = mc_value_stringgetdata(args[0]);
+    contents = mc_fsutil_fileread(state, path, &flen);
+    if(!contents)
+    {
+        return mc_value_makenull();
+    }
+    res = mc_value_makestringlen(state, contents, flen);
+    mc_memory_free(contents);
+    contents = NULL;
+    return res;
+}
+
+mcvalue_t mc_nsfnfile_join(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
+{
+    size_t i;
+    mcvalue_t res;
+    mcvalue_t arg;
+    (void)data;
+    (void)thisval;
+    res = mc_value_makestringlen(state, "", 0);
+    for(i=0; i<argc; i++)
+    {
+        arg = args[i];
+        mc_value_stringappendvalue(res, arg);
+        if((i + 1) < argc)
+        {
+            mc_value_stringappendlen(res, "/", 1);
+        }
+    }
+    return res;
+}
+
+mcvalue_t mc_nsfnfile_isdirectory(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
+{
+    const char* path;
+    (void)state;
+    (void)argc;
+    (void)data;
+    (void)thisval;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_STRING))
+    {
+        return mc_value_makenull();
+    }
+    path = mc_value_stringgetdata(args[0]);
+    return mc_value_makebool(osfn_pathisdirectory(path));
+}
+
+mcvalue_t mc_nsfnfile_isfile(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
+{
+    const char* path;
+    (void)state;
+    (void)argc;
+    (void)data;
+    (void)thisval;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_STRING))
+    {
+        return mc_value_makenull();
+    }
+    path = mc_value_stringgetdata(args[0]);
+    return mc_value_makebool(osfn_pathisfile(path));
+}
+
+#if 0
+               dev_t     st_dev;         /* ID of device containing file */
+               ino_t     st_ino;         /* Inode number */
+               mode_t    st_mode;        /* File type and mode */
+               nlink_t   st_nlink;       /* Number of hard links */
+               uid_t     st_uid;         /* User ID of owner */
+               gid_t     st_gid;         /* Group ID of owner */
+               dev_t     st_rdev;        /* Device ID (if special file) */
+               off_t     st_size;        /* Total size, in bytes */
+               blksize_t st_blksize;     /* Block size for filesystem I/O */
+               blkcnt_t  st_blocks;      /* Number of 512B blocks allocated */
+#endif
+mcvalue_t mc_nsfnfile_stat(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
+{
+    mcvalue_t resmap;
+    const char* path;
+    const char* fullpath;
+    struct stat st;
+    (void)state;
+    (void)argc;
+    (void)data;
+    (void)thisval;
+    char fpbuffer[1024];
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_STRING))
+    {
+        return mc_value_makenull();
+    }
+    path = mc_value_stringgetdata(args[0]);
+    if(stat(path, &st) == 0)
+    {
+        resmap = mc_value_makemap(state);
+        fullpath = osfn_realpath(path, fpbuffer);
+        mc_value_mapsetvaluestring(resmap, "dev", mc_value_makenumber(st.st_dev));
+        mc_value_mapsetvaluestring(resmap, "ino", mc_value_makenumber(st.st_ino));
+        mc_value_mapsetvaluestring(resmap, "mode", mc_value_makenumber(st.st_mode));
+        mc_value_mapsetvaluestring(resmap, "nlink", mc_value_makenumber(st.st_nlink));
+        mc_value_mapsetvaluestring(resmap, "uid", mc_value_makenumber(st.st_uid));
+        mc_value_mapsetvaluestring(resmap, "gid", mc_value_makenumber(st.st_gid));
+        mc_value_mapsetvaluestring(resmap, "size", mc_value_makenumber(st.st_size));
+        mc_value_mapsetvaluestring(resmap, "path", mc_value_makestring(state, fullpath));
+        return resmap;
+    }
+    return mc_value_makenull();
+}
+
+mcvalue_t mc_nsfndir_readdir(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
+{
+    bool isdot;
+    bool joinpaths;
+    const char* path;
+    mcvalue_t res;
+    mcvalue_t vjustname;
+    mcvalue_t vfullpath;
+    mcvalue_t vpath;
+    mcvalue_t vrespath;
+    FSDirItem ent;
+    FSDirReader reader;
+    (void)state;
+    (void)argc;
+    (void)data;
+    (void)thisval;
+    joinpaths = false;
+    if(!mc_argcheck_check(state, true, argc, args, MC_VAL_STRING, MC_VAL_BOOL))
+    {
+        return mc_value_makenull();
+    }
+    vpath = args[0];
+    path = mc_value_stringgetdata(vpath);
+    if(argc > 1)
+    {
+        joinpaths = mc_value_asbool(args[1]);
+    }
+    if(fslib_diropen(&reader, path))
+    {
+        res = mc_value_makearray(state);
+        while(fslib_dirread(&reader, &ent))
+        {
+            isdot = ((strcmp(ent.name, ".") == 0) || (strcmp(ent.name, "..") == 0));
+            if(isdot)
+            {
+                continue;
+            }
+            vjustname = mc_value_makestringlen(state, ent.name, strlen(ent.name));
+            vrespath = vjustname;
+            if(joinpaths)
+            {
+                vfullpath = mc_value_makestringlen(state, "", 0);
+                mc_value_stringappendvalue(vfullpath, vpath);
+                mc_value_stringappendlen(vfullpath, "/", 1);
+                mc_value_stringappendvalue(vfullpath, vjustname);
+                vrespath = vfullpath;
+            }
+            mc_value_arraypush(res, vrespath);
+        }
+        fslib_dirclose(&reader);
+        return res;
+    }
+    mc_errlist_pushmessage(&state->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(state->execstate.currframe), strerror(errno));
+    return mc_value_makenull();
+}
+
 void mc_cli_installbuiltins(mcstate_t* state)
 {
     static struct
@@ -8560,7 +8773,6 @@ void mc_cli_installbuiltins(mcstate_t* state)
         { "randomseed", mc_scriptfn_randseed },
         { "random", mc_scriptfn_random },
         { "slice", mc_scriptfn_slice },
-
         {NULL, NULL}
     };
     int i;
@@ -8570,7 +8782,6 @@ void mc_cli_installbuiltins(mcstate_t* state)
     }
 }
 
-
 /*
 TODO:
 kind-of ruby-ish. so sue me.
@@ -8579,14 +8790,17 @@ File.read: data = File.read("somefile"[, how-much-in-bytes])
 File.write: File.write("somefile", arrayjoin(somestuff, "\n"))
 File.exists
 ...
-
 */
+
+#define putnsfield(map, fnname, function) \
+    mc_value_mapsetvaluestring(map, fnname, mc_value_makefuncnative(state, fnname, function, NULL));
+
 
 void mc_cli_installjsondummy(mcstate_t* state)
 {
     mcvalue_t jmap;
     jmap = mc_value_makemap(state);
-    mc_value_mapsetvalstring(jmap, "stringify", mc_value_makefuncnative(state, "stringify", mc_nsfnjson_stringify, NULL));
+    putnsfield(jmap, "stringify", mc_nsfnjson_stringify);
     mc_state_setglobalconstant(state, "JSON", jmap);
 }
 
@@ -8594,7 +8808,7 @@ void mc_cli_installjsconsole(mcstate_t* state)
 {
     mcvalue_t jmap;
     jmap = mc_value_makemap(state);
-    mc_value_mapsetvalstring(jmap, "log", mc_value_makefuncnative(state, "log", mc_scriptfn_println, NULL));
+    putnsfield(jmap, "log", mc_scriptfn_println);
     mc_state_setglobalconstant(state, "console", jmap);
 }
 
@@ -8602,15 +8816,15 @@ void mc_cli_installmath(mcstate_t* state)
 {
     mcvalue_t jmap;
     jmap = mc_value_makemap(state);
-    mc_value_mapsetvalstring(jmap, "sqrt", mc_value_makefuncnative(state, "sqrt", mc_nsfnmath_sqrt, NULL));
-    mc_value_mapsetvalstring(jmap, "pow", mc_value_makefuncnative(state, "pow", mc_nsfnmath_pow, NULL));
-    mc_value_mapsetvalstring(jmap, "sin", mc_value_makefuncnative(state, "sin", mc_nsfnmath_sin, NULL));
-    mc_value_mapsetvalstring(jmap, "cos", mc_value_makefuncnative(state, "cos", mc_nsfnmath_cos, NULL));
-    mc_value_mapsetvalstring(jmap, "tan", mc_value_makefuncnative(state, "tan", mc_nsfnmath_tan, NULL));
-    mc_value_mapsetvalstring(jmap, "log", mc_value_makefuncnative(state, "log", mc_nsfnmath_log, NULL));
-    mc_value_mapsetvalstring(jmap, "ceil", mc_value_makefuncnative(state, "ceil", mc_nsfnmath_ceil, NULL));
-    mc_value_mapsetvalstring(jmap, "floor", mc_value_makefuncnative(state, "floor", mc_nsfnmath_floor, NULL));
-    mc_value_mapsetvalstring(jmap, "abs", mc_value_makefuncnative(state, "abs", mc_nsfnmath_abs, NULL));
+    putnsfield(jmap, "sqrt", mc_nsfnmath_sqrt);
+    putnsfield(jmap, "pow", mc_nsfnmath_pow);
+    putnsfield(jmap, "sin", mc_nsfnmath_sin);
+    putnsfield(jmap, "cos", mc_nsfnmath_cos);
+    putnsfield(jmap, "tan", mc_nsfnmath_tan);
+    putnsfield(jmap, "log", mc_nsfnmath_log);
+    putnsfield(jmap, "ceil", mc_nsfnmath_ceil);
+    putnsfield(jmap, "floor", mc_nsfnmath_floor);
+    putnsfield(jmap, "abs", mc_nsfnmath_abs);
     mc_state_setglobalconstant(state, "Math", jmap);
 }
 
@@ -8625,11 +8839,24 @@ void mc_cli_installfileio(mcstate_t* state)
 {
     mcvalue_t map;
     map = mc_value_makemap(state);
-    mc_value_mapsetvalstring(map, "read", mc_value_makefuncnative(state, "read", mc_nsfnfile_readfile, NULL));
-    mc_value_mapsetvalstring(map, "write", mc_value_makefuncnative(state, "write", mc_nsfnfile_writefile, NULL));
-    mc_value_mapsetvalstring(map, "put", mc_value_makefuncnative(state, "put", mc_nsfnfile_writefile, NULL));
+    putnsfield(map, "read", mc_nsfnfile_readfile);
+    putnsfield(map, "write", mc_nsfnfile_writefile);
+    putnsfield(map, "put", mc_nsfnfile_writefile);
+    putnsfield(map, "join", mc_nsfnfile_join);
+    putnsfield(map, "isDirectory", mc_nsfnfile_isdirectory);
+    putnsfield(map, "isFile", mc_nsfnfile_isfile);
+    putnsfield(map, "stat", mc_nsfnfile_stat);
     mc_state_setglobalconstant(state, "File", map);
 }
+
+void mc_cli_installdir(mcstate_t* state)
+{
+    mcvalue_t map;
+    map = mc_value_makemap(state);
+    putnsfield(map, "read", mc_nsfndir_readdir);
+    mc_state_setglobalconstant(state, "Dir", map);
+}
+
 
 static int g_extfnvar;
 
@@ -8641,6 +8868,7 @@ void mc_cli_installotherstuff(mcstate_t* state)
     mc_state_setnativefunction(state, "vec2_add", mc_scriptfn_vec2add, NULL);
     mc_state_setnativefunction(state, "vec2_sub", mc_scriptfn_vec2sub, NULL);
     mc_cli_installfileio(state);
+    mc_cli_installdir(state);
 }
 
 void optprs_fprintmaybearg(FILE* out, const char* begin, const char* flagname, size_t flaglen, bool needval, bool maybeval, const char* delim)
