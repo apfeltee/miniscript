@@ -1,98 +1,86 @@
 
-/*
-* another non-trivial example which uses references (see createChild, et al)
-*/
 
-class Element
+function htmlquote(val)
 {
-    static htmlquote(val)
+    return val;
+}
+
+function Element(tagn, txt)
+{
+    var here = {};
+    here.tagname = tagn;
+    here.data = [];
+    here.innertext = txt;
+    here.attributes = {};
+    here.children = [];
+
+    here.createChild = function(childtagn, childtxt)
     {
-        return val;
+        var elem = Element(childtagn, childtxt)
+        here.children.push(elem)
+        //return here.children[here.children.length - 1]
+        return elem
     }
 
-    constructor(tagname, text)
+    here.setAttribute = function(name, target)
     {
-        this.tagname = tagname;
-        this.data = [];
-        this.innertext = text;
-        this.attributes = {};
-        this.children = [];
+        here.attributes[name] = target;
+        return here;
     }
 
-    createChild(tagname, text)
+    here.appendChild = function(elem)
     {
-        var elem = Element(tagname, text)
-        this.children.push(elem)
-        return this.children[this.children.length - 1]
+        here.children.push(elem);
+        return here;
     }
 
-    setAttribute(name, target)
+    here.hasText = function()
     {
-        this.attributes[name] = target;
-        return this;
-    }
-
-    appendChild(elem)
-    {
-        this.children.push(elem);
-        return this;
-    }
-
-    hasText()
-    {
-        if(this.children.length > 0)
+        if(here.children.length > 0)
         {
             return true;
         }
-        if(this.innertext != null)
+        if(here.innertext != null)
         {
             return true;
         }
         return false;
     }
 
-
-    toXML(pretty, indstr, indent)
+    here.toXML = function(pretty)
     {
-        var i;
         var obuf = [];
-        var withtext = this.hasText();
+        var hastext = here.hasText();
+        var indentlength = 0
+        var indenttext ="    "
         if(pretty == null)
         {
             pretty = false;
         }
-        if(indstr == null)
+        println("indentlength: ", indentlength);
+        function indpad(max)
         {
-            indstr = "   ";
-        }
-        if(indent == null)
-        {
-            indent = 0;
-        }
-        function indpad(ind)
-        {
-            if(pretty)
+            var i;
+            for(i=0; i<max; i++)
             {
-                for(i = 0; i != ind; i++)
-                {
-                    obuf.push(indstr);
-                }
+                
             }
         }
-        obuf.push("<", this.tagname);
-        if(this.attributes != null)
+        obuf.push("<", here.tagname);
+        if(here.attributes != null)
         {
-            var keys = this.attributes.keys();
-            var cnt = keys.length;
+            var attrkeys = keys(here.attributes);
+            println("attrkeys: ", attrkeys)
+            var cnt = attrkeys.length;
             if(cnt > 0)
             {
                 obuf.push(" ");
-                for(var i=0; i<cnt; i++)
+                for(var ji=0; ji<cnt; ji++)
                 {
-                    var key = keys[i];
-                    var val = Element.htmlquote(this.attributes[key]);
+                    var key = attrkeys[ji];
+                    var val = htmlquote(here.attributes[key]);
                     obuf.push(key, "=\"", val, "\"")
-                    if((i+1) != cnt)
+                    if((ji+1) != cnt)
                     {
                         obuf.push(" ")
                     }
@@ -100,13 +88,13 @@ class Element
             }
             println("obuf=", obuf, ", cnt=", cnt)
         }
-        if(withtext)
+        if(hastext)
         {
             obuf.push(">");
-            indpad(indent);
-            if(this.innertext != null)
+            indpad(indentlength);
+            if(here.innertext != null)
             {
-                obuf.push(this.innertext);
+                obuf.push(here.innertext);
             }
         }
         else
@@ -117,15 +105,24 @@ class Element
         {
             obuf.push("\n");
         }
-        for(var i=0; i<this.children.length; i++)
+        println("obuf past: ", obuf)
+        var oi;
+        var chitems = here.children;
+        var clen = chitems.length;
+        for(oi=0; oi<clen; oi++)
         {
-            var elem = this.children[i];
-            indpad(indent);
-            obuf.push(elem.toXML(pretty, indstr, indent+1))
+            var elem = chitems[oi];
+            println("elem = ", elem);
+            indpad(indentlength);
+            if(typeof(elem) == 'string')
+            {
+                continue
+            }
+            obuf.push(elem.toXML(pretty, indenttext, indentlength+1))
         }
-        if(withtext)
+        if(hastext)
         {
-            obuf.push("</", this.tagname, ">");
+            obuf.push("</", here.tagname, ">");
             if(pretty)
             {
                 obuf.push("\n");
@@ -133,19 +130,20 @@ class Element
         }
         return obuf.join("");
     }
+    return here;
 }
 
-/* an overly verbose API for an overly verbose document format. fitting. */
 
-doc =  Element("html");
-head = doc.createChild("head");
-body = doc.createChild("body");
-form = body.createChild("form");
-input = form.createChild("input");
-submit = form.createChild("input");
+var doc =  Element("html");
+var head = doc.createChild("head");
+var body = doc.createChild("body");
+var form = body.createChild("form");
+var input = form.createChild("input");
+var submit = form.createChild("input");
 form.setAttribute("action", "/bin/submit.cgi");
 input.setAttribute("name", "fr_uname").setAttribute("type", "text");
 submit.setAttribute("type", "submit").setAttribute("value", "Go!");
 form.appendChild(input).appendChild(submit);
 head.createChild("title", "Example Document");
 println(doc.toXML(true));
+

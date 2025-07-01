@@ -21,7 +21,15 @@ function pig_latin(str)
     return str;
 }
 
-const terms = [ "Apple", "Banana", "Cherry", "Damascus", "Eggplant", "Fig"]
+var terms = null;
+if(ARGV.length > 1)
+{
+    terms = ARGV;
+}
+else
+{
+    terms = [ "Apple", "Banana", "Cherry", "Damascus", "Eggplant", "Fig"]
+}
 
 for(term in terms)
 {

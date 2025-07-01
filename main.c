@@ -586,7 +586,7 @@ struct mcvaldict_t
     unsigned int* vdcells;
     unsigned long* vdhashes;
     char** vdkeys;
-    mcvalue_t** vdvalues;
+    void** vdvalues;
     unsigned int* vdcellindices;
     unsigned int vdcount;
     unsigned int vditemcapacity;
@@ -594,6 +594,7 @@ struct mcvaldict_t
     mcitemhashfn_t funchashfn;
     mcitemcomparefn_t funckeyequalsfn;
 };
+
 
 struct mcptrdict_t
 {
@@ -874,12 +875,6 @@ struct mcobjerror_t
     mctraceback_t* traceback;
 };
 
-struct mcobjpointer
-{
-    const char* name;
-    void* userptr;
-};
-
 struct mcobjstring_t
 {
     unsigned long hash;
@@ -1082,6 +1077,7 @@ struct mcconfig_t
     bool printinstructions;
     bool fatalcomplaints;
     bool exitaftercompiling;
+    bool strictmode;
     /* allows redefinition of symbols */
     bool replmode;
 };
@@ -1513,12 +1509,2936 @@ MC_FORCEINLINE mcfloat_t mc_mathutil_mod(mcfloat_t dnleft, mcfloat_t dnright)
     return fmod(dnleft, dnright);
 }
 
-#include "listptrlist.h"
-#include "listvallist.h"
-#include "listframelist.h"
-#include "dictptrdict.h"
-#include "dictvaldict.h"
-#include "value.h"
+
+#define MC_BASICLIST_INITIALSIZE (32)
+
+mcptrlist_t* mc_ptrlist_make(mcstate_t* state, size_t tsz, bool isptr)
+{
+    return mc_ptrlist_makecapacity(state, MC_BASICLIST_INITIALSIZE, tsz, isptr);
+}
+
+mcptrlist_t* mc_ptrlist_makecapacity(mcstate_t* state, unsigned int capacity, size_t tsz, bool isptr)
+{
+    bool ok;
+    mcptrlist_t* list;
+    list = (mcptrlist_t*)mc_allocator_malloc(state, sizeof(mcptrlist_t));
+    if(!list)
+    {
+        return NULL;
+    }
+    ok = mc_ptrlist_initcapacity(list, state, capacity, tsz, isptr);
+    if(!ok)
+    {
+        mc_memory_free(list);
+        return NULL;
+    }
+    list->pstate = state;
+    return list;
+}
+
+bool mc_ptrlist_initcapacity(mcptrlist_t* list, mcstate_t* state, unsigned int capacity, size_t tsz, bool isptr)
+{
+    if(isptr)
+    {
+        tsz = 8;
+    }
+    list->pstate = state;
+    list->typesize = tsz;
+    list->isptr = isptr;
+    if(capacity > 0)
+    {
+        list->allocdata = (unsigned char*)mc_allocator_malloc(list->pstate, capacity * list->typesize);
+        list->listitems = list->allocdata;
+        if(!list->allocdata)
+        {
+            return false;
+        }
+    }
+    else
+    {
+        list->allocdata = NULL;
+        list->listitems = NULL;
+    }
+    list->listcapacity = capacity;
+    list->listcount = 0;
+    list->caplocked = false;
+    return true;
+}
+
+void mc_ptrlist_deinit(mcptrlist_t* list)
+{
+    mc_memory_free(list->allocdata);
+}
+
+void mc_ptrlist_destroy(mcptrlist_t* list, mcitemdestroyfn_t dfn)
+{
+    if(list != NULL)
+    {    
+        if(dfn)
+        {
+            mc_ptrlist_clearanddestroy(list, dfn);
+        }
+        mc_ptrlist_deinit(list);
+        mc_memory_free(list);
+    }
+}
+
+void mc_ptrlist_clearanddestroy(mcptrlist_t* list, mcitemdestroyfn_t dfn)
+{
+    size_t i;
+    void* item;
+    for(i = 0; i < mc_ptrlist_count(list); i++)
+    {
+        item = mc_ptrlist_get(list, i);
+        dfn(item);
+    }
+    mc_ptrlist_clear(list);
+}
+
+void mc_ptrlist_orphandata(mcptrlist_t* list)
+{
+    mc_ptrlist_initcapacity(list, list->pstate, 0, list->typesize, list->isptr);
+}
+
+mcptrlist_t* mc_ptrlist_copy(mcptrlist_t* list, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
+{
+    bool ok;
+    size_t i;
+    void* item;
+    void* itemcopy;
+    mcptrlist_t* arrcopy;
+    if(copyfn)
+    {
+        arrcopy = mc_ptrlist_make(list->pstate, list->typesize, list->isptr);
+        for(i = 0; i < mc_ptrlist_count(list); i++)
+        {
+            item = (void*)mc_ptrlist_get(list, i);
+            itemcopy = item;
+            if(copyfn)
+            {
+                itemcopy = copyfn(item);
+            }
+            if(item && !itemcopy)
+            {
+                goto listcopyfailed;
+            }
+            ok = mc_ptrlist_push(arrcopy, itemcopy);
+            if(!ok)
+            {
+                goto listcopyfailed;
+            }
+        }
+        return arrcopy;
+    }
+    arrcopy = (mcptrlist_t*)mc_allocator_malloc(list->pstate, sizeof(mcptrlist_t));
+    if(!arrcopy)
+    {
+        return NULL;
+    }
+    arrcopy->pstate = list->pstate;
+    arrcopy->listcapacity = list->listcapacity;
+    arrcopy->listcount = list->listcount;
+    arrcopy->typesize = list->typesize;
+    arrcopy->caplocked = list->caplocked;
+    if(list->allocdata)
+    {
+        arrcopy->allocdata = (unsigned char*)mc_allocator_malloc(list->pstate, list->listcapacity * list->typesize);
+        if(!arrcopy->allocdata)
+        {
+            mc_memory_free(arrcopy);
+            return NULL;
+        }
+        arrcopy->listitems = arrcopy->allocdata;
+        memcpy(arrcopy->allocdata, list->listitems, list->listcapacity * list->typesize);
+    }
+    else
+    {
+        arrcopy->allocdata = NULL;
+        arrcopy->listitems = NULL;
+    }
+    return arrcopy;
+listcopyfailed:
+    mc_ptrlist_destroy(arrcopy, dfn);
+    return NULL;
+}
+
+MC_INLINE bool mc_ptrlist_push(mcptrlist_t* list, void* value)
+{
+    unsigned int ncap;
+    unsigned char* newdata;
+    if(list->listcount >= list->listcapacity)
+    {
+        MC_ASSERT(!list->caplocked);
+        if(list->caplocked)
+        {
+            return false;
+        }
+        ncap = MC_UTIL_INCCAPACITY(list->listcapacity);
+        newdata = (unsigned char*)mc_allocator_realloc(list->pstate, list->allocdata, ncap * list->typesize);
+        if(!newdata)
+        {
+            return false;
+        }
+        list->allocdata = newdata;
+        list->listitems = list->allocdata;
+        list->listcapacity = ncap;
+    }
+    if(value)
+    {
+        if(list->isptr)
+        {
+            ((void**)list->listitems)[list->listcount] = value;
+        }
+        else
+        {
+            memcpy(list->listitems + (list->listcount * list->typesize), value, list->typesize);
+        }
+    }
+    list->listcount++;
+    return true;
+}
+
+MC_INLINE bool mc_ptrlist_pop(mcptrlist_t* list, void** outvalue)
+{
+    void* res;
+    if(list->listcount <= 0)
+    {
+        return false;
+    }
+    if(outvalue != NULL)
+    {
+        res = mc_ptrlist_get(list, list->listcount - 1);
+        if(list->isptr)
+        {
+            *outvalue = res;
+        }
+        else
+        {
+            memcpy(*outvalue, res, list->typesize);
+        }
+    }
+    mc_ptrlist_removeat(list, list->listcount - 1);
+    return true;
+}
+
+MC_INLINE void* mc_ptrlist_popret(mcptrlist_t* list)
+{
+    void* dest;
+    if(mc_ptrlist_pop(list, &dest))
+    {
+        return dest;
+    }
+    return NULL;
+}
+
+MC_INLINE void* mc_ptrlist_top(mcptrlist_t* list)
+{
+    if(list->listcount <= 0)
+    {
+        return NULL;
+    }
+    return mc_ptrlist_get(list, list->listcount - 1);
+}
+
+MC_INLINE bool mc_ptrlist_set(mcptrlist_t* list, unsigned int ix, void* value)
+{
+    size_t offset;
+    if(ix >= list->listcount)
+    {
+        MC_ASSERT(false);
+        return false;
+    }
+    if(list->isptr)
+    {
+        ((void**)list->listitems)[ix] = value;
+    }
+    else
+    {
+        offset = ix * list->typesize;
+        memmove(list->listitems + offset, value, list->typesize);
+    }
+    return true;
+}
+
+MC_INLINE void* mc_ptrlist_get(mcptrlist_t* list, unsigned int ix)
+{
+    size_t offset;
+    if(ix >= list->listcount)
+    {
+        MC_ASSERT(false);
+        return NULL;
+    }
+    if(list->isptr)
+    {
+        return ((void**)list->listitems)[ix];
+    }
+    offset = ix * list->typesize;
+    return list->listitems + offset;
+}
+
+MC_INLINE size_t mc_ptrlist_count(mcptrlist_t* list)
+{
+    if(!list)
+    {
+        return 0;
+    }
+    return list->listcount;
+}
+
+bool mc_ptrlist_removeat(mcptrlist_t* list, unsigned int ix)
+{
+    size_t tomovebytes;
+    void* dest;
+    void* src;
+    if(ix >= list->listcount)
+    {
+        return false;
+    }
+    if(!list->isptr)
+    {
+        if(ix == 0)
+        {
+            list->listitems += list->typesize;
+            list->listcapacity--;
+            list->listcount--;
+            return true;
+        }
+        if(ix == (list->listcount - 1))
+        {
+            list->listcount--;
+            return true;
+        }
+        tomovebytes = (list->listcount - 1 - ix) * list->typesize;
+        dest = list->listitems + (ix * list->typesize);
+        src = list->listitems + ((ix + 1) * list->typesize);
+        memmove(dest, src, tomovebytes);
+    }
+    list->listcount--;
+    return true;
+}
+
+void mc_ptrlist_clear(mcptrlist_t* list)
+{
+    list->listcount = 0;
+}
+
+void* mc_ptrlist_data(mcptrlist_t* list)
+{
+    return list->listitems;
+}
+
+MC_INLINE void* mc_ptrlist_getconst(mcptrlist_t* list, unsigned int ix)
+{
+    size_t offset;
+    if(ix >= list->listcount)
+    {
+        MC_ASSERT(false);
+        return NULL;
+    }
+    offset = ix * list->typesize;
+    return list->listitems + offset;
+}
+
+int mc_ptrlist_getindex(mcptrlist_t* list, void* ptr)
+{
+    size_t i;
+    for(i = 0; i < mc_ptrlist_count(list); i++)
+    {
+        if(mc_ptrlist_getconst(list, i) == ptr)
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+
+bool mc_ptrlist_removeitem(mcptrlist_t* list, void* ptr)
+{
+    int ix;
+    ix = mc_ptrlist_getindex(list, ptr);
+    if(ix < 0)
+    {
+        return false;
+    }
+    return mc_ptrlist_removeat(list, ix);
+}
+
+bool mc_ptrlist_contains(mcptrlist_t* list, void* ptr)
+{
+    return mc_ptrlist_getindex(list, ptr) >= 0;
+}
+
+
+mcvallist_t* mc_vallist_make(mcstate_t* state, const char* name, size_t initialsize)
+{
+    mcvallist_t* list;
+    list = (mcvallist_t*)mc_allocator_malloc(state, sizeof(mcvallist_t));
+    list->pstate = state;
+    list->listcount = 0;
+    list->listcapacity = 0;
+    list->listitems = NULL;
+    list->listname = name;
+    if(initialsize > 0)
+    {
+        mc_vallist_ensurecapacity(list, initialsize, mc_value_makenull(), true);
+    }
+    return list;
+}
+
+void mc_vallist_destroy(mcvallist_t* list)
+{
+    #if 0
+    if(list->listname != NULL)
+    {
+        fprintf(stderr, "vallist of '%s' use at end: count=%ld capacity=%ld\n", list->listname, list->listcount, list->listcapacity);
+    }
+    #endif
+    if(list != NULL)
+    {
+        mc_memory_free(list->listitems);
+        mc_memory_free(list);
+        list = NULL;
+    }
+}
+
+
+MC_INLINE size_t mc_vallist_count(mcvallist_t* list)
+{
+    return list->listcount;
+}
+
+MC_INLINE mcvalue_t* mc_vallist_data(mcvallist_t* list)
+{
+    return list->listitems;
+}
+
+MC_INLINE mcvalue_t mc_vallist_get(mcvallist_t* list, size_t idx)
+{
+    return list->listitems[idx];
+}
+
+MC_INLINE mcvalue_t* mc_vallist_getp(mcvallist_t* list, size_t idx)
+{
+    return &list->listitems[idx];
+}
+
+MC_INLINE bool mc_vallist_set(mcvallist_t* list, size_t idx, mcvalue_t val)
+{
+    size_t need;
+    need = idx + 8;
+    if(list->listcount == 0)
+    {
+        return mc_vallist_push(list, val);
+    }
+    if(((idx == 0) || (list->listcapacity == 0)) || (idx >= list->listcapacity))
+    {
+        mc_vallist_ensurecapacity(list, need, mc_value_makenull(), false);
+    }
+    list->listitems[idx] = val;
+    if(idx > list->listcount)
+    {
+        list->listcount = idx;
+    }
+    return true;
+}
+
+MC_INLINE bool mc_vallist_push(mcvallist_t* list, mcvalue_t value)
+{
+    size_t oldcap;
+    if(list->listcapacity < list->listcount + 1)
+    {
+        oldcap = list->listcapacity;
+        list->listcapacity = MC_UTIL_INCCAPACITY(oldcap);
+        if(list->listitems == NULL)
+        {
+            list->listitems = (mcvalue_t*)mc_allocator_malloc(list->pstate, sizeof(mcvalue_t) * list->listcapacity);
+        }
+        else
+        {
+            list->listitems = (mcvalue_t*)mc_allocator_realloc(list->pstate, list->listitems, sizeof(mcvalue_t) * list->listcapacity);
+        }
+    }
+
+    list->listitems[list->listcount] = value;
+    list->listcount++;
+    return true;
+}
+
+MC_INLINE bool mc_vallist_pop(mcvallist_t* list, mcvalue_t* dest)
+{
+    if(list->listcount > 0)
+    {
+        *dest = list->listitems[list->listcount - 1];
+        list->listcount--;
+        return true;
+    }
+    return false;
+}
+
+bool mc_vallist_removeatintern(mcvallist_t* list, unsigned int ix)
+{
+    size_t tomovebytes;
+    void* src;
+    void* dest;
+    if(ix == (list->listcount - 1))
+    {
+        list->listcount--;
+        return true;
+    }
+    tomovebytes = (list->listcount - 1 - ix) * sizeof(mcvalue_t);
+    dest = list->listitems + (ix * sizeof(mcvalue_t));
+    src = list->listitems + ((ix + 1) * sizeof(mcvalue_t));
+    memmove(dest, src, tomovebytes);
+    list->listcount--;
+    return true;
+}
+
+MC_INLINE bool mc_vallist_removeat(mcvallist_t* list, unsigned int ix)
+{
+    if(ix >= list->listcount)
+    {
+        return false;
+    }
+    if(ix == 0)
+    {
+        list->listitems += sizeof(mcvalue_t);
+        list->listcapacity--;
+        list->listcount--;
+        return true;
+    }
+    return mc_vallist_removeatintern(list, ix);
+}
+
+void mc_vallist_ensurecapacity(mcvallist_t* list, size_t needsize, mcvalue_t fillval, bool first)
+{
+    size_t i;
+    size_t ncap;
+    size_t oldcap;
+    (void)first;
+    if(list->listcapacity < needsize)
+    {
+        oldcap = list->listcapacity;
+        if(oldcap == 0)
+        {
+            ncap = needsize;
+        }
+        else
+        {
+            ncap = MC_UTIL_INCCAPACITY(list->listcapacity + needsize);
+        }
+        list->listcapacity = ncap;
+        if(list->listitems == NULL)
+        {
+            list->listitems = (mcvalue_t*)mc_allocator_malloc(list->pstate, sizeof(mcvalue_t) * ncap);
+        }
+        else
+        {
+            list->listitems = (mcvalue_t*)mc_allocator_realloc(list->pstate, list->listitems, sizeof(mcvalue_t) * ncap);
+        }
+        for(i = oldcap; i < ncap; i++)
+        {
+            list->listitems[i] = fillval;
+        }
+    }
+}
+
+MC_INLINE mcvallist_t* mc_vallist_copy(mcvallist_t* list)
+{
+    size_t i;
+    mcvallist_t* nlist;
+    nlist = mc_vallist_make(list->pstate, list->listname, 0);
+    for(i=0; i<list->listcount; i++)
+    {
+        mc_vallist_push(nlist, list->listitems[i]);
+    }
+    return nlist;
+}
+
+MC_INLINE void mc_vallist_setempty(mcvallist_t* list)
+{
+    if((list->listcapacity > 0) && (list->listitems != NULL))
+    {
+        memset(list->listitems, 0, sizeof(mcvalue_t) * list->listcapacity);
+    }
+    list->listcount = 0;
+    list->listcapacity = 0;
+}
+
+
+mcframelist_t* mc_framelist_make(mcstate_t* state, size_t initialsize)
+{
+    mcframelist_t* list;
+    mcvmframe_t nullframe = {};
+    list = (mcframelist_t*)mc_allocator_malloc(state, sizeof(mcframelist_t));
+    list->pstate = state;
+    list->listcount = 0;
+    list->listcapacity = 0;
+    list->listitems = NULL;
+    if(initialsize > 0)
+    {
+        mc_framelist_ensurecapacity(list, initialsize, nullframe, true);
+    }
+    return list;
+}
+
+void mc_framelist_destroy(mcframelist_t* list)
+{
+    #if 0
+        fprintf(stderr, "framelist use at end: count=%ld capacity=%ld\n", list->listcount, list->listcapacity);
+    #endif
+    if(list != NULL)
+    {
+        mc_memory_free(list->listitems);
+        mc_memory_free(list);
+        list = NULL;
+    }
+}
+
+
+MC_INLINE mcvmframe_t* mc_framelist_get(mcframelist_t* list, size_t idx)
+{
+    return &list->listitems[idx];
+}
+
+MC_INLINE mcvmframe_t* mc_framelist_set(mcframelist_t* list, size_t idx, mcvmframe_t val)
+{
+    size_t need;
+    mcvmframe_t nullframe = {};
+    need = idx + 8;
+    if(((idx == 0) || (list->listcapacity == 0)) || (idx >= list->listcapacity))
+    {
+        mc_framelist_ensurecapacity(list, need, nullframe, false);
+    }
+    list->listitems[idx] = val;
+    return &list->listitems[idx];
+}
+
+MC_INLINE void mc_framelist_push(mcframelist_t* list, mcvmframe_t value)
+{
+    size_t oldcap;
+    if(list->listcapacity < list->listcount + 1)
+    {
+        oldcap = list->listcapacity;
+        list->listcapacity = MC_UTIL_INCCAPACITY(oldcap);
+        if(list->listitems == NULL)
+        {
+            list->listitems = (mcvmframe_t*)mc_allocator_malloc(list->pstate, sizeof(mcvmframe_t) * list->listcapacity);
+        }
+        else
+        {
+            list->listitems = (mcvmframe_t*)mc_allocator_realloc(list->pstate, list->listitems, sizeof(mcvmframe_t) * list->listcapacity);
+        }
+    }
+    list->listitems[list->listcount] = value;
+    list->listcount++;
+}
+
+void mc_framelist_ensurecapacity(mcframelist_t* list, size_t needsize, mcvmframe_t fillval, bool first)
+{
+    size_t i;
+    size_t ncap;
+    size_t oldcap;
+    (void)first;
+    if(list->listcapacity < needsize)
+    {
+        oldcap = list->listcapacity;
+        ncap = MC_UTIL_INCCAPACITY(list->listcapacity + needsize);
+        list->listcapacity = ncap;
+        if(list->listitems == NULL)
+        {
+            list->listitems = (mcvmframe_t*)mc_allocator_malloc(list->pstate, sizeof(mcvmframe_t) * ncap);
+        }
+        else
+        {
+            list->listitems = (mcvmframe_t*)mc_allocator_realloc(list->pstate, list->listitems, sizeof(mcvmframe_t) * ncap);
+        }
+        for(i = oldcap; i < ncap; i++)
+        {
+            list->listitems[i] = fillval;
+        }
+    }
+}
+
+
+
+bool mc_ptrdict_init(mcstate_t* state, mcptrdict_t* dict, unsigned int initialcapacity, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
+{
+    unsigned int i;
+    dict->pstate = state;
+    dict->gdcells = NULL;
+    dict->gdkeys = NULL;
+    dict->gdvalues = NULL;
+    dict->gdcellindices = NULL;
+    dict->gdhashes = NULL;
+    dict->gdcount = 0;
+    dict->gdcellcapacity = 0;
+    dict->gdcellcapacity += initialcapacity;
+    dict->gditemcapacity = (unsigned int)(initialcapacity * 0.7f);
+    dict->funccopyfn = copyfn;
+    dict->funcdestroyfn = dfn;
+    dict->gdcells = (unsigned int*)mc_allocator_malloc(dict->pstate, dict->gdcellcapacity * sizeof(*dict->gdcells));
+    dict->gdkeys = (char**)mc_allocator_malloc(dict->pstate, dict->gditemcapacity * sizeof(*dict->gdkeys));
+    dict->gdvalues = (void**)mc_allocator_malloc(dict->pstate, dict->gditemcapacity * sizeof(*dict->gdvalues));
+    dict->gdcellindices = (unsigned int*)mc_allocator_malloc(dict->pstate, dict->gditemcapacity * sizeof(*dict->gdcellindices));
+    dict->gdhashes = (long unsigned int*)mc_allocator_malloc(dict->pstate, dict->gditemcapacity * sizeof(*dict->gdhashes));
+    if(dict->gdcells == NULL || dict->gdkeys == NULL || dict->gdvalues == NULL || dict->gdcellindices == NULL || dict->gdhashes == NULL)
+    {
+        goto dictallocfailed;
+    }
+    for(i = 0; i < dict->gdcellcapacity; i++)
+    {
+        dict->gdcells[i] = MC_CONF_GENERICDICTINVALIDIX;
+    }
+    return true;
+dictallocfailed:
+    mc_memory_free(dict->gdcells);
+    mc_memory_free(dict->gdkeys);
+    mc_memory_free(dict->gdvalues);
+    mc_memory_free(dict->gdcellindices);
+    mc_memory_free(dict->gdhashes);
+    return false;
+}
+
+mcptrdict_t* mc_ptrdict_make(mcstate_t* state, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
+{
+    bool ok;
+    mcptrdict_t* dict;
+    dict = (mcptrdict_t*)mc_allocator_malloc(state, sizeof(mcptrdict_t));
+    if(dict == NULL)
+    {
+        return NULL;
+    }
+    ok = mc_ptrdict_init(state, dict, MC_CONF_GENERICDICTINITSIZE, copyfn, dfn);
+    if(!ok)
+    {
+        mc_memory_free(dict);
+        return NULL;
+    }
+    dict->pstate = state;
+    return dict;
+}
+
+void mc_ptrdict_deinit(mcptrdict_t* dict, bool freekeys)
+{
+    unsigned int i;
+    if(freekeys)
+    {
+        for(i = 0; i < dict->gdcount; i++)
+        {
+            mc_memory_free(dict->gdkeys[i]);
+        }
+    }
+    dict->gdcount = 0;
+    dict->gditemcapacity = 0;
+    dict->gdcellcapacity = 0;
+    mc_memory_free(dict->gdcells);
+    mc_memory_free(dict->gdkeys);
+    mc_memory_free(dict->gdvalues);
+    mc_memory_free(dict->gdcellindices);
+    mc_memory_free(dict->gdhashes);
+    dict->gdcells = NULL;
+    dict->gdkeys = NULL;
+    dict->gdvalues = NULL;
+    dict->gdcellindices = NULL;
+    dict->gdhashes = NULL;
+}
+
+void mc_ptrdict_destroy(mcptrdict_t* dict)
+{
+    if(dict != NULL)
+    {
+        mc_ptrdict_deinit(dict, true);
+        mc_memory_free(dict);
+    }
+}
+
+void mc_ptrdict_destroyitemsanddict(mcptrdict_t* dict)
+{
+    unsigned int i;
+    if(dict != NULL)
+    {    
+        if(dict->funcdestroyfn)
+        {
+            for(i = 0; i < dict->gdcount; i++)
+            {
+                dict->funcdestroyfn(dict->gdvalues[i]);
+            }
+        }
+        mc_ptrdict_destroy(dict);
+    }
+}
+
+bool mc_ptrdict_growandrehash(mcptrdict_t* dict)
+{
+    bool ok;
+    unsigned int i;
+    char* key;
+    void* value;
+    size_t ncap;
+    mcptrdict_t newdict;
+    ncap = MC_UTIL_INCCAPACITY(dict->gdcellcapacity);
+    ok = mc_ptrdict_init(dict->pstate, &newdict, ncap, dict->funccopyfn, dict->funcdestroyfn);
+    if(!ok)
+    {
+        return false;
+    }
+    for(i = 0; i < dict->gdcount; i++)
+    {
+        key = dict->gdkeys[i];
+        value = dict->gdvalues[i];
+        ok = mc_ptrdict_setactual(&newdict, key, key, value);
+        if(!ok)
+        {
+            mc_ptrdict_deinit(&newdict, false);
+            return false;
+        }
+    }
+    mc_ptrdict_deinit(dict, false);
+    *dict = newdict;
+    return true;
+}
+
+MC_INLINE unsigned int mc_ptrdict_getcellindex(mcptrdict_t* dict, const char* key, unsigned long hash, bool* outfound)
+{
+    unsigned int i;
+    unsigned int ix;
+    unsigned int cell;
+    unsigned int cellix;
+    unsigned long hashtocheck;
+    const char* keytocheck;
+    *outfound = false;
+    cellix = (unsigned int)hash & (dict->gdcellcapacity - 1);
+    for(i = 0; i < dict->gdcellcapacity; i++)
+    {
+        ix = (cellix + i) & (dict->gdcellcapacity - 1);
+        cell = dict->gdcells[ix];
+        if(cell == MC_CONF_GENERICDICTINVALIDIX)
+        {
+            return ix;
+        }
+        hashtocheck = dict->gdhashes[cell];
+        if(hash != hashtocheck)
+        {
+            continue;
+        }
+        keytocheck = dict->gdkeys[cell];
+        if(strcmp(key, keytocheck) == 0)
+        {
+            *outfound = true;
+            return ix;
+        }
+    }
+    return MC_CONF_GENERICDICTINVALIDIX;
+}
+
+bool mc_ptrdict_setintern(mcptrdict_t* dict, unsigned int cellix, unsigned long hash, const char* ckey, char* mkey, void* value)
+{
+    bool ok;
+    bool found;
+    char* keycopy;
+    if(dict->gdcount >= dict->gditemcapacity)
+    {
+        ok = mc_ptrdict_growandrehash(dict);
+        if(!ok)
+        {
+            return false;
+        }
+        cellix = mc_ptrdict_getcellindex(dict, ckey, hash, &found);
+    }
+    if(mkey)
+    {
+        dict->gdkeys[dict->gdcount] = mkey;
+    }
+    else
+    {
+        keycopy = mc_util_strdup(dict->pstate, ckey);
+        if(!keycopy)
+        {
+            return false;
+        }
+        dict->gdkeys[dict->gdcount] = keycopy;
+    }
+    dict->gdcells[cellix] = dict->gdcount;
+    dict->gdvalues[dict->gdcount] = value;
+    dict->gdcellindices[dict->gdcount] = cellix;
+    dict->gdhashes[dict->gdcount] = hash;
+    dict->gdcount++;
+    return true;
+}
+
+MC_INLINE bool mc_ptrdict_setactual(mcptrdict_t* dict, const char* ckey, char* mkey, void* value)
+{
+    bool found;
+    unsigned int cellix;
+    unsigned int itemix;
+    unsigned long hash;
+    hash = mc_util_hashdata(ckey, mc_util_strlen(ckey));
+    found = false;
+    cellix = mc_ptrdict_getcellindex(dict, ckey, hash, &found);
+    if(found)
+    {
+        itemix = dict->gdcells[cellix];
+        dict->gdvalues[itemix] = value;
+        return true;
+    }
+    return mc_ptrdict_setintern(dict, cellix, hash, ckey, mkey, value);
+}
+
+MC_INLINE bool mc_ptrdict_set(mcptrdict_t* dict, const char* key, void* value)
+{
+    return mc_ptrdict_setactual(dict, key, NULL, value);
+}
+
+MC_INLINE void* mc_ptrdict_get(mcptrdict_t* dict, const char* key)
+{
+    bool found;
+    unsigned int itemix;
+    unsigned long hash;
+    unsigned long cellix;
+    hash = mc_util_hashdata(key, mc_util_strlen(key));
+    found = false;
+    cellix = mc_ptrdict_getcellindex(dict, key, hash, &found);
+    if(found == false)
+    {
+        return NULL;
+    }
+    itemix = dict->gdcells[cellix];
+    return dict->gdvalues[itemix];
+}
+
+MC_INLINE void* mc_ptrdict_getvalueat(mcptrdict_t* dict, unsigned int ix)
+{
+    if(ix >= dict->gdcount)
+    {
+        return NULL;
+    }
+    return dict->gdvalues[ix];
+}
+
+MC_INLINE const char* mc_ptrdict_getkeyat(mcptrdict_t* dict, unsigned int ix)
+{
+    if(ix >= dict->gdcount)
+    {
+        return NULL;
+    }
+    return dict->gdkeys[ix];
+}
+
+MC_INLINE size_t mc_ptrdict_count(mcptrdict_t* dict)
+{
+    if(!dict)
+    {
+        return 0;
+    }
+    return dict->gdcount;
+}
+
+MC_INLINE bool mc_ptrdict_remove(mcptrdict_t* dict, const char* key)
+{
+    bool found;
+    unsigned int x;
+    unsigned int k;
+    unsigned int i;
+    unsigned int j;
+    unsigned int cell;
+    unsigned int itemix;
+    unsigned int lastitemix;
+    unsigned long hash;
+    hash = mc_util_hashdata(key, mc_util_strlen(key));
+    found = false;
+    cell = mc_ptrdict_getcellindex(dict, key, hash, &found);
+    if(!found)
+    {
+        return false;
+    }
+    itemix = dict->gdcells[cell];
+    mc_memory_free(dict->gdkeys[itemix]);
+    lastitemix = dict->gdcount - 1;
+    if(itemix < lastitemix)
+    {
+        dict->gdkeys[itemix] = dict->gdkeys[lastitemix];
+        dict->gdvalues[itemix] = dict->gdvalues[lastitemix];
+        dict->gdcellindices[itemix] = dict->gdcellindices[lastitemix];
+        dict->gdhashes[itemix] = dict->gdhashes[lastitemix];
+        dict->gdcells[dict->gdcellindices[itemix]] = itemix;
+    }
+    dict->gdcount--;
+    i = cell;
+    j = i;
+    for(x = 0; x < (dict->gdcellcapacity - 1); x++)
+    {
+        j = (j + 1) & (dict->gdcellcapacity - 1);
+        if(dict->gdcells[j] == MC_CONF_GENERICDICTINVALIDIX)
+        {
+            break;
+        }
+        k = (unsigned int)(dict->gdhashes[dict->gdcells[j]]) & (dict->gdcellcapacity - 1);
+        if((j > i && (k <= i || k > j)) || (j < i && (k <= i && k > j)))
+        {
+            dict->gdcellindices[dict->gdcells[j]] = i;
+            dict->gdcells[i] = dict->gdcells[j];
+            i = j;
+        }
+    }
+    dict->gdcells[i] = MC_CONF_GENERICDICTINVALIDIX;
+    return true;
+}
+
+mcptrdict_t* mc_ptrdict_copy(mcptrdict_t* dict)
+{
+    bool ok;
+    size_t i;
+    void* item;
+    void* itemcopy;
+    const char* key;
+    mcptrdict_t* dictcopy;
+    if(!dict->funccopyfn || !dict->funcdestroyfn)
+    {
+        return NULL;
+    }
+    dictcopy = mc_ptrdict_make(dict->pstate, dict->funccopyfn, dict->funcdestroyfn);
+    if(!dictcopy)
+    {
+        return NULL;
+    }
+    dictcopy->pstate = dict->pstate;
+    for(i = 0; i < mc_ptrdict_count(dict); i++)
+    {
+        key = mc_ptrdict_getkeyat(dict, i);
+        item = mc_ptrdict_getvalueat(dict, i);
+        itemcopy = dictcopy->funccopyfn(item);
+        if(item && !itemcopy)
+        {
+            mc_ptrdict_destroyitemsanddict(dictcopy);
+            return NULL;
+        }
+        ok = mc_ptrdict_set(dictcopy, key, itemcopy);
+        if(!ok)
+        {
+            dictcopy->funcdestroyfn(itemcopy);
+            mc_ptrdict_destroyitemsanddict(dictcopy);
+            return NULL;
+        }
+    }
+    return dictcopy;
+}
+
+
+bool mc_valdict_init(mcstate_t* state, mcvaldict_t* dict, unsigned int initialcapacity, size_t ktsz, size_t vtsz)
+{
+    unsigned int i;
+    dict->pstate = state;
+    dict->keytypesize = ktsz;
+    dict->valtypesize = vtsz;
+    dict->vdcells = NULL;
+    dict->vdkeys = NULL;
+    dict->vdvalues = NULL;
+    dict->vdcellindices = NULL;
+    dict->vdhashes = NULL;
+    dict->vdcount = 0;
+    dict->vdcellcapacity = initialcapacity;
+    dict->vditemcapacity = (unsigned int)(initialcapacity * 0.7f);
+    dict->funckeyequalsfn = NULL;
+    dict->funchashfn = NULL;
+    dict->vdcells = (unsigned int*)mc_allocator_malloc(dict->pstate, dict->vdcellcapacity * sizeof(unsigned int));
+    dict->vdkeys = (char**)mc_allocator_malloc(dict->pstate, dict->vditemcapacity * dict->keytypesize);
+    dict->vdvalues = (void**)mc_allocator_malloc(dict->pstate, dict->vditemcapacity * dict->valtypesize);
+    dict->vdcellindices = (unsigned int*)mc_allocator_malloc(dict->pstate, dict->vditemcapacity * sizeof(unsigned int));
+    dict->vdhashes = (long unsigned int*)mc_allocator_malloc(dict->pstate, dict->vditemcapacity * sizeof(unsigned long));
+    if(dict->vdcells == NULL || dict->vdkeys == NULL || dict->vdvalues == NULL || dict->vdcellindices == NULL || dict->vdhashes == NULL)
+    {
+        goto dictallocfailed;
+    }
+    for(i = 0; i < dict->vdcellcapacity; i++)
+    {
+        dict->vdcells[i] = MC_CONF_VALDICTINVALIDIX;
+    }
+    return true;
+dictallocfailed:
+    mc_memory_free(dict->vdcells);
+    mc_memory_free(dict->vdkeys);
+    mc_memory_free(dict->vdvalues);
+    mc_memory_free(dict->vdcellindices);
+    mc_memory_free(dict->vdhashes);
+    return false;
+}
+
+void mc_valdict_deinit(mcvaldict_t* dict)
+{
+    dict->keytypesize = 0;
+    dict->valtypesize = 0;
+    dict->vdcount = 0;
+    dict->vditemcapacity = 0;
+    dict->vdcellcapacity = 0;
+    mc_memory_free(dict->vdcells);
+    mc_memory_free(dict->vdkeys);
+    mc_memory_free(dict->vdvalues);
+    mc_memory_free(dict->vdcellindices);
+    mc_memory_free(dict->vdhashes);
+    dict->vdcells = NULL;
+    dict->vdkeys = NULL;
+    dict->vdvalues = NULL;
+    dict->vdcellindices = NULL;
+    dict->vdhashes = NULL;
+}
+
+mcvaldict_t* mc_valdict_makedefault(mcstate_t* state, size_t ktsz, size_t vtsz)
+{
+    return mc_valdict_makecapacity(state, MC_CONF_GENERICDICTINITSIZE, ktsz, vtsz);
+}
+
+mcvaldict_t* mc_valdict_makecapacity(mcstate_t* state, unsigned int mincapacity, size_t ktsz, size_t vtsz)
+{
+    bool ok;
+    unsigned int capacity;
+    mcvaldict_t* dict;
+    capacity = mc_util_upperpowoftwo(mincapacity * 2);
+    dict = (mcvaldict_t*)mc_allocator_malloc(state, sizeof(mcvaldict_t));
+    if(!dict)
+    {
+        return NULL;
+    }
+    ok = mc_valdict_init(state, dict, capacity, ktsz, vtsz);
+    if(!ok)
+    {
+        mc_memory_free(dict);
+        return NULL;
+    }
+    dict->pstate = state;
+    return dict;
+}
+
+void mc_valdict_destroy(mcvaldict_t* dict)
+{
+    if(dict != NULL)
+    {
+        mc_valdict_deinit(dict);
+        mc_memory_free(dict);
+    }
+}
+
+MC_INLINE void mc_valdict_sethashfunction(mcvaldict_t* dict, mcitemhashfn_t hashfn)
+{
+    dict->funchashfn = hashfn;
+}
+
+MC_INLINE void mc_valdict_setequalsfunction(mcvaldict_t* dict, mcitemcomparefn_t equalsfn)
+{
+    dict->funckeyequalsfn = equalsfn;
+}
+
+bool mc_valdict_setkvintern(mcvaldict_t* dict, unsigned int cellix, unsigned long hash, void* key, void* value)
+{
+    bool ok;
+    bool found;
+    unsigned int lastix;
+    if(dict->vdcount >= dict->vditemcapacity)
+    {
+        ok = mc_valdict_growandrehash(dict);
+        if(!ok)
+        {
+            return false;
+        }
+        cellix = mc_valdict_getcellindex(dict, key, hash, &found);
+    }
+    lastix = dict->vdcount;
+    dict->vdcount++;
+    dict->vdcells[cellix] = lastix;
+    mc_valdict_setkeyat(dict, lastix, key);
+    mc_valdict_setvalueat(dict, lastix, value);
+    dict->vdcellindices[lastix] = cellix;
+    dict->vdhashes[lastix] = hash;
+    return true;
+}
+
+MC_INLINE bool mc_valdict_setkv(mcvaldict_t* dict, void* key, void* value)
+{
+    bool found;
+    unsigned long hash;
+    unsigned int cellix;
+    unsigned int itemix;
+    hash = mc_valdict_hashkey(dict, key);
+    found = false;
+    cellix = mc_valdict_getcellindex(dict, key, hash, &found);
+    if(found)
+    {
+        itemix = dict->vdcells[cellix];
+        mc_valdict_setvalueat(dict, itemix, value);
+        return true;
+    }
+    return mc_valdict_setkvintern(dict, cellix, hash, key, value);
+}
+
+MC_INLINE void* mc_valdict_get(mcvaldict_t* dict, void* key)
+{
+    bool found;
+    unsigned int itemix;
+    unsigned long hash;
+    unsigned long cellix;
+    if(dict->vdcount == 0)
+    {
+        return NULL;
+    }
+    hash = mc_valdict_hashkey(dict, key);
+    found = false;
+    cellix = mc_valdict_getcellindex(dict, key, hash, &found);
+    if(!found)
+    {
+        return NULL;
+    }
+    itemix = dict->vdcells[cellix];
+    return mc_valdict_getvalueat(dict, itemix);
+}
+
+MC_INLINE void* mc_valdict_getkeyat(mcvaldict_t* dict, unsigned int ix)
+{
+    if(ix >= dict->vdcount)
+    {
+        return NULL;
+    }
+    return (char*)dict->vdkeys + (dict->keytypesize * ix);
+}
+
+MC_INLINE void* mc_valdict_getvalueat(mcvaldict_t* dict, unsigned int ix)
+{
+    if(ix >= dict->vdcount)
+    {
+        return NULL;
+    }
+    return (char*)dict->vdvalues + (dict->valtypesize * ix);
+}
+
+MC_INLINE unsigned int mc_valdict_getcapacity(mcvaldict_t* dict)
+{
+    return dict->vditemcapacity;
+}
+
+MC_INLINE bool mc_valdict_setvalueat(mcvaldict_t* dict, unsigned int ix, void* value)
+{
+    size_t offset;
+    if(ix >= dict->vdcount)
+    {
+        return false;
+    }
+    offset = ix * dict->valtypesize;
+    memcpy((char*)dict->vdvalues + offset, value, dict->valtypesize);
+    return true;
+}
+
+MC_INLINE int mc_valdict_count(mcvaldict_t* dict)
+{
+    if(!dict)
+    {
+        return 0;
+    }
+    return dict->vdcount;
+}
+
+MC_INLINE bool mc_valdict_removebykey(mcvaldict_t* dict, void* key)
+{
+    bool found;
+    unsigned int x;
+    unsigned int k;
+    unsigned int i;
+    unsigned int j;
+    unsigned int cell;
+    unsigned int itemix;
+    unsigned int lastitemix;
+    unsigned long hash;
+    void* lastkey;
+    void* lastvalue;
+    hash = mc_valdict_hashkey(dict, key);
+    found = false;
+    cell = mc_valdict_getcellindex(dict, key, hash, &found);
+    if(!found)
+    {
+        return false;
+    }
+    itemix = dict->vdcells[cell];
+    lastitemix = dict->vdcount - 1;
+    if(itemix < lastitemix)
+    {
+        lastkey = mc_valdict_getkeyat(dict, lastitemix);
+        mc_valdict_setkeyat(dict, itemix, lastkey);
+        lastvalue = mc_valdict_getkeyat(dict, lastitemix);
+        mc_valdict_setvalueat(dict, itemix, lastvalue);
+        dict->vdcellindices[itemix] = dict->vdcellindices[lastitemix];
+        dict->vdhashes[itemix] = dict->vdhashes[lastitemix];
+        dict->vdcells[dict->vdcellindices[itemix]] = itemix;
+    }
+    dict->vdcount--;
+    i = cell;
+    j = i;
+    for(x = 0; x < (dict->vdcellcapacity - 1); x++)
+    {
+        j = (j + 1) & (dict->vdcellcapacity - 1);
+        if(dict->vdcells[j] == MC_CONF_VALDICTINVALIDIX)
+        {
+            break;
+        }
+        k = (unsigned int)(dict->vdhashes[dict->vdcells[j]]) & (dict->vdcellcapacity - 1);
+        if((j > i && (k <= i || k > j)) || (j < i && (k <= i && k > j)))
+        {
+            dict->vdcellindices[dict->vdcells[j]] = i;
+            dict->vdcells[i] = dict->vdcells[j];
+            i = j;
+        }
+    }
+    dict->vdcells[i] = MC_CONF_VALDICTINVALIDIX;
+    return true;
+}
+
+MC_INLINE void mc_valdict_clear(mcvaldict_t* dict)
+{
+    unsigned int i;
+    dict->vdcount = 0;
+    for(i = 0; i < dict->vdcellcapacity; i++)
+    {
+        dict->vdcells[i] = MC_CONF_VALDICTINVALIDIX;
+    }
+}
+
+MC_INLINE unsigned int mc_valdict_getcellindex(mcvaldict_t* dict, void* key, unsigned long hash, bool* outfound)
+{
+    bool areequal;
+    unsigned int i;
+    unsigned int ix;
+    unsigned int cell;
+    unsigned int cellix;
+    unsigned long hashtocheck;
+    void* keytocheck;
+    *outfound = false;
+    cellix = (unsigned int)hash & (dict->vdcellcapacity - 1);
+    for(i = 0; i < dict->vdcellcapacity; i++)
+    {
+        ix = (cellix + i) & (dict->vdcellcapacity - 1);
+        cell = dict->vdcells[ix];
+        if(cell == MC_CONF_VALDICTINVALIDIX)
+        {
+            return ix;
+        }
+        hashtocheck = dict->vdhashes[cell];
+        if(hash != hashtocheck)
+        {
+            continue;
+        }
+        keytocheck = mc_valdict_getkeyat(dict, cell);
+        areequal = mc_valdict_keysareequal(dict, key, keytocheck);
+        if(areequal)
+        {
+            *outfound = true;
+            return ix;
+        }
+    }
+    return MC_CONF_VALDICTINVALIDIX;
+}
+
+MC_INLINE bool mc_valdict_growandrehash(mcvaldict_t* dict)
+{
+    bool ok;
+    mcvaldict_t newdict;
+    unsigned int i;
+    unsigned ncap;
+    char* key;
+    void* value;
+    ncap = MC_UTIL_INCCAPACITY(dict->vdcellcapacity);    
+    ok = mc_valdict_init(dict->pstate, &newdict, ncap, dict->keytypesize, dict->valtypesize);
+    if(!ok)
+    {
+        return false;
+    }
+    newdict.funckeyequalsfn = dict->funckeyequalsfn;
+    newdict.funchashfn = dict->funchashfn;
+    for(i = 0; i < dict->vdcount; i++)
+    {
+        key = (char*)mc_valdict_getkeyat(dict, i);
+        value = mc_valdict_getvalueat(dict, i);
+        ok = mc_valdict_setkv(&newdict, key, value);
+        if(!ok)
+        {
+            mc_valdict_deinit(&newdict);
+            return false;
+        }
+    }
+    mc_valdict_deinit(dict);
+    *dict = newdict;
+    return true;
+}
+
+MC_INLINE bool mc_valdict_setkeyat(mcvaldict_t* dict, unsigned int ix, void* key)
+{
+    size_t offset;
+    if(ix >= dict->vdcount)
+    {
+        return false;
+    }
+    offset = ix * dict->keytypesize;
+    memcpy((char*)dict->vdkeys + offset, key, dict->keytypesize);
+    return true;
+}
+
+MC_INLINE bool mc_valdict_keysareequal(mcvaldict_t* dict, void* a, void* b)
+{
+    if(dict->funckeyequalsfn)
+    {
+        return dict->funckeyequalsfn(a, b);
+    }
+    return memcmp(a, b, dict->keytypesize) == 0;
+}
+
+MC_INLINE unsigned long mc_valdict_hashkey(mcvaldict_t* dict, void* key)
+{
+    if(dict->funchashfn)
+    {
+        return dict->funchashfn(key);
+    }
+    return mc_util_hashdata(key, dict->keytypesize);
+}
+
+
+
+
+const char* mc_valtype_getname(mcvaltype_t type)
+{
+    switch(type)
+    {
+        case MC_VAL_NONE:
+        case MC_VAL_FREED:
+        case MC_VAL_NULL:
+            return "null";
+        case MC_VAL_NUMBER:
+            return "number";
+        case MC_VAL_BOOL:
+            return "boolean";
+        case MC_VAL_STRING:
+            return "string";
+        case MC_VAL_FUNCNATIVE:
+        case MC_VAL_FUNCSCRIPT:
+            return "function";
+        case MC_VAL_ARRAY:
+            return "array";
+        case MC_VAL_MAP:
+            return "object";
+        case MC_VAL_EXTERNAL:
+            return "extern";
+        case MC_VAL_ERROR:
+            return "error";
+        case MC_VAL_ANY:
+            return "any";
+    }
+    return "invalid";
+}
+
+
+const char* mc_util_objtypename(mcvaltype_t type)
+{
+    switch(type)
+    {
+        case MC_VAL_NONE:
+            return "NONE";
+        case MC_VAL_ERROR:
+            return "ERROR";
+        case MC_VAL_NUMBER:
+            return "NUMBER";
+        case MC_VAL_BOOL:
+            return "BOOL";
+        case MC_VAL_STRING:
+            return "STRING";
+        case MC_VAL_NULL:
+            return "NULL";
+        case MC_VAL_FUNCNATIVE:
+            return "NATIVE_FUNCTION";
+        case MC_VAL_ARRAY:
+            return "ARRAY";
+        case MC_VAL_MAP:
+            return "MAP";
+        case MC_VAL_FUNCSCRIPT:
+            return "FUNCTION";
+        case MC_VAL_EXTERNAL:
+            return "EXTERNAL";
+        case MC_VAL_FREED:
+            return "FREED";
+        case MC_VAL_ANY:
+            return "ANY";
+        default:
+            break;
+    }
+    return "NONE";
+}
+
+MC_FORCEINLINE mcvalue_t mc_object_makedatafrom(mcvaltype_t type, mcobjdata_t* data)
+{
+    mcvalue_t object;
+    memset(&object, 0, sizeof(mcvalue_t));
+    object.valtype = type;
+    data->odtype = type;
+    object.isallocated = true;
+    object.uval.odata = data;
+    return object;
+}
+
+MC_FORCEINLINE mcvalue_t mc_value_makeempty(mcvaltype_t t)
+{
+    mcvalue_t o = {};
+    o.valtype = t;
+    o.isallocated = false;
+    return o;
+}
+
+MC_FORCEINLINE mcvalue_t mc_value_makenumber(mcfloat_t val)
+{
+    mcvalue_t o;
+    o = mc_value_makeempty(MC_VAL_NUMBER);
+    o.uval.valnumber = val;
+    return o;
+}
+
+MC_FORCEINLINE mcvalue_t mc_value_makebool(bool val)
+{
+    mcvalue_t o;
+    o = mc_value_makeempty(MC_VAL_BOOL);
+    o.uval.valbool = val;
+    return o;
+}
+
+MC_FORCEINLINE mcvalue_t mc_value_makenull()
+{
+    mcvalue_t o;
+    o = mc_value_makeempty(MC_VAL_NULL);
+    return o;
+}
+
+MC_FORCEINLINE bool mc_value_isallocated(mcvalue_t object)
+{
+    return object.isallocated;
+}
+
+MC_FORCEINLINE bool mc_value_isnumeric(mcvalue_t obj)
+{
+    mcvaltype_t type;
+    type = mc_value_gettype(obj);
+    return type == MC_VAL_NUMBER || type == MC_VAL_BOOL;
+}
+
+MC_FORCEINLINE bool mc_value_isnumber(mcvalue_t o)
+{
+    return (mc_value_gettype(o) == MC_VAL_NUMBER || mc_value_gettype(o) == MC_VAL_BOOL);
+}
+
+MC_FORCEINLINE bool mc_value_isnull(mcvalue_t obj)
+{
+    return mc_value_gettype(obj) == MC_VAL_NULL;
+}
+
+MC_FORCEINLINE bool mc_value_isfuncnative(mcvalue_t obj)
+{
+    mcvaltype_t type;
+    type = mc_value_gettype(obj);
+    return (type == MC_VAL_FUNCNATIVE);
+}
+
+MC_FORCEINLINE bool mc_value_isfuncscript(mcvalue_t obj)
+{
+    mcvaltype_t type;
+    type = mc_value_gettype(obj);
+    return (type == MC_VAL_FUNCSCRIPT);
+}
+
+MC_FORCEINLINE bool mc_value_iscallable(mcvalue_t obj)
+{
+    return (mc_value_isfuncnative(obj) || mc_value_isfuncscript(obj));
+}
+
+MC_FORCEINLINE bool mc_value_isstring(mcvalue_t obj)
+{
+    mcvaltype_t type;
+    type = mc_value_gettype(obj);
+    return (type == MC_VAL_STRING);
+}
+
+MC_FORCEINLINE bool mc_value_ismap(mcvalue_t obj)
+{
+    mcvaltype_t type;
+    type = mc_value_gettype(obj);
+    return (type == MC_VAL_MAP);
+}
+
+MC_FORCEINLINE bool mc_value_isarray(mcvalue_t obj)
+{
+    mcvaltype_t type;
+    type = mc_value_gettype(obj);
+    return (type == MC_VAL_ARRAY);
+}
+
+MC_FORCEINLINE bool mc_value_ishashable(mcvalue_t obj)
+{
+    mcvaltype_t type = mc_value_gettype(obj);
+    switch(type)
+    {
+        case MC_VAL_STRING:
+        case MC_VAL_NUMBER:
+        case MC_VAL_BOOL:
+            return true;
+        default:
+            break;
+    }
+    return false;
+}
+
+mcvalue_t mc_value_makestrcapacity(mcstate_t* state, int capacity)
+{
+    mcobjdata_t* data;
+    data = mc_gcmemory_getdatafrompool(state, MC_VAL_STRING);
+    if(!data)
+    {
+        data = mc_gcmemory_allocobjectdata(state);
+        if(!data)
+        {
+            return mc_value_makenull();
+        }
+    }
+    data->uvobj.valstring.hash = 0;
+    data->uvobj.valstring.strbuf = dyn_strbuf_makeempty(capacity);
+    return mc_object_makedatafrom(MC_VAL_STRING, data);
+}
+
+mcvalue_t mc_value_makestrformat(mcstate_t* state, const char* fmt, ...)
+{
+    va_list args;
+    mcvalue_t res;
+    mcobjdata_t* data;
+    data = mc_gcmemory_getdatafrompool(state, MC_VAL_STRING);
+    res = mc_value_makestrcapacity(state, 0);
+    if(mc_value_isnull(res))
+    {
+        return mc_value_makenull();
+    }
+    va_start(args, fmt);
+    dyn_strbuf_appendformatv(data->uvobj.valstring.strbuf, fmt, args);
+    va_end(args);
+    return res;
+}
+
+mcvalue_t mc_value_makestringlen(mcstate_t* state, const char* string, size_t len)
+{
+    bool ok;
+    mcvalue_t res;
+    res = mc_value_makestrcapacity(state, len);
+    if(mc_value_isnull(res))
+    {
+        return res;
+    }
+    ok = mc_value_stringappendlen(res, string, len);
+    if(!ok)
+    {
+        return mc_value_makenull();
+    }
+    return res;
+}
+
+mcvalue_t mc_value_makestring(mcstate_t* state, const char* string)
+{
+    return mc_value_makestringlen(state, string, mc_util_strlen(string));
+}
+
+mcvalue_t mc_value_makefuncnative(mcstate_t* state, const char* name, mcnativefn_t fn, void* data)
+{
+    mcobjdata_t* obj;
+    obj = mc_gcmemory_allocobjectdata(state);
+    if(!obj)
+    {
+        return mc_value_makenull();
+    }
+    obj->uvobj.valnativefunc.name = mc_util_strdup(state, name);
+    if(!obj->uvobj.valnativefunc.name)
+    {
+        return mc_value_makenull();
+    }
+    obj->uvobj.valnativefunc.natptrfn = fn;
+    if(data)
+    {
+        obj->uvobj.valnativefunc.userpointer = data;
+    }
+    return mc_object_makedatafrom(MC_VAL_FUNCNATIVE, obj);
+}
+
+mcvalue_t mc_value_makearray(mcstate_t* state)
+{
+    return mc_value_makearraycapacity(state, 8);
+}
+
+mcvalue_t mc_value_makearraycapacity(mcstate_t* state, size_t capacity)
+{
+    mcobjdata_t* data;
+    data = mc_gcmemory_getdatafrompool(state, MC_VAL_ARRAY);
+    if(data)
+    {
+        mc_vallist_setempty(data->uvobj.valarray->actualarray);
+        return mc_object_makedatafrom(MC_VAL_ARRAY, data);
+    }
+    data = mc_gcmemory_allocobjectdata(state);
+    if(!data)
+    {
+        return mc_value_makenull();
+    }
+    data->uvobj.valarray = (mcobjarray_t*)mc_memory_malloc(sizeof(mcobjarray_t));
+    data->uvobj.valarray->actualarray = mc_vallist_make(state, NULL, capacity);
+    if(!data->uvobj.valarray->actualarray)
+    {
+        return mc_value_makenull();
+    }
+    return mc_object_makedatafrom(MC_VAL_ARRAY, data);
+}
+
+mcvalue_t mc_value_makemap(mcstate_t* state)
+{
+    return mc_value_makemapcapacity(state, 32);
+}
+
+mcvalue_t mc_value_makemapcapacity(mcstate_t* state, size_t capacity)
+{
+    mcobjdata_t* data;
+    data = mc_gcmemory_getdatafrompool(state, MC_VAL_MAP);
+    if(data)
+    {
+        mc_valdict_clear(data->uvobj.valmap->actualmap);
+        return mc_object_makedatafrom(MC_VAL_MAP, data);
+    }
+    data = mc_gcmemory_allocobjectdata(state);
+    if(!data)
+    {
+        return mc_value_makenull();
+    }
+    data->uvobj.valmap = (mcobjmap_t*)mc_memory_malloc(sizeof(mcobjmap_t));
+    data->uvobj.valmap->actualmap = mc_valdict_makecapacity(state, capacity, sizeof(mcvalue_t), sizeof(mcvalue_t));
+    if(!data->uvobj.valmap->actualmap)
+    {
+        return mc_value_makenull();
+    }
+    mc_valdict_sethashfunction(data->uvobj.valmap->actualmap, (mcitemhashfn_t)mc_value_callbackhash);
+    mc_valdict_setequalsfunction(data->uvobj.valmap->actualmap, (mcitemcomparefn_t)mc_value_callbackequals);
+    return mc_object_makedatafrom(MC_VAL_MAP, data);
+}
+
+mcvalue_t mc_value_makeerror(mcstate_t* state, const char* error)
+{
+    char* errorstr;
+    mcvalue_t res;
+    errorstr = mc_util_strdup(state, error);
+    if(!errorstr)
+    {
+        return mc_value_makenull();
+    }
+    res = mc_value_makeerrornocopy(state, errorstr);
+    if(mc_value_isnull(res))
+    {
+        mc_memory_free(errorstr);
+        return mc_value_makenull();
+    }
+    return res;
+}
+
+mcvalue_t mc_value_makeerrornocopy(mcstate_t* state, char* error)
+{
+    mcobjdata_t* data;
+    data = mc_gcmemory_allocobjectdata(state);
+    if(!data)
+    {
+        return mc_value_makenull();
+    }
+    data->uvobj.valerror.message = error;
+    data->uvobj.valerror.traceback = NULL;
+    return mc_object_makedatafrom(MC_VAL_ERROR, data);
+}
+
+mcvalue_t mc_value_makeerrorf(mcstate_t* state, const char* fmt, ...)
+{
+    int needsz;
+    int printedsz;
+    char* res;
+    va_list args;
+    mcvalue_t resobj;
+    (void)printedsz;
+    va_start(args, fmt);
+    needsz = vsnprintf(NULL, 0, fmt, args);
+    va_end(args);
+    va_start(args, fmt);
+    res = (char*)mc_memory_malloc(needsz + 1);
+    if(!res)
+    {
+        return mc_value_makenull();
+    }
+    printedsz = vsprintf(res, fmt, args);
+    MC_ASSERT(printedsz == needsz);
+    va_end(args);
+    resobj = mc_value_makeerrornocopy(state, res);
+    if(mc_value_isnull(resobj))
+    {
+        mc_memory_free(res);
+        return mc_value_makenull();
+    }
+    return resobj;
+}
+
+mcvalue_t mc_value_makefuncscript(mcstate_t* state, const char* name, mccompiledprogram_t* cres, bool ownsdt, int nlocals, int nargs, int fvc)
+{
+    mcobjdata_t* data;
+    data = mc_gcmemory_allocobjectdata(state);
+    if(!data)
+    {
+        return mc_value_makenull();
+    }
+    if(ownsdt)
+    {
+        data->uvobj.valscriptfunc.unamev.fallocname = name ? mc_util_strdup(state, name) : mc_util_strdup(state, "anonymous");
+        if(!data->uvobj.valscriptfunc.unamev.fallocname)
+        {
+            return mc_value_makenull();
+        }
+    }
+    else
+    {
+        data->uvobj.valscriptfunc.unamev.fconstname = name ? name : "anonymous";
+    }
+    data->uvobj.valscriptfunc.compiledprogcode = cres;
+    data->uvobj.valscriptfunc.ownsdata = ownsdt;
+    data->uvobj.valscriptfunc.numlocals = nlocals;
+    data->uvobj.valscriptfunc.numargs = nargs;
+    if(fvc >= MC_UTIL_STATICARRAYSIZE(data->uvobj.valscriptfunc.ufv.freevalsstack))
+    {
+        data->uvobj.valscriptfunc.ufv.freevalsallocated = (mcvalue_t*)mc_memory_malloc(sizeof(mcvalue_t) * fvc);
+        if(!data->uvobj.valscriptfunc.ufv.freevalsallocated)
+        {
+            return mc_value_makenull();
+        }
+    }
+    data->uvobj.valscriptfunc.freevalscount = fvc;
+    return mc_object_makedatafrom(MC_VAL_FUNCSCRIPT, data);
+}
+
+mcvalue_t mc_value_makeuserobject(mcstate_t* state, void* data)
+{
+    mcobjdata_t* obj;
+    obj = mc_gcmemory_allocobjectdata(state);
+    if(!obj)
+    {
+        return mc_value_makenull();
+    }
+    obj->uvobj.valuserobject.data = data;
+    obj->uvobj.valuserobject.datadestroyfn = NULL;
+    obj->uvobj.valuserobject.datacopyfn = NULL;
+    return mc_object_makedatafrom(MC_VAL_EXTERNAL, obj);
+}
+
+mcvallist_t* mc_value_arraygetactualarray(mcvalue_t object)
+{
+    mcobjdata_t* data;
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_ARRAY);
+    data = mc_value_getallocateddata(object);
+    return data->uvobj.valarray->actualarray;
+}
+
+bool mc_objfunction_freevalsareallocated(mcobjfuncscript_t* fun)
+{
+    return fun->freevalscount >= MC_UTIL_STATICARRAYSIZE(fun->ufv.freevalsstack);
+}
+
+MC_INLINE char* mc_value_stringgetdataintern(mcvalue_t object)
+{
+    mcobjdata_t* data;
+    data = mc_value_getallocateddata(object);
+    MC_ASSERT(data->odtype == MC_VAL_STRING);
+    return data->uvobj.valstring.strbuf->data;
+}
+
+mcobjuserdata_t* mc_value_userdatagetdata(mcvalue_t object)
+{
+    mcobjdata_t* data;
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_EXTERNAL);
+    data = mc_value_getallocateddata(object);
+    return &data->uvobj.valuserobject;
+}
+
+bool mc_value_userdatasetdata(mcvalue_t object, void* extdata)
+{
+    mcobjuserdata_t* data;
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_EXTERNAL);
+    data = mc_value_userdatagetdata(object);
+    if(!data)
+    {
+        return false;
+    }
+    data->data = extdata;
+    return true;
+}
+
+bool mc_value_userdatasetdestroyfunction(mcvalue_t object, mcitemdestroyfn_t dfn)
+{
+    mcobjuserdata_t* data;
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_EXTERNAL);
+    data = mc_value_userdatagetdata(object);
+    if(!data)
+    {
+        return false;
+    }
+    data->datadestroyfn = dfn;
+    return true;
+}
+
+bool mc_value_userdatasetcopyfunction(mcvalue_t object, mcitemcopyfn_t copyfn)
+{
+    mcobjuserdata_t* data;
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_EXTERNAL);
+    data = mc_value_userdatagetdata(object);
+    if(!data)
+    {
+        return false;
+    }
+    data->datacopyfn = copyfn;
+    return true;
+}
+
+bool mc_value_asbool(mcvalue_t obj)
+{
+    if(mc_value_isnumber(obj))
+    {
+        return obj.uval.valnumber;
+    }
+    return obj.uval.valbool;
+}
+
+mcfloat_t mc_value_asnumber(mcvalue_t obj)
+{
+    if(mc_value_isnumber(obj))
+    {
+        if(mc_value_gettype(obj) == MC_VAL_BOOL)
+        {
+            return obj.uval.valbool;
+        }
+        return obj.uval.valnumber;
+    }
+    return obj.uval.valnumber;
+}
+
+MC_INLINE const char* mc_value_stringgetdata(mcvalue_t object)
+{
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_STRING);
+    return mc_value_stringgetdataintern(object);
+}
+
+int mc_value_stringgetlength(mcvalue_t object)
+{
+    mcobjdata_t* data;
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_STRING);
+    data = mc_value_getallocateddata(object);
+    return data->uvobj.valstring.strbuf->length;
+}
+
+void mc_value_stringsetlength(mcvalue_t object, int len)
+{
+    mcobjdata_t* data;
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_STRING);
+    data = mc_value_getallocateddata(object);
+    data->uvobj.valstring.strbuf->length = len;
+    mc_value_stringrehash(object);
+}
+
+
+MC_INLINE char* mc_value_stringgetmutabledata(mcvalue_t object)
+{
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_STRING);
+    return mc_value_stringgetdataintern(object);
+}
+
+bool mc_value_stringappendlen(mcvalue_t obj, const char* src, size_t len)
+{
+    mcobjdata_t* data;
+    mcobjstring_t* string;
+    MC_ASSERT(mc_value_gettype(obj) == MC_VAL_STRING);
+    data = mc_value_getallocateddata(obj);
+    string = &data->uvobj.valstring;
+    dyn_strbuf_appendstrn(string->strbuf, src, len);
+    mc_value_stringrehash(obj);
+    return true;
+}
+
+bool mc_value_stringappend(mcvalue_t obj, const char* src)
+{
+    return mc_value_stringappendlen(obj, src, strlen(src));
+}
+
+bool mc_value_stringappendformatv(mcvalue_t obj, const char* fmt, va_list va)
+{
+    mcobjdata_t* data;
+    mcobjstring_t* string;
+    MC_ASSERT(mc_value_gettype(obj) == MC_VAL_STRING);
+    data = mc_value_getallocateddata(obj);
+    string = &data->uvobj.valstring;
+    dyn_strbuf_appendformatv(string->strbuf, fmt, va);
+    mc_value_stringrehash(obj);
+    return true;
+}
+
+bool mc_value_stringappendformat(mcvalue_t obj, const char* fmt, ...)
+{
+    bool r;
+    va_list va;
+    va_start(va, fmt);
+    r = mc_value_stringappendformatv(obj, fmt, va);
+    va_end(va);
+    return r;
+}
+
+bool mc_value_stringappendvalue(mcvalue_t destval, mcvalue_t val)
+{
+    bool ok;
+    int vlen;
+    const char* vstr;
+    if(mc_value_gettype(val) == MC_VAL_NUMBER)
+    {
+        mc_value_stringappendformat(destval, "%g", mc_value_asnumber(val));
+        goto finished;
+    }
+    if(mc_value_gettype(val) == MC_VAL_STRING)
+    {
+        vlen = mc_value_stringgetlength(val);
+        vstr = mc_value_stringgetdata(val);
+        ok = mc_value_stringappendlen(destval, vstr, vlen);
+        if(!ok)
+        {
+            return false;
+        }
+        goto finished;
+    }
+    return false;
+    finished:
+    mc_value_stringrehash(destval);
+    return true;
+}
+
+size_t mc_value_stringgethash(mcvalue_t obj)
+{
+    size_t len;
+    const char* str;
+    mcobjdata_t* data;
+    MC_ASSERT(mc_value_gettype(obj) == MC_VAL_STRING);
+    data = mc_value_getallocateddata(obj);
+    if(data->uvobj.valstring.hash == 0)
+    {
+        len = mc_value_stringgetlength(obj);
+        str = mc_value_stringgetdata(obj);
+        data->uvobj.valstring.hash = mc_util_hashdata(str, len);
+    }
+    return data->uvobj.valstring.hash;
+}
+
+bool mc_value_stringrehash(mcvalue_t obj)
+{
+    size_t len;
+    const char* str;
+    mcobjdata_t* data;
+    MC_ASSERT(mc_value_gettype(obj) == MC_VAL_STRING);
+    data = mc_value_getallocateddata(obj);
+    len = mc_value_stringgetlength(obj);
+    str = mc_value_stringgetdata(obj);
+    data->uvobj.valstring.hash = mc_util_hashdata(str, len);
+    return true;
+}
+
+mcobjfuncscript_t* mc_value_asscriptfunction(mcvalue_t object)
+{
+    mcobjdata_t* data;
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_FUNCSCRIPT);
+    data = mc_value_getallocateddata(object);
+    return &data->uvobj.valscriptfunc;
+}
+
+MC_INLINE mcobjfuncnative_t* mc_value_asnativefunction(mcvalue_t obj)
+{
+    mcobjdata_t* data = mc_value_getallocateddata(obj);
+    return &data->uvobj.valnativefunc;
+}
+
+const char* mc_value_functiongetname(mcvalue_t obj)
+{
+    mcobjdata_t* data;
+    MC_ASSERT(mc_value_gettype(obj) == MC_VAL_FUNCSCRIPT);
+    data = mc_value_getallocateddata(obj);
+    MC_ASSERT(data);
+    if(!data)
+    {
+        return NULL;
+    }
+    if(data->uvobj.valscriptfunc.ownsdata)
+    {
+        return data->uvobj.valscriptfunc.unamev.fallocname;
+    }
+    return data->uvobj.valscriptfunc.unamev.fconstname;
+}
+
+mcvalue_t mc_value_functiongetfreevalat(mcvalue_t obj, int ix)
+{
+    mcobjdata_t* data;
+    mcobjfuncscript_t* fun;
+    MC_ASSERT(mc_value_gettype(obj) == MC_VAL_FUNCSCRIPT);
+    data = mc_value_getallocateddata(obj);
+    MC_ASSERT(data);
+    if(!data)
+    {
+        return mc_value_makenull();
+    }
+    fun = &data->uvobj.valscriptfunc;
+    MC_ASSERT(ix >= 0 && ix < fun->freevalscount);
+    if(ix < 0 || ix >= fun->freevalscount)
+    {
+        return mc_value_makenull();
+    }
+    if(mc_objfunction_freevalsareallocated(fun))
+    {
+        return fun->ufv.freevalsallocated[ix];
+    }
+    return fun->ufv.freevalsstack[ix];
+}
+
+void mc_value_functionsetfreevalat(mcvalue_t obj, int ix, mcvalue_t val)
+{
+    mcobjdata_t* data;
+    mcobjfuncscript_t* fun;
+    MC_ASSERT(mc_value_gettype(obj) == MC_VAL_FUNCSCRIPT);
+    data = mc_value_getallocateddata(obj);
+    MC_ASSERT(data);
+    if(data != NULL)
+    {
+        fun = &data->uvobj.valscriptfunc;
+        MC_ASSERT(ix >= 0 && ix < fun->freevalscount);
+        if(ix < 0 || ix >= fun->freevalscount)
+        {
+        }
+        else
+        {
+            if(mc_objfunction_freevalsareallocated(fun))
+            {
+                fun->ufv.freevalsallocated[ix] = val;
+            }
+            else
+            {
+                fun->ufv.freevalsstack[ix] = val;
+            }
+        }
+    }
+}
+
+mcvalue_t* mc_value_functiongetfreevals(mcvalue_t obj)
+{
+    mcobjdata_t* data;
+    mcobjfuncscript_t* fun;
+    MC_ASSERT(mc_value_gettype(obj) == MC_VAL_FUNCSCRIPT);
+    data = mc_value_getallocateddata(obj);
+    MC_ASSERT(data);
+    if(!data)
+    {
+        return NULL;
+    }
+    fun = &data->uvobj.valscriptfunc;
+    if(mc_objfunction_freevalsareallocated(fun))
+    {
+        return fun->ufv.freevalsallocated;
+    }
+    return fun->ufv.freevalsstack;
+}
+
+const char* mc_value_errorgetmessage(mcvalue_t object)
+{
+    mcobjdata_t* data;
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_ERROR);
+    data = mc_value_getallocateddata(object);
+    return data->uvobj.valerror.message;
+}
+
+void mc_value_errorsettraceback(mcvalue_t object, mctraceback_t* traceback)
+{
+    mcobjdata_t* data;
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_ERROR);
+    if(mc_value_gettype(object) == MC_VAL_ERROR)
+    {
+        data = mc_value_getallocateddata(object);
+        MC_ASSERT(data->uvobj.valerror.traceback == NULL);
+        data->uvobj.valerror.traceback = traceback;
+    }
+}
+
+mctraceback_t* mc_value_errorgettraceback(mcvalue_t object)
+{
+    mcobjdata_t* data;
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_ERROR);
+    data = mc_value_getallocateddata(object);
+    return data->uvobj.valerror.traceback;
+}
+
+mcvalue_t mc_value_arraygetvalue(mcvalue_t object, size_t ix)
+{
+    mcvalue_t* res;
+    mcvallist_t* array;
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_ARRAY);
+    array = mc_value_arraygetactualarray(object);
+    if(ix >= mc_vallist_count(array))
+    {
+        return mc_value_makenull();
+    }
+    res = (mcvalue_t*)mc_vallist_getp(array, ix);
+    if(!res)
+    {
+        return mc_value_makenull();
+    }
+    return *res;
+}
+
+bool mc_value_arraysetvalue(mcvalue_t object, size_t ix, mcvalue_t val)
+{
+    size_t len;
+    size_t toadd;
+    mcvallist_t* array;
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_ARRAY);
+    array = mc_value_arraygetactualarray(object);
+    len = mc_vallist_count(array);
+    if((ix >= len) || (len == 0))
+    {
+        toadd = len+1;
+        #if 0
+            fprintf(stderr, "ix=%d toadd=%d len=%d\n", ix, toadd, len);
+        #endif
+        while(toadd != (ix+2))
+        {
+            mc_value_arraypush(object, mc_value_makenull());
+            toadd++;
+        }
+    }
+    return mc_vallist_set(array, ix, val);
+}
+
+bool mc_value_arraypush(mcvalue_t object, mcvalue_t val)
+{
+    mcvallist_t* array;
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_ARRAY);
+    array = mc_value_arraygetactualarray(object);
+    return mc_vallist_push(array, val);
+}
+
+int mc_value_arraygetlength(mcvalue_t object)
+{
+    mcvallist_t* array;
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_ARRAY);
+    array = mc_value_arraygetactualarray(object);
+    return mc_vallist_count(array);
+}
+
+mcvalue_t mc_valarray_pop(mcvalue_t object)
+{
+    mcvalue_t dest;
+    mcvallist_t* array;
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_ARRAY);
+    array = mc_value_arraygetactualarray(object);
+    if(mc_vallist_pop(array, &dest))
+    {
+        return dest;
+    }
+    return mc_value_makenull();
+}
+
+bool mc_value_arrayremoveat(mcvalue_t object, int ix)
+{
+    mcvallist_t* array;
+    array = mc_value_arraygetactualarray(object);
+    return mc_vallist_removeat(array, ix);
+}
+
+int mc_value_mapgetlength(mcvalue_t object)
+{
+    mcobjdata_t* data;
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
+    data = mc_value_getallocateddata(object);
+    return mc_valdict_count(data->uvobj.valmap->actualmap);
+}
+
+mcvalue_t mc_value_mapgetkeyat(mcvalue_t object, int ix)
+{
+    mcvalue_t* res;
+    mcobjdata_t* data;
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
+    data = mc_value_getallocateddata(object);
+    res = (mcvalue_t*)mc_valdict_getkeyat(data->uvobj.valmap->actualmap, ix);
+    if(!res)
+    {
+        return mc_value_makenull();
+    }
+    return *res;
+}
+
+mcvalue_t mc_value_mapgetvalueat(mcvalue_t object, int ix)
+{
+    mcvalue_t* res;
+    mcobjdata_t* data;
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
+    data = mc_value_getallocateddata(object);
+    res = (mcvalue_t*)mc_valdict_getvalueat(data->uvobj.valmap->actualmap, ix);
+    if(!res)
+    {
+        return mc_value_makenull();
+    }
+    return *res;
+}
+
+bool mc_value_mapsetvalueat(mcvalue_t object, int ix, mcvalue_t val)
+{
+    mcobjdata_t* data;
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
+    if(ix >= mc_value_mapgetlength(object))
+    {
+        return false;
+    }
+    data = mc_value_getallocateddata(object);
+    return mc_valdict_setvalueat(data->uvobj.valmap->actualmap, ix, &val);
+}
+
+mcvalue_t mc_value_mapgetkvpairat(mcstate_t* state, mcvalue_t object, int ix)
+{
+    mcvalue_t key;
+    mcvalue_t val;
+    mcvalue_t res;
+    mcvalue_t valobj;
+    mcvalue_t keyobj;
+    mcobjdata_t* data;
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
+    data = mc_value_getallocateddata(object);
+    if(ix >= mc_valdict_count(data->uvobj.valmap->actualmap))
+    {
+        return mc_value_makenull();
+    }
+    key = mc_value_mapgetkeyat(object, ix);
+    val = mc_value_mapgetvalueat(object, ix);
+    res = mc_value_makemap(state);
+    if(mc_value_isnull(res))
+    {
+        return mc_value_makenull();
+    }
+    keyobj = mc_value_makestring(state, "key");
+    if(mc_value_isnull(keyobj))
+    {
+        return mc_value_makenull();
+    }
+    mc_value_mapsetvalue(res, keyobj, key);
+    valobj = mc_value_makestring(state, "value");
+    if(mc_value_isnull(valobj))
+    {
+        return mc_value_makenull();
+    }
+    mc_value_mapsetvalue(res, valobj, val);
+    return res;
+}
+
+bool mc_value_mapsetvalue(mcvalue_t object, mcvalue_t key, mcvalue_t val)
+{
+    mcobjdata_t* data;
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
+    data = mc_value_getallocateddata(object);
+    return mc_valdict_setkv(data->uvobj.valmap->actualmap, &key, &val);
+}
+
+bool mc_value_mapsetvaluestring(mcvalue_t object, const char* strkey, mcvalue_t val)
+{
+    mcstate_t* state;
+    mcvalue_t vkey;
+    state = mc_value_getallocateddata(object)->pstate;
+    vkey = mc_value_makestring(state, strkey);
+    return mc_value_mapsetvalue(object, vkey, val);
+}
+
+mcvalue_t mc_value_mapgetvalue(mcvalue_t object, mcvalue_t key)
+{
+    mcvalue_t* res;
+    mcobjdata_t* data;
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
+    data = mc_value_getallocateddata(object);
+    res = (mcvalue_t*)mc_valdict_get(data->uvobj.valmap->actualmap, &key);
+    if(!res)
+    {
+        return mc_value_makenull();
+    }
+    return *res;
+}
+
+bool mc_value_mapgetvaluechecked(mcvalue_t object, mcvalue_t key, mcvalue_t* dest)
+{
+    mcvalue_t* res;
+    mcobjdata_t* data;
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
+    data = mc_value_getallocateddata(object);
+    res = (mcvalue_t*)mc_valdict_get(data->uvobj.valmap->actualmap, &key);
+    if(!res)
+    {
+        *dest = mc_value_makenull();
+        return false;
+    }
+    *dest = *res;
+    return true;
+}
+
+bool mc_value_maphaskey(mcvalue_t object, mcvalue_t key)
+{
+    mcvalue_t* res;
+    mcobjdata_t* data;
+    MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
+    data = mc_value_getallocateddata(object);
+    res = (mcvalue_t*)mc_valdict_get(data->uvobj.valmap->actualmap, &key);
+    return res != NULL;
+}
+
+void mc_objectdata_deinit(mcobjdata_t* data)
+{
+    switch(data->odtype)
+    {
+        case MC_VAL_FREED:
+            {
+                MC_ASSERT(false);
+            }
+            break;
+        case MC_VAL_STRING:
+            {
+                dyn_strbuf_destroy(data->uvobj.valstring.strbuf);
+            }
+            break;
+        case MC_VAL_FUNCSCRIPT:
+            {
+                if(data->uvobj.valscriptfunc.ownsdata)
+                {
+                    mc_memory_free(data->uvobj.valscriptfunc.unamev.fallocname);
+                    mc_astcompresult_destroy(data->uvobj.valscriptfunc.compiledprogcode);
+                }
+                if(mc_objfunction_freevalsareallocated(&data->uvobj.valscriptfunc))
+                {
+                    mc_memory_free(data->uvobj.valscriptfunc.ufv.freevalsallocated);
+                }
+            }
+            break;
+        case MC_VAL_ARRAY:
+            {
+                mc_vallist_destroy(data->uvobj.valarray->actualarray);
+                mc_memory_free(data->uvobj.valarray);
+            }
+            break;
+        case MC_VAL_MAP:
+            {
+                mc_valdict_destroy(data->uvobj.valmap->actualmap);
+                mc_memory_free(data->uvobj.valmap);
+            }
+            break;
+        case MC_VAL_FUNCNATIVE:
+            {
+                mc_memory_free(data->uvobj.valnativefunc.name);
+            }
+            break;
+        case MC_VAL_EXTERNAL:
+            {
+                if(data->uvobj.valuserobject.datadestroyfn)
+                {
+                    data->uvobj.valuserobject.datadestroyfn(data->uvobj.valuserobject.data);
+                }
+            }
+            break;
+        case MC_VAL_ERROR:
+            {
+                mc_memory_free(data->uvobj.valerror.message);
+                mc_traceback_destroy(data->uvobj.valerror.traceback);
+            }
+            break;
+        default:
+            {
+            }
+            break;
+    }
+    data->odtype = MC_VAL_FREED;
+}
+
+
+MC_FORCEINLINE bool mc_value_compare(mcvalue_t a, mcvalue_t b, mcvalcmpresult_t* cres)
+{
+    const char* astring;
+    const char* bstring;
+    int alen;
+    int blen;
+    intptr_t adataval;
+    intptr_t bdataval;
+    mcfloat_t dnleft;
+    mcfloat_t dnright;
+    size_t ahash;
+    size_t bhash;
+    mcvaltype_t atype;
+    mcvaltype_t btype;
+    /*
+    if(a.odata == b.odata)
+    {
+        return 0;
+    }
+    */
+    cres->result = 1;
+    atype = mc_value_gettype(a);
+    btype = mc_value_gettype(b);
+    if((atype == MC_VAL_NUMBER || atype == MC_VAL_BOOL || atype == MC_VAL_NULL) && (btype == MC_VAL_NUMBER || btype == MC_VAL_BOOL || btype == MC_VAL_NULL))
+    {
+        dnleft = mc_value_asnumber(a);
+        dnright = mc_value_asnumber(b);
+        cres->result = (dnleft - dnright);
+        return true;
+    }
+    if(atype == btype && atype == MC_VAL_STRING)
+    {
+        alen = mc_value_stringgetlength(a);
+        blen = mc_value_stringgetlength(b);
+        #if 0
+        fprintf(stderr, "mc_value_compare: alen=%d, blen=%d\n", alen, blen);
+        #endif
+        if(alen != blen)
+        {
+            cres->result = alen - blen;
+            return false;
+        }
+        ahash = mc_value_stringgethash(a);
+        bhash = mc_value_stringgethash(b);
+        if(ahash != bhash)
+        {
+            cres->result = ahash - bhash;
+            return false;
+        }
+        astring = mc_value_stringgetdata(a);
+        bstring = mc_value_stringgetdata(b);
+        if(strncmp(astring, bstring, alen) == 0)
+        {
+            cres->result = 0;
+            return true;
+        }
+        else
+        {
+            cres->result = 1;
+        }
+        return true;
+    }
+    if((mc_value_isallocated(a) || mc_value_isnull(a)) && (mc_value_isallocated(b) || mc_value_isnull(b)))
+    {
+        adataval = (intptr_t)mc_value_getallocateddata(a);
+        bdataval = (intptr_t)mc_value_getallocateddata(b);
+        cres->result = (mcfloat_t)(adataval - bdataval);
+        return true;
+    }
+    return false;
+}
+
+MC_FORCEINLINE bool mc_value_equals(mcvalue_t a, mcvalue_t b)
+{
+    bool ok;
+    mcvalcmpresult_t cres;
+    mcvaltype_t atype;
+    mcvaltype_t btype;
+    (void)ok;
+    atype = mc_value_gettype(a);
+    btype = mc_value_gettype(b);
+    if(atype != btype)
+    {
+        return false;
+    }
+    ok = mc_value_compare(a, b, &cres);
+    return MC_UTIL_CMPFLOAT(cres.result, 0);
+}
+
+
+bool mc_value_callbackequals(mcvalue_t* aptr, mcvalue_t* bptr)
+{
+    mcvalue_t a;
+    mcvalue_t b;
+    a = *aptr;
+    b = *bptr;
+    return mc_value_equals(a, b);
+}
+
+size_t mc_value_callbackhash(mcvalue_t* objptr)
+{
+    bool bval;
+    mcfloat_t dval;
+    mcvalue_t obj;
+    mcvaltype_t type;
+    obj = *objptr;
+    type = mc_value_gettype(obj);
+    switch(type)
+    {
+        case MC_VAL_NUMBER:
+            {
+                dval = mc_value_asnumber(obj);
+                return mc_util_hashdouble(dval);
+            }
+            break;
+        case MC_VAL_BOOL:
+            {
+                bval = mc_value_asbool(obj);
+                return bval;
+            }
+            break;
+        case MC_VAL_STRING:
+            {
+                return mc_value_stringgethash(obj);
+            }
+            break;
+        default:
+            {
+            }
+            break;
+    }
+    return 0;
+}
+
+
+mcvalue_t mc_value_copydeepfuncscript(mcstate_t* state, mcvalue_t obj, mcvaldict_t* targetdict)
+{
+    bool ok;
+    int i;
+    uint16_t* bytecodecopy;
+    mcobjfuncscript_t* functioncopy;
+    mcvalue_t copy;
+    mcvalue_t freeval;
+    mcvalue_t freevalcopy;
+    mcobjfuncscript_t* function;
+    mcastlocation_t* srcpositionscopy;
+    mccompiledprogram_t* comprescopy;
+    function = mc_value_asscriptfunction(obj);
+    bytecodecopy = NULL;
+    srcpositionscopy = NULL;
+    comprescopy = NULL;
+    bytecodecopy = (uint16_t*)mc_allocator_malloc(state, sizeof(uint16_t) * function->compiledprogcode->count);
+    if(!bytecodecopy)
+    {
+        return mc_value_makenull();
+    }
+    memcpy(bytecodecopy, function->compiledprogcode->bytecode, sizeof(uint16_t) * function->compiledprogcode->count);
+    srcpositionscopy = (mcastlocation_t*)mc_allocator_malloc(state, sizeof(mcastlocation_t) * function->compiledprogcode->count);
+    if(!srcpositionscopy)
+    {
+        mc_memory_free(bytecodecopy);
+        return mc_value_makenull();
+    }
+    memcpy(srcpositionscopy, function->compiledprogcode->progsrcposlist, sizeof(mcastlocation_t) * function->compiledprogcode->count);
+    comprescopy = mc_astcompresult_make(state, bytecodecopy, srcpositionscopy, function->compiledprogcode->count);
+    /*
+    * todo: add compilation result copy function
+    */
+    if(!comprescopy)
+    {
+        mc_memory_free(srcpositionscopy);
+        mc_memory_free(bytecodecopy);
+        return mc_value_makenull();
+    }
+    copy = mc_value_makefuncscript(state, mc_value_functiongetname(obj), comprescopy, true, function->numlocals, function->numargs, 0);
+    if(mc_value_isnull(copy))
+    {
+        mc_astcompresult_destroy(comprescopy);
+        return mc_value_makenull();
+    }
+    ok = mc_valdict_setkv(targetdict, &obj, &copy);
+    if(!ok)
+    {
+        return mc_value_makenull();
+    }
+    functioncopy = mc_value_asscriptfunction(copy);
+    if(mc_objfunction_freevalsareallocated(function))
+    {
+        functioncopy->ufv.freevalsallocated = (mcvalue_t*)mc_allocator_malloc(state, sizeof(mcvalue_t) * function->freevalscount);
+        if(!functioncopy->ufv.freevalsallocated)
+        {
+            return mc_value_makenull();
+        }
+    }
+    functioncopy->freevalscount = function->freevalscount;
+    for(i = 0; i < function->freevalscount; i++)
+    {
+        freeval = mc_value_functiongetfreevalat(obj, i);
+        freevalcopy = mc_value_copydeepintern(state, freeval, targetdict);
+        if(!mc_value_isnull(freeval) && mc_value_isnull(freevalcopy))
+        {
+            return mc_value_makenull();
+        }
+        mc_value_functionsetfreevalat(copy, i, freevalcopy);
+    }
+    return copy;
+}
+
+mcvalue_t mc_value_copydeeparray(mcstate_t* state, mcvalue_t obj, mcvaldict_t* targetdict)
+{
+    bool ok;
+    int i;
+    int len;
+    mcvalue_t copy;
+    mcvalue_t item;
+    mcvalue_t itemcopy;
+    len = mc_value_arraygetlength(obj);
+    copy = mc_value_makearraycapacity(state, len);
+    if(mc_value_isnull(copy))
+    {
+        return mc_value_makenull();
+    }
+    ok = mc_valdict_setkv(targetdict, &obj, &copy);
+    if(!ok)
+    {
+        return mc_value_makenull();
+    }
+    for(i = 0; i < len; i++)
+    {
+        item = mc_value_arraygetvalue(obj, i);
+        itemcopy = mc_value_copydeepintern(state, item, targetdict);
+        if(!mc_value_isnull(item) && mc_value_isnull(itemcopy))
+        {
+            return mc_value_makenull();
+        }
+        ok = mc_value_arraypush(copy, itemcopy);
+        if(!ok)
+        {
+            return mc_value_makenull();
+        }
+    }
+    return copy;
+}
+
+mcvalue_t mc_value_copydeepmap(mcstate_t* state, mcvalue_t obj, mcvaldict_t* targetdict)
+{
+    bool ok;
+    int i;
+    mcvalue_t key;
+    mcvalue_t val;
+    mcvalue_t copy;
+    mcvalue_t keycopy;
+    mcvalue_t valcopy;
+    copy = mc_value_makemap(state);
+    if(mc_value_isnull(copy))
+    {
+        return mc_value_makenull();
+    }
+    ok = mc_valdict_setkv(targetdict, &obj, &copy);
+    if(!ok)
+    {
+        return mc_value_makenull();
+    }
+    for(i = 0; i < mc_value_mapgetlength(obj); i++)
+    {
+        key = mc_value_mapgetkeyat(obj, i);
+        val = mc_value_mapgetvalueat(obj, i);
+        keycopy = mc_value_copydeepintern(state, key, targetdict);
+        if(!mc_value_isnull(key) && mc_value_isnull(keycopy))
+        {
+            return mc_value_makenull();
+        }
+        valcopy = mc_value_copydeepintern(state, val, targetdict);
+        if(!mc_value_isnull(val) && mc_value_isnull(valcopy))
+        {
+            return mc_value_makenull();
+        }
+        ok = mc_value_mapsetvalue(copy, keycopy, valcopy);
+        if(!ok)
+        {
+            return mc_value_makenull();
+        }
+    }
+    return copy;
+}
+
+mcvalue_t mc_value_copydeepintern(mcstate_t* state, mcvalue_t obj, mcvaldict_t* targetdict)
+{
+    mcvaltype_t type;
+    mcvalue_t copy;
+    mcvalue_t* copyptr;
+    copyptr = (mcvalue_t*)mc_valdict_get(targetdict, &obj);
+    if(copyptr)
+    {
+        return *copyptr;
+    }
+    copy = mc_value_makenull();
+    type = mc_value_gettype(obj);
+    switch(type)
+    {
+        case MC_VAL_FREED:
+        case MC_VAL_ANY:
+        case MC_VAL_NONE:
+            {
+                MC_ASSERT(false);
+                copy = mc_value_makenull();
+            }
+            break;
+        case MC_VAL_NUMBER:
+        case MC_VAL_BOOL:
+        case MC_VAL_NULL:
+        case MC_VAL_FUNCNATIVE:
+            {
+                copy = obj;
+            }
+            break;
+        case MC_VAL_STRING:
+            {
+                bool ok;
+                int len;
+                const char* str;
+                str = mc_value_stringgetdata(obj);
+                len = mc_value_stringgetlength(obj);
+                copy = mc_value_makestringlen(state, str, len);
+                ok = mc_valdict_setkv(targetdict, &obj, &copy);
+                if(!ok)
+                {
+                    return mc_value_makenull();
+                }
+                return copy;
+            }
+            break;
+        case MC_VAL_FUNCSCRIPT:
+            {
+                return mc_value_copydeepfuncscript(state, obj, targetdict);
+            }
+            break;
+        case MC_VAL_ARRAY:
+            {
+                return mc_value_copydeeparray(state, obj, targetdict);
+            }
+            break;
+        case MC_VAL_MAP:
+            {
+                return mc_value_copydeepmap(state, obj, targetdict);
+            }
+            break;
+        case MC_VAL_EXTERNAL:
+            {
+                copy = mc_value_copyflat(state, obj);
+            }
+            break;
+        case MC_VAL_ERROR:
+            {
+                copy = obj;
+            }
+            break;
+    }
+    return copy;
+}
+
+mcvalue_t mc_value_copydeep(mcstate_t* state, mcvalue_t obj)
+{
+    mcvalue_t res;
+    mcvaldict_t* targetdict;
+    targetdict = mc_valdict_makedefault(state, sizeof(mcvalue_t), sizeof(mcvalue_t));
+    if(!targetdict)
+    {
+        return mc_value_makenull();
+    }
+    res = mc_value_copydeepintern(state, obj, targetdict);
+    mc_valdict_destroy(targetdict);
+    return res;
+}
+
+mcvalue_t mc_value_copyflat(mcstate_t* state, mcvalue_t obj)
+{
+    bool ok;
+    mcvalue_t copy;
+    mcvaltype_t type;
+    copy = mc_value_makenull();
+    type = mc_value_gettype(obj);
+    switch(type)
+    {
+        case MC_VAL_ANY:
+        case MC_VAL_FREED:
+        case MC_VAL_NONE:
+            {
+                MC_ASSERT(false);
+                copy = mc_value_makenull();
+            }
+            break;
+        case MC_VAL_NUMBER:
+        case MC_VAL_BOOL:
+        case MC_VAL_NULL:
+        case MC_VAL_FUNCSCRIPT:
+        case MC_VAL_FUNCNATIVE:
+        case MC_VAL_ERROR:
+            {
+                copy = obj;
+            }
+            break;
+        case MC_VAL_STRING:
+            {
+                size_t len;
+                const char* str;
+                str = mc_value_stringgetdata(obj);
+                len = mc_value_stringgetlength(obj);
+                copy = mc_value_makestringlen(state, str, len);
+            }
+            break;
+        case MC_VAL_ARRAY:
+            {
+                int i;
+                int len;
+                mcvalue_t item;
+                len = mc_value_arraygetlength(obj);
+                copy = mc_value_makearraycapacity(state, len);
+                if(mc_value_isnull(copy))
+                {
+                    return mc_value_makenull();
+                }
+                for(i = 0; i < len; i++)
+                {
+                    item = mc_value_arraygetvalue(obj, i);
+                    ok = mc_value_arraypush(copy, item);
+                    if(!ok)
+                    {
+                        return mc_value_makenull();
+                    }
+                }
+            }
+            break;
+        case MC_VAL_MAP:
+            {
+                int i;
+                mcvalue_t key;
+                mcvalue_t val;
+                copy = mc_value_makemap(state);
+                for(i = 0; i < mc_value_mapgetlength(obj); i++)
+                {
+                    key = mc_value_mapgetkeyat(obj, i);
+                    val = mc_value_mapgetvalueat(obj, i);
+                    ok = mc_value_mapsetvalue(copy, key, val);
+                    if(!ok)
+                    {
+                        return mc_value_makenull();
+                    }
+                }
+            }
+            break;
+        case MC_VAL_EXTERNAL:
+            {
+                void* datacopy;
+                mcobjuserdata_t* objext;
+                copy = mc_value_makeuserobject(state, NULL);
+                if(mc_value_isnull(copy))
+                {
+                    return mc_value_makenull();
+                }
+                objext = mc_value_userdatagetdata(obj);
+                datacopy = NULL;
+                if(objext->datacopyfn)
+                {
+                    datacopy = objext->datacopyfn(objext->data);
+                }
+                else
+                {
+                    datacopy = objext->data;
+                }
+                mc_value_userdatasetdata(copy, datacopy);
+                mc_value_userdatasetdestroyfunction(copy, objext->datadestroyfn);
+                mc_value_userdatasetcopyfunction(copy, objext->datacopyfn);
+            }
+            break;
+    }
+    return copy;
+}
+
 
 mcprinter_t* mc_printer_make(mcstate_t* state, FILE* ofh)
 {
@@ -1555,15 +4475,14 @@ bool mc_printer_init(mcprinter_t* pr, mcstate_t* state, FILE* ofh, bool onstack)
 
 void mc_printer_release(mcprinter_t* pr, bool took)
 {
-    if(pr == NULL)
+    if(pr != NULL)
     {
-        return;
-    }
-    if(pr->destbuf != NULL)
-    {
-        if(!took)
+        if(pr->destbuf != NULL)
         {
-            dyn_strbuf_destroy(pr->destbuf);
+            if(!took)
+            {
+                dyn_strbuf_destroy(pr->destbuf);
+            }
         }
     }
 }
@@ -1852,46 +4771,38 @@ bool mc_printutil_bcreadoperands(mcopdefinition_t* def, const uint16_t* instr, u
     return true;
 }
 
-void mc_printer_printbytecode(mcprinter_t* pr, uint16_t* code, mcastlocation_t* sposlist, size_t codesize, bool simple)
+void mc_printer_printoneinstruc(mcprinter_t* pr, uint16_t* code, uint16_t op, size_t* pos, mcastlocation_t* sposlist, bool simple)
 {
     bool ok;
     int i;
-    uint16_t op;
-    size_t pos;
     mcfloat_t dval;
     uint64_t operands[2];
-    mcastlocation_t srcpos;
-    mcopdefinition_t vdef;
     mcopdefinition_t* def;
-    pos = 0;
-    while(pos < codesize)
+    mcopdefinition_t vdef;
+    mcastlocation_t srcpos;
+    def = mc_opdef_lookup(&vdef, op);
+    MC_ASSERT(def != NULL);
+    if(sposlist)
     {
-        op = code[pos];
-        def = mc_opdef_lookup(&vdef, op);
-        MC_ASSERT(def != NULL);
-        if(sposlist)
+        srcpos = sposlist[*pos];
+        if(simple)
         {
-            srcpos = sposlist[pos];
-            if(simple)
-            {
-                mc_printer_puts(pr, "<");
-            }
-            mc_printer_printf(pr, "@%d:%d %04d %s", srcpos.line, srcpos.column, pos, def->name);
-            if(simple)
-            {
-                mc_printer_puts(pr, ">");
-            }
+            mc_printer_puts(pr, "<");
         }
-        else
+        mc_printer_printf(pr, "@%d:%d %04d %s", srcpos.line, srcpos.column, *pos, def->name);
+        if(simple)
         {
-            mc_printer_printf(pr, "%04d %s", pos, def->name);
+            mc_printer_puts(pr, ">");
         }
-        pos++;
-        ok = mc_printutil_bcreadoperands(def, code + pos, operands);
-        if(!ok)
-        {
-            return;
-        }
+    }
+    else
+    {
+        mc_printer_printf(pr, "%04d %s", *pos, def->name);
+    }
+    (*pos)++;
+    ok = mc_printutil_bcreadoperands(def, code + (*pos), operands);
+    if(ok)
+    {
         for(i = 0; i < def->numoperands; i++)
         {
             if(op == MC_OPCODE_NUMBER)
@@ -1903,7 +4814,7 @@ void mc_printer_printbytecode(mcprinter_t* pr, uint16_t* code, mcastlocation_t* 
             {
                 mc_printer_printf(pr, " %llu", operands[i]);
             }
-            pos += def->operandwidths[i];
+            (*pos) += def->operandwidths[i];
         }
         if(simple)
         {
@@ -1913,6 +4824,18 @@ void mc_printer_printbytecode(mcprinter_t* pr, uint16_t* code, mcastlocation_t* 
         {
             mc_printer_puts(pr, "\n");
         }
+    }
+}
+
+void mc_printer_printbytecode(mcprinter_t* pr, uint16_t* code, mcastlocation_t* sposlist, size_t codesize, bool simple)
+{
+    uint16_t op;
+    size_t pos;
+    pos = 0;
+    while(pos < codesize)
+    {
+        op = code[pos];
+        mc_printer_printoneinstruc(pr, code, op, &pos, sposlist, simple);
     }
 }
 
@@ -1939,6 +4862,7 @@ void mc_printer_printobjfuncscript(mcprinter_t* pr, mcvalue_t obj)
     fn = mc_value_asscriptfunction(obj);
     fname = mc_value_functiongetname(obj);
     mc_printer_printf(pr, "<scriptfunction '%s' locals=%d argc=%d fvc=%d", fname, fn->numlocals, fn->numargs, fn->freevalscount);
+    #if 0
     if(pr->config.verbosefunc)
     {
         mc_printer_puts(pr, " [");
@@ -1946,6 +4870,7 @@ void mc_printer_printobjfuncscript(mcprinter_t* pr, mcvalue_t obj)
         mc_printer_puts(pr, " ]");
     }
     else
+    #endif
     {
     }
     mc_printer_puts(pr, ">");
@@ -2286,22 +5211,24 @@ void mc_errlist_pushmessage(mcerrlist_t* errors, mcerrtype_t type, mcastlocation
     mcerror_t err;
     if(errors->count >= MC_CONF_MAXERRORCOUNT)
     {
-        return;
     }
-    memset(&err, 0, sizeof(mcerror_t));
-    err.errtype = type;
-    len = mc_util_strlen(message);
-    tocopy = len;
-    if(tocopy >= (MC_CONF_MAXERRORMSGLENGTH - 1))
+    else
     {
-        tocopy = MC_CONF_MAXERRORMSGLENGTH - 1;
+        memset(&err, 0, sizeof(mcerror_t));
+        err.errtype = type;
+        len = mc_util_strlen(message);
+        tocopy = len;
+        if(tocopy >= (MC_CONF_MAXERRORMSGLENGTH - 1))
+        {
+            tocopy = MC_CONF_MAXERRORMSGLENGTH - 1;
+        }
+        memcpy(err.message, message, tocopy);
+        err.message[tocopy] = '\0';
+        err.pos = pos;
+        err.traceback = NULL;
+        errors->errors[errors->count] = err;
+        errors->count++;
     }
-    memcpy(err.message, message, tocopy);
-    err.message[tocopy] = '\0';
-    err.pos = pos;
-    err.traceback = NULL;
-    errors->errors[errors->count] = err;
-    errors->count++;
 }
 
 void mc_errlist_addfv(mcerrlist_t* errors, mcerrtype_t type, mcastlocation_t pos, const char* format, va_list va)
@@ -2382,17 +5309,6923 @@ mcerror_t* mc_errlist_getlast(mcerrlist_t* errors)
     return &errors->errors[errors->count - 1];
 }
 
-#include "modapi.h"
 
-#include "cclex.h"
 
-#include "cccomp.h"
+mcmodule_t* mc_module_make(mcstate_t* state, const char* name)
+{
+    mcmodule_t* module;
+    module = (mcmodule_t*)mc_allocator_malloc(state, sizeof(mcmodule_t));
+    if(!module)
+    {
+        return NULL;
+    }
+    memset(module, 0, sizeof(mcmodule_t));
+    module->pstate = state;
+    module->name = mc_util_strdup(state, name);
+    if(!module->name)
+    {
+        mc_module_destroy(module);
+        return NULL;
+    }
+    module->modsymbols = mc_ptrlist_make(state, sizeof(void*), true);
+    if(!module->modsymbols)
+    {
+        mc_module_destroy(module);
+        return NULL;
+    }
+    return module;
+}
 
-#include "ccapi.h"
+void mc_module_destroy(mcmodule_t* module)
+{
+    if(module != NULL)
+    {
+        mc_memory_free(module->name);
+        mc_ptrlist_destroy(module->modsymbols, (mcitemdestroyfn_t)mc_symbol_destroy);
+        mc_memory_free(module);
+    }
+}
 
-#include "ccparse.h"
+bool mc_module_addsymbol(mcmodule_t* module, mcastsymbol_t* symbol)
+{
+    bool ok;
+    mcastsymbol_t* modulesymbol;
+    mcprinter_t* namebuf;
+    namebuf = mc_printer_make(module->pstate, NULL);
+    if(!namebuf)
+    {
+        return false;
+    }
+    ok = mc_printer_printf(namebuf, "%s::%s", module->name, symbol->name);
+    if(!ok)
+    {
+        mc_printer_destroy(namebuf);
+        return false;
+    }
+    modulesymbol = mc_symbol_make(module->pstate, mc_printer_getstring(namebuf), MC_SYM_MODULEGLOBAL, symbol->index, false);
+    mc_printer_destroy(namebuf);
+    if(!modulesymbol)
+    {
+        return false;
+    }
+    ok = mc_ptrlist_push(module->modsymbols, modulesymbol);
+    if(!ok)
+    {
+        mc_symbol_destroy(modulesymbol);
+        return false;
+    }
+    return true;
+}
 
-#include "optimizer.h"
+
+const char* mc_util_getmodulename(const char* path)
+{
+    const char* lastslashpos;
+    lastslashpos = strrchr(path, '/');
+    if(lastslashpos)
+    {
+        return lastslashpos + 1;
+    }
+    return path;
+}
+
+const char* mc_module_findfile(mcstate_t* state, const char* filename)
+{
+    (void)state;
+    return filename;
+}
+
+mcmodule_t* mc_module_copy(mcmodule_t* src)
+{
+    mcmodule_t* copy;
+    copy = (mcmodule_t*)mc_allocator_malloc(src->pstate, sizeof(mcmodule_t));
+    if(!copy)
+    {
+        return NULL;
+    }
+    memset(copy, 0, sizeof(mcmodule_t));
+    copy->pstate = src->pstate;
+    copy->name = mc_util_strdup(copy->pstate, src->name);
+    if(!copy->name)
+    {
+        mc_module_destroy(copy);
+        return NULL;
+    }
+    copy->modsymbols = mc_ptrlist_copy(src->modsymbols, (mcitemcopyfn_t)mc_symbol_copy, (mcitemdestroyfn_t)mc_symbol_destroy);
+    if(!copy->modsymbols)
+    {
+        mc_module_destroy(copy);
+        return NULL;
+    }
+    return copy;
+}
+
+
+mcastexpression_t* mc_astexpr_makeident(mcstate_t* state, mcastexprident_t* ident)
+{
+    mcastexpression_t* res;
+    res = mc_astexpr_makeexpression(state, MC_EXPR_IDENT);
+    if(!res)
+    {
+        return NULL;
+    }
+    res->uexpr.exprident = ident;
+    return res;
+}
+
+mcastexpression_t* mc_astexpr_makeliteralnumber(mcstate_t* state, mcfloat_t val)
+{
+    mcastexpression_t* res;
+    res = mc_astexpr_makeexpression(state, MC_EXPR_NUMBERLITERAL);
+    if(!res)
+    {
+        return NULL;
+    }
+    res->uexpr.exprlitnumber = val;
+    return res;
+}
+
+mcastexpression_t* mc_astexpr_makeliteralbool(mcstate_t* state, bool val)
+{
+    mcastexpression_t* res;
+    res = mc_astexpr_makeexpression(state, MC_EXPR_BOOLLITERAL);
+    if(!res)
+    {
+        return NULL;
+    }
+    res->uexpr.exprlitbool = val;
+    return res;
+}
+
+mcastexpression_t* mc_astexpr_makeliteralstring(mcstate_t* state, char* value, size_t len)
+{
+    mcastexpression_t* res;
+    res = mc_astexpr_makeexpression(state, MC_EXPR_STRINGLITERAL);
+    if(!res)
+    {
+        return NULL;
+    }
+    res->uexpr.exprlitstring.data = value;
+    res->uexpr.exprlitstring.length = len;
+    return res;
+}
+
+mcastexpression_t* mc_astexpr_makeliteralnull(mcstate_t* state)
+{
+    mcastexpression_t* res;
+    res = mc_astexpr_makeexpression(state, MC_EXPR_NULLLITERAL);
+    if(!res)
+    {
+        return NULL;
+    }
+    return res;
+}
+
+mcastexpression_t* mc_astexpr_makeliteralarray(mcstate_t* state, mcptrlist_t* values)
+{
+    mcastexpression_t* res;
+    res = mc_astexpr_makeexpression(state, MC_EXPR_ARRAYLITERAL);
+    if(!res)
+    {
+        return NULL;
+    }
+    res->uexpr.exprlitarray.litarritems = values;
+    return res;
+}
+
+mcastexpression_t* mc_astexpr_makeliteralmap(mcstate_t* state, mcptrlist_t* keys, mcptrlist_t* values)
+{
+    mcastexpression_t* res;
+    res = mc_astexpr_makeexpression(state, MC_EXPR_MAPLITERAL);
+    if(!res)
+    {
+        return NULL;
+    }
+    res->uexpr.exprlitmap.litmapkeys = keys;
+    res->uexpr.exprlitmap.litmapvalues = values;
+    return res;
+}
+
+mcastexpression_t* mc_astexpr_makeprefixexpr(mcstate_t* state, mcastmathoptype_t op, mcastexpression_t* right)
+{
+    mcastexpression_t* res;
+    res = mc_astexpr_makeexpression(state, MC_EXPR_PREFIX);
+    if(!res)
+    {
+        return NULL;
+    }
+    res->uexpr.exprprefix.op = op;
+    res->uexpr.exprprefix.right = right;
+    return res;
+}
+
+mcastexpression_t* mc_astexpr_makeinfixexpr(mcstate_t* state, mcastmathoptype_t op, mcastexpression_t* left, mcastexpression_t* right)
+{
+    mcastexpression_t* res;
+    res = mc_astexpr_makeexpression(state, MC_EXPR_INFIX);
+    if(!res)
+    {
+        return NULL;
+    }
+    res->uexpr.exprinfix.op = op;
+    res->uexpr.exprinfix.left = left;
+    res->uexpr.exprinfix.right = right;
+    return res;
+}
+
+mcastexpression_t* mc_astexpr_makeliteralfunction(mcstate_t* state, mcptrlist_t* params, mcastexprcodeblock_t* body)
+{
+    mcastexpression_t* res;
+    res = mc_astexpr_makeexpression(state, MC_EXPR_FUNCTIONLITERAL);
+    if(!res)
+    {
+        return NULL;
+    }
+    res->uexpr.exprlitfunction.name = NULL;
+    res->uexpr.exprlitfunction.funcparamlist = params;
+    res->uexpr.exprlitfunction.body = body;
+    return res;
+}
+
+mcastexpression_t* mc_astexpr_makecallexpr(mcstate_t* state, mcastexpression_t* function, mcptrlist_t* args)
+{
+    mcastexpression_t* res;
+    res = mc_astexpr_makeexpression(state, MC_EXPR_CALL);
+    if(!res)
+    {
+        return NULL;
+    }
+    res->uexpr.exprcall.function = function;
+    res->uexpr.exprcall.args = args;
+    return res;
+}
+
+mcastexpression_t* mc_astexpr_makeindexexpr(mcstate_t* state, mcastexpression_t* left, mcastexpression_t* index, bool isdot)
+{
+    mcastexpression_t* res;
+    res = mc_astexpr_makeexpression(state, MC_EXPR_INDEX);
+    if(!res)
+    {
+        return NULL;
+    }
+    res->uexpr.exprindex.isdot = isdot;
+    res->uexpr.exprindex.left = left;
+    res->uexpr.exprindex.index = index;
+    return res;
+}
+
+mcastexpression_t* mc_astexpr_makeassignexpr(mcstate_t* state, mcastexpression_t* dest, mcastexpression_t* source, bool is_postfix)
+{
+    mcastexpression_t* res;
+    res = mc_astexpr_makeexpression(state, MC_EXPR_ASSIGN);
+    if(!res)
+    {
+        return NULL;
+    }
+    res->uexpr.exprassign.dest = dest;
+    res->uexpr.exprassign.source = source;
+    res->uexpr.exprassign.is_postfix = is_postfix;
+    return res;
+}
+
+mcastexpression_t* mc_astexpr_makelogicalexpr(mcstate_t* state, mcastmathoptype_t op, mcastexpression_t* left, mcastexpression_t* right)
+{
+    mcastexpression_t* res;
+    res = mc_astexpr_makeexpression(state, MC_EXPR_LOGICAL);
+    if(!res)
+    {
+        return NULL;
+    }
+    res->uexpr.exprlogical.op = op;
+    res->uexpr.exprlogical.left = left;
+    res->uexpr.exprlogical.right = right;
+    return res;
+}
+
+mcastexpression_t* mc_astexpr_maketernaryexpr(mcstate_t* state, mcastexpression_t* test, mcastexpression_t* ift, mcastexpression_t* iffalse)
+{
+    mcastexpression_t* res;
+    res = mc_astexpr_makeexpression(state, MC_EXPR_TERNARY);
+    if(!res)
+    {
+        return NULL;
+    }
+    res->uexpr.exprternary.tercond = test;
+    res->uexpr.exprternary.teriftrue = ift;
+    res->uexpr.exprternary.teriffalse = iffalse;
+    return res;
+}
+
+mcastexpression_t* mc_parser_makefunccallexpr(mcstate_t* state, mcastexpression_t* expr, const char* fname)
+{
+    bool ok;
+    mcasttoken_t fntoken;
+    mcastexprident_t* ident;
+    mcptrlist_t* args;
+    mcastexpression_t* ce;
+    mcastexpression_t* functionidentexpr;
+    mc_asttoken_init(&fntoken, MC_TOK_IDENT, fname, mc_util_strlen(fname));
+    fntoken.pos = expr->pos;
+    ident = mc_astident_make(state, fntoken);
+    if(!ident)
+    {
+        return NULL;
+    }
+    ident->pos = fntoken.pos;
+    functionidentexpr = mc_astexpr_makeident(state, ident);
+    if(!functionidentexpr)
+    {
+        mc_astident_destroy(ident);
+        return NULL;
+    }
+    functionidentexpr->pos = expr->pos;
+    ident = NULL;
+    args = mc_ptrlist_make(state, sizeof(void*), true);
+    if(!args)
+    {
+        mc_astexpr_destroy(functionidentexpr);
+        return NULL;
+    }
+    ok = mc_ptrlist_push(args, expr);
+    if(!ok)
+    {
+        mc_ptrlist_destroy(args, NULL);
+        mc_astexpr_destroy(functionidentexpr);
+        return NULL;
+    }
+    ce = mc_astexpr_makecallexpr(state, functionidentexpr, args);
+    if(!ce)
+    {
+        mc_ptrlist_destroy(args, NULL);
+        mc_astexpr_destroy(functionidentexpr);
+        return NULL;
+    }
+    ce->pos = expr->pos;
+    return ce;
+}
+
+void mc_astexpr_destroy(mcastexpression_t* expr)
+{
+    if(expr != NULL)
+    {
+        switch(expr->exprtype)
+        {
+            case MC_EXPR_NONE:
+                {
+                    MC_ASSERT(false);
+                }
+                break;
+            case MC_EXPR_IDENT:
+                {
+                    mc_astident_destroy(expr->uexpr.exprident);
+                }
+                break;
+            case MC_EXPR_NUMBERLITERAL:
+            case MC_EXPR_BOOLLITERAL:
+                {
+                }
+                break;
+            case MC_EXPR_STRINGLITERAL:
+                {
+                    mc_memory_free(expr->uexpr.exprlitstring.data);
+                }
+                break;
+            case MC_EXPR_NULLLITERAL:
+                {
+                }
+                break;
+            case MC_EXPR_ARRAYLITERAL:
+                {
+                    mc_ptrlist_destroy(expr->uexpr.exprlitarray.litarritems, (mcitemdestroyfn_t)mc_astexpr_destroy);
+                }
+                break;
+            case MC_EXPR_MAPLITERAL:
+                {
+                    mc_ptrlist_destroy(expr->uexpr.exprlitmap.litmapkeys, (mcitemdestroyfn_t)mc_astexpr_destroy);
+                    mc_ptrlist_destroy(expr->uexpr.exprlitmap.litmapvalues, (mcitemdestroyfn_t)mc_astexpr_destroy);
+                }
+                break;
+            case MC_EXPR_PREFIX:
+                {
+                    mc_astexpr_destroy(expr->uexpr.exprprefix.right);
+                }
+                break;
+            case MC_EXPR_INFIX:
+                {
+                    mc_astexpr_destroy(expr->uexpr.exprinfix.left);
+                    mc_astexpr_destroy(expr->uexpr.exprinfix.right);
+                }
+                break;
+            case MC_EXPR_FUNCTIONLITERAL:
+                {
+                    mcastexprliteralfunction_t* fn;
+                    fn = &expr->uexpr.exprlitfunction;
+                    mc_memory_free(fn->name);
+                    mc_ptrlist_destroy(fn->funcparamlist, (mcitemdestroyfn_t)mc_astfuncparam_destroy);
+                    mc_astcodeblock_destroy(fn->body);
+                }
+                break;
+            case MC_EXPR_CALL:
+                {
+                    mc_ptrlist_destroy(expr->uexpr.exprcall.args, (mcitemdestroyfn_t)mc_astexpr_destroy);
+                    mc_astexpr_destroy(expr->uexpr.exprcall.function);
+                }
+                break;
+            case MC_EXPR_INDEX:
+                {
+                    mc_astexpr_destroy(expr->uexpr.exprindex.left);
+                    mc_astexpr_destroy(expr->uexpr.exprindex.index);
+                }
+                break;
+            case MC_EXPR_ASSIGN:
+                {
+                    mc_astexpr_destroy(expr->uexpr.exprassign.dest);
+                    mc_astexpr_destroy(expr->uexpr.exprassign.source);
+                }
+                break;
+            case MC_EXPR_LOGICAL:
+                {
+                    mc_astexpr_destroy(expr->uexpr.exprlogical.left);
+                    mc_astexpr_destroy(expr->uexpr.exprlogical.right);
+                }
+                break;
+            case MC_EXPR_TERNARY:
+                {
+                    mc_astexpr_destroy(expr->uexpr.exprternary.tercond);
+                    mc_astexpr_destroy(expr->uexpr.exprternary.teriftrue);
+                    mc_astexpr_destroy(expr->uexpr.exprternary.teriffalse);
+                }
+                break;
+            case MC_EXPR_STMTDEFINE:
+                {
+                    mc_astident_destroy(expr->uexpr.exprdefine.name);
+                    mc_astexpr_destroy(expr->uexpr.exprdefine.value);
+                }
+                break;
+            case MC_EXPR_STMTIF:
+                {
+                    mc_ptrlist_destroy(expr->uexpr.exprifstmt.cases, (mcitemdestroyfn_t)mc_astifcase_destroy);
+                    mc_astcodeblock_destroy(expr->uexpr.exprifstmt.alternative);
+                }
+                break;
+            case MC_EXPR_STMTRETURN:
+                {
+                    mc_astexpr_destroy(expr->uexpr.exprreturnvalue);
+                }
+                break;
+            case MC_EXPR_STMTEXPRESSION:
+                {
+                    mc_astexpr_destroy(expr->uexpr.exprexpression);
+                }
+                break;
+            case MC_EXPR_STMTLOOPWHILE:
+                {
+                    mc_astexpr_destroy(expr->uexpr.exprwhileloopstmt.loopcond);
+                    mc_astcodeblock_destroy(expr->uexpr.exprwhileloopstmt.body);
+                }
+                break;
+            case MC_EXPR_STMTBREAK:
+                {
+                }
+                break;
+            case MC_EXPR_STMTCONTINUE:
+                {
+                }
+                break;
+            case MC_EXPR_STMTLOOPFOREACH:
+                {
+                    mc_astident_destroy(expr->uexpr.exprforeachloopstmt.iterator);
+                    mc_astexpr_destroy(expr->uexpr.exprforeachloopstmt.source);
+                    mc_astcodeblock_destroy(expr->uexpr.exprforeachloopstmt.body);
+                }
+                break;
+            case MC_EXPR_STMTLOOPFORCLASSIC:
+                {
+                    mc_astexpr_destroy(expr->uexpr.exprforloopstmt.init);
+                    mc_astexpr_destroy(expr->uexpr.exprforloopstmt.loopcond);
+                    mc_astexpr_destroy(expr->uexpr.exprforloopstmt.update);
+                    mc_astcodeblock_destroy(expr->uexpr.exprforloopstmt.body);
+                }
+                break;
+            case MC_EXPR_STMTBLOCK:
+                {
+                    mc_astcodeblock_destroy(expr->uexpr.exprblockstmt);
+                }
+                break;
+            case MC_EXPR_STMTIMPORT:
+                {
+                    mc_memory_free(expr->uexpr.exprimportstmt.path);
+                }
+                break;
+            case MC_EXPR_STMTRECOVER:
+                {
+                    mc_astcodeblock_destroy(expr->uexpr.exprrecoverstmt.body);
+                    mc_astident_destroy(expr->uexpr.exprrecoverstmt.errident);
+                }
+                break;
+            default:
+                {
+                }
+                break;
+        }
+        mc_memory_free(expr);
+    }
+}
+
+
+mcastexpression_t* mc_astexpr_copyexpr(mcastexpression_t* expr)
+{
+    mcastexpression_t* res;
+    if(!expr)
+    {
+        return NULL;
+    }
+    res = NULL;
+    switch(expr->exprtype)
+    {
+        case MC_EXPR_NONE:
+            {
+                MC_ASSERT(false);
+            }
+            break;
+        case MC_EXPR_IDENT:
+            {
+                mcastexprident_t* ident;
+                ident = mc_astident_copy(expr->uexpr.exprident);
+                if(!ident)
+                {
+                    return NULL;
+                }
+                res = mc_astexpr_makeident(expr->pstate, ident);
+                if(!res)
+                {
+                    mc_astident_destroy(ident);
+                    return NULL;
+                }
+            }
+            break;
+        case MC_EXPR_NUMBERLITERAL:
+            {
+                res = mc_astexpr_makeliteralnumber(expr->pstate, expr->uexpr.exprlitnumber);
+            }
+            break;
+        case MC_EXPR_BOOLLITERAL:
+            {
+                res = mc_astexpr_makeliteralbool(expr->pstate, expr->uexpr.exprlitbool);
+            }
+            break;
+        case MC_EXPR_STRINGLITERAL:
+            {
+                char* stringcopy;
+                stringcopy = mc_util_strndup(expr->pstate, expr->uexpr.exprlitstring.data, expr->uexpr.exprlitstring.length);
+                if(!stringcopy)
+                {
+                    return NULL;
+                }
+                res = mc_astexpr_makeliteralstring(expr->pstate, stringcopy, expr->uexpr.exprlitstring.length);
+                if(!res)
+                {
+                    mc_memory_free(stringcopy);
+                    return NULL;
+                }
+            }
+            break;
+
+        case MC_EXPR_NULLLITERAL:
+            {
+                res = mc_astexpr_makeliteralnull(expr->pstate);
+            }
+            break;
+        case MC_EXPR_ARRAYLITERAL:
+            {
+                mcptrlist_t* valuescopy;
+                valuescopy = mc_ptrlist_copy(expr->uexpr.exprlitarray.litarritems, (mcitemcopyfn_t)mc_astexpr_copyexpr, (mcitemdestroyfn_t)mc_astexpr_destroy);
+                if(!valuescopy)
+                {
+                    return NULL;
+                }
+                res = mc_astexpr_makeliteralarray(expr->pstate, valuescopy);
+                if(!res)
+                {
+                    mc_ptrlist_destroy(valuescopy, (mcitemdestroyfn_t)mc_astexpr_destroy);
+                    return NULL;
+                }
+            }
+            break;
+
+        case MC_EXPR_MAPLITERAL:
+            {
+                mcptrlist_t* keyscopy;
+                mcptrlist_t* valuescopy;
+                keyscopy = mc_ptrlist_copy(expr->uexpr.exprlitmap.litmapkeys, (mcitemcopyfn_t)mc_astexpr_copyexpr, (mcitemdestroyfn_t)mc_astexpr_destroy);
+                valuescopy = mc_ptrlist_copy(expr->uexpr.exprlitmap.litmapvalues, (mcitemcopyfn_t)mc_astexpr_copyexpr, (mcitemdestroyfn_t)mc_astexpr_destroy);
+                if(!keyscopy || !valuescopy)
+                {
+                    mc_ptrlist_destroy(keyscopy, (mcitemdestroyfn_t)mc_astexpr_destroy);
+                    mc_ptrlist_destroy(valuescopy, (mcitemdestroyfn_t)mc_astexpr_destroy);
+                    return NULL;
+                }
+                res = mc_astexpr_makeliteralmap(expr->pstate, keyscopy, valuescopy);
+                if(!res)
+                {
+                    mc_ptrlist_destroy(keyscopy, (mcitemdestroyfn_t)mc_astexpr_destroy);
+                    mc_ptrlist_destroy(valuescopy, (mcitemdestroyfn_t)mc_astexpr_destroy);
+                    return NULL;
+                }
+            }
+            break;
+        case MC_EXPR_PREFIX:
+            {
+                mcastexpression_t* rightcopy;
+                rightcopy = mc_astexpr_copyexpr(expr->uexpr.exprprefix.right);
+                if(!rightcopy)
+                {
+                    return NULL;
+                }
+                res = mc_astexpr_makeprefixexpr(expr->pstate, expr->uexpr.exprprefix.op, rightcopy);
+                if(!res)
+                {
+                    mc_astexpr_destroy(rightcopy);
+                    return NULL;
+                }
+            }
+            break;
+        case MC_EXPR_INFIX:
+            {
+                mcastexpression_t* leftcopy;
+                mcastexpression_t* rightcopy;
+                leftcopy = mc_astexpr_copyexpr(expr->uexpr.exprinfix.left);
+                rightcopy = mc_astexpr_copyexpr(expr->uexpr.exprinfix.right);
+                if(!leftcopy || !rightcopy)
+                {
+                    mc_astexpr_destroy(leftcopy);
+                    mc_astexpr_destroy(rightcopy);
+                    return NULL;
+                }
+                res = mc_astexpr_makeinfixexpr(expr->pstate, expr->uexpr.exprinfix.op, leftcopy, rightcopy);
+                if(!res)
+                {
+                    mc_astexpr_destroy(leftcopy);
+                    mc_astexpr_destroy(rightcopy);
+                    return NULL;
+                }
+            }
+            break;
+        case MC_EXPR_FUNCTIONLITERAL:
+            {
+                char* namecopy;
+                mcptrlist_t* pacopy;
+                mcastexprcodeblock_t* bodycopy;
+                pacopy = mc_ptrlist_copy(expr->uexpr.exprlitfunction.funcparamlist, (mcitemcopyfn_t)mc_astfuncparam_copy, (mcitemdestroyfn_t)mc_astfuncparam_destroy);
+                bodycopy = mc_astcodeblock_copy(expr->uexpr.exprlitfunction.body);
+                namecopy = mc_util_strdup(expr->pstate, expr->uexpr.exprlitfunction.name);
+                if(!pacopy || !bodycopy)
+                {
+                    mc_ptrlist_destroy(pacopy, (mcitemdestroyfn_t)mc_astfuncparam_destroy);
+                    mc_astcodeblock_destroy(bodycopy);
+                    mc_memory_free(namecopy);
+                    return NULL;
+                }
+                res = mc_astexpr_makeliteralfunction(expr->pstate, pacopy, bodycopy);
+                if(!res)
+                {
+                    mc_ptrlist_destroy(pacopy, (mcitemdestroyfn_t)mc_astfuncparam_destroy);
+                    mc_astcodeblock_destroy(bodycopy);
+                    mc_memory_free(namecopy);
+                    return NULL;
+                }
+                res->uexpr.exprlitfunction.name = namecopy;
+            }
+            break;
+        case MC_EXPR_CALL:
+            {
+                mcastexpression_t* fcopy;
+                mcptrlist_t* argscopy;
+                fcopy = mc_astexpr_copyexpr(expr->uexpr.exprcall.function);
+                argscopy = mc_ptrlist_copy(expr->uexpr.exprcall.args, (mcitemcopyfn_t)mc_astexpr_copyexpr, (mcitemdestroyfn_t)mc_astexpr_destroy);
+                if(!fcopy || !argscopy)
+                {
+                    mc_astexpr_destroy(fcopy);
+                    mc_ptrlist_destroy(expr->uexpr.exprcall.args, (mcitemdestroyfn_t)mc_astexpr_destroy);
+                    return NULL;
+                }
+                res = mc_astexpr_makecallexpr(expr->pstate, fcopy, argscopy);
+                if(!res)
+                {
+                    mc_astexpr_destroy(fcopy);
+                    mc_ptrlist_destroy(expr->uexpr.exprcall.args, (mcitemdestroyfn_t)mc_astexpr_destroy);
+                    return NULL;
+                }
+            }
+            break;
+        case MC_EXPR_INDEX:
+            {
+                mcastexpression_t* leftcopy;
+                mcastexpression_t* indexcopy;
+                leftcopy = mc_astexpr_copyexpr(expr->uexpr.exprindex.left);
+                indexcopy = mc_astexpr_copyexpr(expr->uexpr.exprindex.index);
+                if(!leftcopy || !indexcopy)
+                {
+                    mc_astexpr_destroy(leftcopy);
+                    mc_astexpr_destroy(indexcopy);
+                    return NULL;
+                }
+                res = mc_astexpr_makeindexexpr(expr->pstate, leftcopy, indexcopy, false);
+                if(!res)
+                {
+                    mc_astexpr_destroy(leftcopy);
+                    mc_astexpr_destroy(indexcopy);
+                    return NULL;
+                }
+            }
+            break;
+        case MC_EXPR_ASSIGN:
+            {
+                mcastexpression_t* destcopy;
+                mcastexpression_t* sourcecopy;
+                destcopy = mc_astexpr_copyexpr(expr->uexpr.exprassign.dest);
+                sourcecopy = mc_astexpr_copyexpr(expr->uexpr.exprassign.source);
+                if(!destcopy || !sourcecopy)
+                {
+                    mc_astexpr_destroy(destcopy);
+                    mc_astexpr_destroy(sourcecopy);
+                    return NULL;
+                }
+                res = mc_astexpr_makeassignexpr(expr->pstate, destcopy, sourcecopy, expr->uexpr.exprassign.is_postfix);
+                if(!res)
+                {
+                    mc_astexpr_destroy(destcopy);
+                    mc_astexpr_destroy(sourcecopy);
+                    return NULL;
+                }
+            }
+            break;
+        case MC_EXPR_LOGICAL:
+            {
+                mcastexpression_t* leftcopy;
+                mcastexpression_t* rightcopy;
+                leftcopy = mc_astexpr_copyexpr(expr->uexpr.exprlogical.left);
+                rightcopy = mc_astexpr_copyexpr(expr->uexpr.exprlogical.right);
+                if(!leftcopy || !rightcopy)
+                {
+                    mc_astexpr_destroy(leftcopy);
+                    mc_astexpr_destroy(rightcopy);
+                    return NULL;
+                }
+                res = mc_astexpr_makelogicalexpr(expr->pstate, expr->uexpr.exprlogical.op, leftcopy, rightcopy);
+                if(!res)
+                {
+                    mc_astexpr_destroy(leftcopy);
+                    mc_astexpr_destroy(rightcopy);
+                    return NULL;
+                }
+            }
+            break;
+        case MC_EXPR_TERNARY:
+            {
+                mcastexpression_t* testcopy;
+                mcastexpression_t* iftruecopy;
+                mcastexpression_t* iffalsecopy;
+                testcopy = mc_astexpr_copyexpr(expr->uexpr.exprternary.tercond);
+                iftruecopy = mc_astexpr_copyexpr(expr->uexpr.exprternary.teriftrue);
+                iffalsecopy = mc_astexpr_copyexpr(expr->uexpr.exprternary.teriffalse);
+                if(!testcopy || !iftruecopy || !iffalsecopy)
+                {
+                    mc_astexpr_destroy(testcopy);
+                    mc_astexpr_destroy(iftruecopy);
+                    mc_astexpr_destroy(iffalsecopy);
+                    return NULL;
+                }
+                res = mc_astexpr_maketernaryexpr(expr->pstate, testcopy, iftruecopy, iffalsecopy);
+                if(!res)
+                {
+                    mc_astexpr_destroy(testcopy);
+                    mc_astexpr_destroy(iftruecopy);
+                    mc_astexpr_destroy(iffalsecopy);
+                    return NULL;
+                }
+            }
+            break;
+        case MC_EXPR_STMTDEFINE:
+            {
+                mcastexpression_t* valuecopy;
+                valuecopy = mc_astexpr_copyexpr(expr->uexpr.exprdefine.value);
+                if(!valuecopy)
+                {
+                    return NULL;
+                }
+                res = mc_astexpr_makedefineexpr(expr->pstate, mc_astident_copy(expr->uexpr.exprdefine.name), valuecopy, expr->uexpr.exprdefine.assignable);
+                if(!res)
+                {
+                    mc_astexpr_destroy(valuecopy);
+                    return NULL;
+                }
+            }
+            break;
+        case MC_EXPR_STMTIF:
+            {
+                mcptrlist_t* casescopy;
+                mcastexprcodeblock_t* alternativecopy;
+                casescopy = mc_ptrlist_copy(expr->uexpr.exprifstmt.cases, (mcitemcopyfn_t)mc_astifcase_copy, (mcitemdestroyfn_t)mc_astifcase_destroy);
+                alternativecopy = mc_astcodeblock_copy(expr->uexpr.exprifstmt.alternative);
+                if(!casescopy || !alternativecopy)
+                {
+                    mc_ptrlist_destroy(casescopy, (mcitemdestroyfn_t)mc_astifcase_destroy);
+                    mc_astcodeblock_destroy(alternativecopy);
+                    return NULL;
+                }
+                res = mc_astexpr_makeifexpr(expr->pstate, casescopy, alternativecopy);
+                if(res)
+                {
+                    mc_ptrlist_destroy(casescopy, (mcitemdestroyfn_t)mc_astifcase_destroy);
+                    mc_astcodeblock_destroy(alternativecopy);
+                    return NULL;
+                }
+            }
+            break;
+        case MC_EXPR_STMTRETURN:
+            {
+                mcastexpression_t* valuecopy;
+                valuecopy = mc_astexpr_copyexpr(expr->uexpr.exprreturnvalue);
+                if(!valuecopy)
+                {
+                    return NULL;
+                }
+                res = mc_astexpr_makereturnexpr(expr->pstate, valuecopy);
+                if(!res)
+                {
+                    mc_astexpr_destroy(valuecopy);
+                    return NULL;
+                }
+            }
+            break;
+        case MC_EXPR_STMTEXPRESSION:
+            {
+                mcastexpression_t* valuecopy;
+                valuecopy = mc_astexpr_copyexpr(expr->uexpr.exprexpression);
+                if(!valuecopy)
+                {
+                    return NULL;
+                }
+                res = mc_astexpr_makeexprstmt(expr->pstate, valuecopy);
+                if(!res)
+                {
+                    mc_astexpr_destroy(valuecopy);
+                    return NULL;
+                }
+            }
+            break;
+        case MC_EXPR_STMTLOOPWHILE:
+            {
+                mcastexpression_t* testcopy;
+                mcastexprcodeblock_t* bodycopy;
+                testcopy = mc_astexpr_copyexpr(expr->uexpr.exprwhileloopstmt.loopcond);
+                bodycopy = mc_astcodeblock_copy(expr->uexpr.exprwhileloopstmt.body);
+                if(!testcopy || !bodycopy)
+                {
+                    mc_astexpr_destroy(testcopy);
+                    mc_astcodeblock_destroy(bodycopy);
+                    return NULL;
+                }
+                res = mc_astexpr_makewhileexpr(expr->pstate, testcopy, bodycopy);
+                if(!res)
+                {
+                    mc_astexpr_destroy(testcopy);
+                    mc_astcodeblock_destroy(bodycopy);
+                    return NULL;
+                }
+            }
+            break;
+        case MC_EXPR_STMTBREAK:
+            {
+                res = mc_astexpr_makebreakexpr(expr->pstate);
+            }
+            break;
+        case MC_EXPR_STMTCONTINUE:
+            {
+                res = mc_astexpr_makecontinueexpr(expr->pstate);
+            }
+            break;
+        case MC_EXPR_STMTLOOPFOREACH:
+            {
+                mcastexpression_t* sourcecopy;
+                mcastexprcodeblock_t* bodycopy;
+                sourcecopy = mc_astexpr_copyexpr(expr->uexpr.exprforeachloopstmt.source);
+                bodycopy = mc_astcodeblock_copy(expr->uexpr.exprforeachloopstmt.body);
+                if(!sourcecopy || !bodycopy)
+                {
+                    mc_astexpr_destroy(sourcecopy);
+                    mc_astcodeblock_destroy(bodycopy);
+                    return NULL;
+                }
+                res = mc_astexpr_makeforeachexpr(expr->pstate, mc_astident_copy(expr->uexpr.exprforeachloopstmt.iterator), sourcecopy, bodycopy);
+                if(!res)
+                {
+                    mc_astexpr_destroy(sourcecopy);
+                    mc_astcodeblock_destroy(bodycopy);
+                    return NULL;
+                }
+            }
+            break;
+        case MC_EXPR_STMTLOOPFORCLASSIC:
+            {
+                mcastexpression_t* initcopy;
+                mcastexpression_t* testcopy;
+                mcastexpression_t* updatecopy;
+                mcastexprcodeblock_t* bodycopy;
+                initcopy= mc_astexpr_copyexpr(expr->uexpr.exprforloopstmt.init);
+                testcopy = mc_astexpr_copyexpr(expr->uexpr.exprforloopstmt.loopcond);
+                updatecopy = mc_astexpr_copyexpr(expr->uexpr.exprforloopstmt.update);
+                bodycopy = mc_astcodeblock_copy(expr->uexpr.exprforloopstmt.body);
+                if(!initcopy || !testcopy || !updatecopy || !bodycopy)
+                {
+                    mc_astexpr_destroy(initcopy);
+                    mc_astexpr_destroy(testcopy);
+                    mc_astexpr_destroy(updatecopy);
+                    mc_astcodeblock_destroy(bodycopy);
+                    return NULL;
+                }
+                res = mc_astexpr_makeforloopexpr(expr->pstate, initcopy, testcopy, updatecopy, bodycopy);
+                if(!res)
+                {
+                    mc_astexpr_destroy(initcopy);
+                    mc_astexpr_destroy(testcopy);
+                    mc_astexpr_destroy(updatecopy);
+                    mc_astcodeblock_destroy(bodycopy);
+                    return NULL;
+                }
+            }
+            break;
+        case MC_EXPR_STMTBLOCK:
+            {
+                mcastexprcodeblock_t* blockcopy;
+                blockcopy = mc_astcodeblock_copy(expr->uexpr.exprblockstmt);
+                if(!blockcopy)
+                {
+                    return NULL;
+                }
+                res = mc_astexpr_makeblockexpr(expr->pstate, blockcopy);
+                if(!res)
+                {
+                    mc_astcodeblock_destroy(blockcopy);
+                    return NULL;
+                }
+            }
+            break;
+        case MC_EXPR_STMTIMPORT:
+            {
+                char* pathcopy;
+                pathcopy = mc_util_strdup(expr->pstate, expr->uexpr.exprimportstmt.path);
+                if(!pathcopy)
+                {
+                    return NULL;
+                }
+                res = mc_astexpr_makeimportexpr(expr->pstate, pathcopy);
+                if(!res)
+                {
+                    mc_memory_free(pathcopy);
+                    return NULL;
+                }
+            }
+            break;
+        case MC_EXPR_STMTRECOVER:
+            {
+                mcastexprcodeblock_t* bodycopy;
+                mcastexprident_t* erroridentcopy;
+                bodycopy = mc_astcodeblock_copy(expr->uexpr.exprrecoverstmt.body);
+                erroridentcopy = mc_astident_copy(expr->uexpr.exprrecoverstmt.errident);
+                if(!bodycopy || !erroridentcopy)
+                {
+                    mc_astcodeblock_destroy(bodycopy);
+                    mc_astident_destroy(erroridentcopy);
+                    return NULL;
+                }
+                res = mc_astexpr_makerecoverexpr(expr->pstate, erroridentcopy, bodycopy);
+                if(!res)
+                {
+                    mc_astcodeblock_destroy(bodycopy);
+                    mc_astident_destroy(erroridentcopy);
+                    return NULL;
+                }
+            }
+            break;
+        default:
+            {
+            }
+            break;
+    }
+    if(!res)
+    {
+        return NULL;
+    }
+    res->pos = expr->pos;
+    return res;
+}
+
+mcastexpression_t* mc_astexpr_makedefineexpr(mcstate_t* state, mcastexprident_t* name, mcastexpression_t* value, bool assignable)
+{
+    mcastexpression_t* res;
+    res = mc_astexpr_makeexpression(state, MC_EXPR_STMTDEFINE);
+    if(!res)
+    {
+        return NULL;
+    }
+    res->uexpr.exprdefine.name = name;
+    res->uexpr.exprdefine.value = value;
+    res->uexpr.exprdefine.assignable = assignable;
+    return res;
+}
+
+mcastexpression_t* mc_astexpr_makeifexpr(mcstate_t* state, mcptrlist_t* cases, mcastexprcodeblock_t* alternative)
+{
+    mcastexpression_t* res;
+    res = mc_astexpr_makeexpression(state, MC_EXPR_STMTIF);
+    if(!res)
+    {
+        return NULL;
+    }
+    res->uexpr.exprifstmt.cases = cases;
+    res->uexpr.exprifstmt.alternative = alternative;
+    return res;
+}
+
+mcastexpression_t* mc_astexpr_makereturnexpr(mcstate_t* state, mcastexpression_t* value)
+{
+    mcastexpression_t* res;
+    res = mc_astexpr_makeexpression(state, MC_EXPR_STMTRETURN);
+    if(!res)
+    {
+        return NULL;
+    }
+    res->uexpr.exprreturnvalue = value;
+    return res;
+}
+
+mcastexpression_t* mc_astexpr_makeexprstmt(mcstate_t* state, mcastexpression_t* value)
+{
+    mcastexpression_t* res;
+    res = mc_astexpr_makeexpression(state, MC_EXPR_STMTEXPRESSION);
+    if(!res)
+    {
+        return NULL;
+    }
+    res->uexpr.exprexpression = value;
+    return res;
+}
+
+mcastexpression_t* mc_astexpr_makewhileexpr(mcstate_t* state, mcastexpression_t* test, mcastexprcodeblock_t* body)
+{
+    mcastexpression_t* res;
+    res = mc_astexpr_makeexpression(state, MC_EXPR_STMTLOOPWHILE);
+    if(!res)
+    {
+        return NULL;
+    }
+    res->uexpr.exprwhileloopstmt.loopcond = test;
+    res->uexpr.exprwhileloopstmt.body = body;
+    return res;
+}
+
+mcastexpression_t* mc_astexpr_makebreakexpr(mcstate_t* state)
+{
+    mcastexpression_t* res;
+    res = mc_astexpr_makeexpression(state, MC_EXPR_STMTBREAK);
+    if(!res)
+    {
+        return NULL;
+    }
+    return res;
+}
+
+mcastexpression_t* mc_astexpr_makeforeachexpr(mcstate_t* state, mcastexprident_t* iterator, mcastexpression_t* source, mcastexprcodeblock_t* body)
+{
+    mcastexpression_t* res;
+    res = mc_astexpr_makeexpression(state, MC_EXPR_STMTLOOPFOREACH);
+    if(!res)
+    {
+        return NULL;
+    }
+    res->uexpr.exprforeachloopstmt.iterator = iterator;
+    res->uexpr.exprforeachloopstmt.source = source;
+    res->uexpr.exprforeachloopstmt.body = body;
+    return res;
+}
+
+mcastexpression_t* mc_astexpr_makeforloopexpr(mcstate_t* state, mcastexpression_t* init, mcastexpression_t* test, mcastexpression_t* update, mcastexprcodeblock_t* body)
+{
+    mcastexpression_t* res;
+    res = mc_astexpr_makeexpression(state, MC_EXPR_STMTLOOPFORCLASSIC);
+    if(!res)
+    {
+        return NULL;
+    }
+    res->uexpr.exprforloopstmt.init = init;
+    res->uexpr.exprforloopstmt.loopcond = test;
+    res->uexpr.exprforloopstmt.update = update;
+    res->uexpr.exprforloopstmt.body = body;
+    return res;
+}
+
+mcastexpression_t* mc_astexpr_makecontinueexpr(mcstate_t* state)
+{
+    mcastexpression_t* res;
+    res = mc_astexpr_makeexpression(state, MC_EXPR_STMTCONTINUE);
+    if(!res)
+    {
+        return NULL;
+    }
+    return res;
+}
+
+mcastexpression_t* mc_astexpr_makeblockexpr(mcstate_t* state, mcastexprcodeblock_t* block)
+{
+    mcastexpression_t* res;
+    res = mc_astexpr_makeexpression(state, MC_EXPR_STMTBLOCK);
+    if(!res)
+    {
+        return NULL;
+    }
+    res->uexpr.exprblockstmt = block;
+    return res;
+}
+
+mcastexpression_t* mc_astexpr_makeimportexpr(mcstate_t* state, char* path)
+{
+    mcastexpression_t* res;
+    res = mc_astexpr_makeexpression(state, MC_EXPR_STMTIMPORT);
+    if(!res)
+    {
+        return NULL;
+    }
+    res->uexpr.exprimportstmt.path = path;
+    return res;
+}
+
+mcastexpression_t* mc_astexpr_makerecoverexpr(mcstate_t* state, mcastexprident_t* eid, mcastexprcodeblock_t* body)
+{
+    mcastexpression_t* res;
+    res = mc_astexpr_makeexpression(state, MC_EXPR_STMTRECOVER);
+    if(!res)
+    {
+        return NULL;
+    }
+    res->uexpr.exprrecoverstmt.errident = eid;
+    res->uexpr.exprrecoverstmt.body = body;
+    return res;
+}
+
+mcastexprcodeblock_t* mc_astcodeblock_make(mcstate_t* state, mcptrlist_t* statements)
+{
+    mcastexprcodeblock_t* block;
+    block = (mcastexprcodeblock_t*)mc_allocator_malloc(state, sizeof(mcastexprcodeblock_t));
+    if(!block)
+    {
+        return NULL;
+    }
+    block->pstate = state;
+    block->statements = statements;
+    return block;
+}
+
+void mc_astcodeblock_destroy(mcastexprcodeblock_t* block)
+{
+    if(block != NULL)
+    {
+        mc_ptrlist_destroy(block->statements, (mcitemdestroyfn_t)mc_astexpr_destroy);
+        mc_memory_free(block);
+    }
+}
+
+mcastexprcodeblock_t* mc_astcodeblock_copy(mcastexprcodeblock_t* block)
+{
+    mcastexprcodeblock_t* res;
+    mcptrlist_t* statementscopy;
+    if(!block)
+    {
+        return NULL;
+    }
+    statementscopy = mc_ptrlist_copy(block->statements, (mcitemcopyfn_t)mc_astexpr_copyexpr, (mcitemdestroyfn_t)mc_astexpr_destroy);
+    if(!statementscopy)
+    {
+        return NULL;
+    }
+    res = mc_astcodeblock_make(block->pstate, statementscopy);
+    if(!res)
+    {
+        mc_ptrlist_destroy(statementscopy, (mcitemdestroyfn_t)mc_astexpr_destroy);
+        return NULL;
+    }
+    return res;
+}
+
+mcastfuncparam_t* mc_astfuncparam_make(mcstate_t* state, mcastexprident_t* ident)
+{
+    mcastfuncparam_t* res;
+    res = (mcastfuncparam_t*)mc_allocator_malloc(state, sizeof(mcastfuncparam_t));
+    if(!res)
+    {
+        return NULL;
+    }
+    res->pstate = state;
+    res->ident = ident;
+    if(!res->ident->value)
+    {
+        mc_memory_free(res);
+        return NULL;
+    }
+    return res;
+}
+
+mcastfuncparam_t* mc_astfuncparam_copy(mcastfuncparam_t* param)
+{
+    mcastfuncparam_t* res;
+    res = (mcastfuncparam_t*)mc_allocator_malloc(param->pstate, sizeof(mcastfuncparam_t));
+    if(!res)
+    {
+        return NULL;
+    }
+    res->pstate = param->pstate;
+    res->ident = mc_astident_copy(param->ident);
+    if(!res->ident->value)
+    {
+        mc_memory_free(res);
+        return NULL;
+    }
+    return res;
+}
+
+void mc_astfuncparam_destroy(mcastfuncparam_t* param)
+{
+    if(param != NULL)
+    {
+        mc_astident_destroy(param->ident);
+        mc_memory_free(param);
+    }
+}
+
+mcastexprident_t* mc_astident_make(mcstate_t* state, mcasttoken_t tok)
+{
+    mcastexprident_t* res = (mcastexprident_t*)mc_allocator_malloc(state, sizeof(mcastexprident_t));
+    if(!res)
+    {
+        return NULL;
+    }
+    res->pstate = state;
+    res->value = mc_asttoken_dupliteralstring(state, &tok);
+    if(!res->value)
+    {
+        mc_memory_free(res);
+        return NULL;
+    }
+    res->pos = tok.pos;
+    return res;
+}
+
+mcastexprident_t* mc_astident_copy(mcastexprident_t* ident)
+{
+    mcastexprident_t* res = (mcastexprident_t*)mc_allocator_malloc(ident->pstate, sizeof(mcastexprident_t));
+    if(!res)
+    {
+        return NULL;
+    }
+    res->pstate = ident->pstate;
+    res->value = mc_util_strdup(ident->pstate, ident->value);
+    if(!res->value)
+    {
+        mc_memory_free(res);
+        return NULL;
+    }
+    res->pos = ident->pos;
+    return res;
+}
+
+void mc_astident_destroy(mcastexprident_t* ident)
+{
+    if(ident != NULL)
+    {
+        mc_memory_free(ident->value);
+        ident->value = NULL;
+        ident->pos = srcposinvalid;
+        mc_memory_free(ident);
+    }
+}
+
+mcastexprifcase_t* mc_astifcase_make(mcstate_t* state, mcastexpression_t* test, mcastexprcodeblock_t* consequence)
+{
+    mcastexprifcase_t* res;
+    res = (mcastexprifcase_t*)mc_allocator_malloc(state, sizeof(mcastexprifcase_t));
+    if(!res)
+    {
+        return NULL;
+    }
+    res->pstate = state;
+    res->ifcond = test;
+    res->consequence = consequence;
+    return res;
+}
+
+void mc_astifcase_destroy(mcastexprifcase_t* cond)
+{
+    if(cond != NULL)
+    {
+        mc_astexpr_destroy(cond->ifcond);
+        mc_astcodeblock_destroy(cond->consequence);
+        mc_memory_free(cond);
+    }
+}
+
+mcastexprifcase_t* mc_astifcase_copy(mcastexprifcase_t* ifcase)
+{
+    mcastexpression_t* testcopy;
+    mcastexprcodeblock_t* consequencecopy;
+    mcastexprifcase_t* ifcasecopy;
+    if(!ifcase)
+    {
+        return NULL;
+    }
+    testcopy = NULL;
+    consequencecopy = NULL;
+    ifcasecopy = NULL;
+    testcopy = mc_astexpr_copyexpr(ifcase->ifcond);
+    if(!testcopy)
+    {
+        goto err;
+    }
+    #if 1
+    consequencecopy = mc_astcodeblock_copy(ifcase->consequence);
+    #else
+    consequencecopy = ifcase->consequence;    
+    #endif
+    if(!testcopy || !consequencecopy)
+    {
+        goto err;
+    }
+    ifcasecopy = mc_astifcase_make(ifcase->pstate, testcopy, consequencecopy);
+    if(!ifcasecopy)
+    {
+        goto err;
+    }
+    return ifcasecopy;
+err:
+    mc_astexpr_destroy(testcopy);
+    mc_astcodeblock_destroy(consequencecopy);
+    mc_astifcase_destroy(ifcasecopy);
+    return NULL;
+}
+
+mcastexpression_t* mc_astexpr_makeexpression(mcstate_t* state, mcastexprtype_t type)
+{
+    mcastexpression_t* res = (mcastexpression_t*)mc_allocator_malloc(state, sizeof(mcastexpression_t));
+    if(!res)
+    {
+        return NULL;
+    }
+    res->pstate = state;
+    res->exprtype = type;
+    res->pos = srcposinvalid;
+    return res;
+}
+
+bool mc_lexer_init(mcastlexer_t* lex, mcstate_t* state, mcerrlist_t* errs, const char* input, mcastcompiledfile_t* file)
+{
+    bool ok;
+    lex->pstate = state;
+    lex->errors = errs;
+    lex->inputsource = input;
+    lex->inputlength = (int)mc_util_strlen(input);
+    lex->position = 0;
+    lex->nextposition = 0;
+    lex->ch = '\0';
+    if(file)
+    {
+        lex->line = mc_ptrlist_count(file->lines);
+    }
+    else
+    {
+        lex->line = 0;
+    }
+    lex->column = -1;
+    lex->file = file;
+    ok = mc_lexer_addline(lex, 0);
+    if(!ok)
+    {
+        return false;
+    }
+    ok = mc_lexer_readchar(lex);
+    if(!ok)
+    {
+        return false;
+    }
+    lex->failed = false;
+    lex->continuetplstring = false;
+    memset(&lex->prevstate, 0, sizeof(lex->prevstate));
+    mc_asttoken_init(&lex->prevtoken, MC_TOK_INVALID, NULL, 0);
+    mc_asttoken_init(&lex->currtoken, MC_TOK_INVALID, NULL, 0);
+    mc_asttoken_init(&lex->peektoken, MC_TOK_INVALID, NULL, 0);
+    return true;
+}
+
+bool mc_lexer_failed(mcastlexer_t* lex)
+{
+    return lex->failed;
+}
+
+void mc_lexer_conttplstring(mcastlexer_t* lex)
+{
+    lex->continuetplstring = true;
+}
+
+bool mc_lexer_currtokenis(mcastlexer_t* lex, mcasttoktype_t type)
+{
+    return lex->currtoken.toktype == type;
+}
+
+bool mc_lexer_peektokenis(mcastlexer_t* lex, mcasttoktype_t type)
+{
+    return lex->peektoken.toktype == type;
+}
+
+bool mc_lexer_nexttoken(mcastlexer_t* lex)
+{
+    lex->prevtoken = lex->currtoken;
+    lex->currtoken = lex->peektoken;
+    lex->peektoken = mc_lexer_nexttokinternal(lex);
+    return !lex->failed;
+}
+
+bool mc_lexer_previoustoken(mcastlexer_t* lex)
+{
+    if(lex->prevtoken.toktype == MC_TOK_INVALID)
+    {
+        return false;
+    }
+    lex->peektoken = lex->currtoken;
+    lex->currtoken = lex->prevtoken;
+    mc_asttoken_init(&lex->prevtoken, MC_TOK_INVALID, NULL, 0);
+    lex->ch = lex->prevstate.ch;
+    lex->column = lex->prevstate.column;
+    lex->line = lex->prevstate.line;
+    lex->position = lex->prevstate.position;
+    lex->nextposition = lex->prevstate.nextposition;
+    return true;
+}
+
+mcasttoken_t mc_lexer_nexttokinternal(mcastlexer_t* lex)
+{
+    char c;
+    mcasttoken_t outtok;
+    lex->prevstate.ch = lex->ch;
+    lex->prevstate.column = lex->column;
+    lex->prevstate.line = lex->line;
+    lex->prevstate.position = lex->position;
+    lex->prevstate.nextposition = lex->nextposition;
+    while(true)
+    {
+        if(!lex->continuetplstring)
+        {
+            mc_lexer_skipspace(lex);
+        }
+        outtok.toktype = MC_TOK_INVALID;
+        outtok.tokstrdata = lex->inputsource + lex->position;
+        outtok.tokstrlen = 1;
+        outtok.pos = mc_astlocation_make(lex->file, lex->line, lex->column);
+        c = lex->continuetplstring ? '`' : lex->ch;
+        switch(c)
+        {
+            case '\0':
+                {
+                    mc_asttoken_init(&outtok, MC_TOK_EOF, "EOF", 3);
+                }
+                break;
+            case '=':
+                {
+                    if(mc_lexer_peekchar(lex) == '=')
+                    {
+                        mc_asttoken_init(&outtok, MC_TOK_EQ, "==", 2);
+                        mc_lexer_readchar(lex);
+                    }
+                    else
+                    {
+                        mc_asttoken_init(&outtok, MC_TOK_ASSIGN, "=", 1);
+                    }
+                }
+                break;
+            case '&':
+                {
+                    if(mc_lexer_peekchar(lex) == '&')
+                    {
+                        mc_asttoken_init(&outtok, MC_TOK_AND, "&&", 2);
+                        mc_lexer_readchar(lex);
+                    }
+                    else if(mc_lexer_peekchar(lex) == '=')
+                    {
+                        mc_asttoken_init(&outtok, MC_TOK_ASSIGNBINAND, "&=", 2);
+                        mc_lexer_readchar(lex);
+                    }
+                    else
+                    {
+                        mc_asttoken_init(&outtok, MC_TOK_BINAND, "&", 1);
+                    }
+                }
+                break;
+            case '|':
+                {
+                    if(mc_lexer_peekchar(lex) == '|')
+                    {
+                        mc_asttoken_init(&outtok, MC_TOK_OR, "||", 2);
+                        mc_lexer_readchar(lex);
+                    }
+                    else if(mc_lexer_peekchar(lex) == '=')
+                    {
+                        mc_asttoken_init(&outtok, MC_TOK_ASSIGNBINOR, "|=", 2);
+                        mc_lexer_readchar(lex);
+                    }
+                    else
+                    {
+                        mc_asttoken_init(&outtok, MC_TOK_BINOR, "|", 1);
+                    }
+                }
+                break;
+            case '^':
+                {
+                    if(mc_lexer_peekchar(lex) == '=')
+                    {
+                        mc_asttoken_init(&outtok, MC_TOK_ASSIGNBINXOR, "^=", 2);
+                        mc_lexer_readchar(lex);
+                    }
+                    else
+                    {
+                        mc_asttoken_init(&outtok, MC_TOK_BINXOR, "^", 1);
+                        break;
+                    }
+                }
+                break;
+            case '+':
+                {
+                    if(mc_lexer_peekchar(lex) == '=')
+                    {
+                        mc_asttoken_init(&outtok, MC_TOK_ASSIGNPLUS, "+=", 2);
+                        mc_lexer_readchar(lex);
+                    }
+                    else if(mc_lexer_peekchar(lex) == '+')
+                    {
+                        mc_asttoken_init(&outtok, MC_TOK_PLUSPLUS, "++", 2);
+                        mc_lexer_readchar(lex);
+                    }
+                    else
+                    {
+                        mc_asttoken_init(&outtok, MC_TOK_PLUS, "+", 1);
+                        break;
+                    }
+                }
+                break;
+            case '-':
+                {
+                    if(mc_lexer_peekchar(lex) == '=')
+                    {
+                        mc_asttoken_init(&outtok, MC_TOK_ASSIGNMINUS, "-=", 2);
+                        mc_lexer_readchar(lex);
+                    }
+                    else if(mc_lexer_peekchar(lex) == '-')
+                    {
+                        mc_asttoken_init(&outtok, MC_TOK_MINUSMINUS, "--", 2);
+                        mc_lexer_readchar(lex);
+                    }
+                    else
+                    {
+                        mc_asttoken_init(&outtok, MC_TOK_UNARYMINUS, "-", 1);
+                        break;
+                    }
+                }
+                break;
+            case '~':
+                {
+                    mc_asttoken_init(&outtok, MC_TOK_UNARYBINNOT, "~", 1);
+                }
+                break;
+            case '!':
+                {
+                    if(mc_lexer_peekchar(lex) == '=')
+                    {
+                        mc_asttoken_init(&outtok, MC_TOK_NOTEQ, "!=", 2);
+                        mc_lexer_readchar(lex);
+                    }
+                    else
+                    {
+                        mc_asttoken_init(&outtok, MC_TOK_BANG, "!", 1);
+                    }
+                }
+                break;
+            case '*':
+                {
+                    if(mc_lexer_peekchar(lex) == '=')
+                    {
+                        mc_asttoken_init(&outtok, MC_TOK_ASSIGNASTERISK, "*=", 2);
+                        mc_lexer_readchar(lex);
+                    }
+                    else
+                    {
+                        mc_asttoken_init(&outtok, MC_TOK_ASTERISK, "*", 1);
+                        break;
+                    }
+                }
+                break;
+            case '/':
+                {
+                    if(mc_lexer_peekchar(lex) == '/')
+                    {
+                        mc_lexer_readchar(lex);
+                        while(lex->ch != '\n' && lex->ch != '\0')
+                        {
+                            mc_lexer_readchar(lex);
+                        }
+                        continue;
+                    }
+                    if(mc_lexer_peekchar(lex) == '=')
+                    {
+                        mc_asttoken_init(&outtok, MC_TOK_ASSIGNSLASH, "/=", 2);
+                        mc_lexer_readchar(lex);
+                    }
+                    else
+                    {
+                        mc_asttoken_init(&outtok, MC_TOK_SLASH, "/", 1);
+                        break;
+                    }
+                }
+                break;
+            case '<':
+                {
+                    if(mc_lexer_peekchar(lex) == '=')
+                    {
+                        mc_asttoken_init(&outtok, MC_TOK_LTE, "<=", 2);
+                        mc_lexer_readchar(lex);
+                    }
+                    else if(mc_lexer_peekchar(lex) == '<')
+                    {
+                        mc_lexer_readchar(lex);
+                        if(mc_lexer_peekchar(lex) == '=')
+                        {
+                            mc_asttoken_init(&outtok, MC_TOK_ASSIGNLSHIFT, "<<=", 3);
+                            mc_lexer_readchar(lex);
+                        }
+                        else
+                        {
+                            mc_asttoken_init(&outtok, MC_TOK_LSHIFT, "<<", 2);
+                        }
+                    }
+                    else
+                    {
+                        mc_asttoken_init(&outtok, MC_TOK_LT, "<", 1);
+                        break;
+                    }
+                }
+                break;
+            case '>':
+                {
+                    if(mc_lexer_peekchar(lex) == '=')
+                    {
+                        mc_asttoken_init(&outtok, MC_TOK_GTE, ">=", 2);
+                        mc_lexer_readchar(lex);
+                    }
+                    else if(mc_lexer_peekchar(lex) == '>')
+                    {
+                        mc_lexer_readchar(lex);
+                        if(mc_lexer_peekchar(lex) == '=')
+                        {
+                            mc_asttoken_init(&outtok, MC_TOK_ASSIGNRSHIFT, ">>=", 3);
+                            mc_lexer_readchar(lex);
+                        }
+                        else
+                        {
+                            mc_asttoken_init(&outtok, MC_TOK_RSHIFT, ">>", 2);
+                        }
+                    }
+                    else
+                    {
+                        mc_asttoken_init(&outtok, MC_TOK_GT, ">", 1);
+                    }
+                }
+                break;
+            case ',':
+                {
+                    mc_asttoken_init(&outtok, MC_TOK_COMMA, ",", 1);
+                }
+                break;
+            case ';':
+                {
+                    mc_asttoken_init(&outtok, MC_TOK_SEMICOLON, ";", 1);
+                }
+                break;
+            case ':':
+                {
+                    mc_asttoken_init(&outtok, MC_TOK_COLON, ":", 1);
+                }
+                break;
+            case '(':
+                {
+                    mc_asttoken_init(&outtok, MC_TOK_LPAREN, "(", 1);
+                }
+                break;
+            case ')':
+                {
+                    mc_asttoken_init(&outtok, MC_TOK_RPAREN, ")", 1);
+                }
+                break;
+            case '{':
+                {
+                    mc_asttoken_init(&outtok, MC_TOK_LBRACE, "{", 1);
+                }
+                break;
+            case '}':
+                {
+                    mc_asttoken_init(&outtok, MC_TOK_RBRACE, "}", 1);
+                }
+                break;
+            case '[':
+                {
+                    mc_asttoken_init(&outtok, MC_TOK_LBRACKET, "[", 1);
+                }
+                break;
+            case ']':
+                {
+                    mc_asttoken_init(&outtok, MC_TOK_RBRACKET, "]", 1);
+                }
+                break;
+            case '.':
+                {
+                    mc_asttoken_init(&outtok, MC_TOK_DOT, ".", 1);
+                }
+                break;
+            case '?':
+                {
+                    mc_asttoken_init(&outtok, MC_TOK_QUESTION, "?", 1);
+                }
+                break;
+            case '%':
+                {
+                    if(mc_lexer_peekchar(lex) == '=')
+                    {
+                        mc_asttoken_init(&outtok, MC_TOK_ASSIGNPERCENT, "%=", 2);
+                        mc_lexer_readchar(lex);
+                    }
+                    else
+                    {
+                        mc_asttoken_init(&outtok, MC_TOK_PERCENT, "%", 1);
+                        break;
+                    }
+                }
+                break;
+            case '"':
+                {
+                    int len;
+                    const char* str;
+                    mc_lexer_readchar(lex);
+                    str = mc_lexer_scanstring(lex, '"', false, NULL, &len);
+                    if(str)
+                    {
+                        mc_asttoken_init(&outtok, MC_TOK_STRING, str, len);
+                    }
+                    else
+                    {
+                        mc_asttoken_init(&outtok, MC_TOK_INVALID, NULL, 0);
+                    }
+                }
+                break;
+            case '\'':
+                {
+                    int len;
+                    const char* str;
+                    mc_lexer_readchar(lex);
+                    str = mc_lexer_scanstring(lex, '\'', false, NULL, &len);
+                    if(str)
+                    {
+                        mc_asttoken_init(&outtok, MC_TOK_STRING, str, len);
+                    }
+                    else
+                    {
+                        mc_asttoken_init(&outtok, MC_TOK_INVALID, NULL, 0);
+                    }
+                }
+                break;
+            case '`':
+                {
+                    int len;
+                    bool templatefound;
+                    const char* str;
+                    if(!lex->continuetplstring)
+                    {
+                        mc_lexer_readchar(lex);
+                    }
+                    templatefound = false;
+                    str = mc_lexer_scanstring(lex, '`', true, &templatefound, &len);
+                    if(str)
+                    {
+                        if(templatefound)
+                        {
+                            mc_asttoken_init(&outtok, MC_TOK_TEMPLATESTRING, str, len);
+                        }
+                        else
+                        {
+                            mc_asttoken_init(&outtok, MC_TOK_STRING, str, len);
+                        }
+                    }
+                    else
+                    {
+                        mc_asttoken_init(&outtok, MC_TOK_INVALID, NULL, 0);
+                    }
+                }
+                break;
+            default:
+                {
+                    int identlen;
+                    int numberlen;
+                    const char* ident;
+                    const char* number;
+                    mcasttoktype_t type;
+                    if(mc_lexer_charisletter(lex->ch) || (lex->ch == '$'))
+                    {
+                        identlen = 0;
+                        ident = mc_lexer_scanident(lex, &identlen);
+                        type = mc_lexer_lookupident(ident, identlen);
+                        mc_asttoken_init(&outtok, type, ident, identlen);
+                        return outtok;
+                    }
+                    if(mc_lexer_charisdigit(lex->ch))
+                    {
+                        numberlen = 0;
+                        number = mc_lexer_scannumber(lex, &numberlen);
+                        mc_asttoken_init(&outtok, MC_TOK_NUMBER, number, numberlen);
+                        return outtok;
+                    }
+                }
+                break;
+        }
+        mc_lexer_readchar(lex);
+        if(mc_lexer_failed(lex))
+        {
+            mc_asttoken_init(&outtok, MC_TOK_INVALID, NULL, 0);
+        }
+        lex->continuetplstring = false;
+        return outtok;
+    }
+    /* NB. never reached; but keep the compiler from complaining. */
+    return outtok;
+}
+
+bool mc_lexer_expectcurrent(mcastlexer_t* lex, mcasttoktype_t type)
+{
+    const char* actualtypestr;
+    const char* expectedtypestr;
+    if(mc_lexer_failed(lex))
+    {
+        return false;
+    }
+    if(!mc_lexer_currtokenis(lex, type))
+    {
+        expectedtypestr = mc_asttoken_typename(type);
+        actualtypestr = mc_asttoken_typename(lex->currtoken.toktype);
+        mc_errlist_addf(lex->errors, MC_ERROR_PARSING, lex->currtoken.pos, "expected token \"%s\", but got \"%s\"", expectedtypestr, actualtypestr);
+        return false;
+    }
+    return true;
+}
+
+bool mc_lexer_readchar(mcastlexer_t* lex)
+{
+    bool ok; 
+    if(lex->nextposition >= lex->inputlength)
+    {
+        lex->ch = '\0';
+    }
+    else
+    {
+        lex->ch = lex->inputsource[lex->nextposition];
+    }
+    lex->position = lex->nextposition;
+    lex->nextposition++;
+    if(lex->ch == '\n')
+    {
+        lex->line++;
+        lex->column = -1;
+        ok = mc_lexer_addline(lex, lex->nextposition);
+        if(!ok)
+        {
+            lex->failed = true;
+            return false;
+        }
+    }
+    else
+    {
+        lex->column++;
+    }
+    return true;
+}
+
+char mc_lexer_peekchar(mcastlexer_t* lex)
+{
+    if(lex->nextposition >= lex->inputlength)
+    {
+        return '\0';
+    }
+    return lex->inputsource[lex->nextposition];
+}
+
+bool mc_lexer_charisletter(char ch)
+{
+    return (
+        (('a' <= ch) && (ch <= 'z')) || (('A' <= ch) && (ch <= 'Z')) || (ch == '_')
+    );
+}
+
+bool mc_lexer_charisdigit(char ch)
+{
+    return (
+        (ch >= '0') && (ch <= '9')
+    );
+}
+
+bool mc_lexer_charisoneof(char ch, const char* allowed, int allowedlen)
+{
+    int i;
+    for(i = 0; i < allowedlen; i++)
+    {
+        if(ch == allowed[i])
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+const char* mc_lexer_scanident(mcastlexer_t* lex, int* outlen)
+{
+    int len;
+    int position;
+    len = 0;
+    /*if(lex->ch == '$')
+    {
+        mc_lexer_readchar(lex);
+    }
+    */
+    position = lex->position;
+    while(mc_lexer_charisdigit(lex->ch) || mc_lexer_charisletter(lex->ch) ||(lex->ch == '$') || (lex->ch == ':'))
+    {
+        if(lex->ch == ':')
+        {
+            if(mc_lexer_peekchar(lex) != ':')
+            {
+                goto end;
+            }
+            mc_lexer_readchar(lex);
+        }
+        mc_lexer_readchar(lex);
+    }
+end:
+    len = lex->position - position;
+    *outlen = len;
+    return lex->inputsource + position;
+}
+
+const char* mc_lexer_scannumber(mcastlexer_t* lex, int* outlen)
+{
+    int len;
+    int position;
+    static const char allowed[] = ".xXaAbBcCdDeEfF";
+    position = lex->position;
+    while(mc_lexer_charisdigit(lex->ch) || mc_lexer_charisoneof(lex->ch, allowed, MC_UTIL_STATICARRAYSIZE(allowed) - 1))
+    {
+        mc_lexer_readchar(lex);
+    }
+    len = lex->position - position;
+    *outlen = len;
+    return lex->inputsource + position;
+}
+
+const char* mc_lexer_scanstring(mcastlexer_t* lex, char delimiter, bool istemplate, bool* outtemplatefound, int* outlen)
+{
+    bool escaped;
+    int len;
+    int position;
+    *outlen = 0;
+    escaped = false;
+    position = lex->position;
+    while(true)
+    {
+        if(lex->ch == '\0')
+        {
+            return NULL;
+        }
+        if(lex->ch == delimiter && !escaped)
+        {
+            break;
+        }
+        if(istemplate && !escaped && lex->ch == '$' && mc_lexer_peekchar(lex) == '{')
+        {
+            *outtemplatefound = true;
+            break;
+        }
+        escaped = false;
+        if(lex->ch == '\\')
+        {
+            escaped = true;
+        }
+        mc_lexer_readchar(lex);
+    }
+    len = lex->position - position;
+    *outlen = len;
+    return lex->inputsource + position;
+}
+
+mcasttoktype_t mc_lexer_lookupident(const char* ident, int len)
+{
+    int i;
+    int klen;
+    static struct
+    {
+        const char* value;
+        mcasttoktype_t type;
+    } keywords[] = {
+        { "function", MC_TOK_FUNCTION },
+        { "const", MC_TOK_CONST },
+        { "var", MC_TOK_VAR },
+        { "let", MC_TOK_VAR },
+        { "true", MC_TOK_TRUE },
+        { "false", MC_TOK_FALSE },
+        { "if", MC_TOK_IF },
+        { "else", MC_TOK_ELSE },
+        { "return", MC_TOK_RETURN },
+        { "while", MC_TOK_WHILE },
+        { "break", MC_TOK_BREAK },
+        { "for", MC_TOK_FOR },
+        { "in", MC_TOK_IN },
+        { "continue", MC_TOK_CONTINUE },
+        { "null", MC_TOK_NULL },
+        { "import", MC_TOK_IMPORT },
+        { "recover", MC_TOK_RECOVER },
+        { NULL, (mcasttoktype_t)0}
+    };
+    for(i = 0; keywords[i].value != NULL; i++)
+    {
+        klen = mc_util_strlen(keywords[i].value);
+        if(klen == len && MC_UTIL_STRNEQ(ident, keywords[i].value, len))
+        {
+            return keywords[i].type;
+        }
+    }
+    return MC_TOK_IDENT;
+}
+
+void mc_lexer_skipspace(mcastlexer_t* lex)
+{
+    char ch;
+    ch = lex->ch;
+    while(ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r')
+    {
+        mc_lexer_readchar(lex);
+        ch = lex->ch;
+    }
+}
+
+bool mc_lexer_addline(mcastlexer_t* lex, int offset)
+{
+    bool ok;
+    size_t linelen;
+    char* line;
+    const char* linestart;
+    const char* newlineptr;
+    if(!lex->file)
+    {
+        return true;
+    }
+    if(lex->line < mc_ptrlist_count(lex->file->lines))
+    {
+        return true;
+    }
+    linestart = lex->inputsource + offset;
+    newlineptr = strchr(linestart, '\n');
+    line = NULL;
+    if(!newlineptr)
+    {
+        line = mc_util_strdup(lex->pstate, linestart);
+    }
+    else
+    {
+        linelen = newlineptr - linestart;
+        line = mc_util_strndup(lex->pstate, linestart, linelen);
+    }
+    if(!line)
+    {
+        lex->failed = true;
+        return false;
+    }
+    ok = mc_ptrlist_push(lex->file->lines, line);
+    if(!ok)
+    {
+        lex->failed = true;
+        mc_memory_free(line);
+        return false;
+    }
+    return true;
+}
+
+
+mcastprecedence_t mc_parser_getprecedence(mcasttoktype_t tk)
+{
+    switch(tk)
+    {
+        case MC_TOK_EQ:
+        case MC_TOK_NOTEQ:
+            return MC_ASTPREC_EQUALS;
+        case MC_TOK_LT:
+        case MC_TOK_LTE:
+        case MC_TOK_GT:
+        case MC_TOK_GTE:
+            return MC_ASTPREC_LESSGREATER;
+        case MC_TOK_PLUS:
+        case MC_TOK_UNARYMINUS:
+        case MC_TOK_UNARYBINNOT:
+            return MC_ASTPREC_SUM;
+        case MC_TOK_SLASH:
+        case MC_TOK_ASTERISK:
+        case MC_TOK_PERCENT:
+            return MC_ASTPREC_PRODUCT;
+        case MC_TOK_LPAREN:
+        case MC_TOK_LBRACKET:
+            return MC_ASTPREC_POSTFIX;
+        case MC_TOK_ASSIGN:
+        case MC_TOK_ASSIGNPLUS:
+        case MC_TOK_ASSIGNMINUS:
+        case MC_TOK_ASSIGNASTERISK:
+        case MC_TOK_ASSIGNSLASH:
+        case MC_TOK_ASSIGNPERCENT:
+        case MC_TOK_ASSIGNBINAND:
+        case MC_TOK_ASSIGNBINOR:
+        case MC_TOK_ASSIGNBINXOR:
+        case MC_TOK_ASSIGNLSHIFT:
+        case MC_TOK_ASSIGNRSHIFT:
+            return MC_ASTPREC_ASSIGN;
+        case MC_TOK_DOT:
+            return MC_ASTPREC_POSTFIX;
+        case MC_TOK_AND:
+            return MC_ASTPREC_LOGICALAND;
+        case MC_TOK_OR:
+            return MC_ASTPREC_LOGICALOR;
+        case MC_TOK_BINOR:
+            return MC_ASTPREC_BINOR;
+        case MC_TOK_BINXOR:
+            return MC_ASTPREC_BINXOR;
+        case MC_TOK_BINAND:
+            return MC_ASTPREC_BINAND;
+        case MC_TOK_LSHIFT:
+        case MC_TOK_RSHIFT:
+            return MC_ASTPREC_SHIFT;
+        case MC_TOK_QUESTION:
+            return MC_ASTPREC_TERNARY;
+        case MC_TOK_PLUSPLUS:
+        case MC_TOK_MINUSMINUS:
+            return MC_ASTPREC_INCDEC;
+        default:
+            break;
+    }
+    return MC_ASTPREC_LOWEST;
+}
+
+mcastmathoptype_t mc_parser_tokentomathop(mcasttoktype_t tk)
+{
+    switch(tk)
+    {
+        case MC_TOK_ASSIGN:
+            return MC_MATHOP_ASSIGN;
+        case MC_TOK_PLUS:
+            return MC_MATHOP_PLUS;
+        case MC_TOK_UNARYMINUS:
+            return MC_MATHOP_MINUS;
+        case MC_TOK_UNARYBINNOT:
+            return MC_MATHOP_BINNOT;
+        case MC_TOK_BANG:
+            return MC_MATHOP_BANG;
+        case MC_TOK_ASTERISK:
+            return MC_MATHOP_ASTERISK;
+        case MC_TOK_SLASH:
+            return MC_MATHOP_SLASH;
+        case MC_TOK_LT:
+            return MC_MATHOP_LT;
+        case MC_TOK_LTE:
+            return MC_MATHOP_LTE;
+        case MC_TOK_GT:
+            return MC_MATHOP_GT;
+        case MC_TOK_GTE:
+            return MC_MATHOP_GTE;
+        case MC_TOK_EQ:
+            return MC_MATHOP_EQ;
+        case MC_TOK_NOTEQ:
+            return MC_MATHOP_NOTEQ;
+        case MC_TOK_PERCENT:
+            return MC_MATHOP_MODULUS;
+        case MC_TOK_AND:
+            return MC_MATHOP_LOGICALAND;
+        case MC_TOK_OR:
+            return MC_MATHOP_LOGICALOR;
+        case MC_TOK_ASSIGNPLUS:
+            return MC_MATHOP_PLUS;
+        case MC_TOK_ASSIGNMINUS:
+            return MC_MATHOP_MINUS;
+        case MC_TOK_ASSIGNASTERISK:
+            return MC_MATHOP_ASTERISK;
+        case MC_TOK_ASSIGNSLASH:
+            return MC_MATHOP_SLASH;
+        case MC_TOK_ASSIGNPERCENT:
+            return MC_MATHOP_MODULUS;
+        case MC_TOK_ASSIGNBINAND:
+            return MC_MATHOP_BINAND;
+        case MC_TOK_ASSIGNBINOR:
+            return MC_MATHOP_BINOR;
+        case MC_TOK_ASSIGNBINXOR:
+            return MC_MATHOP_BINXOR;
+        case MC_TOK_ASSIGNLSHIFT:
+            return MC_MATHOP_LSHIFT;
+        case MC_TOK_ASSIGNRSHIFT:
+            return MC_MATHOP_RSHIFT;
+        case MC_TOK_BINAND:
+            return MC_MATHOP_BINAND;
+        case MC_TOK_BINOR:
+            return MC_MATHOP_BINOR;
+        case MC_TOK_BINXOR:
+            return MC_MATHOP_BINXOR;
+        case MC_TOK_LSHIFT:
+            return MC_MATHOP_LSHIFT;
+        case MC_TOK_RSHIFT:
+            return MC_MATHOP_RSHIFT;
+        case MC_TOK_PLUSPLUS:
+            return MC_MATHOP_PLUS;
+        case MC_TOK_MINUSMINUS:
+            return MC_MATHOP_MINUS;
+        default:
+            {
+                MC_ASSERT(false);
+            }
+            break;
+    }
+    return MC_MATHOP_NONE;
+}
+
+char mc_parser_getescapechar(char c)
+{
+    switch(c)
+    {
+        case '\"':
+            return '\"';
+        case '\\':
+            return '\\';
+        case '/':
+            return '/';
+        case 'b':
+            return '\b';
+        case 'f':
+            return '\f';
+        case 'n':
+            return '\n';
+        case 'r':
+            return '\r';
+        case 't':
+            return '\t';
+        case '0':
+            return '\0';
+        default:
+            break;
+    }
+    return c;
+}
+
+char* mc_parser_processandcopystring(mcstate_t* state, const char* input, size_t len)
+{
+    size_t ini;
+    size_t outi;
+    char* output;
+    output = (char*)mc_allocator_malloc(state, len + 1);
+    if(!output)
+    {
+        return NULL;
+    }
+    ini = 0;
+    outi = 0;
+    while(input[ini] != '\0' && ini < len)
+    {
+        if(input[ini] == '\\')
+        {
+            ini++;
+            output[outi] = mc_parser_getescapechar(input[ini]);
+            if(output[outi] < 0)
+            {
+                goto error;
+            }
+        }
+        else
+        {
+            output[outi] = input[ini];
+        }
+        outi++;
+        ini++;
+    }
+    output[outi] = '\0';
+    return output;
+error:
+    mc_memory_free(output);
+    return NULL;
+}
+
+mcastparser_t* mc_astparser_make(mcstate_t* state, mcconfig_t* config, mcerrlist_t* errors)
+{
+    mcastparser_t* parser;
+    parser = (mcastparser_t*)mc_allocator_malloc(state, sizeof(mcastparser_t));
+    if(!parser)
+    {
+        return NULL;
+    }
+    memset(parser, 0, sizeof(mcastparser_t));
+    parser->pstate = state;
+    parser->config = config;
+    parser->errors = errors;
+    {
+        parser->rightassocfuncs[MC_TOK_IDENT] = mc_parser_parseident;
+        parser->rightassocfuncs[MC_TOK_NUMBER] = mc_parser_parseliteralnumber;
+        parser->rightassocfuncs[MC_TOK_TRUE] = mc_parser_parseliteralbool;
+        parser->rightassocfuncs[MC_TOK_FALSE] = mc_parser_parseliteralbool;
+        parser->rightassocfuncs[MC_TOK_STRING] = mc_parser_parseliteralstring;
+        parser->rightassocfuncs[MC_TOK_TEMPLATESTRING] = mc_parser_parseliteraltemplatestring;
+        parser->rightassocfuncs[MC_TOK_NULL] = mc_parser_parseliteralnull;
+        parser->rightassocfuncs[MC_TOK_BANG] = mc_parser_parseprefixexpr;
+        parser->rightassocfuncs[MC_TOK_UNARYMINUS] = mc_parser_parseprefixexpr;
+        parser->rightassocfuncs[MC_TOK_UNARYBINNOT] = mc_parser_parseprefixexpr;
+        parser->rightassocfuncs[MC_TOK_LPAREN] = mc_parser_parsegroupedexpr;
+        parser->rightassocfuncs[MC_TOK_FUNCTION] = mc_parser_parseliteralfunction;
+        parser->rightassocfuncs[MC_TOK_LBRACKET] = mc_parser_parseliteralarray;
+        parser->rightassocfuncs[MC_TOK_LBRACE] = mc_parser_parseliteralmap;
+        parser->rightassocfuncs[MC_TOK_PLUSPLUS] = mc_parser_parseincdecprefixexpr;
+        parser->rightassocfuncs[MC_TOK_MINUSMINUS] = mc_parser_parseincdecprefixexpr;
+        #if 0
+        parser->rightassocfuncs[MC_TOK_IF] = mc_parser_parseifstmt;
+        #endif
+    }
+    {
+        parser->leftassocfuncs[MC_TOK_PLUS] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_UNARYMINUS] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_SLASH] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_ASTERISK] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_PERCENT] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_EQ] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_NOTEQ] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_LT] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_LTE] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_GT] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_GTE] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_LPAREN] = mc_parser_parsecallexpr;
+        parser->leftassocfuncs[MC_TOK_LBRACKET] = mc_parser_parseindexexpr;
+        parser->leftassocfuncs[MC_TOK_ASSIGN] = mc_parser_parseassignexpr;
+        parser->leftassocfuncs[MC_TOK_ASSIGNPLUS] = mc_parser_parseassignexpr;
+        parser->leftassocfuncs[MC_TOK_ASSIGNMINUS] = mc_parser_parseassignexpr;
+        parser->leftassocfuncs[MC_TOK_ASSIGNSLASH] = mc_parser_parseassignexpr;
+        parser->leftassocfuncs[MC_TOK_ASSIGNASTERISK] = mc_parser_parseassignexpr;
+        parser->leftassocfuncs[MC_TOK_ASSIGNPERCENT] = mc_parser_parseassignexpr;
+        parser->leftassocfuncs[MC_TOK_ASSIGNBINAND] = mc_parser_parseassignexpr;
+        parser->leftassocfuncs[MC_TOK_ASSIGNBINOR] = mc_parser_parseassignexpr;
+        parser->leftassocfuncs[MC_TOK_ASSIGNBINXOR] = mc_parser_parseassignexpr;
+        parser->leftassocfuncs[MC_TOK_ASSIGNLSHIFT] = mc_parser_parseassignexpr;
+        parser->leftassocfuncs[MC_TOK_ASSIGNRSHIFT] = mc_parser_parseassignexpr;
+        parser->leftassocfuncs[MC_TOK_DOT] = mc_parser_parsedotexpression;
+        parser->leftassocfuncs[MC_TOK_AND] = mc_parser_parselogicalexpr;
+        parser->leftassocfuncs[MC_TOK_OR] = mc_parser_parselogicalexpr;
+        parser->leftassocfuncs[MC_TOK_BINAND] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_BINOR] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_BINXOR] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_LSHIFT] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_RSHIFT] = mc_parser_parseinfixexpr;
+        parser->leftassocfuncs[MC_TOK_QUESTION] = mc_parser_parseternaryexpr;
+        parser->leftassocfuncs[MC_TOK_PLUSPLUS] = mc_parser_parseincdecpostfixexpr;
+        parser->leftassocfuncs[MC_TOK_MINUSMINUS] = mc_parser_parseincdecpostfixexpr;
+    }
+    parser->depth = 0;
+    return parser;
+}
+
+void mc_astparser_destroy(mcastparser_t* parser)
+{
+    if(parser != NULL)
+    {
+        mc_memory_free(parser);
+    }
+}
+
+mcptrlist_t* mc_astparser_parseall(mcastparser_t* parser, const char* input, mcastcompiledfile_t* file)
+{
+    bool ok;
+    mcastexpression_t* expr;
+    mcptrlist_t* statements;
+    parser->depth = 0;
+    ok = mc_lexer_init(&parser->lexer, parser->pstate, parser->errors, input, file);
+    if(!ok)
+    {
+        return NULL;
+    }
+    mc_lexer_nexttoken(&parser->lexer);
+    mc_lexer_nexttoken(&parser->lexer);
+    statements = mc_ptrlist_make(parser->pstate, sizeof(void*), true);
+    if(!statements)
+    {
+        return NULL;
+    }
+    while(!mc_lexer_currtokenis(&parser->lexer, MC_TOK_EOF))
+    {
+        if(mc_lexer_currtokenis(&parser->lexer, MC_TOK_SEMICOLON))
+        {
+            mc_lexer_nexttoken(&parser->lexer);
+            continue;
+        }
+        expr = mc_astparser_parsestatement(parser);
+        if(!expr)
+        {
+            goto err;
+        }
+        ok = mc_ptrlist_push(statements, expr);
+        if(!ok)
+        {
+            mc_astexpr_destroy(expr);
+            goto err;
+        }
+    }
+    if(parser->errors->count > 0)
+    {
+        goto err;
+    }
+    return statements;
+err:
+    mc_ptrlist_destroy(statements, (mcitemdestroyfn_t)mc_astexpr_destroy);
+    return NULL;
+}
+
+mcastexpression_t* mc_astparser_parsestatement(mcastparser_t* p)
+{
+    mcastlocation_t pos;
+    mcastexpression_t* res;
+    pos = p->lexer.currtoken.pos;
+    res = NULL;
+    switch(p->lexer.currtoken.toktype)
+    {
+        case MC_TOK_VAR:
+        case MC_TOK_CONST:
+            {
+                res = mc_parser_parsevarletstmt(p);
+            }
+            break;
+        case MC_TOK_IF:
+            {
+                res = mc_parser_parseifstmt(p);
+            }
+            break;
+        case MC_TOK_RETURN:
+            {
+                res = mc_parser_parsereturnstmt(p);
+            }
+            break;
+        case MC_TOK_WHILE:
+            {
+                res = mc_parser_parseloopwhilestmt(p);
+            }
+            break;
+        case MC_TOK_BREAK:
+            {
+                res = mc_parser_parsebreakstmt(p);
+            }
+            break;
+        case MC_TOK_FOR:
+            {
+                res = mc_parser_parseloopforstmt(p);
+            }
+            break;
+        case MC_TOK_FUNCTION:
+            {
+                if(mc_lexer_peektokenis(&p->lexer, MC_TOK_IDENT))
+                {
+                    res = mc_parser_parsefunctionstmt(p);
+                }
+                else
+                {
+                    res = mc_parser_parseexprstmt(p);
+                }
+            }
+            break;
+        case MC_TOK_LBRACE:
+            {
+                if(p->config->replmode && p->depth == 0)
+                {
+                    res = mc_parser_parseexprstmt(p);
+                }
+                else
+                {
+                    res = mc_parser_parseblockstmt(p);
+                }
+            }
+            break;
+        case MC_TOK_CONTINUE:
+            {
+                res = mc_parser_parsecontinuestmt(p);
+            }
+            break;
+        case MC_TOK_IMPORT:
+            {
+                res = mc_parser_parseimportstmt(p);
+            }
+            break;
+        case MC_TOK_RECOVER:
+            {
+                res = mc_parser_parserecoverstmt(p);
+            }
+            break;
+        default:
+            {
+                res = mc_parser_parseexprstmt(p);
+            }
+            break;
+    }
+    if(res)
+    {
+        res->pos = pos;
+    }
+    return res;
+}
+
+mcastexpression_t* mc_parser_parsevarletstmt(mcastparser_t* p)
+{
+    bool assignable;
+    mcastexprident_t* nameident;
+    mcastexpression_t* value;
+    mcastexpression_t* res;
+    nameident = NULL;
+    value = NULL;
+    assignable = mc_lexer_currtokenis(&p->lexer, MC_TOK_VAR);
+    mc_lexer_nexttoken(&p->lexer);
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_IDENT))
+    {
+        goto err;
+    }
+    nameident = mc_astident_make(p->pstate, p->lexer.currtoken);
+    if(!nameident)
+    {
+        goto err;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    #if 0
+        if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_ASSIGN))
+    #else
+        if(!mc_lexer_currtokenis(&p->lexer, MC_TOK_ASSIGN))
+    #endif
+    {
+        value = mc_astexpr_makeliteralnull(p->pstate);
+        goto finish;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    value = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
+    if(!value)
+    {
+        goto err;
+    }
+    if(value->exprtype == MC_EXPR_FUNCTIONLITERAL)
+    {
+        value->uexpr.exprlitfunction.name = mc_util_strdup(p->pstate, nameident->value);
+        if(!value->uexpr.exprlitfunction.name)
+        {
+            goto err;
+        }
+    }
+    finish:
+    res = mc_astexpr_makedefineexpr(p->pstate, nameident, value, assignable);
+    if(!res)
+    {
+        goto err;
+    }
+    return res;
+err:
+    mc_astexpr_destroy(value);
+    mc_astident_destroy(nameident);
+    return NULL;
+}
+
+mcastexpression_t* mc_parser_parseifstmt(mcastparser_t* p)
+{
+    bool ok;
+    mcptrlist_t* cases;
+    mcastexprifcase_t* cond;
+    mcastexprifcase_t* elif;
+    mcastexprcodeblock_t* alternative;
+    mcastexpression_t* res;
+    cases = NULL;
+    alternative = NULL;
+    cases = mc_ptrlist_make(p->pstate, sizeof(void*), true);
+    if(!cases)
+    {
+        goto err;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LPAREN))
+    {
+        goto err;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    cond = mc_astifcase_make(p->pstate, NULL, NULL);
+    if(!cond)
+    {
+        goto err;
+    }
+    ok = mc_ptrlist_push(cases, cond);
+    if(!ok)
+    {
+        mc_astifcase_destroy(cond);
+        goto err;
+    }
+    cond->ifcond = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
+    if(!cond->ifcond)
+    {
+        goto err;
+    }
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
+    {
+        goto err;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    cond->consequence = mc_parser_parsecodeblock(p);
+    if(!cond->consequence)
+    {
+        goto err;
+    }
+    while(mc_lexer_currtokenis(&p->lexer, MC_TOK_ELSE))
+    {
+        mc_lexer_nexttoken(&p->lexer);
+        if(mc_lexer_currtokenis(&p->lexer, MC_TOK_IF))
+        {
+            mc_lexer_nexttoken(&p->lexer);
+            if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LPAREN))
+            {
+                goto err;
+            }
+            mc_lexer_nexttoken(&p->lexer);
+            elif = mc_astifcase_make(p->pstate, NULL, NULL);
+            if(!elif)
+            {
+                goto err;
+            }
+            ok = mc_ptrlist_push(cases, elif);
+            if(!ok)
+            {
+                mc_astifcase_destroy(elif);
+                goto err;
+            }
+            elif->ifcond = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
+            if(!elif->ifcond)
+            {
+                goto err;
+            }
+            if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
+            {
+                goto err;
+            }
+            mc_lexer_nexttoken(&p->lexer);
+            elif->consequence = mc_parser_parsecodeblock(p);
+            if(!elif->consequence)
+            {
+                goto err;
+            }
+        }
+        else
+        {
+            alternative = mc_parser_parsecodeblock(p);
+            if(!alternative)
+            {
+                goto err;
+            }
+        }
+    }
+    res = mc_astexpr_makeifexpr(p->pstate, cases, alternative);
+    if(!res)
+    {
+        goto err;
+    }
+    return res;
+err:
+    mc_ptrlist_destroy(cases, (mcitemdestroyfn_t)mc_astifcase_destroy);
+    mc_astcodeblock_destroy(alternative);
+    return NULL;
+}
+
+mcastexpression_t* mc_parser_parsereturnstmt(mcastparser_t* p)
+{
+    mcastexpression_t* res;
+    mcastexpression_t* expr;
+    expr = NULL;
+    mc_lexer_nexttoken(&p->lexer);
+    if(!mc_lexer_currtokenis(&p->lexer, MC_TOK_SEMICOLON) && !mc_lexer_currtokenis(&p->lexer, MC_TOK_RBRACE) && !mc_lexer_currtokenis(&p->lexer, MC_TOK_EOF))
+    {
+        expr = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
+        if(!expr)
+        {
+            return NULL;
+        }
+    }
+    res = mc_astexpr_makereturnexpr(p->pstate, expr);
+    if(!res)
+    {
+        mc_astexpr_destroy(expr);
+        return NULL;
+    }
+    return res;
+}
+
+mcastexpression_t* mc_parser_parseexprstmt(mcastparser_t* p)
+{
+    mcastexpression_t* res;
+    mcastexpression_t* expr;
+    expr = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
+    if(!expr)
+    {
+        return NULL;
+    }
+    if(expr && (!p->config->replmode || p->depth > 0))
+    {
+        #if 0
+        /* this is actually completely unnecessary */
+        if(expr->exprtype != MC_EXPR_ASSIGN && expr->exprtype != MC_EXPR_CALL)
+        {
+            mc_errlist_addf(p->errors, MC_ERROR_PARSING, expr->pos, "only assignments and function calls can be expression statements");
+            mc_astexpr_destroy(expr);
+            return NULL;
+        }
+        #endif
+    }
+    res = mc_astexpr_makeexprstmt(p->pstate, expr);
+    if(!res)
+    {
+        mc_astexpr_destroy(expr);
+        return NULL;
+    }
+    return res;
+}
+
+mcastexpression_t* mc_parser_parseloopwhilestmt(mcastparser_t* p)
+{
+    mcastexpression_t* res;
+    mcastexpression_t* test;
+    mcastexprcodeblock_t* body;
+    test = NULL;
+    body = NULL;
+    mc_lexer_nexttoken(&p->lexer);
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LPAREN))
+    {
+        goto err;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    test = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
+    if(!test)
+    {
+        goto err;
+    }
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
+    {
+        goto err;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    body = mc_parser_parsecodeblock(p);
+    if(!body)
+    {
+        goto err;
+    }
+    res = mc_astexpr_makewhileexpr(p->pstate, test, body);
+    if(!res)
+    {
+        goto err;
+    }
+    return res;
+err:
+    mc_astcodeblock_destroy(body);
+    mc_astexpr_destroy(test);
+    return NULL;
+}
+
+mcastexpression_t* mc_parser_parsebreakstmt(mcastparser_t* p)
+{
+    mc_lexer_nexttoken(&p->lexer);
+    return mc_astexpr_makebreakexpr(p->pstate);
+}
+
+mcastexpression_t* mc_parser_parsecontinuestmt(mcastparser_t* p)
+{
+    mc_lexer_nexttoken(&p->lexer);
+    return mc_astexpr_makecontinueexpr(p->pstate);
+}
+
+mcastexpression_t* mc_parser_parseblockstmt(mcastparser_t* p)
+{
+    mcastexprcodeblock_t* block;
+    mcastexpression_t* res;
+    block = mc_parser_parsecodeblock(p);
+    if(!block)
+    {
+        return NULL;
+    }
+    res = mc_astexpr_makeblockexpr(p->pstate, block);
+    if(!res)
+    {
+        mc_astcodeblock_destroy(block);
+        return NULL;
+    }
+    return res;
+}
+
+mcastexpression_t* mc_parser_parseimportstmt(mcastparser_t* p)
+{
+    char* processedname;
+    mcastexpression_t* res;
+    mc_lexer_nexttoken(&p->lexer);
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_STRING))
+    {
+        return NULL;
+    }
+    processedname = mc_parser_processandcopystring(p->pstate, p->lexer.currtoken.tokstrdata, p->lexer.currtoken.tokstrlen);
+    if(!processedname)
+    {
+        mc_errlist_addf(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "error when parsing module name");
+        return NULL;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    res = mc_astexpr_makeimportexpr(p->pstate, processedname);
+    if(!res)
+    {
+        mc_memory_free(processedname);
+        return NULL;
+    }
+    return res;
+}
+
+mcastexpression_t* mc_parser_parserecoverstmt(mcastparser_t* p)
+{
+    mcastexpression_t* res;
+    mcastexprident_t* eid;
+    mcastexprcodeblock_t* body;
+    eid = NULL;
+    body = NULL;
+    mc_lexer_nexttoken(&p->lexer);
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LPAREN))
+    {
+        return NULL;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_IDENT))
+    {
+        return NULL;
+    }
+    eid = mc_astident_make(p->pstate, p->lexer.currtoken);
+    if(!eid)
+    {
+        return NULL;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
+    {
+        goto err;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    body = mc_parser_parsecodeblock(p);
+    if(!body)
+    {
+        goto err;
+    }
+    res = mc_astexpr_makerecoverexpr(p->pstate, eid, body);
+    if(!res)
+    {
+        goto err;
+    }
+    return res;
+err:
+    mc_astcodeblock_destroy(body);
+    mc_astident_destroy(eid);
+    return NULL;
+}
+
+mcastexpression_t* mc_parser_parseloopforstmt(mcastparser_t* p)
+{
+    mc_lexer_nexttoken(&p->lexer);
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LPAREN))
+    {
+        return NULL;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    if(mc_lexer_currtokenis(&p->lexer, MC_TOK_IDENT) && mc_lexer_peektokenis(&p->lexer, MC_TOK_IN))
+    {
+        return mc_parser_parseloopforeachstmt(p);
+    }
+    return mc_parser_parseloopforclassicstmt(p);
+}
+
+mcastexpression_t* mc_parser_parseloopforeachstmt(mcastparser_t* p)
+{
+    mcastexpression_t* res;
+    mcastexpression_t* source;
+    mcastexprcodeblock_t* body;
+    mcastexprident_t* iteratorident;
+    source = NULL;
+    body = NULL;
+    iteratorident = NULL;
+    iteratorident = mc_astident_make(p->pstate, p->lexer.currtoken);
+    if(!iteratorident)
+    {
+        goto err;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_IN))
+    {
+        goto err;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    source = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
+    if(!source)
+    {
+        goto err;
+    }
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
+    {
+        goto err;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    body = mc_parser_parsecodeblock(p);
+    if(!body)
+    {
+        goto err;
+    }
+    res = mc_astexpr_makeforeachexpr(p->pstate, iteratorident, source, body);
+    if(!res)
+    {
+        goto err;
+    }
+    return res;
+err:
+    mc_astcodeblock_destroy(body);
+    mc_astident_destroy(iteratorident);
+    mc_astexpr_destroy(source);
+    return NULL;
+}
+
+mcastexpression_t* mc_parser_parseloopforclassicstmt(mcastparser_t* p)
+{
+    mcastexpression_t* res;
+    mcastexpression_t* init;
+    mcastexpression_t* test;
+    mcastexpression_t* update;
+    mcastexprcodeblock_t* body;
+    init = NULL;
+    test = NULL;
+    update = NULL;
+    body = NULL;
+    if(!mc_lexer_currtokenis(&p->lexer, MC_TOK_SEMICOLON))
+    {
+        init = mc_astparser_parsestatement(p);
+        if(!init)
+        {
+            goto err;
+        }
+        if(init->exprtype != MC_EXPR_STMTDEFINE && init->exprtype != MC_EXPR_STMTEXPRESSION)
+        {
+            mc_errlist_addf(p->errors, MC_ERROR_PARSING, init->pos, "expected a definition or expression as 'for' loop init clause");
+            goto err;
+        }
+        if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_SEMICOLON))
+        {
+            goto err;
+        }
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    if(!mc_lexer_currtokenis(&p->lexer, MC_TOK_SEMICOLON))
+    {
+        test = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
+        if(!test)
+        {
+            goto err;
+        }
+        if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_SEMICOLON))
+        {
+            goto err;
+        }
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    if(!mc_lexer_currtokenis(&p->lexer, MC_TOK_RPAREN))
+    {
+        update = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
+        if(!update)
+        {
+            goto err;
+        }
+        if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
+        {
+            goto err;
+        }
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    body = mc_parser_parsecodeblock(p);
+    if(!body)
+    {
+        goto err;
+    }
+    res = mc_astexpr_makeforloopexpr(p->pstate, init, test, update, body);
+    if(!res)
+    {
+        goto err;
+    }
+    return res;
+err:
+    mc_astexpr_destroy(init);
+    mc_astexpr_destroy(test);
+    mc_astexpr_destroy(update);
+    mc_astcodeblock_destroy(body);
+    return NULL;
+}
+
+
+mcastexprcodeblock_t* mc_parser_parsecodeblock(mcastparser_t* p)
+{
+    bool ok;
+    mcastexprcodeblock_t* res;
+    mcastexpression_t* expr;
+    mcptrlist_t* statements;
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LBRACE))
+    {
+        return NULL;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    p->depth++;
+    statements = mc_ptrlist_make(p->pstate, sizeof(void*), true);
+    if(!statements)
+    {
+        goto err;
+    }
+    while(!mc_lexer_currtokenis(&p->lexer, MC_TOK_RBRACE))
+    {
+        if(mc_lexer_currtokenis(&p->lexer, MC_TOK_EOF))
+        {
+            mc_errlist_addf(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "unexpected EOF");
+            goto err;
+        }
+        if(mc_lexer_currtokenis(&p->lexer, MC_TOK_SEMICOLON))
+        {
+            mc_lexer_nexttoken(&p->lexer);
+            continue;
+        }
+        expr = mc_astparser_parsestatement(p);
+        if(!expr)
+        {
+            goto err;
+        }
+        ok = mc_ptrlist_push(statements, expr);
+        if(!ok)
+        {
+            mc_astexpr_destroy(expr);
+            goto err;
+        }
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    p->depth--;
+    res = mc_astcodeblock_make(p->pstate, statements);
+    if(!res)
+    {
+        goto err;
+    }
+    return res;
+err:
+    p->depth--;
+    mc_ptrlist_destroy(statements, (mcitemdestroyfn_t)mc_astexpr_destroy);
+    return NULL;
+}
+
+mcastexpression_t* mc_parser_parseexpression(mcastparser_t* p, mcastprecedence_t prec)
+{
+    char* literal;
+    mcastlocation_t pos;
+    mcleftassocparsefn_t parseleftassoc;
+    mcastrightassocparsefn_t parserightassoc;
+    mcastexpression_t* newleftexpr;
+    mcastexpression_t* leftexpr;
+    pos = p->lexer.currtoken.pos;
+    if(p->lexer.currtoken.toktype == MC_TOK_INVALID)
+    {
+        mc_errlist_addf(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "illegal token");
+        return NULL;
+    }
+    parserightassoc = p->rightassocfuncs[p->lexer.currtoken.toktype];
+    if(!parserightassoc)
+    {
+        literal = mc_asttoken_dupliteralstring(p->pstate, &p->lexer.currtoken);
+        mc_errlist_addf(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "no prefix parse function for \"%s\" found", literal);
+        mc_memory_free(literal);
+        return NULL;
+    }
+    leftexpr = parserightassoc(p);
+    if(!leftexpr)
+    {
+        return NULL;
+    }
+    leftexpr->pos = pos;
+    while(!mc_lexer_currtokenis(&p->lexer, MC_TOK_SEMICOLON) && prec < mc_parser_getprecedence(p->lexer.currtoken.toktype))
+    {
+        parseleftassoc = p->leftassocfuncs[p->lexer.currtoken.toktype];
+        if(!parseleftassoc)
+        {
+            return leftexpr;
+        }
+        pos = p->lexer.currtoken.pos;
+        newleftexpr = parseleftassoc(p, leftexpr);
+        if(!newleftexpr)
+        {
+            mc_astexpr_destroy(leftexpr);
+            return NULL;
+        }
+        newleftexpr->pos = pos;
+        leftexpr = newleftexpr;
+    }
+    return leftexpr;
+}
+
+mcastexpression_t* mc_parser_parseident(mcastparser_t* p)
+{
+    mcastexprident_t* ident;
+    mcastexpression_t* res;
+    ident = mc_astident_make(p->pstate, p->lexer.currtoken);
+    if(!ident)
+    {
+        return NULL;
+    }
+    res = mc_astexpr_makeident(p->pstate, ident);
+    if(!res)
+    {
+        mc_astident_destroy(ident);
+        return NULL;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    return res;
+}
+
+mcastexpression_t* mc_parser_parseliteralnumber(mcastparser_t* p)
+{
+    mcfloat_t number;
+    long parsedlen;
+    char* end;
+    char* literal;
+    number = 0;
+    errno = 0;
+    number = mc_util_strtod(p->lexer.currtoken.tokstrdata, p->lexer.currtoken.tokstrlen, &end);
+    #if 0
+        fprintf(stderr, "literal=<%s> number=<%f>\n", p->lexer.currtoken.tokstrdata, number);
+    #endif
+    parsedlen = end - p->lexer.currtoken.tokstrdata;
+    if(errno || parsedlen != p->lexer.currtoken.tokstrlen)
+    {
+        literal = mc_asttoken_dupliteralstring(p->pstate, &p->lexer.currtoken);
+        mc_errlist_addf(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "failed to parse number literal \"%s\"", literal);
+        mc_memory_free(literal);
+        return NULL;
+    }    
+    mc_lexer_nexttoken(&p->lexer);
+    return mc_astexpr_makeliteralnumber(p->pstate, number);
+}
+
+mcastexpression_t* mc_parser_parseliteralbool(mcastparser_t* p)
+{
+    mcastexpression_t* res;
+    res = mc_astexpr_makeliteralbool(p->pstate, p->lexer.currtoken.toktype == MC_TOK_TRUE);
+    mc_lexer_nexttoken(&p->lexer);
+    return res;
+}
+
+mcastexpression_t* mc_parser_parseliteralstring(mcastparser_t* p)
+{
+    size_t len;
+    char* processedliteral;
+    mcastexpression_t* res;
+    processedliteral = mc_parser_processandcopystring(p->pstate, p->lexer.currtoken.tokstrdata, p->lexer.currtoken.tokstrlen);
+    if(!processedliteral)
+    {
+        mc_errlist_addf(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "error parsing string literal");
+        return NULL;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    len = mc_util_strlen(processedliteral);
+    res = mc_astexpr_makeliteralstring(p->pstate, processedliteral, len);
+    if(!res)
+    {
+        mc_memory_free(processedliteral);
+        return NULL;
+    }
+    return res;
+}
+
+mcastexpression_t* mc_parser_parseliteraltemplatestring(mcastparser_t* p)
+{
+    size_t len;
+    char* processedliteral;
+    mcastlocation_t pos;
+    mcastexpression_t* leftstringexpr;
+    mcastexpression_t* templateexpr;
+    mcastexpression_t* tostrcallexpr;
+    mcastexpression_t* leftaddexpr;
+    mcastexpression_t* rightexpr;
+    mcastexpression_t* rightaddexpr;
+    processedliteral = NULL;
+    leftstringexpr = NULL;
+    templateexpr = NULL;
+    tostrcallexpr = NULL;
+    leftaddexpr = NULL;
+    rightexpr = NULL;
+    rightaddexpr = NULL;
+    processedliteral = mc_parser_processandcopystring(p->pstate, p->lexer.currtoken.tokstrdata, p->lexer.currtoken.tokstrlen);
+    if(!processedliteral)
+    {
+        mc_errlist_addf(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "error parsing string literal");
+        return NULL;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LBRACE))
+    {
+        goto err;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    pos = p->lexer.currtoken.pos;
+    len = mc_util_strlen(processedliteral);
+    leftstringexpr = mc_astexpr_makeliteralstring(p->pstate, processedliteral, len);
+    if(!leftstringexpr)
+    {
+        goto err;
+    }
+    leftstringexpr->pos = pos;
+    processedliteral = NULL;
+    pos = p->lexer.currtoken.pos;
+    templateexpr = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
+    if(!templateexpr)
+    {
+        goto err;
+    }
+    tostrcallexpr = mc_parser_makefunccallexpr(p->pstate, templateexpr, "tostring");
+    if(!tostrcallexpr)
+    {
+        goto err;
+    }
+    tostrcallexpr->pos = pos;
+    templateexpr = NULL;
+    leftaddexpr = mc_astexpr_makeinfixexpr(p->pstate, MC_MATHOP_PLUS, leftstringexpr, tostrcallexpr);
+    if(!leftaddexpr)
+    {
+        goto err;
+    }
+    leftaddexpr->pos = pos;
+    leftstringexpr = NULL;
+    tostrcallexpr = NULL;
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RBRACE))
+    {
+        goto err;
+    }
+    mc_lexer_previoustoken(&p->lexer);
+    mc_lexer_conttplstring(&p->lexer);
+    mc_lexer_nexttoken(&p->lexer);
+    mc_lexer_nexttoken(&p->lexer);
+    pos = p->lexer.currtoken.pos;
+    rightexpr = mc_parser_parseexpression(p, MC_ASTPREC_HIGHEST);
+    if(!rightexpr)
+    {
+        goto err;
+    }
+    rightaddexpr = mc_astexpr_makeinfixexpr(p->pstate, MC_MATHOP_PLUS, leftaddexpr, rightexpr);
+    if(!rightaddexpr)
+    {
+        goto err;
+    }
+    rightaddexpr->pos = pos;
+    leftaddexpr = NULL;
+    rightexpr = NULL;
+    return rightaddexpr;
+err:
+    mc_astexpr_destroy(rightaddexpr);
+    mc_astexpr_destroy(rightexpr);
+    mc_astexpr_destroy(leftaddexpr);
+    mc_astexpr_destroy(tostrcallexpr);
+    mc_astexpr_destroy(templateexpr);
+    mc_astexpr_destroy(leftstringexpr);
+    mc_memory_free(processedliteral);
+    return NULL;
+}
+
+mcastexpression_t* mc_parser_parseliteralnull(mcastparser_t* p)
+{
+    mc_lexer_nexttoken(&p->lexer);
+    return mc_astexpr_makeliteralnull(p->pstate);
+}
+
+mcastexpression_t* mc_parser_parseliteralarray(mcastparser_t* p)
+{
+    mcptrlist_t* array;
+    mcastexpression_t* res;
+    array = mc_parser_parseexprlist(p, MC_TOK_LBRACKET, MC_TOK_RBRACKET, true);
+    if(!array)
+    {
+        return NULL;
+    }
+    res = mc_astexpr_makeliteralarray(p->pstate, array);
+    if(!res)
+    {
+        mc_ptrlist_destroy(array, (mcitemdestroyfn_t)mc_astexpr_destroy);
+        return NULL;
+    }
+    return res;
+}
+
+mcastexpression_t* mc_parser_parseliteralmap(mcastparser_t* p)
+{
+    bool ok;
+    size_t len;
+    char* str;
+    mcptrlist_t* keys;
+    mcptrlist_t* values;
+    mcastexpression_t* res;
+    mcastexpression_t* key;
+    mcastexpression_t* value;
+    keys = mc_ptrlist_make(p->pstate, sizeof(void*), true);
+    values = mc_ptrlist_make(p->pstate, sizeof(void*), true);
+    if(!keys || !values)
+    {
+        goto err;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    while(!mc_lexer_currtokenis(&p->lexer, MC_TOK_RBRACE))
+    {
+        key = NULL;
+        if(mc_lexer_currtokenis(&p->lexer, MC_TOK_IDENT))
+        {
+            str = mc_asttoken_dupliteralstring(p->pstate, &p->lexer.currtoken);
+            len = mc_util_strlen(str);
+            key = mc_astexpr_makeliteralstring(p->pstate, str, len);
+            if(!key)
+            {
+                mc_memory_free(str);
+                goto err;
+            }
+            key->pos = p->lexer.currtoken.pos;
+            mc_lexer_nexttoken(&p->lexer);
+        }
+        else
+        {
+            key = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
+            if(!key)
+            {
+                goto err;
+            }
+            switch(key->exprtype)
+            {
+                case MC_EXPR_STRINGLITERAL:
+                case MC_EXPR_NUMBERLITERAL:
+                case MC_EXPR_BOOLLITERAL:
+                    {
+                    }
+                    break;
+                default:
+                    {
+                        mc_errlist_addf(p->errors, MC_ERROR_PARSING, key->pos, "can only use primitive types as literal 'map' object keys");
+                        mc_astexpr_destroy(key);
+                        goto err;
+                    }
+                    break;
+            }
+        }
+        ok = mc_ptrlist_push(keys, key);
+        if(!ok)
+        {
+            mc_astexpr_destroy(key);
+            goto err;
+        }
+        if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_COLON))
+        {
+            goto err;
+        }
+        mc_lexer_nexttoken(&p->lexer);
+        value = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
+        if(!value)
+        {
+            goto err;
+        }
+        ok = mc_ptrlist_push(values, value);
+        if(!ok)
+        {
+            mc_astexpr_destroy(value);
+            goto err;
+        }
+        if(mc_lexer_currtokenis(&p->lexer, MC_TOK_RBRACE))
+        {
+            break;
+        }
+        if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_COMMA))
+        {
+            goto err;
+        }
+        mc_lexer_nexttoken(&p->lexer);
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    res = mc_astexpr_makeliteralmap(p->pstate, keys, values);
+    if(!res)
+    {
+        goto err;
+    }
+    return res;
+err:
+    mc_ptrlist_destroy(keys, (mcitemdestroyfn_t)mc_astexpr_destroy);
+    mc_ptrlist_destroy(values, (mcitemdestroyfn_t)mc_astexpr_destroy);
+    return NULL;
+}
+
+mcastexpression_t* mc_parser_parseprefixexpr(mcastparser_t* p)
+{
+    mcastmathoptype_t op;
+    mcastexpression_t* res;
+    mcastexpression_t* right;
+    op = mc_parser_tokentomathop(p->lexer.currtoken.toktype);
+    mc_lexer_nexttoken(&p->lexer);
+    right = mc_parser_parseexpression(p, MC_ASTPREC_PREFIX);
+    if(!right)
+    {
+        return NULL;
+    }
+    res = mc_astexpr_makeprefixexpr(p->pstate, op, right);
+    if(!res)
+    {
+        mc_astexpr_destroy(right);
+        return NULL;
+    }
+    return res;
+}
+
+mcastexpression_t* mc_parser_parseinfixexpr(mcastparser_t* p, mcastexpression_t* left)
+{
+    mcastmathoptype_t op;
+    mcastprecedence_t prec;
+    mcastexpression_t* res;
+    mcastexpression_t* right;
+    op = mc_parser_tokentomathop(p->lexer.currtoken.toktype);
+    prec = mc_parser_getprecedence(p->lexer.currtoken.toktype);
+    mc_lexer_nexttoken(&p->lexer);
+    right = mc_parser_parseexpression(p, prec);
+    if(!right)
+    {
+        return NULL;
+    }
+    res = mc_astexpr_makeinfixexpr(p->pstate, op, left, right);
+    if(!res)
+    {
+        mc_astexpr_destroy(right);
+        return NULL;
+    }
+    return res;
+}
+
+mcastexpression_t* mc_parser_parsegroupedexpr(mcastparser_t* p)
+{
+    mcastexpression_t* expr;
+    mc_lexer_nexttoken(&p->lexer);
+    expr = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
+    if(!expr || !mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
+    {
+        mc_astexpr_destroy(expr);
+        return NULL;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    return expr;
+}
+
+
+bool mc_parser_parsefuncparams(mcastparser_t* p, mcptrlist_t* outparams)
+{
+    bool ok;
+    mcastexprident_t* ident;
+    mcastfuncparam_t* param;
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LPAREN))
+    {
+        return false;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    if(mc_lexer_currtokenis(&p->lexer, MC_TOK_RPAREN))
+    {
+        mc_lexer_nexttoken(&p->lexer);
+        return true;
+    }
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_IDENT))
+    {
+        return false;
+    }
+    ident = mc_astident_make(p->pstate, p->lexer.currtoken);
+    if(!ident)
+    {
+        return false;
+    }
+    param = mc_astfuncparam_make(p->pstate, ident);
+    ok = mc_ptrlist_push(outparams, param);
+    if(!ok)
+    {
+        mc_astident_destroy(ident);
+        return false;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    while(mc_lexer_currtokenis(&p->lexer, MC_TOK_COMMA))
+    {
+        mc_lexer_nexttoken(&p->lexer);
+        if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_IDENT))
+        {
+            return false;
+        }
+        ident = mc_astident_make(p->pstate, p->lexer.currtoken);
+        if(!ident)
+        {
+            return false;
+        }
+        param = mc_astfuncparam_make(p->pstate, ident);
+        ok = mc_ptrlist_push(outparams, param);
+        if(!ok)
+        {
+            mc_astfuncparam_destroy(param);
+            return false;
+        }
+        mc_lexer_nexttoken(&p->lexer);
+    }
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
+    {
+        return false;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    return true;
+}
+
+mcastexpression_t* mc_parser_parseliteralfunction(mcastparser_t* p)
+{
+    bool ok;
+    mcptrlist_t* params;
+    mcastexprcodeblock_t* body;
+    mcastexpression_t* res;
+    p->depth++;
+    params = NULL;
+    body = NULL;
+    if(mc_lexer_currtokenis(&p->lexer, MC_TOK_FUNCTION))
+    {
+        mc_lexer_nexttoken(&p->lexer);
+    }
+    params = mc_ptrlist_make(p->pstate, sizeof(void*), true);
+    ok = mc_parser_parsefuncparams(p, params);
+    if(!ok)
+    {
+        goto err;
+    }
+    body = mc_parser_parsecodeblock(p);
+    if(!body)
+    {
+        goto err;
+    }
+    res = mc_astexpr_makeliteralfunction(p->pstate, params, body);
+    if(!res)
+    {
+        goto err;
+    }
+    p->depth -= 1;
+    return res;
+err:
+    mc_astcodeblock_destroy(body);
+    mc_ptrlist_destroy(params, (mcitemdestroyfn_t)mc_astfuncparam_destroy);
+    p->depth -= 1;
+    return NULL;
+}
+
+mcastexpression_t* mc_parser_parsefunctionstmt(mcastparser_t* p)
+{
+    mcastexprident_t* nameident;
+    mcastexpression_t* res;
+    mcastexpression_t* value;
+    mcastlocation_t pos;
+    nameident = NULL;
+    value = NULL;
+    pos = p->lexer.currtoken.pos;
+    mc_lexer_nexttoken(&p->lexer);
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_IDENT))
+    {
+        goto err;
+    }
+    nameident = mc_astident_make(p->pstate, p->lexer.currtoken);
+    if(!nameident)
+    {
+        goto err;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    value = mc_parser_parseliteralfunction(p);
+    if(!value)
+    {
+        goto err;
+    }
+    value->pos = pos;
+    value->uexpr.exprlitfunction.name = mc_util_strdup(p->pstate, nameident->value);
+    if(!value->uexpr.exprlitfunction.name)
+    {
+        goto err;
+    }
+    res = mc_astexpr_makedefineexpr(p->pstate, nameident, value, false);
+    if(!res)
+    {
+        goto err;
+    }
+    return res;
+err:
+    mc_astexpr_destroy(value);
+    mc_astident_destroy(nameident);
+    return NULL;
+}
+
+
+mcastexpression_t* mc_parser_parsecallexpr(mcastparser_t* p, mcastexpression_t* left)
+{
+    mcptrlist_t* args;
+    mcastexpression_t* res;
+    mcastexpression_t* function;
+    function = left;
+    args = mc_parser_parseexprlist(p, MC_TOK_LPAREN, MC_TOK_RPAREN, false);
+    if(!args)
+    {
+        return NULL;
+    }
+    res = mc_astexpr_makecallexpr(p->pstate, function, args);
+    if(!res)
+    {
+        mc_ptrlist_destroy(args, (mcitemdestroyfn_t)mc_astexpr_destroy);
+        return NULL;
+    }
+    return res;
+}
+
+mcptrlist_t* mc_parser_parseexprlist(mcastparser_t* p, mcasttoktype_t starttoken, mcasttoktype_t endtoken, bool trailingcommaallowed)
+{
+    bool ok;
+    mcptrlist_t* res;
+    mcastexpression_t* argexpr;
+    if(!mc_lexer_expectcurrent(&p->lexer, starttoken))
+    {
+        return NULL;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    res = mc_ptrlist_make(p->pstate, sizeof(void*), true);
+    if(mc_lexer_currtokenis(&p->lexer, endtoken))
+    {
+        mc_lexer_nexttoken(&p->lexer);
+        return res;
+    }
+    argexpr = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
+    if(!argexpr)
+    {
+        goto err;
+    }
+    ok = mc_ptrlist_push(res, argexpr);
+    if(!ok)
+    {
+        mc_astexpr_destroy(argexpr);
+        goto err;
+    }
+    while(mc_lexer_currtokenis(&p->lexer, MC_TOK_COMMA))
+    {
+        mc_lexer_nexttoken(&p->lexer);
+        if(trailingcommaallowed && mc_lexer_currtokenis(&p->lexer, endtoken))
+        {
+            break;
+        }
+        argexpr = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
+        if(!argexpr)
+        {
+            goto err;
+        }
+        ok = mc_ptrlist_push(res, argexpr);
+        if(!ok)
+        {
+            mc_astexpr_destroy(argexpr);
+            goto err;
+        }
+    }
+    if(!mc_lexer_expectcurrent(&p->lexer, endtoken))
+    {
+        goto err;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    return res;
+err:
+    mc_ptrlist_destroy(res, (mcitemdestroyfn_t)mc_astexpr_destroy);
+    return NULL;
+}
+
+mcastexpression_t* mc_parser_parseindexexpr(mcastparser_t* p, mcastexpression_t* left)
+{
+    mcastexpression_t* res;
+    mcastexpression_t* index;
+    mc_lexer_nexttoken(&p->lexer);
+    index = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
+    if(!index)
+    {
+        return NULL;
+    }
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RBRACKET))
+    {
+        mc_astexpr_destroy(index);
+        return NULL;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    res = mc_astexpr_makeindexexpr(p->pstate, left, index, false);
+    if(!res)
+    {
+        mc_astexpr_destroy(index);
+        return NULL;
+    }
+    return res;
+}
+
+mcastexpression_t* mc_parser_parseassignexpr(mcastparser_t* p, mcastexpression_t* left)
+{
+    mcastlocation_t pos;
+    mcastmathoptype_t op;
+    mcasttoktype_t assigntype;
+    mcastexpression_t* res;
+    mcastexpression_t* source;
+    mcastexpression_t* leftcopy;
+    mcastexpression_t* newsource;
+    source = NULL;
+    assigntype = p->lexer.currtoken.toktype;
+    mc_lexer_nexttoken(&p->lexer);
+    source = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
+    if(!source)
+    {
+        goto err;
+    }
+    switch(assigntype)
+    {
+        case MC_TOK_ASSIGNPLUS:
+        case MC_TOK_ASSIGNMINUS:
+        case MC_TOK_ASSIGNSLASH:
+        case MC_TOK_ASSIGNASTERISK:
+        case MC_TOK_ASSIGNPERCENT:
+        case MC_TOK_ASSIGNBINAND:
+        case MC_TOK_ASSIGNBINOR:
+        case MC_TOK_ASSIGNBINXOR:
+        case MC_TOK_ASSIGNLSHIFT:
+        case MC_TOK_ASSIGNRSHIFT:
+            {
+                op = mc_parser_tokentomathop(assigntype);
+                leftcopy = mc_astexpr_copyexpr(left);
+                if(!leftcopy)
+                {
+                    goto err;
+                }
+                pos = source->pos;
+                newsource = mc_astexpr_makeinfixexpr(p->pstate, op, leftcopy, source);
+                if(!newsource)
+                {
+                    mc_astexpr_destroy(leftcopy);
+                    goto err;
+                }
+                newsource->pos = pos;
+                source = newsource;
+            }
+            break;
+        case MC_TOK_ASSIGN:
+            {
+            }
+            break;
+        default:
+            {
+                MC_ASSERT(false);
+            }
+            break;
+    }
+    res = mc_astexpr_makeassignexpr(p->pstate, left, source, false);
+    if(!res)
+    {
+        goto err;
+    }
+    return res;
+err:
+    mc_astexpr_destroy(source);
+    return NULL;
+}
+
+mcastexpression_t* mc_parser_parselogicalexpr(mcastparser_t* p, mcastexpression_t* left)
+{
+    mcastmathoptype_t op;
+    mcastprecedence_t prec;
+    mcastexpression_t* res;
+    mcastexpression_t* right;
+    op = mc_parser_tokentomathop(p->lexer.currtoken.toktype);
+    prec = mc_parser_getprecedence(p->lexer.currtoken.toktype);
+    mc_lexer_nexttoken(&p->lexer);
+    right = mc_parser_parseexpression(p, prec);
+    if(!right)
+    {
+        return NULL;
+    }
+    res = mc_astexpr_makelogicalexpr(p->pstate, op, left, right);
+    if(!res)
+    {
+        mc_astexpr_destroy(right);
+        return NULL;
+    }
+    return res;
+}
+
+mcastexpression_t* mc_parser_parseternaryexpr(mcastparser_t* p, mcastexpression_t* left)
+{
+    mcastexpression_t* res;
+    mcastexpression_t* ift;
+    mcastexpression_t* iffalse;
+    mc_lexer_nexttoken(&p->lexer);
+    ift = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
+    if(!ift)
+    {
+        return NULL;
+    }
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_COLON))
+    {
+        mc_astexpr_destroy(ift);
+        return NULL;
+    }
+    mc_lexer_nexttoken(&p->lexer);
+    iffalse = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
+    if(!iffalse)
+    {
+        mc_astexpr_destroy(ift);
+        return NULL;
+    }
+    res = mc_astexpr_maketernaryexpr(p->pstate, left, ift, iffalse);
+    if(!res)
+    {
+        mc_astexpr_destroy(ift);
+        mc_astexpr_destroy(iffalse);
+        return NULL;
+    }
+    return res;
+}
+
+mcastexpression_t* mc_parser_parseincdecprefixexpr(mcastparser_t* p)
+{
+    mcastlocation_t pos;
+    mcastmathoptype_t op;
+    mcasttoktype_t operationtype;
+    mcastexpression_t* res;
+    mcastexpression_t* dest;
+    mcastexpression_t* source;
+    mcastexpression_t* destcopy;
+    mcastexpression_t* operation;
+    mcastexpression_t* oneliteral;
+    source = NULL;
+    operationtype = p->lexer.currtoken.toktype;
+    pos = p->lexer.currtoken.pos;
+    mc_lexer_nexttoken(&p->lexer);
+    op = mc_parser_tokentomathop(operationtype);
+    dest = mc_parser_parseexpression(p, MC_ASTPREC_PREFIX);
+    if(!dest)
+    {
+        goto err;
+    }
+    oneliteral = mc_astexpr_makeliteralnumber(p->pstate, 1);
+    if(!oneliteral)
+    {
+        mc_astexpr_destroy(dest);
+        goto err;
+    }
+    oneliteral->pos = pos;
+    destcopy = mc_astexpr_copyexpr(dest);
+    if(!destcopy)
+    {
+        mc_astexpr_destroy(oneliteral);
+        mc_astexpr_destroy(dest);
+        goto err;
+    }
+    operation = mc_astexpr_makeinfixexpr(p->pstate, op, destcopy, oneliteral);
+    if(!operation)
+    {
+        mc_astexpr_destroy(destcopy);
+        mc_astexpr_destroy(dest);
+        mc_astexpr_destroy(oneliteral);
+        goto err;
+    }
+    operation->pos = pos;
+    res = mc_astexpr_makeassignexpr(p->pstate, dest, operation, false);
+    if(!res)
+    {
+        mc_astexpr_destroy(dest);
+        mc_astexpr_destroy(operation);
+        goto err;
+    }
+    return res;
+err:
+    mc_astexpr_destroy(source);
+    return NULL;
+}
+
+mcastexpression_t* mc_parser_parseincdecpostfixexpr(mcastparser_t* p, mcastexpression_t* left)
+{
+    mcastlocation_t pos;
+    mcastmathoptype_t op;
+    mcasttoktype_t operationtype;
+    mcastexpression_t* res;
+    mcastexpression_t* source;
+    mcastexpression_t* leftcopy;
+    mcastexpression_t* operation;
+    mcastexpression_t* oneliteral;
+    source = NULL;
+    operationtype = p->lexer.currtoken.toktype;
+    pos = p->lexer.currtoken.pos;
+    mc_lexer_nexttoken(&p->lexer);
+    op = mc_parser_tokentomathop(operationtype);
+    leftcopy = mc_astexpr_copyexpr(left);
+    if(!leftcopy)
+    {
+        goto err;
+    }
+    oneliteral = mc_astexpr_makeliteralnumber(p->pstate, 1);
+    if(!oneliteral)
+    {
+        mc_astexpr_destroy(leftcopy);
+        goto err;
+    }
+    oneliteral->pos = pos;
+    operation = mc_astexpr_makeinfixexpr(p->pstate, op, leftcopy, oneliteral);
+    if(!operation)
+    {
+        mc_astexpr_destroy(oneliteral);
+        mc_astexpr_destroy(leftcopy);
+        goto err;
+    }
+    operation->pos = pos;
+    res = mc_astexpr_makeassignexpr(p->pstate, left, operation, true);
+    if(!res)
+    {
+        mc_astexpr_destroy(operation);
+        goto err;
+    }
+    return res;
+err:
+    mc_astexpr_destroy(source);
+    return NULL;
+}
+
+mcastexpression_t* mc_parser_parsedotexpression(mcastparser_t* p, mcastexpression_t* left)
+{
+    size_t len;
+    char* str;
+    mcastexpression_t* res;
+    mcastexpression_t* index;
+    mc_lexer_nexttoken(&p->lexer);
+    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_IDENT))
+    {
+        return NULL;
+    }
+    str = mc_asttoken_dupliteralstring(p->pstate, &p->lexer.currtoken);
+    len = mc_util_strlen(str);
+    index = mc_astexpr_makeliteralstring(p->pstate, str, len);
+    if(!index)
+    {
+        mc_memory_free(str);
+        return NULL;
+    }
+    index->pos = p->lexer.currtoken.pos;
+    mc_lexer_nexttoken(&p->lexer);
+    res = mc_astexpr_makeindexexpr(p->pstate, left, index, true);
+    if(!res)
+    {
+        mc_astexpr_destroy(index);
+        return NULL;
+    }
+    return res;
+}
+
+
+mcastexpression_t* mc_optimizer_optexpression(mcastexpression_t* expr)
+{
+    switch(expr->exprtype)
+    {
+        case MC_EXPR_INFIX:
+            return mc_optimizer_optinfixexpr(expr);
+        case MC_EXPR_PREFIX:
+            return mc_optimizer_optprefixexpr(expr);
+        default:
+            break;
+    }
+    return NULL;
+}
+
+mcastexpression_t* mc_optimizer_optinfixexpr(mcastexpression_t* expr)
+{
+    bool leftisnumeric;
+    bool rightisnumeric;
+    bool leftisstring;
+    bool rightisstring;
+    mcfloat_t dnleft;
+    mcfloat_t dnright;
+    size_t len;
+    mcstate_t* state;
+    mcastexpression_t* res;
+    mcastexpression_t* left;
+    mcastexpression_t* right;
+    mcastexpression_t* leftoptimized;
+    mcastexpression_t* rightoptimized;
+    state = expr->pstate;
+    left = expr->uexpr.exprinfix.left;
+    leftoptimized = mc_optimizer_optexpression(left);
+    if(leftoptimized)
+    {
+        left = leftoptimized;
+    }
+    right = expr->uexpr.exprinfix.right;
+    rightoptimized = mc_optimizer_optexpression(right);
+    if(rightoptimized)
+    {
+        right = rightoptimized;
+    }
+    res = NULL;
+    leftisnumeric = left->exprtype == MC_EXPR_NUMBERLITERAL || left->exprtype == MC_EXPR_BOOLLITERAL;
+    rightisnumeric = right->exprtype == MC_EXPR_NUMBERLITERAL || right->exprtype == MC_EXPR_BOOLLITERAL;
+    leftisstring = left->exprtype == MC_EXPR_STRINGLITERAL;
+    rightisstring = right->exprtype == MC_EXPR_STRINGLITERAL;
+    if(leftisnumeric && rightisnumeric)
+    {
+        dnleft = left->exprtype == MC_EXPR_NUMBERLITERAL ? left->uexpr.exprlitnumber : left->uexpr.exprlitbool;
+        dnright = right->exprtype == MC_EXPR_NUMBERLITERAL ? right->uexpr.exprlitnumber : right->uexpr.exprlitbool;
+        switch(expr->uexpr.exprinfix.op)
+        {
+            case MC_MATHOP_PLUS:
+                {
+                    res = mc_astexpr_makeliteralnumber(state, mc_mathutil_add(dnleft, dnright));
+                }
+                break;
+            case MC_MATHOP_MINUS:
+                {
+                    res = mc_astexpr_makeliteralnumber(state, mc_mathutil_sub(dnleft, dnright));
+                }
+                break;
+            case MC_MATHOP_ASTERISK:
+                {
+                    res = mc_astexpr_makeliteralnumber(state, mc_mathutil_mult(dnleft, dnright));
+                }
+                break;
+            case MC_MATHOP_SLASH:
+                {
+                    res = mc_astexpr_makeliteralnumber(state, mc_mathutil_div(dnleft, dnright));
+                }
+                break;
+            case MC_MATHOP_LT:
+                {
+                    res = mc_astexpr_makeliteralbool(state, dnleft < dnright);
+                }
+                break;
+            case MC_MATHOP_LTE:
+                {
+                    res = mc_astexpr_makeliteralbool(state, dnleft <= dnright);
+                }
+                break;
+            case MC_MATHOP_GT:
+                {
+                    res = mc_astexpr_makeliteralbool(state, dnleft > dnright);
+                }
+                break;
+            case MC_MATHOP_GTE:
+                {
+                    res = mc_astexpr_makeliteralbool(state, dnleft >= dnright);
+                }
+                break;
+            case MC_MATHOP_EQ:
+                {
+                    res = mc_astexpr_makeliteralbool(state, MC_UTIL_CMPFLOAT(dnleft, dnright));
+                }
+                break;
+            case MC_MATHOP_NOTEQ:
+                {
+                    res = mc_astexpr_makeliteralbool(state, !MC_UTIL_CMPFLOAT(dnleft, dnright));
+                }
+                break;
+            case MC_MATHOP_MODULUS:
+                {
+                    res = mc_astexpr_makeliteralnumber(state, mc_mathutil_mod(dnleft, dnright));
+                }
+                break;
+            case MC_MATHOP_BINAND:
+                {
+                    res = mc_astexpr_makeliteralnumber(state, mc_mathutil_binand(dnleft, dnright));
+                }
+                break;
+            case MC_MATHOP_BINOR:
+                {
+                    res = mc_astexpr_makeliteralnumber(state, mc_mathutil_binor(dnleft, dnright));
+                }
+                break;
+            case MC_MATHOP_BINXOR:
+                {
+                    res = mc_astexpr_makeliteralnumber(state, mc_mathutil_binxor(dnleft, dnright));
+                }
+                break;
+            case MC_MATHOP_LSHIFT:
+                {
+                    res = mc_astexpr_makeliteralnumber(state, mc_mathutil_binshiftleft(dnleft, dnright));
+                }
+                break;
+            case MC_MATHOP_RSHIFT:
+                {
+                    res = mc_astexpr_makeliteralnumber(state, mc_mathutil_binshiftright(dnleft, dnright));
+                }
+                break;
+            default:
+                {
+                }
+                break;
+        }
+    }
+    else if(expr->uexpr.exprinfix.op == MC_MATHOP_PLUS && leftisstring && rightisstring)
+    {
+        /* TODO:FIXME: horrible method of joining strings!!!!!!! */
+        char* resstr;
+        const char* strleft;
+        const char* strright;
+        strleft = left->uexpr.exprlitstring.data;
+        strright = right->uexpr.exprlitstring.data;
+        resstr = mc_util_stringallocfmt(state, "%s%s", strleft, strright);
+        len = mc_util_strlen(resstr);
+        if(resstr)
+        {
+            res = mc_astexpr_makeliteralstring(state, resstr, len);
+            if(!res)
+            {
+                mc_memory_free(resstr);
+            }
+        }
+    }
+    mc_astexpr_destroy(leftoptimized);
+    mc_astexpr_destroy(rightoptimized);
+    if(res)
+    {
+        res->pos = expr->pos;
+    }
+    return res;
+}
+
+mcastexpression_t* mc_optimizer_optprefixexpr(mcastexpression_t* expr)
+{
+    mcastexpression_t* res;
+    mcastexpression_t* right;
+    mcastexpression_t* rightoptimized;
+    right = expr->uexpr.exprprefix.right;
+    rightoptimized = mc_optimizer_optexpression(right);
+    if(rightoptimized)
+    {
+        right = rightoptimized;
+    }
+    res = NULL;
+    if(expr->uexpr.exprprefix.op == MC_MATHOP_MINUS && right->exprtype == MC_EXPR_NUMBERLITERAL)
+    {
+        res = mc_astexpr_makeliteralnumber(expr->pstate, -right->uexpr.exprlitnumber);
+    }
+    else if(expr->uexpr.exprprefix.op == MC_MATHOP_BANG && right->exprtype == MC_EXPR_BOOLLITERAL)
+    {
+        res = mc_astexpr_makeliteralbool(expr->pstate, !right->uexpr.exprlitbool);
+    }
+    mc_astexpr_destroy(rightoptimized);
+    if(res)
+    {
+        res->pos = expr->pos;
+    }
+    return res;
+}
+
+
+mcastscopecomp_t* mc_astcompscope_make(mcstate_t* state, mcastscopecomp_t* outer)
+{
+    mcastscopecomp_t* scope;
+    scope = (mcastscopecomp_t*)mc_allocator_malloc(state, sizeof(mcastscopecomp_t));
+    if(!scope)
+    {
+        return NULL;
+    }
+    memset(scope, 0, sizeof(mcastscopecomp_t));
+    scope->pstate = state;
+    scope->outer = outer;
+    scope->compiledscopebytecode = mc_ptrlist_make(state, sizeof(uint16_t), false);
+    if(!scope->compiledscopebytecode)
+    {
+        goto scopemakefailed;
+    }
+    scope->scopesrcposlist = mc_ptrlist_make(state, sizeof(mcastlocation_t), false);
+    if(!scope->scopesrcposlist)
+    {
+        goto scopemakefailed;
+    }
+    scope->ipstackbreak = mc_ptrlist_make(state, sizeof(int), false);
+    if(!scope->ipstackbreak)
+    {
+        goto scopemakefailed;
+    }
+    scope->ipstackcontinue = mc_ptrlist_make(state, sizeof(int), false);
+    if(!scope->ipstackcontinue)
+    {
+        goto scopemakefailed;
+    }
+    return scope;
+scopemakefailed:
+    mc_astcompscope_destroy(scope);
+    return NULL;
+}
+
+void mc_astcompscope_destroy(mcastscopecomp_t* scope)
+{
+    mc_ptrlist_destroy(scope->ipstackcontinue, NULL);
+    mc_ptrlist_destroy(scope->ipstackbreak, NULL);
+    mc_ptrlist_destroy(scope->compiledscopebytecode, NULL);
+    mc_ptrlist_destroy(scope->scopesrcposlist, NULL);
+    mc_memory_free(scope);
+}
+
+mccompiledprogram_t* mc_astcompscope_orphanresult(mcastscopecomp_t* scope)
+{
+    uint16_t* bcdata;
+    mcastlocation_t* astlocdata;
+    mccompiledprogram_t* res;
+    bcdata = (uint16_t*)mc_ptrlist_data(scope->compiledscopebytecode);
+    astlocdata = (mcastlocation_t*)mc_ptrlist_data(scope->scopesrcposlist);
+    res = mc_astcompresult_make(scope->pstate, bcdata, astlocdata, mc_ptrlist_count(scope->compiledscopebytecode));
+    if(!res)
+    {
+        return NULL;
+    }
+    mc_ptrlist_orphandata(scope->compiledscopebytecode);
+    mc_ptrlist_orphandata(scope->scopesrcposlist);
+    return res;
+}
+
+mccompiledprogram_t* mc_astcompresult_make(mcstate_t* state, uint16_t* bytecode, mcastlocation_t* srcposlist, int count)
+{
+    mccompiledprogram_t* res;
+    res = (mccompiledprogram_t*)mc_allocator_malloc(state, sizeof(mccompiledprogram_t));
+    if(!res)
+    {
+        return NULL;
+    }
+    memset(res, 0, sizeof(mccompiledprogram_t));
+    res->pstate = state;
+    res->bytecode = bytecode;
+    res->progsrcposlist = srcposlist;
+    res->count = count;
+    return res;
+}
+
+void mc_astcompresult_destroy(mccompiledprogram_t* res)
+{
+    if(res != NULL)
+    {
+        mc_memory_free(res->bytecode);
+        mc_memory_free(res->progsrcposlist);
+        mc_memory_free(res);
+    }
+}
+
+
+bool mc_compiler_init(mcastcompiler_t* comp, mcstate_t* state, mcconfig_t* cfg, mcgcmemory_t* mem, mcerrlist_t* errors, mcptrlist_t* files, mcglobalstore_t* gstor)
+{
+    bool ok;
+    const char* filename;
+    memset(comp, 0, sizeof(mcastcompiler_t));
+    comp->pstate = state;
+    comp->config = cfg;
+    comp->mem = mem;
+    comp->errors = errors;
+    comp->files = files;
+    comp->compglobalstore = gstor;
+    comp->filescopelist = mc_ptrlist_make(state, sizeof(void*), true);
+    if(!comp->filescopelist)
+    {
+        goto compilerinitfailed;
+    }
+    comp->constants = mc_vallist_make(state, "compilerconstants", 0);
+    if(!comp->constants)
+    {
+        goto compilerinitfailed;
+    }
+    comp->srcposstack = mc_ptrlist_make(state, sizeof(mcastlocation_t), false);
+    if(!comp->srcposstack)
+    {
+        goto compilerinitfailed;
+    }
+    comp->modules = mc_ptrdict_make(state, (mcitemcopyfn_t)mc_module_copy, (mcitemdestroyfn_t)mc_module_destroy);
+    if(!comp->modules)
+    {
+        goto compilerinitfailed;
+    }
+    ok = mc_compiler_pushcompilationscope(comp);
+    if(!ok)
+    {
+        goto compilerinitfailed;
+    }
+    filename = "<none>";
+    if(files->listcount > 0)
+    {
+        filename = mc_ptrlist_top(files);
+    }
+    #if 1
+    ok = mc_compiler_filescopepush(comp, filename);
+    if(!ok)
+    {
+        goto compilerinitfailed;
+    }
+    #endif
+    comp->stringconstposdict = mc_ptrdict_make(comp->pstate, NULL, NULL);
+    if(!comp->stringconstposdict)
+    {
+        goto compilerinitfailed;
+    }
+
+    return true;
+compilerinitfailed:
+    mc_compiler_deinit(comp);
+    return false;
+}
+
+void mc_compiler_deinit(mcastcompiler_t* comp)
+{
+    size_t i;
+    int* val;
+    if(comp != NULL)
+    {
+        for(i = 0; i < mc_ptrdict_count(comp->stringconstposdict); i++)
+        {
+            val = (int*)mc_ptrdict_getvalueat(comp->stringconstposdict, i);
+            mc_memory_free(val);
+        }
+        mc_ptrdict_destroy(comp->stringconstposdict);
+        while(mc_ptrlist_count(comp->filescopelist) > 0)
+        {
+            mc_compiler_filescopepop(comp);
+        }
+        while(mc_compiler_getcompilationscope(comp))
+        {
+            mc_compiler_popcompilationscope(comp);
+        }
+        mc_ptrdict_destroyitemsanddict(comp->modules);
+        mc_ptrlist_destroy(comp->srcposstack, NULL);
+        mc_vallist_destroy(comp->constants);
+        mc_ptrlist_destroy(comp->filescopelist, NULL);
+        memset(comp, 0, sizeof(mcastcompiler_t));
+    }
+}
+
+bool mc_compiler_initshallowcopy(mcastcompiler_t* copy, mcastcompiler_t* src)
+{
+    bool ok;
+    size_t i;
+    int* val;
+    int* valcopy;
+    char* loadednamecopy;
+    const char* key;
+    const char* loadedname;
+    mcptrdict_t* modulescopy;
+    mcvallist_t* constantscopy;
+    mcptrlist_t* srcloadedmodulenames;
+    mcptrlist_t* copyloadedmodulenames;
+    mcastsymtable_t* srcst;
+    mcastsymtable_t* srcstocopy;
+    mcastsymtable_t* copyst;
+    mcastscopefile_t* srcfilescope;
+    mcastscopefile_t* copyfilescope;
+    ok = mc_compiler_init(copy, src->pstate, src->config, src->mem, src->errors, src->files, src->compglobalstore);
+    if(!ok)
+    {
+        return false;
+    }
+    srcst = mc_compiler_getsymtable(src);
+    //MC_ASSERT(mc_ptrlist_count(src->filescopelist) == 1);
+    MC_ASSERT(srcst->outer == NULL);
+    srcstocopy = mc_symtable_copy(srcst);
+    if(!srcstocopy)
+    {
+        goto compilercopyfailed;
+    }
+    copyst = mc_compiler_getsymtable(copy);
+    mc_symtable_destroy(copyst);
+    copyst = NULL;
+    mc_compiler_setsymtable(copy, srcstocopy);
+    modulescopy = mc_ptrdict_copy(src->modules);
+    if(!modulescopy)
+    {
+        goto compilercopyfailed;
+    }
+    mc_ptrdict_destroyitemsanddict(copy->modules);
+    copy->modules = modulescopy;
+    constantscopy = mc_vallist_copy(src->constants);
+    if(!constantscopy)
+    {
+        goto compilercopyfailed;
+    }
+    mc_vallist_destroy(copy->constants);
+    copy->constants = constantscopy;
+    for(i = 0; i < mc_ptrdict_count(src->stringconstposdict); i++)
+    {
+        key = mc_ptrdict_getkeyat(src->stringconstposdict, i);
+        val = (int*)mc_ptrdict_getvalueat(src->stringconstposdict, i);
+        valcopy = (int*)mc_allocator_malloc(src->pstate, sizeof(int));
+        if(!valcopy)
+        {
+            goto compilercopyfailed;
+        }
+        *valcopy = *val;
+        ok = mc_ptrdict_set(copy->stringconstposdict, key, valcopy);
+        if(!ok)
+        {
+            mc_memory_free(valcopy);
+            goto compilercopyfailed;
+        }
+    }
+    srcfilescope = (mcastscopefile_t*)mc_ptrlist_top(src->filescopelist);
+    copyfilescope = (mcastscopefile_t*)mc_ptrlist_top(copy->filescopelist);
+    srcloadedmodulenames = srcfilescope->loadedmodnames;
+    copyloadedmodulenames = copyfilescope->loadedmodnames;
+    for(i = 0; i < mc_ptrlist_count(srcloadedmodulenames); i++)
+    {
+        loadedname = (const char*)mc_ptrlist_get(srcloadedmodulenames, i);
+        loadednamecopy = mc_util_strdup(copy->pstate, loadedname);
+        if(!loadednamecopy)
+        {
+            goto compilercopyfailed;
+        }
+        ok = mc_ptrlist_push(copyloadedmodulenames, loadednamecopy);
+        if(!ok)
+        {
+            mc_memory_free(loadednamecopy);
+            goto compilercopyfailed;
+        }
+    }
+    return true;
+compilercopyfailed:
+    mc_compiler_deinit(copy);
+    return false;
+}
+
+mcopdefinition_t* mc_parser_makedef(mcopdefinition_t* dest, const char* name, int numop, int opa1, int opa2)
+{
+    dest->name = name;
+    dest->numoperands = numop;
+    dest->operandwidths[0] = opa1;
+    dest->operandwidths[1] = opa2;
+    return dest;
+}
+
+#define makecase(dest, opc, name, opnum, opa1, opa2) \
+    case opc: \
+    { \
+        return mc_parser_makedef(def, name, opnum, opa1, opa2); \
+    } \
+    break;
+
+mcopdefinition_t* mc_opdef_lookup(mcopdefinition_t* def, mcinternopcode_t op)
+{
+    switch(op)
+    {
+        makecase(def, MC_OPCODE_HALT, "MC_OPCODE_HALT", 0, 0, 0);
+        makecase(def, MC_OPCODE_CONSTANT, "MC_OPCODE_CONSTANT", 1, 2, 0);
+        makecase(def, MC_OPCODE_ADD, "MC_OPCODE_ADD", 0, 0, 0);
+        makecase(def, MC_OPCODE_POP, "MC_OPCODE_POP", 0, 0, 0);
+        makecase(def, MC_OPCODE_SUB, "MC_OPCODE_SUB", 0, 0, 0);
+        makecase(def, MC_OPCODE_MUL, "MC_OPCODE_MUL", 0, 0, 0);
+        makecase(def, MC_OPCODE_DIV, "MC_OPCODE_DIV", 0, 0, 0);
+        makecase(def, MC_OPCODE_MOD, "MC_OPCODE_MOD", 0, 0, 0);
+        makecase(def, MC_OPCODE_TRUE, "MC_OPCODE_TRUE", 0, 0, 0);
+        makecase(def, MC_OPCODE_FALSE, "MC_OPCODE_FALSE", 0, 0, 0);
+        makecase(def, MC_OPCODE_COMPARE, "MC_OPCODE_COMPARE", 0, 0, 0);
+        makecase(def, MC_OPCODE_COMPAREEQ, "MC_OPCODE_COMPAREEQ", 0, 0, 0);
+        makecase(def, MC_OPCODE_EQUAL, "MC_OPCODE_EQUAL", 0, 0, 0);
+        makecase(def, MC_OPCODE_NOTEQUAL, "MC_OPCODE_NOTEQUAL", 0, 0, 0);
+        makecase(def, MC_OPCODE_GREATERTHAN, "MC_OPCODE_GREATERTHAN", 0, 0, 0);
+        makecase(def, MC_OPCODE_GREATERTHANEQUAL, "MC_OPCODE_GREATERTHANEQUAL", 0, 0, 0);
+        makecase(def, MC_OPCODE_MINUS, "MC_OPCODE_MINUS", 0, 0, 0);
+        makecase(def, MC_OPCODE_BINNOT, "MC_OPCODE_BINNOT", 0, 0, 0);
+        makecase(def, MC_OPCODE_BANG, "MC_OPCODE_BANG", 0, 0, 0);
+        makecase(def, MC_OPCODE_JUMP, "MC_OPCODE_JUMP", 1, 2, 0);
+        makecase(def, MC_OPCODE_JUMPIFFALSE, "MC_OPCODE_JUMPIFFALSE", 1, 2, 0);
+        makecase(def, MC_OPCODE_JUMPIFTRUE, "MC_OPCODE_JUMPIFTRUE", 1, 2, 0);
+        makecase(def, MC_OPCODE_NULL, "MC_OPCODE_NULL", 0, 0, 0);
+        makecase(def, MC_OPCODE_GETMODULEGLOBAL, "MC_OPCODE_GETMODULEGLOBAL", 1, 2, 0);
+        makecase(def, MC_OPCODE_SETMODULEGLOBAL, "MC_OPCODE_SETMODULEGLOBAL", 1, 2, 0);
+        makecase(def, MC_OPCODE_DEFINEMODULEGLOBAL, "MC_OPCODE_DEFINEMODULEGLOBAL", 1, 2, 0);
+        makecase(def, MC_OPCODE_ARRAY, "MC_OPCODE_ARRAY", 1, 2, 0);
+        makecase(def, MC_OPCODE_MAPSTART, "MC_OPCODE_MAPSTART", 1, 2, 0);
+        makecase(def, MC_OPCODE_MAPEND, "MC_OPCODE_MAPEND", 1, 2, 0);
+        makecase(def, MC_OPCODE_GETTHIS, "MC_OPCODE_GETTHIS", 0, 0, 0);
+        makecase(def, MC_OPCODE_GETINDEX, "MC_OPCODE_GETINDEX", 0, 0, 0);
+        makecase(def, MC_OPCODE_SETINDEX, "MC_OPCODE_SETINDEX", 0, 0, 0);
+        makecase(def, MC_OPCODE_GETDOTINDEX, "MC_OPCODE_GETDOTINDEX", 0, 0, 0);
+        makecase(def, MC_OPCODE_GETVALUEAT, "MC_OPCODE_GETVALUEAT", 0, 0, 0);
+        makecase(def, MC_OPCODE_CALL, "MC_OPCODE_CALL", 1, 1, 0);
+        makecase(def, MC_OPCODE_RETURNVALUE, "MC_OPCODE_RETURNVALUE", 0, 0, 0);
+        makecase(def, MC_OPCODE_RETURN, "MC_OPCODE_RETURN", 0, 0, 0);
+        makecase(def, MC_OPCODE_GETLOCAL, "MC_OPCODE_GETLOCAL", 1, 1, 0);
+        makecase(def, MC_OPCODE_DEFINELOCAL, "MC_OPCODE_DEFINELOCAL", 1, 1, 0);
+        makecase(def, MC_OPCODE_SETLOCAL, "MC_OPCODE_SETLOCAL", 1, 1, 0);
+        makecase(def, MC_OPCODE_GETGLOBALBUILTIN, "MC_OPCODE_GETGLOBALBUILTIN", 1, 2, 0);
+        makecase(def, MC_OPCODE_FUNCTION, "MC_OPCODE_FUNCTION", 2, 2, 1);
+        makecase(def, MC_OPCODE_GETFREE, "MC_OPCODE_GETFREE", 1, 1, 0);
+        makecase(def, MC_OPCODE_SETFREE, "MC_OPCODE_SETFREE", 1, 1, 0);
+        makecase(def, MC_OPCODE_CURRENTFUNCTION, "MC_OPCODE_CURRENTFUNCTION", 0, 0, 0);
+        makecase(def, MC_OPCODE_DUP, "MC_OPCODE_DUP", 0, 0, 0);
+        makecase(def, MC_OPCODE_NUMBER, "MC_OPCODE_NUMBER", 1, 8, 0);
+        makecase(def, MC_OPCODE_FOREACHLEN, "MC_OPCODE_FOREACHLEN", 0, 0, 0);
+        makecase(def, MC_OPCODE_SETRECOVER, "MC_OPCODE_SETRECOVER", 1, 2, 0);
+        makecase(def, MC_OPCODE_BINOR, "MC_OPCODE_BINOR", 0, 0, 0);
+        makecase(def, MC_OPCODE_BINXOR, "MC_OPCODE_BINXOR", 0, 0, 0);
+        makecase(def, MC_OPCODE_BINAND, "MC_OPCODE_BINAND", 0, 0, 0);
+        makecase(def, MC_OPCODE_LSHIFT, "MC_OPCODE_LSHIFT", 0, 0, 0);
+        makecase(def, MC_OPCODE_RSHIFT, "MC_OPCODE_RSHIFT", 0, 0, 0);
+        makecase(def, MC_OPCODE_MAX, "MC_OPCODE_MAX", 0, 0, 0);
+        default:
+            {
+                return NULL; 
+            }
+            break;
+    }
+    return def;
+}
+#undef makecase
+
+const char* mc_opdef_getname(mcinternopcode_t op)
+{
+    mcopdefinition_t def;
+    return mc_opdef_lookup(&def, op)->name;
+}
+
+
+#define APPEND_BYTE(n) \
+    do \
+    { \
+        val = (uint16_t)(operands[i] >> (n * 8)); \
+        ok = mc_ptrlist_push(res, &val); \
+        if(!ok) \
+        { \
+            return 0; \
+        } \
+    } while(0)
+
+int mc_compiler_gencode(mcinternopcode_t op, int operandscount, const uint64_t* operands, mcptrlist_t* res)
+{
+    bool ok;
+    int i;
+    int width;
+    int instrlen;
+    uint16_t val;
+    mcopdefinition_t vdef;
+    mcopdefinition_t* def;
+    def = mc_opdef_lookup(&vdef, op);
+    if(!def)
+    {
+        return 0;
+    }
+    instrlen = 1;
+    for(i = 0; i < def->numoperands; i++)
+    {
+        instrlen += def->operandwidths[i];
+    }
+    val = op;
+    ok = false;
+    ok = mc_ptrlist_push(res, &val);
+    if(!ok)
+    {
+        return 0;
+    }
+    for(i = 0; i < operandscount; i++)
+    {
+        width = def->operandwidths[i];
+        switch(width)
+        {
+            case 1:
+                {
+                    APPEND_BYTE(0);
+                }
+                break;
+            case 2:
+                {
+                    APPEND_BYTE(1);
+                    APPEND_BYTE(0);
+                }
+                break;
+            case 4:
+                {
+                    APPEND_BYTE(3);
+                    APPEND_BYTE(2);
+                    APPEND_BYTE(1);
+                    APPEND_BYTE(0);
+                }
+                break;
+            case 8:
+                {
+                    APPEND_BYTE(7);
+                    APPEND_BYTE(6);
+                    APPEND_BYTE(5);
+                    APPEND_BYTE(4);
+                    APPEND_BYTE(3);
+                    APPEND_BYTE(2);
+                    APPEND_BYTE(1);
+                    APPEND_BYTE(0);
+                }
+                break;
+            default:
+                {
+                    MC_ASSERT(false);
+                }
+                break;
+        }
+    }
+    return instrlen;
+}
+#undef APPEND_BYTE
+
+
+int mc_compiler_emit(mcastcompiler_t* comp, mcinternopcode_t op, int operandscount, uint64_t* operands)
+{
+    bool ok;
+    int i;
+    int ip;
+    int len;
+    mcastlocation_t* srcpos;
+    mcastscopecomp_t* compscope;
+    ip = mc_compiler_getip(comp);
+    len = mc_compiler_gencode(op, operandscount, operands, mc_compiler_getbytecode(comp));
+    if(len == 0)
+    {
+        return -1;
+    }
+    for(i = 0; i < len; i++)
+    {
+        srcpos = (mcastlocation_t*)mc_ptrlist_top(comp->srcposstack);
+        /*
+        MC_ASSERT(srcpos->line >= 0);
+        MC_ASSERT(srcpos->column >= 0);
+        */
+        ok = mc_ptrlist_push(mc_compiler_getsrcpositions(comp), srcpos);
+        if(!ok)
+        {
+            return -1;
+        }
+    }
+    compscope = mc_compiler_getcompilationscope(comp);
+    compscope->lastopcode = op;
+    return ip;
+}
+
+mcastscopecomp_t* mc_compiler_getcompilationscope(mcastcompiler_t* comp)
+{
+    return comp->compilationscope;
+}
+
+bool mc_compiler_pushcompilationscope(mcastcompiler_t* comp)
+{
+    mcastscopecomp_t* nscope;
+    mcastscopecomp_t* currentscope;
+    currentscope = mc_compiler_getcompilationscope(comp);
+    nscope = mc_astcompscope_make(comp->pstate, currentscope);
+    if(!nscope)
+    {
+        return false;
+    }
+    mc_compiler_setcompilationscope(comp, nscope);
+    return true;
+}
+
+void mc_compiler_popcompilationscope(mcastcompiler_t* comp)
+{
+    mcastscopecomp_t* currentscope;
+    currentscope = mc_compiler_getcompilationscope(comp);
+    MC_ASSERT(currentscope);
+    mc_compiler_setcompilationscope(comp, currentscope->outer);
+    mc_astcompscope_destroy(currentscope);
+}
+
+bool mc_compiler_pushsymtable(mcastcompiler_t* comp, int globaloffset)
+{
+    mcastscopefile_t* filescope;
+    mcastsymtable_t* currenttable;
+    filescope = (mcastscopefile_t*)mc_ptrlist_top(comp->filescopelist);
+    if(!filescope)
+    {
+        MC_ASSERT(false);
+        return false;
+    }
+    currenttable = filescope->filesymtab;
+    filescope->filesymtab = mc_symtable_make(comp->pstate, currenttable, comp->compglobalstore, globaloffset);
+    if(!filescope->filesymtab)
+    {
+        filescope->filesymtab = currenttable;
+        return false;
+    }
+    return true;
+}
+
+void mc_compiler_popsymtable(mcastcompiler_t* comp)
+{
+    mcastscopefile_t* filescope;
+    mcastsymtable_t* currenttable;
+    filescope = (mcastscopefile_t*)mc_ptrlist_top(comp->filescopelist);
+    if(filescope != NULL)
+    {
+        currenttable = filescope->filesymtab;
+        if(currenttable != NULL)
+        {
+            filescope->filesymtab = currenttable->outer;
+            mc_symtable_destroy(currenttable);
+        }
+    }
+}
+
+mcinternopcode_t mc_compiler_getlastopcode(mcastcompiler_t* comp)
+{
+    mcastscopecomp_t* currentscope;
+    currentscope = mc_compiler_getcompilationscope(comp);
+    return currentscope->lastopcode;
+}
+
+bool mc_compiler_docompilesource(mcastcompiler_t* comp, const char* code)
+{
+    bool ok;
+    mcstate_t* state;
+    mcptrlist_t* statements;
+    mcastscopefile_t* filescope;
+    state = comp->pstate;
+    filescope = (mcastscopefile_t*)mc_ptrlist_top(comp->filescopelist);
+    MC_ASSERT(filescope);
+    statements = mc_astparser_parseall(filescope->parser, code, filescope->file);
+    if(!statements)
+    {
+        /* errors are added by parser */
+        return false;
+    }
+    if(comp->pstate->config.dumpast)
+    {
+        mc_astprinter_printast(state, statements);
+    }
+    ok = mc_compiler_compilestmtlist(comp, statements);
+    mc_ptrlist_destroy(statements, (mcitemdestroyfn_t)mc_astexpr_destroy);
+    if(comp->pstate->config.dumpbytecode)
+    {
+        mc_printer_printbytecode(state->stderrprinter,
+            (uint16_t*)mc_ptrlist_data(comp->compilationscope->compiledscopebytecode),
+            (mcastlocation_t*)mc_ptrlist_data(comp->compilationscope->scopesrcposlist),
+            mc_ptrlist_count(comp->compilationscope->compiledscopebytecode), false);
+    }
+    return ok;
+}
+
+bool mc_compiler_compilestmtlist(mcastcompiler_t* comp, mcptrlist_t* statements)
+{
+    bool ok;
+    size_t i;
+    mcastexpression_t* expr;
+    ok = true;
+    for(i = 0; i < mc_ptrlist_count(statements); i++)
+    {
+        expr = (mcastexpression_t*)mc_ptrlist_get(statements, i);
+        ok = mc_compiler_compilestatement(comp, expr);
+        if(!ok)
+        {
+            break;
+        }
+    }
+    return ok;
+}
+
+
+bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_t* importstmt)
+{
+    bool ok;
+    bool result;
+    size_t i;
+    size_t flen;
+    char* code;
+    char* filepath;
+    char* namecopy;
+    const char* modpath;
+    const char* modname;
+    const char* loadedname;
+    const char* searchedpath;
+    const char* filepathnoncanonicalised;
+    mcprinter_t* filepathbuf;
+    mcastsymtable_t* symtab;
+    mcastscopefile_t* fs;
+    mcmodule_t* module;
+    mcastsymtable_t* st;
+    mcastscopefile_t* filescope;
+    mcastsymbol_t* symbol;
+    /* todo: split into smaller functions */
+    result = false;
+    filepath = NULL;
+    code = NULL;
+    filescope = (mcastscopefile_t*)mc_ptrlist_top(comp->filescopelist);
+    modpath = importstmt->uexpr.exprimportstmt.path;
+    modname = mc_util_getmodulename(modpath);
+    for(i = 0; i < mc_ptrlist_count(filescope->loadedmodnames); i++)
+    {
+        loadedname = (const char*)mc_ptrlist_get(filescope->loadedmodnames, i);
+        if(mc_util_strequal(loadedname, modname))
+        {
+            if(comp->pstate->config.fatalcomplaints)
+            {
+                mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, importstmt->pos, "module \"%s\" was already imported", modname);
+                result = false;
+            }
+            else
+            {
+                mc_state_complain(comp->pstate, importstmt->pos, "module \"%s\" already imported; ignoring 'import' statement", modname);
+                result = true;
+            }
+            goto end;
+        }
+    }
+    filepathbuf = mc_printer_make(comp->pstate, NULL);
+    if(!filepathbuf)
+    {
+        result = false;
+        goto end;
+    }
+    if(mc_util_pathisabsolute(modpath))
+    {
+        mc_printer_printf(filepathbuf, "%s.mc", modpath);
+    }
+    else
+    {
+        mc_printer_printf(filepathbuf, "%s%s.mc", filescope->file->dir_path, modpath);
+    }
+
+    if(filepathbuf->failed)
+    {
+        mc_printer_destroy(filepathbuf);
+        result = false;
+        goto end;
+    }
+    filepathnoncanonicalised = mc_printer_getstring(filepathbuf);
+    filepath = mc_util_canonpath(comp->pstate, filepathnoncanonicalised);
+    mc_printer_destroy(filepathbuf);
+    if(!filepath)
+    {
+        result = false;
+        goto end;
+    }
+    symtab = mc_compiler_getsymtable(comp);
+    if(symtab->outer != NULL || mc_ptrlist_count(symtab->blockscopes) > 1)
+    {
+        mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, importstmt->pos, "modules can only be imported in global scope");
+        result = false;
+        goto end;
+    }
+    for(i = 0; i < mc_ptrlist_count(comp->filescopelist); i++)
+    {
+        fs = (mcastscopefile_t*)mc_ptrlist_get(comp->filescopelist, i);
+        if(MC_UTIL_STREQ(fs->file->path, filepath))
+        {
+            mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, importstmt->pos, "cyclic reference of file \"%s\"", filepath);
+            result = false;
+            goto end;
+        }
+    }
+    module = (mcmodule_t*)mc_ptrdict_get(comp->modules, filepath);
+    if(!module)
+    {
+        /* todo: create new module function */
+        searchedpath = mc_module_findfile(comp->pstate, filepath);
+        code = mc_fsutil_fileread(comp->pstate, searchedpath, &flen);
+        if(!code)
+        {
+            mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, importstmt->pos, "reading module file \"%s\" failed", filepath);
+            result = false;
+            goto end;
+        }
+        module = mc_module_make(comp->pstate, modname);
+        if(!module)
+        {
+            result = false;
+            goto end;
+        }
+        ok = mc_compiler_filescopepush(comp, searchedpath);
+        if(!ok)
+        {
+            mc_module_destroy(module);
+            result = false;
+            goto end;
+        }
+        ok = mc_compiler_docompilesource(comp, code);
+        if(!ok)
+        {
+            mc_module_destroy(module);
+            result = false;
+            goto end;
+        }
+        st = mc_compiler_getsymtable(comp);
+        for(i = 0; i < mc_symtable_getmodglobalsymcount(st); i++)
+        {
+            symbol = mc_symtable_getmodglobalsymat(st, i);
+            mc_module_addsymbol(module, symbol);
+        }
+        mc_compiler_filescopepop(comp);
+        ok = mc_ptrdict_set(comp->modules, filepath, module);
+        if(!ok)
+        {
+            mc_module_destroy(module);
+            result = false;
+            goto end;
+        }
+    }
+    for(i = 0; i < mc_ptrlist_count(module->modsymbols); i++)
+    {
+        symbol = (mcastsymbol_t*)mc_ptrlist_get(module->modsymbols, i);
+        ok = mc_symtable_addmodsymbol(symtab, symbol);
+        if(!ok)
+        {
+            result = false;
+            goto end;
+        }
+    }
+    namecopy = mc_util_strdup(comp->pstate, modname);
+    if(!namecopy)
+    {
+        result = false;
+        goto end;
+    }
+    ok = mc_ptrlist_push(filescope->loadedmodnames, namecopy);
+    if(!ok)
+    {
+        mc_memory_free(namecopy);
+        result = false;
+        goto end;
+    }
+    result = true;
+end:
+    mc_memory_free(filepath);
+    mc_memory_free(code);
+    return result;
+}
+
+mcastsymbol_t* mc_compiler_defsymbol(mcastcompiler_t* comp, mcastlocation_t pos, const char* name, bool assignable, bool canshadow)
+{
+    mcastsymbol_t* symbol;
+    mcastsymbol_t* currentsymbol;
+    mcastsymtable_t* symtab;
+    symtab = mc_compiler_getsymtable(comp);
+    if(!canshadow && !mc_symtable_istopglobalscope(symtab))
+    {
+        currentsymbol = mc_symtable_resolve(symtab, name);
+        if(currentsymbol)
+        {
+            mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, pos, "symbol \"%s\" is already defined", name);
+            return NULL;
+        }
+    }
+    symbol = mc_symtable_define(symtab, name, assignable);
+    if(!symbol)
+    {
+        mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, pos, "cannot define symbol \"%s\"", name);
+        return NULL;
+    }
+    return symbol;
+}
+
+bool mc_compiler_compiledefine(mcastcompiler_t* comp, mcastexpression_t* expr)
+{
+    bool ok;
+    mcastsymbol_t* symbol;
+    ok = mc_compiler_compileexpression(comp, expr->uexpr.exprdefine.value);
+    if(!ok)
+    {
+        return false;
+    }
+    symbol = mc_compiler_defsymbol(comp, expr->uexpr.exprdefine.name->pos, expr->uexpr.exprdefine.name->value, expr->uexpr.exprdefine.assignable, false);
+    if(!symbol)
+    {
+        return false;
+    }
+    ok = mc_compiler_storesymbol(comp, symbol, true);
+    if(!ok)
+    {
+        return false;
+    }
+    return true;
+}
+
+bool mc_compiler_compileifstmt(mcastcompiler_t* comp, uint64_t* opbuf, mcastexpression_t* expr)
+{
+    bool ok;
+    size_t i;
+    int afteraltip;
+    int nextcasejumpip;
+    int jumptoendip;
+    int afterelifip;
+    int* pos;
+    mcastexprifcase_t* ifcase;
+    mcastexprstmtif_t* ifstmt;
+    mcptrlist_t* jumptoendips;
+    ifstmt = &expr->uexpr.exprifstmt;
+    jumptoendips = mc_ptrlist_make(comp->pstate, sizeof(int), false);
+    if(!jumptoendips)
+    {
+        goto statementiferror;
+    }
+    for(i = 0; i < mc_ptrlist_count(ifstmt->cases); i++)
+    {
+        ifcase = (mcastexprifcase_t*)mc_ptrlist_get(ifstmt->cases, i);
+        ok = mc_compiler_compileexpression(comp, ifcase->ifcond);
+        if(!ok)
+        {
+            goto statementiferror;
+        }
+        opbuf[0] = 0xbeef;
+        nextcasejumpip = mc_compiler_emit(comp, MC_OPCODE_JUMPIFFALSE, 1, opbuf);
+        ok = mc_compiler_compilecodeblock(comp, ifcase->consequence);
+        if(!ok)
+        {
+            goto statementiferror;
+        }
+        /* don't emit jump for the last statement */
+        if(i < (mc_ptrlist_count(ifstmt->cases) - 1) || ifstmt->alternative)
+        {
+            opbuf[0] = 0xbeef;
+            jumptoendip = mc_compiler_emit(comp, MC_OPCODE_JUMP, 1, opbuf);
+            ok = mc_ptrlist_push(jumptoendips, &jumptoendip);
+            if(!ok)
+            {
+                goto statementiferror;
+            }
+        }
+        afterelifip = mc_compiler_getip(comp);
+        mc_compiler_changeuint16operand(comp, nextcasejumpip + 1, afterelifip);
+    }
+    if(ifstmt->alternative)
+    {
+        ok = mc_compiler_compilecodeblock(comp, ifstmt->alternative);
+        if(!ok)
+        {
+            goto statementiferror;
+        }
+    }
+    afteraltip = mc_compiler_getip(comp);
+    for(i = 0; i < mc_ptrlist_count(jumptoendips); i++)
+    {
+        pos = (int*)mc_ptrlist_get(jumptoendips, i);
+        mc_compiler_changeuint16operand(comp, *pos + 1, afteraltip);
+    }
+    mc_ptrlist_destroy(jumptoendips, NULL);
+    return true;
+statementiferror:
+    mc_ptrlist_destroy(jumptoendips, NULL);
+    return false;
+}
+
+bool mc_compiler_compilereturnstmt(mcastcompiler_t* comp, mcastscopecomp_t* compscope, mcastexpression_t* expr)
+{
+    bool ok;
+    int ip;
+    if(compscope->outer == NULL)
+    {
+        mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "nothing to return from");
+        return false;
+    }
+    ip = -1;
+    if(expr->uexpr.exprreturnvalue)
+    {
+        ok = mc_compiler_compileexpression(comp, expr->uexpr.exprreturnvalue);
+        if(!ok)
+        {
+            return false;
+        }
+        ip = mc_compiler_emit(comp, MC_OPCODE_RETURNVALUE, 0, NULL);
+    }
+    else
+    {
+        ip = mc_compiler_emit(comp, MC_OPCODE_RETURN, 0, NULL);
+    }
+    if(ip < 0)
+    {
+        return false;
+    }
+    return true;
+}
+
+bool mc_compiler_compilewhilestmt(mcastcompiler_t* comp, uint64_t* opbuf, mcastexpression_t* expr)
+{
+    bool ok;
+    int ip;
+    int beforetestip;
+    int aftertestip;
+    int afterbodyip;
+    int jumptoafterbodyip;
+    mcastexprstmtwhile_t* loop;
+    loop = &expr->uexpr.exprwhileloopstmt;
+    beforetestip = mc_compiler_getip(comp);
+    ok = mc_compiler_compileexpression(comp, loop->loopcond);
+    if(!ok)
+    {
+        return false;
+    }
+    aftertestip = mc_compiler_getip(comp);
+    opbuf[0] = aftertestip + 6;
+    ip = mc_compiler_emit(comp, MC_OPCODE_JUMPIFTRUE, 1, opbuf);
+    if(ip < 0)
+    {
+        return false;
+    }
+    opbuf[0] = 0xdead;
+    jumptoafterbodyip = mc_compiler_emit(comp, MC_OPCODE_JUMP, 1, opbuf);
+    if(jumptoafterbodyip < 0)
+    {
+        return false;
+    }
+    ok = mc_compiler_pushcontinueip(comp, beforetestip);
+    if(!ok)
+    {
+        return false;
+    }
+    ok = mc_compiler_pushbreakip(comp, jumptoafterbodyip);
+    if(!ok)
+    {
+        return false;
+    }
+    ok = mc_compiler_compilecodeblock(comp, loop->body);
+    if(!ok)
+    {
+        return false;
+    }
+    mc_compiler_popbreakip(comp);
+    mc_compiler_popcontinueip(comp);
+    opbuf[0] = beforetestip;
+    ip = mc_compiler_emit(comp, MC_OPCODE_JUMP, 1, opbuf);
+    if(ip < 0)
+    {
+        return false;
+    }
+    afterbodyip = mc_compiler_getip(comp);
+    mc_compiler_changeuint16operand(comp, jumptoafterbodyip + 1, afterbodyip);
+    return true;
+}
+
+bool mc_compiler_compilebreakstmt(mcastcompiler_t* comp, uint64_t* opbuf, mcastexpression_t* expr)
+{
+    int ip;
+    int breakip;
+    breakip = mc_compiler_getbreakip(comp);
+    if(breakip < 0)
+    {
+        mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "nothing to break from.");
+        return false;
+    }
+    opbuf[0] = breakip;
+    ip = mc_compiler_emit(comp, MC_OPCODE_JUMP, 1, opbuf);
+    if(ip < 0)
+    {
+        return false;
+    }
+    return true;
+}
+
+bool mc_compiler_compilecontinuestmt(mcastcompiler_t* comp, uint64_t* opbuf, mcastexpression_t* expr)
+{
+    int ip;
+    int continueip;
+    continueip = mc_compiler_getcontinueip(comp);
+    if(continueip < 0)
+    {
+        mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "nothing to continue from.");
+        return false;
+    }
+    opbuf[0] = continueip;
+    ip = mc_compiler_emit(comp, MC_OPCODE_JUMP, 1, opbuf);
+    if(ip < 0)
+    {
+        return false;
+    }
+    return true;
+}
+
+bool mc_compiler_compilestatement(mcastcompiler_t* comp, mcastexpression_t* expr)
+{
+    bool ok;
+    int ip;
+    uint64_t opbuf[10];
+    mcastscopecomp_t* compscope;
+    mcastsymtable_t* symtab;
+    ok = false;
+    ip = -1;
+    ok = mc_ptrlist_push(comp->srcposstack, &expr->pos);
+    if(!ok)
+    {
+        return false;
+    }
+    compscope = mc_compiler_getcompilationscope(comp);
+    symtab = mc_compiler_getsymtable(comp);
+    switch(expr->exprtype)
+    {
+        case MC_EXPR_STMTEXPRESSION:
+            {
+                ok = mc_compiler_compileexpression(comp, expr->uexpr.exprexpression);
+                if(!ok)
+                {
+                    return false;
+                }
+                ip = mc_compiler_emit(comp, MC_OPCODE_POP, 0, NULL);
+                if(ip < 0)
+                {
+                    return false;
+                }
+            }
+            break;
+        case MC_EXPR_STMTDEFINE:
+            {
+                if(!mc_compiler_compiledefine(comp, expr))
+                {
+                    return false;
+                }
+            }
+            break;
+        case MC_EXPR_STMTIF:
+            {
+                if(!mc_compiler_compileifstmt(comp, opbuf, expr))
+                {
+                    return false;
+                }
+            }
+            break;
+        case MC_EXPR_STMTRETURN:
+            {
+                if(!mc_compiler_compilereturnstmt(comp, compscope, expr))
+                {
+                    return false;
+                }
+            }
+            break;
+        case MC_EXPR_STMTLOOPWHILE:
+            {
+                if(!mc_compiler_compilewhilestmt(comp, opbuf, expr))
+                {
+                    return false;
+                }
+            }
+            break;
+        case MC_EXPR_STMTBREAK:
+            {
+                if(!mc_compiler_compilebreakstmt(comp, opbuf, expr))
+                {
+                    return false;
+                }
+            }
+            break;
+        case MC_EXPR_STMTCONTINUE:
+            {
+                if(!mc_compiler_compilecontinuestmt(comp, opbuf, expr))
+                {
+                    return false;
+                }
+            }
+            break;
+        case MC_EXPR_STMTLOOPFOREACH:
+            {
+                int jumptoafterupdateip;
+                int updateip;
+                int afterupdateip;
+                int aftertestip;
+                int jumptoafterbodyip;
+                int afterbodyip;
+                mcastsymbol_t* itersymbol;
+                mcastsymbol_t* indexsymbol;
+                mcastsymbol_t* sourcesymbol;
+                mcastexprstmtforeach_t* foreach;
+                foreach = &expr->uexpr.exprforeachloopstmt;
+                ok = mc_symtable_pushblockscope(symtab);
+                if(!ok)
+                {
+                    return false;
+                }
+                /* Init */
+                indexsymbol = mc_compiler_defsymbol(comp, expr->pos, "@i", false, true);
+                if(!indexsymbol)
+                {
+                    return false;
+                }
+                opbuf[0] = 0;
+                ip = mc_compiler_emit(comp, MC_OPCODE_NUMBER, 1, opbuf);
+                if(ip < 0)
+                {
+                    return false;
+                }
+                ok = mc_compiler_storesymbol(comp, indexsymbol, true);
+                if(!ok)
+                {
+                    return false;
+                }
+                sourcesymbol = NULL;
+                if(foreach->source->exprtype == MC_EXPR_IDENT)
+                {
+                    sourcesymbol = mc_symtable_resolve(symtab, foreach->source->uexpr.exprident->value);
+                    if(!sourcesymbol)
+                    {
+                        mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, foreach->source->pos, "symbol \"%s\" could not be resolved", foreach->source->uexpr.exprident->value);
+                        return false;
+                    }
+                }
+                else
+                {
+                    ok = mc_compiler_compileexpression(comp, foreach->source);
+                    if(!ok)
+                    {
+                        return false;
+                    }
+                    sourcesymbol = mc_compiler_defsymbol(comp, foreach->source->pos, "@source", false, true);
+                    if(!sourcesymbol)
+                    {
+                        return false;
+                    }
+                    ok = mc_compiler_storesymbol(comp, sourcesymbol, true);
+                    if(!ok)
+                    {
+                        return false;
+                    }
+                }
+                /* Update */
+                opbuf[0] = 0xbeef;
+                jumptoafterupdateip = mc_compiler_emit(comp, MC_OPCODE_JUMP, 1, opbuf);
+                if(jumptoafterupdateip < 0)
+                {
+                    return false;
+                }
+                updateip = mc_compiler_getip(comp);
+                ok = mc_compiler_readsymbol(comp, indexsymbol);
+                if(!ok)
+                {
+                    return false;
+                }
+                opbuf[0] = mc_util_doubletouint64(1);
+                ip = mc_compiler_emit(comp, MC_OPCODE_NUMBER, 1, opbuf);
+                if(ip < 0)
+                {
+                    return false;
+                }
+                ip = mc_compiler_emit(comp, MC_OPCODE_ADD, 0, NULL);
+                if(ip < 0)
+                {
+                    return false;
+                }
+                ok = mc_compiler_storesymbol(comp, indexsymbol, false);
+                if(!ok)
+                {
+                    return false;
+                }
+                afterupdateip = mc_compiler_getip(comp);
+                mc_compiler_changeuint16operand(comp, jumptoafterupdateip + 1, afterupdateip);
+                /* Test */
+                ok = mc_ptrlist_push(comp->srcposstack, &foreach->source->pos);
+                if(!ok)
+                {
+                    return false;
+                }
+                ok = mc_compiler_readsymbol(comp, sourcesymbol);
+                if(!ok)
+                {
+                    return false;
+                }
+                ip = mc_compiler_emit(comp, MC_OPCODE_FOREACHLEN, 0, NULL);
+                if(ip < 0)
+                {
+                    return false;
+                }
+                mc_ptrlist_pop(comp->srcposstack, NULL);
+                ok = mc_compiler_readsymbol(comp, indexsymbol);
+                if(!ok)
+                {
+                    return false;
+                }
+                ip = mc_compiler_emit(comp, MC_OPCODE_COMPARE, 0, NULL);
+                if(ip < 0)
+                {
+                    return false;
+                }
+                ip = mc_compiler_emit(comp, MC_OPCODE_EQUAL, 0, NULL);
+                if(ip < 0)
+                {
+                    return false;
+                }
+                aftertestip = mc_compiler_getip(comp);
+                opbuf[0] = aftertestip + 6;
+                ip = mc_compiler_emit(comp, MC_OPCODE_JUMPIFFALSE, 1, opbuf);
+                if(ip < 0)
+                {
+                    return false;
+                }
+                opbuf[0] = 0xdead;
+                jumptoafterbodyip = mc_compiler_emit(comp, MC_OPCODE_JUMP, 1, opbuf);
+                if(jumptoafterbodyip < 0)
+                {
+                    return false;
+                }
+                ok = mc_compiler_readsymbol(comp, sourcesymbol);
+                if(!ok)
+                {
+                    return false;
+                }
+                ok = mc_compiler_readsymbol(comp, indexsymbol);
+                if(!ok)
+                {
+                    return false;
+                }
+                ip = mc_compiler_emit(comp, MC_OPCODE_GETVALUEAT, 0, NULL);
+                if(ip < 0)
+                {
+                    return false;
+                }
+                itersymbol = mc_compiler_defsymbol(comp, foreach->iterator->pos, foreach->iterator->value, false, false);
+                if(!itersymbol)
+                {
+                    return false;
+                }
+                ok = mc_compiler_storesymbol(comp, itersymbol, true);
+                if(!ok)
+                {
+                    return false;
+                }
+                /* Body */
+                ok = mc_compiler_pushcontinueip(comp, updateip);
+                if(!ok)
+                {
+                    return false;
+                }
+                ok = mc_compiler_pushbreakip(comp, jumptoafterbodyip);
+                if(!ok)
+                {
+                    return false;
+                }
+                ok = mc_compiler_compilecodeblock(comp, foreach->body);
+                if(!ok)
+                {
+                    return false;
+                }
+                mc_compiler_popbreakip(comp);
+                mc_compiler_popcontinueip(comp);
+                opbuf[0] = updateip;
+                ip = mc_compiler_emit(comp, MC_OPCODE_JUMP, 1, opbuf);
+                if(ip < 0)
+                {
+                    return false;
+                }
+                afterbodyip = mc_compiler_getip(comp);
+                mc_compiler_changeuint16operand(comp, jumptoafterbodyip + 1, afterbodyip);
+                mc_symtable_popblockscope(symtab);
+            }
+            break;
+        case MC_EXPR_STMTLOOPFORCLASSIC:
+            {
+                int afterbodyip;
+                int jumptoafterupdateip;
+                int updateip;
+                int afterupdateip;
+                int aftertestip;
+                int jumptoafterbodyip;
+                mcastexprstmtforloop_t* loop;
+                loop = &expr->uexpr.exprforloopstmt;
+                ok = mc_symtable_pushblockscope(symtab);
+                if(!ok)
+                {
+                    return false;
+                }
+                /* Init */
+                jumptoafterupdateip = 0;
+                ok = false;
+                if(loop->init)
+                {
+                    ok = mc_compiler_compilestatement(comp, loop->init);
+                    if(!ok)
+                    {
+                        return false;
+                    }
+                    opbuf[0] = 0xbeef;
+                    jumptoafterupdateip = mc_compiler_emit(comp, MC_OPCODE_JUMP, 1, opbuf);
+                    if(jumptoafterupdateip < 0)
+                    {
+                        return false;
+                    }
+                }
+                /* Update */
+                updateip = mc_compiler_getip(comp);
+                if(loop->update)
+                {
+                    ok = mc_compiler_compileexpression(comp, loop->update);
+                    if(!ok)
+                    {
+                        return false;
+                    }
+                    ip = mc_compiler_emit(comp, MC_OPCODE_POP, 0, NULL);
+                    if(ip < 0)
+                    {
+                        return false;
+                    }
+                }
+                if(loop->init)
+                {
+                    afterupdateip = mc_compiler_getip(comp);
+                    mc_compiler_changeuint16operand(comp, jumptoafterupdateip + 1, afterupdateip);
+                }
+                /* Test */
+                if(loop->loopcond)
+                {
+                    ok = mc_compiler_compileexpression(comp, loop->loopcond);
+                    if(!ok)
+                    {
+                        return false;
+                    }
+                }
+                else
+                {
+                    ip = mc_compiler_emit(comp, MC_OPCODE_TRUE, 0, NULL);
+                    if(ip < 0)
+                    {
+                        return false;
+                    }
+                }
+                aftertestip = mc_compiler_getip(comp);
+                opbuf[0] = aftertestip + 6;
+                ip = mc_compiler_emit(comp, MC_OPCODE_JUMPIFTRUE, 1, opbuf);
+                if(ip < 0)
+                {
+                    return false;
+                }
+                opbuf[0] = 0xdead;
+                jumptoafterbodyip = mc_compiler_emit(comp, MC_OPCODE_JUMP, 1, opbuf);
+                if(jumptoafterbodyip < 0)
+                {
+                    return false;
+                }
+                /* Body */
+                ok = mc_compiler_pushcontinueip(comp, updateip);
+                if(!ok)
+                {
+                    return false;
+                }
+                ok = mc_compiler_pushbreakip(comp, jumptoafterbodyip);
+                if(!ok)
+                {
+                    return false;
+                }
+
+                ok = mc_compiler_compilecodeblock(comp, loop->body);
+                if(!ok)
+                {
+                    return false;
+                }
+                mc_compiler_popbreakip(comp);
+                mc_compiler_popcontinueip(comp);
+                opbuf[0] = updateip;
+                ip = mc_compiler_emit(comp, MC_OPCODE_JUMP, 1, opbuf);
+                if(ip < 0)
+                {
+                    return false;
+                }
+                afterbodyip = mc_compiler_getip(comp);
+                mc_compiler_changeuint16operand(comp, jumptoafterbodyip + 1, afterbodyip);
+                mc_symtable_popblockscope(symtab);
+            }
+            break;
+        case MC_EXPR_STMTBLOCK:
+            {
+                ok = mc_compiler_compilecodeblock(comp, expr->uexpr.exprblockstmt);
+                if(!ok)
+                {
+                    return false;
+                }
+            }
+            break;
+        case MC_EXPR_STMTIMPORT:
+            {
+                ok = mc_compiler_compileimport(comp, expr);
+                if(!ok)
+                {
+                    return false;
+                }
+            }
+            break;
+        case MC_EXPR_STMTRECOVER:
+            {
+                int recip;
+                int afterrecoverip;
+                int afterjumptorecoverip;
+                int jumptoafterrecoverip;
+                mcastsymbol_t* errorsymbol;
+                mcastexprstmtrecover_t* recover;
+                recover = &expr->uexpr.exprrecoverstmt;
+                if(comp->pstate->config.strictmode)
+                {
+                    if(mc_symtable_ismodglobalscope(symtab))
+                    {
+                        mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "recover statement cannot be defined in global scope");
+                        return false;
+                    }
+                }
+                #if 0
+                if(!mc_symtable_istopblockscope(symtab))
+                {
+                    mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "recover statement cannot be defined within other statements");
+                    return false;
+                }
+                #endif
+                opbuf[0] = 0xbeef;
+                recip = mc_compiler_emit(comp, MC_OPCODE_SETRECOVER, 1, opbuf);
+                if(recip < 0)
+                {
+                    return false;
+                }
+                opbuf[0] = 0xbeef;
+                jumptoafterrecoverip = mc_compiler_emit(comp, MC_OPCODE_JUMP, 1, opbuf);
+                if(jumptoafterrecoverip < 0)
+                {
+                    return false;
+                }
+                afterjumptorecoverip = mc_compiler_getip(comp);
+                mc_compiler_changeuint16operand(comp, recip + 1, afterjumptorecoverip);
+                ok = mc_symtable_pushblockscope(symtab);
+                if(!ok)
+                {
+                    return false;
+                }
+                errorsymbol = mc_compiler_defsymbol(comp, recover->errident->pos, recover->errident->value, false, false);
+                if(!errorsymbol)
+                {
+                    return false;
+                }
+                ok = mc_compiler_storesymbol(comp, errorsymbol, true);
+                if(!ok)
+                {
+                    return false;
+                }
+                ok = mc_compiler_compilecodeblock(comp, recover->body);
+                if(!ok)
+                {
+                    return false;
+                }
+                if(!mc_compiler_lastopcodeis(comp, MC_OPCODE_RETURN) && !mc_compiler_lastopcodeis(comp, MC_OPCODE_RETURNVALUE))
+                {
+                    #if 0
+                        mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "recover body must end with a return statement");
+                        return false;
+                    #else
+                        mc_state_complain(comp->pstate, expr->pos, "recover body should end with a return statement");
+                    #endif
+                }
+                mc_symtable_popblockscope(symtab);
+                afterrecoverip = mc_compiler_getip(comp);
+                mc_compiler_changeuint16operand(comp, jumptoafterrecoverip + 1, afterrecoverip);
+            }
+            break;
+        default:
+            {
+                MC_ASSERT(false);
+                return false;
+            }
+            break;
+    }
+    mc_ptrlist_pop(comp->srcposstack, NULL);
+    return true;
+}
+
+bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexpression_t* expr)
+{
+    bool ok;
+    bool res;
+    int ip;
+    uint64_t opbuf[10];
+    mcastexpression_t* exproptimized;
+    mcastscopecomp_t* compscope;
+    mcastsymtable_t* symtab;
+    ok = false;
+    ip = -1;
+    exproptimized = NULL;
+    #if 0
+    exproptimized = mc_optimizer_optexpression(expr);
+    if(exproptimized != NULL)
+    {
+        expr = exproptimized;
+    }
+    #endif
+    ok = mc_ptrlist_push(comp->srcposstack, &expr->pos);
+    if(!ok)
+    {
+        return false;
+    }
+    compscope = mc_compiler_getcompilationscope(comp);
+    symtab = mc_compiler_getsymtable(comp);
+    res = false;
+    switch(expr->exprtype)
+    {
+        case MC_EXPR_INFIX:
+            {
+                bool rearrange;
+                mcinternopcode_t op;
+                mcastexpression_t* left;
+                mcastexpression_t* right;
+                rearrange = false;
+                op = MC_OPCODE_HALT;
+                switch(expr->uexpr.exprinfix.op)
+                {
+                    case MC_MATHOP_PLUS:
+                        op = MC_OPCODE_ADD;
+                        break;
+                    case MC_MATHOP_MINUS:
+                        op = MC_OPCODE_SUB;
+                        break;
+                    case MC_MATHOP_ASTERISK:
+                        op = MC_OPCODE_MUL;
+                        break;
+                    case MC_MATHOP_SLASH:
+                        op = MC_OPCODE_DIV;
+                        break;
+                    case MC_MATHOP_MODULUS:
+                        op = MC_OPCODE_MOD;
+                        break;
+                    case MC_MATHOP_EQ:
+                        op = MC_OPCODE_EQUAL;
+                        break;
+                    case MC_MATHOP_NOTEQ:
+                        op = MC_OPCODE_NOTEQUAL;
+                        break;
+                    case MC_MATHOP_GT:
+                        op = MC_OPCODE_GREATERTHAN;
+                        break;
+                    case MC_MATHOP_GTE:
+                        op = MC_OPCODE_GREATERTHANEQUAL;
+                        break;
+                    case MC_MATHOP_LT:
+                        op = MC_OPCODE_GREATERTHAN;
+                        rearrange = true;
+                        break;
+                    case MC_MATHOP_LTE:
+                        op = MC_OPCODE_GREATERTHANEQUAL;
+                        rearrange = true;
+                        break;
+                    case MC_MATHOP_BINOR:
+                        op = MC_OPCODE_BINOR;
+                        break;
+                    case MC_MATHOP_BINXOR:
+                        op = MC_OPCODE_BINXOR;
+                        break;
+                    case MC_MATHOP_BINAND:
+                        op = MC_OPCODE_BINAND;
+                        break;
+                    case MC_MATHOP_LSHIFT:
+                        op = MC_OPCODE_LSHIFT;
+                        break;
+                    case MC_MATHOP_RSHIFT:
+                        op = MC_OPCODE_RSHIFT;
+                        break;
+                    default:
+                        {
+                            mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "unknown infix operator");
+                            goto error;
+                        }
+                        break;
+                }
+                left = rearrange ? expr->uexpr.exprinfix.right : expr->uexpr.exprinfix.left;
+                right = rearrange ? expr->uexpr.exprinfix.left : expr->uexpr.exprinfix.right;
+                ok = mc_compiler_compileexpression(comp, left);
+                if(!ok)
+                {
+                    goto error;
+                }
+                ok = mc_compiler_compileexpression(comp, right);
+                if(!ok)
+                {
+                    goto error;
+                }
+                switch(expr->uexpr.exprinfix.op)
+                {
+                    case MC_MATHOP_EQ:
+                    case MC_MATHOP_NOTEQ:
+                        {
+                            ip = mc_compiler_emit(comp, MC_OPCODE_COMPAREEQ, 0, NULL);
+                            if(ip < 0)
+                            {
+                                goto error;
+                            }
+                        }
+                        break;
+                    case MC_MATHOP_GT:
+                    case MC_MATHOP_GTE:
+                    case MC_MATHOP_LT:
+                    case MC_MATHOP_LTE:
+                        {
+                            ip = mc_compiler_emit(comp, MC_OPCODE_COMPARE, 0, NULL);
+                            if(ip < 0)
+                            {
+                                goto error;
+                            }
+                        }
+                        break;
+                    default:
+                        {
+                        }
+                        break;
+                }
+                ip = mc_compiler_emit(comp, op, 0, NULL);
+                if(ip < 0)
+                {
+                    goto error;
+                }
+            }
+            break;
+
+        case MC_EXPR_NUMBERLITERAL:
+            {
+                mcfloat_t number;
+                number = expr->uexpr.exprlitnumber;
+                opbuf[0] = mc_util_doubletouint64(number);
+                ip = mc_compiler_emit(comp, MC_OPCODE_NUMBER, 1, opbuf);
+                if(ip < 0)
+                {
+                    goto error;
+                }
+            }
+            break;
+
+        case MC_EXPR_STRINGLITERAL:
+            {
+                int pos = 0;
+                int* posval;
+                int* currentpos;
+                mcvalue_t obj;
+                currentpos = (int*)mc_ptrdict_get(comp->stringconstposdict, expr->uexpr.exprlitstring.data);
+                if(currentpos)
+                {
+                    pos = *currentpos;
+                }
+                else
+                {
+                    obj = mc_value_makestringlen(comp->pstate, expr->uexpr.exprlitstring.data, expr->uexpr.exprlitstring.length);
+                    if(mc_value_isnull(obj))
+                    {
+                        goto error;
+                    }
+                    pos = mc_compiler_addconstant(comp, obj);
+                    if(pos < 0)
+                    {
+                        goto error;
+                    }
+                    posval = (int*)mc_allocator_malloc(comp->pstate, sizeof(int));
+                    if(!posval)
+                    {
+                        goto error;
+                    }
+                    *posval = pos;
+                    ok = mc_ptrdict_set(comp->stringconstposdict, expr->uexpr.exprlitstring.data, posval);
+                    if(!ok)
+                    {
+                        mc_memory_free(posval);
+                        goto error;
+                    }
+                }
+                opbuf[0] = pos;
+                ip = mc_compiler_emit(comp, MC_OPCODE_CONSTANT, 1, opbuf);
+                if(ip < 0)
+                {
+                    goto error;
+                }
+            }
+            break;
+        case MC_EXPR_NULLLITERAL:
+            {
+                ip = mc_compiler_emit(comp, MC_OPCODE_NULL, 0, NULL);
+                if(ip < 0)
+                {
+                    goto error;
+                }
+            }
+            break;
+        case MC_EXPR_BOOLLITERAL:
+            {
+                ip = mc_compiler_emit(comp, expr->uexpr.exprlitbool ? MC_OPCODE_TRUE : MC_OPCODE_FALSE, 0, NULL);
+                if(ip < 0)
+                {
+                    goto error;
+                }
+            }
+            break;
+        case MC_EXPR_ARRAYLITERAL:
+            {
+                size_t i;
+                for(i = 0; i < mc_ptrlist_count(expr->uexpr.exprlitarray.litarritems); i++)
+                {
+                    ok = mc_compiler_compileexpression(comp, (mcastexpression_t*)mc_ptrlist_get(expr->uexpr.exprlitarray.litarritems, i));
+                    if(!ok)
+                    {
+                        goto error;
+                    }
+                }
+                opbuf[0] = mc_ptrlist_count(expr->uexpr.exprlitarray.litarritems);
+                ip = mc_compiler_emit(comp, MC_OPCODE_ARRAY, 1, opbuf);
+                if(ip < 0)
+                {
+                    goto error;
+                }
+            }
+            break;
+        case MC_EXPR_MAPLITERAL:
+            {
+                size_t i;
+                size_t len;
+                mcastexpression_t* key;
+                mcastexpression_t* val;
+                mcastexprliteralmap_t* map;
+                map = &expr->uexpr.exprlitmap;
+                len = mc_ptrlist_count(map->litmapkeys);
+                opbuf[0] = len;
+                ip = mc_compiler_emit(comp, MC_OPCODE_MAPSTART, 1, opbuf);
+                if(ip < 0)
+                {
+                    goto error;
+                }
+                for(i = 0; i < len; i++)
+                {
+                    key = (mcastexpression_t*)mc_ptrlist_get(map->litmapkeys, i);
+                    val = (mcastexpression_t*)mc_ptrlist_get(map->litmapvalues, i);
+                    ok = mc_compiler_compileexpression(comp, key);
+                    if(!ok)
+                    {
+                        goto error;
+                    }
+                    ok = mc_compiler_compileexpression(comp, val);
+                    if(!ok)
+                    {
+                        goto error;
+                    }
+                }
+                opbuf[0] = len;
+                ip = mc_compiler_emit(comp, MC_OPCODE_MAPEND, 1, opbuf);
+                if(ip < 0)
+                {
+                    goto error;
+                }
+            }
+            break;
+        case MC_EXPR_PREFIX:
+            {
+                mcinternopcode_t op;
+                ok = mc_compiler_compileexpression(comp, expr->uexpr.exprprefix.right);
+                if(!ok)
+                {
+                    goto error;
+                }
+                op = MC_OPCODE_HALT;
+                switch(expr->uexpr.exprprefix.op)
+                {
+                    case MC_MATHOP_MINUS:
+                        op = MC_OPCODE_MINUS;
+                        break;
+                    case MC_MATHOP_BINNOT:
+                        op = MC_OPCODE_BINNOT;
+                        break;
+                    case MC_MATHOP_BANG:
+                        op = MC_OPCODE_BANG;
+                        break;
+                    default:
+                        {
+                            mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "unknown prefix operator.");
+                            goto error;
+                        }
+                        break;
+                }
+                ip = mc_compiler_emit(comp, op, 0, NULL);
+                if(ip < 0)
+                {
+                    goto error;
+                }
+            }
+            break;
+        case MC_EXPR_IDENT:
+            {
+                mcastsymbol_t* symbol;
+                mcastexprident_t* ident;
+                ident = expr->uexpr.exprident;
+                symbol = mc_symtable_resolve(symtab, ident->value);
+                if(!symbol)
+                {
+                    if(comp->pstate->config.strictmode)
+                    {
+                        mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, ident->pos, "compilation: failed to resolve symbol \"%s\"", ident->value);
+                        goto error;
+                    }
+                    else
+                    {
+                        symbol = mc_compiler_defsymbol(comp, ident->pos, ident->value, true, false);
+                    }
+                }
+                ok = mc_compiler_readsymbol(comp, symbol);
+                if(!ok)
+                {
+                    goto error;
+                }
+            }
+            break;
+        case MC_EXPR_INDEX:
+            {
+                mcastexprindex_t* index;
+                index = &expr->uexpr.exprindex;
+                ok = mc_compiler_compileexpression(comp, index->left);
+                if(!ok)
+                {
+                    goto error;
+                }
+                ok = mc_compiler_compileexpression(comp, index->index);
+                if(!ok)
+                {
+                    goto error;
+                }
+                #if 1
+                if(index->isdot)
+                {
+                    ip = mc_compiler_emit(comp, MC_OPCODE_GETDOTINDEX, 0, NULL);
+                }
+                else
+                #endif
+                {
+                    ip = mc_compiler_emit(comp, MC_OPCODE_GETINDEX, 0, NULL);
+                }
+                if(ip < 0)
+                {
+                    goto error;
+                }
+            }
+            break;
+        case MC_EXPR_FUNCTIONLITERAL:
+            {
+                size_t i;
+                int pos;
+                int nlocals;
+                mcvalue_t obj;
+                mcptrlist_t* freesyms;
+                mccompiledprogram_t* comp_res;
+                mcastexprliteralfunction_t* fn;
+                mcastsymbol_t* symbol;
+                mcastsymbol_t* fnsymbol;
+                mcastsymbol_t* thissymbol;
+                mcastsymbol_t* paramsymbol;
+                mcastfuncparam_t* param;
+                fn = &expr->uexpr.exprlitfunction;
+                ok = mc_compiler_pushcompilationscope(comp);
+                if(!ok)
+                {
+                    goto error;
+                }
+                ok = mc_compiler_pushsymtable(comp, 0);
+                if(!ok)
+                {
+                    goto error;
+                }
+                compscope = mc_compiler_getcompilationscope(comp);
+                symtab = mc_compiler_getsymtable(comp);
+                if(fn->name)
+                {
+                    fnsymbol = mc_symtable_definefunctionname(symtab, fn->name, false);
+                    if(!fnsymbol)
+                    {
+                        mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "cannot define symbol \"%s\"", fn->name);
+                        goto error;
+                    }
+                }
+                thissymbol = mc_symtable_definethis(symtab);
+                if(!thissymbol)
+                {
+                    mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "cannot define \"this\" symbol");
+                    goto error;
+                }
+                for(i = 0; i < mc_ptrlist_count(expr->uexpr.exprlitfunction.funcparamlist); i++)
+                {
+                    param = (mcastfuncparam_t*)mc_ptrlist_get(expr->uexpr.exprlitfunction.funcparamlist, i);
+                    paramsymbol = mc_compiler_defsymbol(comp, param->ident->pos, param->ident->value, true, false);
+                    if(!paramsymbol)
+                    {
+                        goto error;
+                    }
+                }
+                ok = mc_compiler_compilestmtlist(comp, fn->body->statements);
+                if(!ok)
+                {
+                    goto error;
+                }
+                if(!mc_compiler_lastopcodeis(comp, MC_OPCODE_RETURNVALUE) && !mc_compiler_lastopcodeis(comp, MC_OPCODE_RETURN))
+                {
+                    ip = mc_compiler_emit(comp, MC_OPCODE_RETURN, 0, NULL);
+                    if(ip < 0)
+                    {
+                        goto error;
+                    }
+                }
+                freesyms = symtab->freesymbols;
+                /* because it gets destroyed with compiler_pop_compilation_scope() */
+                symtab->freesymbols = NULL;
+                nlocals = symtab->maxnumdefinitions;
+                comp_res = mc_astcompscope_orphanresult(compscope);
+                if(!comp_res)
+                {
+                    mc_ptrlist_destroy(freesyms, (mcitemdestroyfn_t)mc_symbol_destroy);
+                    goto error;
+                }
+                mc_compiler_popsymtable(comp);
+                mc_compiler_popcompilationscope(comp);
+                compscope = mc_compiler_getcompilationscope(comp);
+                symtab = mc_compiler_getsymtable(comp);
+                obj = mc_value_makefuncscript(comp->pstate, fn->name, comp_res, true, nlocals, mc_ptrlist_count(fn->funcparamlist), 0);
+                if(mc_value_isnull(obj))
+                {
+                    mc_ptrlist_destroy(freesyms, (mcitemdestroyfn_t)mc_symbol_destroy);
+                    mc_astcompresult_destroy(comp_res);
+                    goto error;
+                }
+                for(i = 0; i < mc_ptrlist_count(freesyms); i++)
+                {
+                    symbol = (mcastsymbol_t*)mc_ptrlist_get(freesyms, i);
+                    ok = mc_compiler_readsymbol(comp, symbol);
+                    if(!ok)
+                    {
+                        mc_ptrlist_destroy(freesyms, (mcitemdestroyfn_t)mc_symbol_destroy);
+                        goto error;
+                    }
+                }
+                pos = mc_compiler_addconstant(comp, obj);
+                if(pos < 0)
+                {
+                    mc_ptrlist_destroy(freesyms, (mcitemdestroyfn_t)mc_symbol_destroy);
+                    goto error;
+                }
+                opbuf[0] = pos;
+                opbuf[1] = mc_ptrlist_count(freesyms);
+                ip = mc_compiler_emit(comp, MC_OPCODE_FUNCTION, 2, opbuf);
+                if(ip < 0)
+                {
+                    mc_ptrlist_destroy(freesyms, (mcitemdestroyfn_t)mc_symbol_destroy);
+                    goto error;
+                }
+                mc_ptrlist_destroy(freesyms, (mcitemdestroyfn_t)mc_symbol_destroy);
+            }
+            break;
+
+        case MC_EXPR_CALL:
+            {
+                size_t i;
+                mcastexpression_t* argexpr;
+                ok = mc_compiler_compileexpression(comp, expr->uexpr.exprcall.function);
+                if(!ok)
+                {
+                    goto error;
+                }
+                for(i = 0; i < mc_ptrlist_count(expr->uexpr.exprcall.args); i++)
+                {
+                    argexpr = (mcastexpression_t*)mc_ptrlist_get(expr->uexpr.exprcall.args, i);
+                    ok = mc_compiler_compileexpression(comp, argexpr);
+                    if(!ok)
+                    {
+                        goto error;
+                    }
+                }
+                opbuf[0] = mc_ptrlist_count(expr->uexpr.exprcall.args);
+                ip = mc_compiler_emit(comp, MC_OPCODE_CALL, 1, opbuf);
+                if(ip < 0)
+                {
+                    goto error;
+                }
+            }
+            break;
+        case MC_EXPR_ASSIGN:
+            {
+                mcastexprindex_t* index;
+                mcastexprassign_t* assign;
+                mcastexprident_t* ident;
+                mcastsymbol_t* symbol;
+                assign = &expr->uexpr.exprassign;
+                if(assign->dest->exprtype != MC_EXPR_IDENT && assign->dest->exprtype != MC_EXPR_INDEX)
+                {
+                    mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, assign->dest->pos, "expression is not assignable");
+                    goto error;
+                }
+                if(assign->is_postfix)
+                {
+                    ok = mc_compiler_compileexpression(comp, assign->dest);
+                    if(!ok)
+                    {
+                        goto error;
+                    }
+                }
+                ok = mc_compiler_compileexpression(comp, assign->source);
+                if(!ok)
+                {
+                    goto error;
+                }
+                ip = mc_compiler_emit(comp, MC_OPCODE_DUP, 0, NULL);
+                if(ip < 0)
+                {
+                    goto error;
+                }
+                ok = mc_ptrlist_push(comp->srcposstack, &assign->dest->pos);
+                if(!ok)
+                {
+                    goto error;
+                }
+                if(assign->dest->exprtype == MC_EXPR_IDENT)
+                {
+                    ident = assign->dest->uexpr.exprident;
+                    symbol = mc_symtable_resolve(symtab, ident->value);
+                    if(!symbol)
+                    {
+                        if(comp->pstate->config.strictmode)
+                        {
+                            mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, assign->dest->pos, "cannot assign to undeclared symbol \"%s\"", ident->value);
+                            goto error;
+                        }
+                        else
+                        {
+                            symbol = mc_compiler_defsymbol(comp, ident->pos, ident->value, true, false);
+                            if(!symbol)
+                            {
+                                mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, assign->dest->pos, "failed to implicitly create symbol \"%s\"", ident->value);
+                                goto error;
+                            }
+                        }
+                    }
+                    if(!symbol->assignable)
+                    {
+                        mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, assign->dest->pos, "compilation: cannot assign to readonly symbol \"%s\"", ident->value);
+                        goto error;
+                    }
+                    ok = mc_compiler_storesymbol(comp, symbol, false);
+                    if(!ok)
+                    {
+                        goto error;
+                    }
+                }
+                else if(assign->dest->exprtype == MC_EXPR_INDEX)
+                {
+                    index = &assign->dest->uexpr.exprindex;
+                    ok = mc_compiler_compileexpression(comp, index->left);
+                    if(!ok)
+                    {
+                        goto error;
+                    }
+                    ok = mc_compiler_compileexpression(comp, index->index);
+                    if(!ok)
+                    {
+                        goto error;
+                    }
+                    ip = mc_compiler_emit(comp, MC_OPCODE_SETINDEX, 0, NULL);
+                    if(ip < 0)
+                    {
+                        goto error;
+                    }
+                }
+                if(assign->is_postfix)
+                {
+                    ip = mc_compiler_emit(comp, MC_OPCODE_POP, 0, NULL);
+                    if(ip < 0)
+                    {
+                        goto error;
+                    }
+                }
+                mc_ptrlist_pop(comp->srcposstack, NULL);
+            }
+            break;
+
+        case MC_EXPR_LOGICAL:
+            {
+                int afterrightip;
+                int afterleftjumpip;
+                mcastexprlogical_t* logi;
+                logi = &expr->uexpr.exprlogical;
+                ok = mc_compiler_compileexpression(comp, logi->left);
+                if(!ok)
+                {
+                    goto error;
+                }
+                ip = mc_compiler_emit(comp, MC_OPCODE_DUP, 0, NULL);
+                if(ip < 0)
+                {
+                    goto error;
+                }
+                afterleftjumpip = 0;
+                if(logi->op == MC_MATHOP_LOGICALAND)
+                {
+                    opbuf[0] = 0xbeef;
+                    afterleftjumpip = mc_compiler_emit(comp, MC_OPCODE_JUMPIFFALSE, 1, opbuf);
+                }
+                else
+                {
+                    opbuf[0] = 0xbeef;
+                    afterleftjumpip = mc_compiler_emit(comp, MC_OPCODE_JUMPIFTRUE, 1, opbuf);
+                }
+                if(afterleftjumpip < 0)
+                {
+                    goto error;
+                }
+                ip = mc_compiler_emit(comp, MC_OPCODE_POP, 0, NULL);
+                if(ip < 0)
+                {
+                    goto error;
+                }
+                ok = mc_compiler_compileexpression(comp, logi->right);
+                if(!ok)
+                {
+                    goto error;
+                }
+                afterrightip = mc_compiler_getip(comp);
+                mc_compiler_changeuint16operand(comp, afterleftjumpip + 1, afterrightip);
+            }
+            break;
+        case MC_EXPR_TERNARY:
+            {
+                int endip;
+                int elseip;
+                int endjumpip;
+                int elsejumpip;
+                mcastexprternary_t* ternary;
+                ternary = &expr->uexpr.exprternary;
+                ok = mc_compiler_compileexpression(comp, ternary->tercond);
+                if(!ok)
+                {
+                    goto error;
+                }
+                opbuf[0] = 0xbeef;
+                elsejumpip = mc_compiler_emit(comp, MC_OPCODE_JUMPIFFALSE, 1, opbuf);
+                ok = mc_compiler_compileexpression(comp, ternary->teriftrue);
+                if(!ok)
+                {
+                    goto error;
+                }
+                opbuf[0] = 0xbeef;
+                endjumpip = mc_compiler_emit(comp, MC_OPCODE_JUMP, 1, opbuf);
+                elseip = mc_compiler_getip(comp);
+                mc_compiler_changeuint16operand(comp, elsejumpip + 1, elseip);
+                ok = mc_compiler_compileexpression(comp, ternary->teriffalse);
+                if(!ok)
+                {
+                    goto error;
+                }
+                endip = mc_compiler_getip(comp);
+                mc_compiler_changeuint16operand(comp, endjumpip + 1, endip);
+            }
+            break;
+        default:
+            {
+                MC_ASSERT(false);
+            }
+            break;
+    }
+    res = true;
+    goto end;
+error:
+    res = false;
+end:
+    mc_ptrlist_pop(comp->srcposstack, NULL);
+    mc_astexpr_destroy(exproptimized);
+    return res;
+}
+
+bool mc_compiler_compilecodeblock(mcastcompiler_t* comp, mcastexprcodeblock_t* block)
+{
+    bool ok;
+    size_t i;
+    int ip;
+    mcastsymtable_t* symtab;
+    mcastexpression_t* expr;
+    symtab = mc_compiler_getsymtable(comp);
+    if(!symtab)
+    {
+        return false;
+    }
+    ok = mc_symtable_pushblockscope(symtab);
+    if(!ok)
+    {
+        return false;
+    }
+    if(mc_ptrlist_count(block->statements) == 0)
+    {
+        ip = mc_compiler_emit(comp, MC_OPCODE_NULL, 0, NULL);
+        if(ip < 0)
+        {
+            return false;
+        }
+        ip = mc_compiler_emit(comp, MC_OPCODE_POP, 0, NULL);
+        if(ip < 0)
+        {
+            return false;
+        }
+    }
+    for(i = 0; i < mc_ptrlist_count(block->statements); i++)
+    {
+        expr = (mcastexpression_t*)mc_ptrlist_get(block->statements, i);
+        ok = mc_compiler_compilestatement(comp, expr);
+        if(!ok)
+        {
+            return false;
+        }
+    }
+    mc_symtable_popblockscope(symtab);
+    return true;
+}
+
+int mc_compiler_addconstant(mcastcompiler_t* comp, mcvalue_t obj)
+{
+    bool ok;
+    int pos;
+    ok = mc_vallist_push(comp->constants, obj);
+    if(!ok)
+    {
+        return -1;
+    }
+    pos = mc_vallist_count(comp->constants) - 1;
+    return pos;
+}
+
+void mc_compiler_changeuint16operand(mcastcompiler_t* comp, int ip, uint16_t operand)
+{
+    uint16_t hi;
+    uint16_t lo;
+    mcptrlist_t* bytecode;
+    bytecode = mc_compiler_getbytecode(comp);
+    if((ip + 1) >= (int)mc_ptrlist_count(bytecode))
+    {
+    }
+    else
+    {
+        hi = operand >> 8;
+        mc_ptrlist_set(bytecode, ip, &hi);
+        lo = operand;
+        mc_ptrlist_set(bytecode, ip + 1, &lo);
+    }
+}
+
+bool mc_compiler_lastopcodeis(mcastcompiler_t* comp, mcinternopcode_t op)
+{
+    mcinternopcode_t lastopcode;
+    lastopcode = mc_compiler_getlastopcode(comp);
+    return lastopcode == op;
+}
+
+bool mc_compiler_readsymbol(mcastcompiler_t* comp, mcastsymbol_t* symbol)
+{
+    int ip;
+    uint64_t opbuf[10];
+    ip = -1;
+    if(symbol->symtype == MC_SYM_MODULEGLOBAL)
+    {
+        opbuf[0] = symbol->index;
+        ip = mc_compiler_emit(comp, MC_OPCODE_GETMODULEGLOBAL, 1, opbuf);
+    }
+    else if(symbol->symtype == MC_SYM_GLOBALBUILTIN)
+    {
+        opbuf[0] = symbol->index;
+        ip = mc_compiler_emit(comp, MC_OPCODE_GETGLOBALBUILTIN, 1, opbuf);
+    }
+    else if(symbol->symtype == MC_SYM_LOCAL)
+    {
+        opbuf[0] = symbol->index;
+        ip = mc_compiler_emit(comp, MC_OPCODE_GETLOCAL, 1, opbuf);
+    }
+    else if(symbol->symtype == MC_SYM_FREE)
+    {
+        opbuf[0] = symbol->index;
+        ip = mc_compiler_emit(comp, MC_OPCODE_GETFREE, 1, opbuf);
+    }
+    else if(symbol->symtype == MC_SYM_FUNCTION)
+    {
+        ip = mc_compiler_emit(comp, MC_OPCODE_CURRENTFUNCTION, 0, NULL);
+    }
+    else if(symbol->symtype == MC_SYM_THIS)
+    {
+        ip = mc_compiler_emit(comp, MC_OPCODE_GETTHIS, 0, NULL);
+    }
+    return ip >= 0;
+}
+
+bool mc_compiler_storesymbol(mcastcompiler_t* comp, mcastsymbol_t* symbol, bool define)
+{
+    int ip;
+    uint64_t opbuf[10];
+    ip = -1;
+    if(symbol->symtype == MC_SYM_MODULEGLOBAL)
+    {
+        if(define)
+        {
+            opbuf[0] = symbol->index;
+            ip = mc_compiler_emit(comp, MC_OPCODE_DEFINEMODULEGLOBAL, 1, opbuf);
+        }
+        else
+        {
+            opbuf[0] = symbol->index;
+            ip = mc_compiler_emit(comp, MC_OPCODE_SETMODULEGLOBAL, 1, opbuf);
+        }
+    }
+    else if(symbol->symtype == MC_SYM_LOCAL)
+    {
+        if(define)
+        {
+            opbuf[0] = symbol->index;
+            ip = mc_compiler_emit(comp, MC_OPCODE_DEFINELOCAL, 1, opbuf);
+        }
+        else
+        {
+            opbuf[0] = symbol->index;
+            ip = mc_compiler_emit(comp, MC_OPCODE_SETLOCAL, 1, opbuf);
+        }
+    }
+    else if(symbol->symtype == MC_SYM_FREE)
+    {
+        opbuf[0] = symbol->index;
+        ip = mc_compiler_emit(comp, MC_OPCODE_SETFREE, 1, opbuf);
+    }
+    return ip >= 0;
+}
+
+bool mc_compiler_pushbreakip(mcastcompiler_t* comp, int ip)
+{
+    mcastscopecomp_t* compscope;
+    compscope = mc_compiler_getcompilationscope(comp);
+    return mc_ptrlist_push(compscope->ipstackbreak, &ip);
+}
+
+void mc_compiler_popbreakip(mcastcompiler_t* comp)
+{
+    mcastscopecomp_t* compscope;
+    compscope = mc_compiler_getcompilationscope(comp);
+    if(mc_ptrlist_count(compscope->ipstackbreak) == 0)
+    {
+    }
+    else
+    {
+        mc_ptrlist_pop(compscope->ipstackbreak, NULL);
+    }
+}
+
+int mc_compiler_getbreakip(mcastcompiler_t* comp)
+{
+    int* res;
+    mcastscopecomp_t* compscope;
+    compscope = mc_compiler_getcompilationscope(comp);
+    if(mc_ptrlist_count(compscope->ipstackbreak) == 0)
+    {
+        return -1;
+    }
+    res = (int*)mc_ptrlist_top(compscope->ipstackbreak);
+    return *res;
+}
+
+bool mc_compiler_pushcontinueip(mcastcompiler_t* comp, int ip)
+{
+    mcastscopecomp_t* compscope;
+    compscope = mc_compiler_getcompilationscope(comp);
+    return mc_ptrlist_push(compscope->ipstackcontinue, &ip);
+}
+
+void mc_compiler_popcontinueip(mcastcompiler_t* comp)
+{
+    mcastscopecomp_t* compscope;
+    compscope = mc_compiler_getcompilationscope(comp);
+    if(mc_ptrlist_count(compscope->ipstackcontinue) == 0)
+    {
+        MC_ASSERT(false);
+    }
+    mc_ptrlist_pop(compscope->ipstackcontinue, NULL);
+}
+
+int mc_compiler_getcontinueip(mcastcompiler_t* comp)
+{
+    int* res;
+    mcastscopecomp_t* compscope;
+    compscope = mc_compiler_getcompilationscope(comp);
+    if(mc_ptrlist_count(compscope->ipstackcontinue) == 0)
+    {
+        MC_ASSERT(false);
+        return -1;
+    }
+    res = (int*)mc_ptrlist_top(compscope->ipstackcontinue);
+    return *res;
+}
+
+int mc_compiler_getip(mcastcompiler_t* comp)
+{
+    mcastscopecomp_t* compscope;
+    compscope = mc_compiler_getcompilationscope(comp);
+    return mc_ptrlist_count(compscope->compiledscopebytecode);
+}
+
+mcptrlist_t* mc_compiler_getsrcpositions(mcastcompiler_t* comp)
+{
+    mcastscopecomp_t* compscope;
+    compscope = mc_compiler_getcompilationscope(comp);
+    return compscope->scopesrcposlist;
+}
+
+mcptrlist_t* mc_compiler_getbytecode(mcastcompiler_t* comp)
+{
+    mcastscopecomp_t* compscope;
+    compscope = mc_compiler_getcompilationscope(comp);
+    return compscope->compiledscopebytecode;
+}
+
+
+mcastscopefile_t* mc_compiler_filescopemake(mcastcompiler_t* comp, mcastcompiledfile_t* file)
+{
+    mcastscopefile_t* filescope;
+    filescope = (mcastscopefile_t*)mc_allocator_malloc(comp->pstate, sizeof(mcastscopefile_t));
+    if(!filescope)
+    {
+        return NULL;
+    }
+    memset(filescope, 0, sizeof(mcastscopefile_t));
+    filescope->pstate = comp->pstate;
+    filescope->parser = mc_astparser_make(comp->pstate, comp->config, comp->errors);
+    if(!filescope->parser)
+    {
+        goto err;
+    }
+    filescope->filesymtab = NULL;
+    filescope->file = file;
+    filescope->loadedmodnames = mc_ptrlist_make(comp->pstate, sizeof(void*), true);
+    if(!filescope->loadedmodnames)
+    {
+        goto err;
+    }
+    return filescope;
+err:
+    mc_compiler_filescopedestroy(filescope);
+    return NULL;
+}
+
+void mc_compiler_filescopedestroy(mcastscopefile_t* scope)
+{
+    size_t i;
+    void* name;
+    for(i = 0; i < mc_ptrlist_count(scope->loadedmodnames); i++)
+    {
+        name = (void*)mc_ptrlist_get(scope->loadedmodnames, i);
+        mc_memory_free(name);
+    }
+    mc_ptrlist_destroy(scope->loadedmodnames, NULL);
+    mc_astparser_destroy(scope->parser);
+    mc_memory_free(scope);
+}
+
+bool mc_compiler_filescopepush(mcastcompiler_t* comp, const char* filepath)
+{
+    bool ok;
+    int globaloffset;
+    mcastscopeblock_t* prevsttopscope;
+    mcastsymtable_t* prevst;
+    mcastcompiledfile_t* file;
+    mcastscopefile_t* filescope;
+    prevst = NULL;
+    if(mc_ptrlist_count(comp->filescopelist) > 0)
+    {
+        prevst = mc_compiler_getsymtable(comp);
+    }
+    file = mc_compiledfile_make(comp->pstate, filepath);
+    if(!file)
+    {
+        return false;
+    }
+    ok = mc_ptrlist_push(comp->files, file);
+    if(!ok)
+    {
+        mc_compiledfile_destroy(file);
+        return false;
+    }
+    filescope = mc_compiler_filescopemake(comp, file);
+    if(!filescope)
+    {
+        return false;
+    }
+    ok = mc_ptrlist_push(comp->filescopelist, filescope);
+    if(!ok)
+    {
+        mc_compiler_filescopedestroy(filescope);
+        return false;
+    }
+    globaloffset = 0;
+    if(prevst)
+    {
+        prevsttopscope = mc_symtable_getblockscope(prevst);
+        globaloffset = prevsttopscope->offset + prevsttopscope->numdefinitions;
+    }
+    ok = mc_compiler_pushsymtable(comp, globaloffset);
+    if(!ok)
+    {
+        mc_ptrlist_pop(comp->filescopelist, NULL);
+        mc_compiler_filescopedestroy(filescope);
+        return false;
+    }
+    return true;
+}
+
+void mc_compiler_filescopepop(mcastcompiler_t* comp)
+{
+    int poppednumdefs;
+    mcastsymtable_t* poppedst;
+    mcastsymtable_t* currentst;
+    mcastscopefile_t* scope;
+    mcastscopeblock_t* currentsttopscope;
+    mcastscopeblock_t* poppedsttopscope;
+    poppedst = mc_compiler_getsymtable(comp);
+    poppedsttopscope = mc_symtable_getblockscope(poppedst);
+    poppednumdefs = poppedsttopscope->numdefinitions;
+    while(mc_compiler_getsymtable(comp))
+    {
+        mc_compiler_popsymtable(comp);
+    }
+    scope = (mcastscopefile_t*)mc_ptrlist_top(comp->filescopelist);
+    if(!scope)
+    {
+        MC_ASSERT(false);
+    }
+    mc_compiler_filescopedestroy(scope);
+    mc_ptrlist_pop(comp->filescopelist, NULL);
+    if(mc_ptrlist_count(comp->filescopelist) > 0)
+    {
+        currentst = mc_compiler_getsymtable(comp);
+        currentsttopscope = mc_symtable_getblockscope(currentst);
+        currentsttopscope->numdefinitions += poppednumdefs;
+    }
+}
+
+void mc_compiler_setcompilationscope(mcastcompiler_t* comp, mcastscopecomp_t* scope)
+{
+    comp->compilationscope = scope;
+}
+
+mcastcompiledfile_t* mc_compiledfile_make(mcstate_t* state, const char* path)
+{
+    size_t len;
+    const char* lastslashpos;
+    mcastcompiledfile_t* file;
+    file = (mcastcompiledfile_t*)mc_allocator_malloc(state, sizeof(mcastcompiledfile_t));
+    if(!file)
+    {
+        return NULL;
+    }
+    memset(file, 0, sizeof(mcastcompiledfile_t));
+    file->pstate = state;
+    lastslashpos = strrchr(path, '/');
+    if(lastslashpos)
+    {
+        len = lastslashpos - path + 1;
+        file->dir_path = mc_util_strndup(state, path, len);
+    }
+    else
+    {
+        file->dir_path = mc_util_strdup(state, "");
+    }
+    if(!file->dir_path)
+    {
+        goto error;
+    }
+    file->path = mc_util_strdup(state, path);
+    if(!file->path)
+    {
+        goto error;
+    }
+    file->lines = mc_ptrlist_make(state, sizeof(void*), true);
+    if(!file->lines)
+    {
+        goto error;
+    }
+    return file;
+error:
+    mc_compiledfile_destroy(file);
+    return NULL;
+}
+
+void mc_compiledfile_destroy(mcastcompiledfile_t* file)
+{
+    size_t i;
+    void* item;
+    if(file != NULL)
+    {
+        for(i = 0; i < mc_ptrlist_count(file->lines); i++)
+        {
+            item = (void*)mc_ptrlist_get(file->lines, i);
+            mc_memory_free(item);
+        }
+        mc_ptrlist_destroy(file->lines, NULL);
+        mc_memory_free(file->dir_path);
+        mc_memory_free(file->path);
+        mc_memory_free(file);
+    }
+}
+
+mcastcompiler_t* mc_compiler_make(mcstate_t* state, mcconfig_t* config, mcgcmemory_t* mem, mcerrlist_t* errors, mcptrlist_t* files, mcglobalstore_t* gstore)
+{
+    bool ok;
+    mcastcompiler_t* comp = (mcastcompiler_t*)mc_allocator_malloc(state, sizeof(mcastcompiler_t));
+    if(!comp)
+    {
+        return NULL;
+    }
+    ok = mc_compiler_init(comp, state, config, mem, errors, files, gstore);
+    if(!ok)
+    {
+        mc_memory_free(comp);
+        return NULL;
+    }
+    comp->pstate = state; 
+    return comp;
+}
+
+void mc_compiler_destroy(mcastcompiler_t* comp)
+{
+    if(comp != NULL)
+    {
+        mc_compiler_deinit(comp);
+        mc_memory_free(comp);
+    }
+}
+
+mccompiledprogram_t* mc_compiler_compilesource(mcastcompiler_t* comp, const char* code, const char* filename)
+{
+    bool ok;
+    mcastcompiler_t compshallowcopy;
+    mcastscopecomp_t* compscope;
+    mccompiledprogram_t* res;
+    compscope = mc_compiler_getcompilationscope(comp);
+    MC_ASSERT(mc_ptrlist_count(comp->srcposstack) == 0);
+    MC_ASSERT(mc_ptrlist_count(compscope->compiledscopebytecode) == 0);
+    MC_ASSERT(mc_ptrlist_count(compscope->ipstackbreak) == 0);
+    MC_ASSERT(mc_ptrlist_count(compscope->ipstackcontinue) == 0);
+    mc_ptrlist_clear(comp->srcposstack);
+    mc_ptrlist_clear(compscope->compiledscopebytecode);
+    mc_ptrlist_clear(compscope->scopesrcposlist);
+    mc_ptrlist_clear(compscope->ipstackbreak);
+    mc_ptrlist_clear(compscope->ipstackcontinue);
+    ok = mc_compiler_filescopepush(comp, filename);
+    if(!ok)
+    {
+        goto compilefailed;
+    }
+    ok = mc_compiler_initshallowcopy(&compshallowcopy, comp);
+    if(!ok)
+    {
+        return NULL;
+    }
+    ok = mc_compiler_docompilesource(comp, code);
+    if(!ok)
+    {
+        goto compilefailed;
+    }
+    mc_compiler_emit(comp, MC_OPCODE_HALT, 0, 0);
+    /* might've changed */
+    compscope = mc_compiler_getcompilationscope(comp);
+    MC_ASSERT(compscope->outer == NULL);
+    compscope = mc_compiler_getcompilationscope(comp);
+    res = mc_astcompscope_orphanresult(compscope);
+    if(!res)
+    {
+        goto compilefailed;
+    }
+    mc_compiler_deinit(&compshallowcopy);
+    return res;
+compilefailed:
+    mc_compiler_deinit(comp);
+    *comp = compshallowcopy;
+    return NULL;
+}
+
+mcastsymtable_t* mc_compiler_getsymtable(mcastcompiler_t* comp)
+{
+    mcastscopefile_t* filescope = (mcastscopefile_t*)mc_ptrlist_top(comp->filescopelist);
+    if(!filescope)
+    {
+        MC_ASSERT(false);
+        return NULL;
+    }
+    return filescope->filesymtab;
+}
+
+void mc_compiler_setsymtable(mcastcompiler_t* comp, mcastsymtable_t* table)
+{
+    mcastscopefile_t* filescope = (mcastscopefile_t*)mc_ptrlist_top(comp->filescopelist);
+    if(!filescope)
+    {
+        MC_ASSERT(false);
+    }
+    filescope->filesymtab = table;
+}
+
+mcvallist_t* mc_compiler_getconstants(mcastcompiler_t* comp)
+{
+    return comp->constants;
+}
+
+
 
 bool mc_util_strequal(const char* a, const char* b)
 {
@@ -2587,22 +12420,16 @@ void mc_state_setdefaultconfig(mcstate_t* state)
     state->config.fatalcomplaints = false;
     state->config.exitaftercompiling = false;
     state->config.printinstructions = false;
+    state->config.strictmode = false;
 }
 
 void mc_state_destroy(mcstate_t* state)
 {
-    if(!state)
+    if(state != NULL)
     {
-        return;
+        mc_state_deinit(state);
+        mc_memory_free(state);
     }
-    mc_state_deinit(state);
-    mc_memory_free(state);
-}
-
-void mc_state_freeallocated(mcstate_t* state, void* ptr)
-{
-    (void)state;
-    mc_memory_free(ptr);
 }
 
 void mc_state_printerrors(mcstate_t* state)
@@ -2664,11 +12491,10 @@ mcvalue_t mc_program_execute(mcstate_t* state, mccompiledprogram_t* program)
 
 void mc_program_destroy(mccompiledprogram_t* program)
 {
-    if(!program)
+    if(program != NULL)
     {
-        return;
+        mc_astcompresult_destroy(program);
     }
-    mc_astcompresult_destroy(program);
 }
 
 mcvalue_t mc_state_execcode(mcstate_t* state, const char* code, const char* filename)
@@ -3103,8 +12929,527 @@ const char* mc_traceback_getfunctionname(mctraceback_t* traceback, int depth)
     return item->trfuncname;
 }
 
+void mc_astprinter_printast(mcstate_t* state, mcptrlist_t* statements)
+{
+    mcastprinter_t apr;
+    apr.pstate = state;
+    apr.pseudolisp = false;
+    apr.pdest = state->stderrprinter;
+    state->stderrprinter->config.quotstring = true;
+    fprintf(stderr, "---AST dump begin---\n");
+    mc_astprint_stmtlist(&apr, statements);
+    fprintf(stderr, "\n---AST dump end---\n");
+    state->stderrprinter->config.quotstring = false;
+}
 
-#include "astprint.h"
+void mc_astprint_stmtlist(mcastprinter_t* apr, mcptrlist_t* statements)
+{
+    int i;
+    int count;
+    mcastexpression_t* subex;
+    count = mc_ptrlist_count(statements);
+    for(i = 0; i < count; i++)
+    {
+        subex = (mcastexpression_t*)mc_ptrlist_get(statements, i);
+        mc_astprint_expression(apr, subex);
+        if(i < (count - 1))
+        {
+            mc_printer_puts(apr->pdest, "\n");
+        }
+    }
+}
+
+void mc_astprint_printfuncliteral(mcastprinter_t* apr, mcastexpression_t* astexpr)
+{
+    size_t i;
+    mcastfuncparam_t* param;
+    mcastexprliteralfunction_t* ex;
+    ex = &astexpr->uexpr.exprlitfunction;
+    if(apr->pseudolisp)
+    {
+        mc_printer_printf(apr->pdest, "(deffunction '(");
+    }
+    else
+    {
+        mc_printer_puts(apr->pdest, "function(");
+    }
+    for(i = 0; i < mc_ptrlist_count(ex->funcparamlist); i++)
+    {
+        param = (mcastfuncparam_t*)mc_ptrlist_get(ex->funcparamlist, i);
+        mc_printer_puts(apr->pdest, param->ident->value);
+        if(i < (mc_ptrlist_count(ex->funcparamlist) - 1))
+        {
+            mc_printer_puts(apr->pdest, ", ");
+        }
+    }
+    mc_printer_puts(apr->pdest, ") ");
+    mc_astprint_codeblock(apr, ex->body);
+}
+
+void mc_astprint_printcall(mcastprinter_t* apr, mcastexpression_t* astexpr)
+{
+    size_t i;
+    mcastexprcall_t* ex;
+    mcastexpression_t* arg;
+    ex = &astexpr->uexpr.exprcall;
+    mc_astprint_expression(apr, ex->function);
+    mc_printer_puts(apr->pdest, "(");
+    for(i = 0; i < mc_ptrlist_count(ex->args); i++)
+    {
+        arg = (mcastexpression_t*)mc_ptrlist_get(ex->args, i);
+        mc_astprint_expression(apr, arg);
+        if(i < (mc_ptrlist_count(ex->args) - 1))
+        {
+            mc_printer_puts(apr->pdest, ", ");
+        }
+    }
+    mc_printer_puts(apr->pdest, ")");
+}
+
+void mc_astprint_printarrayliteral(mcastprinter_t* apr, mcastexpression_t* astexpr)
+{
+    size_t i;
+    size_t len;
+    mcastexprliteralarray_t* ex;
+    mcastexpression_t* itemex;
+    mcptrlist_t* vl;
+    ex = &astexpr->uexpr.exprlitarray;
+    vl = ex->litarritems;
+    len = mc_ptrlist_count(vl);
+    mc_printer_puts(apr->pdest, "[");
+    for(i = 0; i < len; i++)
+    {
+        itemex = (mcastexpression_t*)mc_ptrlist_get(vl, i);
+        mc_astprint_expression(apr, itemex);
+        if(i < (len - 1))
+        {
+            mc_printer_puts(apr->pdest, ", ");
+        }
+    }
+    mc_printer_puts(apr->pdest, "]");
+}
+
+void mc_astprint_printstringliteral(mcastprinter_t* apr, mcastexpression_t* astexpr)
+{
+    size_t slen;
+    const char* sdata;
+    mcastexprliteralstring_t* ex;
+    ex = &astexpr->uexpr.exprlitstring;
+    sdata = ex->data;
+    slen = ex->length;
+    if(apr->pdest->config.quotstring)
+    {
+        mc_printer_printescapedstring(apr->pdest, sdata, slen);
+    }
+    else
+    {
+        mc_printer_putlen(apr->pdest, sdata, slen);
+    }
+}
+
+void mc_astprint_printmapliteral(mcastprinter_t* apr, mcastexpression_t* astexpr)
+{
+    size_t i;
+    mcastexpression_t* keyexpr;
+    mcastexpression_t* valexpr;
+    mcastexprliteralmap_t* ex;
+    ex = &astexpr->uexpr.exprlitmap;
+    mc_printer_puts(apr->pdest, "{");
+    for(i = 0; i < mc_ptrlist_count(ex->litmapkeys); i++)
+    {
+        keyexpr = (mcastexpression_t*)mc_ptrlist_get(ex->litmapkeys, i);
+        valexpr = (mcastexpression_t*)mc_ptrlist_get(ex->litmapvalues, i);
+        mc_astprint_expression(apr, keyexpr);
+        mc_printer_puts(apr->pdest, " : ");
+        mc_astprint_expression(apr, valexpr);
+        if(i < (mc_ptrlist_count(ex->litmapkeys) - 1))
+        {
+            mc_printer_puts(apr->pdest, ", ");
+        }
+    }
+    mc_printer_puts(apr->pdest, "}");
+}
+
+void mc_astprint_printprefixexpr(mcastprinter_t* apr, mcastexpression_t* astexpr)
+{
+    mcastexprprefix_t* ex;
+    ex = &astexpr->uexpr.exprprefix;
+    mc_printer_puts(apr->pdest, "(");
+    mc_printer_puts(apr->pdest, mc_util_mathopstring(ex->op));
+    mc_astprint_expression(apr, ex->right);
+    mc_printer_puts(apr->pdest, ")");
+}
+
+void mc_astprint_printinfixexpr(mcastprinter_t* apr, mcastexpression_t* astexpr)
+{
+    mcastexprinfix_t* ex;
+    ex = &astexpr->uexpr.exprinfix;
+    mc_printer_puts(apr->pdest, "(");
+    mc_astprint_expression(apr, ex->left);
+    mc_printer_puts(apr->pdest, " ");
+    mc_printer_puts(apr->pdest, mc_util_mathopstring(ex->op));
+    mc_printer_puts(apr->pdest, " ");
+    mc_astprint_expression(apr, ex->right);
+    mc_printer_puts(apr->pdest, ")");
+}
+
+void mc_astprint_printindexexpr(mcastprinter_t* apr, mcastexpression_t* astexpr)
+{
+    bool prevquot;
+    mcastexprindex_t* ex;
+    ex = &astexpr->uexpr.exprindex;
+    mc_printer_puts(apr->pdest, "(");
+    mc_astprint_expression(apr, ex->left);
+    if(ex->isdot)
+    {
+        mc_printer_puts(apr->pdest, ".");
+        prevquot = apr->pdest->config.quotstring;
+        apr->pdest->config.quotstring = false;
+        mc_astprint_expression(apr, ex->index);
+        apr->pdest->config.quotstring = prevquot;
+    }
+    else
+    {
+        mc_printer_puts(apr->pdest, "[");
+        mc_astprint_expression(apr, ex->index);
+        mc_printer_puts(apr->pdest, "]");
+    }
+    mc_printer_puts(apr->pdest, ")");
+}
+
+void mc_astprint_printassignexpr(mcastprinter_t* apr, mcastexpression_t* astexpr)
+{
+    mcastexprassign_t* ex;
+    ex = &astexpr->uexpr.exprassign;
+    mc_astprint_expression(apr, ex->dest);
+    mc_printer_puts(apr->pdest, " = ");
+    mc_astprint_expression(apr, ex->source);
+}
+
+void mc_astprint_printlogicalexpr(mcastprinter_t* apr, mcastexpression_t* astexpr)
+{
+    mcastexprlogical_t* ex;
+    ex = &astexpr->uexpr.exprlogical;
+    mc_astprint_expression(apr, ex->left);
+    mc_printer_puts(apr->pdest, " ");
+    mc_printer_puts(apr->pdest, mc_util_mathopstring(ex->op));
+    mc_printer_puts(apr->pdest, " ");
+    mc_astprint_expression(apr, ex->right);
+}
+
+void mc_astprint_printternaryexpr(mcastprinter_t* apr, mcastexpression_t* astexpr)
+{
+    mcastexprternary_t* ex;
+    ex = &astexpr->uexpr.exprternary;
+    mc_astprint_expression(apr, ex->tercond);
+    mc_printer_puts(apr->pdest, " ? ");
+    mc_astprint_expression(apr, ex->teriftrue);
+    mc_printer_puts(apr->pdest, " : ");
+    mc_astprint_expression(apr, ex->teriffalse);
+}
+
+void mc_astprint_printdefineexpr(mcastprinter_t* apr, mcastexpression_t* astexpr)
+{
+    mcastexprdefine_t* ex;
+    ex = &astexpr->uexpr.exprdefine;
+    if(ex->assignable)
+    {
+        mc_printer_puts(apr->pdest, "var ");
+    }
+    else
+    {
+        mc_printer_puts(apr->pdest, "const ");
+    }
+    mc_printer_puts(apr->pdest, ex->name->value);
+    mc_printer_puts(apr->pdest, " = ");
+    if(ex->value)
+    {
+        mc_astprint_expression(apr, ex->value);
+    }
+}
+
+void mc_astprint_printifexpr(mcastprinter_t* apr, mcastexpression_t* astexpr)
+{
+    size_t i;
+    mcastexprifcase_t* ifcase;
+    mcastexprstmtif_t* ex;
+    ex = &astexpr->uexpr.exprifstmt;
+    ifcase = (mcastexprifcase_t*)mc_ptrlist_get(ex->cases, 0);
+    mc_printer_puts(apr->pdest, "if (");
+    mc_astprint_expression(apr, ifcase->ifcond);
+    mc_printer_puts(apr->pdest, ") ");
+    mc_astprint_codeblock(apr, ifcase->consequence);
+    for(i = 1; i < mc_ptrlist_count(ex->cases); i++)
+    {
+        mcastexprifcase_t* elifcase = (mcastexprifcase_t*)mc_ptrlist_get(ex->cases, i);
+        mc_printer_puts(apr->pdest, " elif (");
+        mc_astprint_expression(apr, elifcase->ifcond);
+        mc_printer_puts(apr->pdest, ") ");
+        mc_astprint_codeblock(apr, elifcase->consequence);
+    }
+    if(ex->alternative)
+    {
+        mc_printer_puts(apr->pdest, " else ");
+        mc_astprint_codeblock(apr, ex->alternative);
+    }
+}
+
+void mc_astprint_printwhileexpr(mcastprinter_t* apr, mcastexpression_t* astexpr)
+{
+    mcastexprstmtwhile_t* ex;
+    ex = &astexpr->uexpr.exprwhileloopstmt;
+    mc_printer_puts(apr->pdest, "while (");
+    mc_astprint_expression(apr, ex->loopcond);
+    mc_printer_puts(apr->pdest, ")");
+    mc_astprint_codeblock(apr, ex->body);
+}
+
+void mc_astprint_printforclassicexpr(mcastprinter_t* apr, mcastexpression_t* astexpr)
+{
+    mcastexprstmtforloop_t* ex;
+    ex = &astexpr->uexpr.exprforloopstmt;
+    mc_printer_puts(apr->pdest, "for (");
+    if(ex->init)
+    {
+        mc_astprint_expression(apr, ex->init);
+        mc_printer_puts(apr->pdest, " ");
+    }
+    else
+    {
+        mc_printer_puts(apr->pdest, ";");
+    }
+    if(ex->loopcond)
+    {
+        mc_astprint_expression(apr, ex->loopcond);
+        mc_printer_puts(apr->pdest, "; ");
+    }
+    else
+    {
+        mc_printer_puts(apr->pdest, ";");
+    }
+    if(ex->update)
+    {
+        mc_astprint_expression(apr, ex->loopcond);
+    }
+    mc_printer_puts(apr->pdest, ")");
+    mc_astprint_codeblock(apr, ex->body);
+}
+
+void mc_astprint_printforeachexpr(mcastprinter_t* apr, mcastexpression_t* astexpr)
+{
+    mcastexprstmtforeach_t* ex;
+    ex = &astexpr->uexpr.exprforeachloopstmt;
+    mc_printer_puts(apr->pdest, "for (");
+    mc_printer_printf(apr->pdest, "%s", ex->iterator->value);
+    mc_printer_puts(apr->pdest, " in ");
+    mc_astprint_expression(apr, ex->source);
+    mc_printer_puts(apr->pdest, ")");
+    mc_astprint_codeblock(apr, ex->body);
+}
+
+void mc_astprint_printimportexpr(mcastprinter_t* apr, mcastexpression_t* astexpr)
+{
+    mcastexprstmtimport_t* ex;
+    ex = &astexpr->uexpr.exprimportstmt;
+    mc_printer_printf(apr->pdest, "import \"%s\"", ex->path);
+}
+
+void mc_astprint_printrecoverexpr(mcastprinter_t* apr, mcastexpression_t* astexpr)
+{
+    mcastexprstmtrecover_t* ex;
+    ex = &astexpr->uexpr.exprrecoverstmt;
+    mc_printer_printf(apr->pdest, "recover (%s)", ex->errident->value);
+    mc_astprint_codeblock(apr, ex->body);
+}
+
+void mc_astprint_expression(mcastprinter_t* apr, mcastexpression_t* astexpr)
+{
+    switch(astexpr->exprtype)
+    {
+        case MC_EXPR_IDENT:
+            {
+                mcastexprident_t* ex;
+                ex = astexpr->uexpr.exprident;
+                mc_printer_puts(apr->pdest, ex->value);
+            }
+            break;
+        case MC_EXPR_NUMBERLITERAL:
+            {
+                mcfloat_t fl;
+                fl = astexpr->uexpr.exprlitnumber;
+                mc_printer_printf(apr->pdest, "%1.17g", fl);
+            }
+            break;
+        case MC_EXPR_BOOLLITERAL:
+            {
+                bool bl;
+                bl = astexpr->uexpr.exprlitbool;
+                mc_printer_printf(apr->pdest, "%s", bl ? "true" : "false");
+            }
+            break;
+        case MC_EXPR_STRINGLITERAL:
+            {
+                mc_astprint_printstringliteral(apr, astexpr);
+            }
+            break;
+        case MC_EXPR_NULLLITERAL:
+            {
+                mc_printer_puts(apr->pdest, "null");
+            }
+            break;
+        case MC_EXPR_ARRAYLITERAL:
+            {
+                mc_astprint_printarrayliteral(apr, astexpr);
+            }
+            break;
+        case MC_EXPR_MAPLITERAL:
+            {
+                mc_astprint_printmapliteral(apr, astexpr);
+            }
+            break;
+        case MC_EXPR_PREFIX:
+            {
+                mc_astprint_printprefixexpr(apr, astexpr);
+            }
+            break;
+        case MC_EXPR_INFIX:
+            {
+                mc_astprint_printinfixexpr(apr, astexpr);
+            }
+            break;
+        case MC_EXPR_FUNCTIONLITERAL:
+            {
+                mc_astprint_printfuncliteral(apr, astexpr);
+            }
+            break;
+        case MC_EXPR_CALL:
+            {
+                mc_astprint_printcall(apr, astexpr);
+            }
+            break;
+        case MC_EXPR_INDEX:
+            {
+                mc_astprint_printindexexpr(apr, astexpr);
+            }
+            break;
+        case MC_EXPR_ASSIGN:
+            {
+                mc_astprint_printassignexpr(apr, astexpr);
+            }
+            break;
+        case MC_EXPR_LOGICAL:
+            {
+                mc_astprint_printlogicalexpr(apr, astexpr);
+            }
+            break;
+        case MC_EXPR_TERNARY:
+            {
+                mc_astprint_printternaryexpr(apr, astexpr);
+            }
+            break;
+        case MC_EXPR_STMTDEFINE:
+            {
+                mc_astprint_printdefineexpr(apr, astexpr);
+            }
+            break;
+        case MC_EXPR_STMTIF:
+            {
+                mc_astprint_printifexpr(apr, astexpr);
+            }
+            break;
+        case MC_EXPR_STMTRETURN:
+            {
+                mcastexpression_t* ex;
+                ex = astexpr->uexpr.exprreturnvalue;
+                if(ex)
+                {
+                    mc_printer_puts(apr->pdest, "return ");
+                    mc_astprint_expression(apr, ex);
+                    mc_printer_puts(apr->pdest, ";");
+                }
+                else
+                {
+                    mc_printer_puts(apr->pdest, "return;");
+                }
+            }
+            break;
+        case MC_EXPR_STMTEXPRESSION:
+            {
+                mcastexpression_t* ex;
+                ex = astexpr->uexpr.exprexpression;
+                if(ex)
+                {
+                    mc_astprint_expression(apr, ex);
+                }
+            }
+            break;
+        case MC_EXPR_STMTLOOPWHILE:
+            {
+                mc_astprint_printwhileexpr(apr, astexpr);
+            }
+            break;
+        case MC_EXPR_STMTLOOPFORCLASSIC:
+            {
+                mc_astprint_printforclassicexpr(apr, astexpr);
+            }
+            break;
+        case MC_EXPR_STMTLOOPFOREACH:
+            {
+                mc_astprint_printforeachexpr(apr, astexpr);
+            }
+            break;
+        case MC_EXPR_STMTBLOCK:
+            {
+                mcastexprcodeblock_t* ex;
+                ex = astexpr->uexpr.exprblockstmt;
+                mc_astprint_codeblock(apr, ex);
+            }
+            break;
+        case MC_EXPR_STMTBREAK:
+            {
+                mc_printer_puts(apr->pdest, "break");
+            }
+            break;
+        case MC_EXPR_STMTCONTINUE:
+            {
+                mc_printer_puts(apr->pdest, "continue");
+            }
+            break;
+        case MC_EXPR_STMTIMPORT:
+            {
+                mc_astprint_printimportexpr(apr, astexpr);
+            }
+            break;
+        case MC_EXPR_NONE:
+            {
+                mc_printer_puts(apr->pdest, "MC_EXPR_NONE");
+            }
+            break;
+        case MC_EXPR_STMTRECOVER:
+            {
+                mc_astprint_printrecoverexpr(apr, astexpr);
+            }
+            break;
+        default:
+            break;
+    }
+}
+
+void mc_astprint_codeblock(mcastprinter_t* apr, mcastexprcodeblock_t* blockexpr)
+{
+    size_t i;
+    size_t cnt;
+    mcastexpression_t* istmt;
+    cnt = mc_ptrlist_count(blockexpr->statements);
+    mc_printer_puts(apr->pdest, "{ ");
+    for(i = 0; i < cnt; i++)
+    {
+        istmt = (mcastexpression_t*)mc_ptrlist_get(blockexpr->statements, i);
+        mc_astprint_expression(apr, istmt);
+        mc_printer_puts(apr->pdest, "\n");
+    }
+    mc_printer_puts(apr->pdest, " }");
+}
 
 const char* mc_util_mathopstring(mcastmathoptype_t op)
 {
@@ -3423,37 +13768,36 @@ void mc_gcmemory_destroy(mcgcmemory_t* mem)
     mcobjdata_t* obj;
     mcobjdata_t* data;
     mcgcobjdatapool_t* pool;
-    if(!mem)
+    if(mem != NULL)
     {
-        return;
-    }
-    mc_ptrlist_destroy(mem->gcobjlistremains, NULL);
-    mc_ptrlist_destroy(mem->gcobjlistback, NULL);
-    for(i = 0; i < mc_ptrlist_count(mem->gcobjlist); i++)
-    {
-        obj = (mcobjdata_t*)mc_ptrlist_get(mem->gcobjlist, i);
-        mc_objectdata_deinit(obj);
-        memset(obj, 0, sizeof(mcobjdata_t));
-        mc_memory_free(obj);
-    }
-    mc_ptrlist_destroy(mem->gcobjlist, NULL);
-    for(i = 0; i < MC_CONF_GCMEMPOOLCOUNT; i++)
-    {
-        pool = &mem->mempools[i];
-        for(j = 0; j < (size_t)pool->count; j++)
+        mc_ptrlist_destroy(mem->gcobjlistremains, NULL);
+        mc_ptrlist_destroy(mem->gcobjlistback, NULL);
+        for(i = 0; i < mc_ptrlist_count(mem->gcobjlist); i++)
         {
-            data = pool->data[j];
-            mc_objectdata_deinit(data);
-            memset(data, 0, sizeof(mcobjdata_t));
-            mc_memory_free(data);
+            obj = (mcobjdata_t*)mc_ptrlist_get(mem->gcobjlist, i);
+            mc_objectdata_deinit(obj);
+            memset(obj, 0, sizeof(mcobjdata_t));
+            mc_memory_free(obj);
         }
-        memset(pool, 0, sizeof(mcgcobjdatapool_t));
+        mc_ptrlist_destroy(mem->gcobjlist, NULL);
+        for(i = 0; i < MC_CONF_GCMEMPOOLCOUNT; i++)
+        {
+            pool = &mem->mempools[i];
+            for(j = 0; j < (size_t)pool->count; j++)
+            {
+                data = pool->data[j];
+                mc_objectdata_deinit(data);
+                memset(data, 0, sizeof(mcobjdata_t));
+                mc_memory_free(data);
+            }
+            memset(pool, 0, sizeof(mcgcobjdatapool_t));
+        }
+        for(i = 0; i < (size_t)mem->onlydatapool.count; i++)
+        {
+            mc_memory_free(mem->onlydatapool.data[i]);
+        }
+        mc_memory_free(mem);
     }
-    for(i = 0; i < (size_t)mem->onlydatapool.count; i++)
-    {
-        mc_memory_free(mem->onlydatapool.data[i]);
-    }
-    mc_memory_free(mem);
 }
 
 mcobjdata_t* mc_gcmemory_allocobjectdata(mcstate_t* state)
@@ -3562,83 +13906,82 @@ void mc_state_gcmarkobject(mcvalue_t obj)
     mcobjdata_t* keydata;
     mcobjdata_t* freevaldata;
     mcobjfuncscript_t* function;
-    if(!mc_value_isallocated(obj))
+    if(mc_value_isallocated(obj))
     {
-        return;
-    }
-    data = mc_value_getallocateddata(obj);
-    if(data->gcmark)
-    {
-        return;
-    }
-    data->gcmark = true;
-    switch(mc_value_gettype(obj))
-    {
-        case MC_VAL_MAP:
+        data = mc_value_getallocateddata(obj);
+        if(!data->gcmark)
+        {
+            data->gcmark = true;
+            switch(mc_value_gettype(obj))
             {
-                len = mc_value_mapgetlength(obj);
-                for(i = 0; i < len; i++)
-                {
-                    key = mc_value_mapgetkeyat(obj, i);
-                    if(mc_value_isallocated(key))
+                case MC_VAL_MAP:
                     {
-                        keydata = mc_value_getallocateddata(key);
-                        if(!keydata->gcmark)
+                        len = mc_value_mapgetlength(obj);
+                        for(i = 0; i < len; i++)
                         {
-                            mc_state_gcmarkobject(key);
+                            key = mc_value_mapgetkeyat(obj, i);
+                            if(mc_value_isallocated(key))
+                            {
+                                keydata = mc_value_getallocateddata(key);
+                                if(!keydata->gcmark)
+                                {
+                                    mc_state_gcmarkobject(key);
+                                }
+                            }
+                            val = mc_value_mapgetvalueat(obj, i);
+                            if(mc_value_isallocated(val))
+                            {
+                                valdata = mc_value_getallocateddata(val);
+                                if(!valdata->gcmark)
+                                {
+                                    mc_state_gcmarkobject(val);
+                                }
+                            }
                         }
                     }
-                    val = mc_value_mapgetvalueat(obj, i);
-                    if(mc_value_isallocated(val))
+                    break;
+                case MC_VAL_ARRAY:
                     {
-                        valdata = mc_value_getallocateddata(val);
-                        if(!valdata->gcmark)
+                        len = mc_value_arraygetlength(obj);
+                        for(i = 0; i < len; i++)
                         {
-                            mc_state_gcmarkobject(val);
+                            val = mc_value_arraygetvalue(obj, i);
+                            if(mc_value_isallocated(val))
+                            {
+                                valdata = mc_value_getallocateddata(val);
+                                if(!valdata->gcmark)
+                                {
+                                    mc_state_gcmarkobject(val);
+                                }
+                            }
                         }
                     }
-                }
-            }
-            break;
-        case MC_VAL_ARRAY:
-            {
-                len = mc_value_arraygetlength(obj);
-                for(i = 0; i < len; i++)
-                {
-                    val = mc_value_arraygetvalue(obj, i);
-                    if(mc_value_isallocated(val))
+                    break;
+                case MC_VAL_FUNCSCRIPT:
                     {
-                        valdata = mc_value_getallocateddata(val);
-                        if(!valdata->gcmark)
+                        break;
+                        function = mc_value_asscriptfunction(obj);
+                        for(i = 0; i < function->freevalscount; i++)
                         {
-                            mc_state_gcmarkobject(val);
-                        }
-                    }
-                }
-            }
-            break;
-        case MC_VAL_FUNCSCRIPT:
-            {
-                function = mc_value_asscriptfunction(obj);
-                for(i = 0; i < function->freevalscount; i++)
-                {
-                    freeval = mc_value_functiongetfreevalat(obj, i);
-                    mc_state_gcmarkobject(freeval);
-                    if(mc_value_isallocated(freeval))
-                    {
-                        freevaldata = mc_value_getallocateddata(freeval);
-                        if(!freevaldata->gcmark)
-                        {
+                            freeval = mc_value_functiongetfreevalat(obj, i);
                             mc_state_gcmarkobject(freeval);
+                            if(mc_value_isallocated(freeval))
+                            {
+                                freevaldata = mc_value_getallocateddata(freeval);
+                                if(!freevaldata->gcmark)
+                                {
+                                    mc_state_gcmarkobject(freeval);
+                                }
+                            }
                         }
                     }
-                }
+                    break;
+                default:
+                    {
+                    }
+                    break;
             }
-            break;
-        default:
-            {
-            }
-            break;
+        }
     }
 }
 
@@ -3720,12 +14063,11 @@ bool mc_state_gcdisablefor(mcvalue_t obj)
 void mc_state_gcenablefor(mcvalue_t obj)
 {
     mcobjdata_t* data;
-    if(!mc_value_isallocated(obj))
+    if(mc_value_isallocated(obj))
     {
-        return;
+        data = mc_value_getallocateddata(obj);
+        mc_ptrlist_removeitem(data->mem->gcobjlistremains, &obj);
     }
-    data = mc_value_getallocateddata(obj);
-    mc_ptrlist_removeitem(data->mem->gcobjlistremains, &obj);
 }
 
 mcgcobjdatapool_t* mc_state_gcgetpoolfortype(mcstate_t* state, mcvaltype_t type)
@@ -3821,14 +14163,13 @@ err:
 
 void mc_globalstore_destroy(mcglobalstore_t* store)
 {
-    if(!store)
+    if(store != NULL)
     {
-        return;
+        mc_ptrdict_destroyitemsanddict(store->storedsymbols);
+        mc_vallist_destroy(store->storedobjects);
+        mc_memory_free(store);
+        store = NULL;
     }
-    mc_ptrdict_destroyitemsanddict(store->storedsymbols);
-    mc_vallist_destroy(store->storedobjects);
-    mc_memory_free(store);
-    store = NULL;
 }
 
 mcastsymbol_t* mc_globalstore_getsymbol(mcglobalstore_t* store, const char* name)
@@ -3920,14 +14261,13 @@ mcastsymbol_t* mc_symbol_make(mcstate_t* state, const char* name, mcastsymtype_t
 
 void mc_symbol_destroy(mcastsymbol_t* symbol)
 {
-    if(!symbol)
+    if(symbol != NULL)
     {
-        return;
+        mc_memory_free(symbol->name);
+        symbol->name = NULL;
+        mc_memory_free(symbol);
+        symbol = NULL;
     }
-    mc_memory_free(symbol->name);
-    symbol->name = NULL;
-    mc_memory_free(symbol);
-    symbol = NULL;
 }
 
 mcastsymbol_t* mc_symbol_copy(mcastsymbol_t* symbol)
@@ -3978,20 +14318,19 @@ err:
 
 void mc_symtable_destroy(mcastsymtable_t* table)
 {
-    if(!table)
+    if(table != NULL)
     {
-        return;
+        while(mc_ptrlist_count(table->blockscopes) > 0)
+        {
+            mc_symtable_popblockscope(table);
+        }
+        mc_ptrlist_destroy(table->blockscopes, NULL);
+        mc_ptrlist_destroy(table->modglobalsymbols, (mcitemdestroyfn_t)mc_symbol_destroy);
+        mc_ptrlist_destroy(table->freesymbols, (mcitemdestroyfn_t)mc_symbol_destroy);
+        memset(table, 0, sizeof(mcastsymtable_t));
+        mc_memory_free(table);
+        table = NULL;
     }
-    while(mc_ptrlist_count(table->blockscopes) > 0)
-    {
-        mc_symtable_popblockscope(table);
-    }
-    mc_ptrlist_destroy(table->blockscopes, NULL);
-    mc_ptrlist_destroy(table->modglobalsymbols, (mcitemdestroyfn_t)mc_symbol_destroy);
-    mc_ptrlist_destroy(table->freesymbols, (mcitemdestroyfn_t)mc_symbol_destroy);
-    memset(table, 0, sizeof(mcastsymtable_t));
-    mc_memory_free(table);
-    table = NULL;
 }
 
 mcastsymtable_t* mc_symtable_copy(mcastsymtable_t* table)
@@ -4590,19 +14929,18 @@ void mc_traceback_destroy(mctraceback_t* traceback)
 {
     size_t i;
     mctraceitem_t* item;
-    if(!traceback)
+    if(traceback != NULL)
     {
-        return;
+        for(i = 0; i < mc_ptrlist_count(traceback->tbitems); i++)
+        {
+            item = (mctraceitem_t*)mc_ptrlist_get(traceback->tbitems, i);
+            mc_memory_free(item->trfuncname);
+            item->trfuncname = NULL;
+        }
+        mc_ptrlist_destroy(traceback->tbitems, NULL);
+        mc_memory_free(traceback);
+        traceback = NULL;
     }
-    for(i = 0; i < mc_ptrlist_count(traceback->tbitems); i++)
-    {
-        item = (mctraceitem_t*)mc_ptrlist_get(traceback->tbitems, i);
-        mc_memory_free(item->trfuncname);
-        item->trfuncname = NULL;
-    }
-    mc_ptrlist_destroy(traceback->tbitems, NULL);
-    mc_memory_free(traceback);
-    traceback = NULL;
 }
 
 bool mc_traceback_push(mctraceback_t* traceback, const char* fname, mcastlocation_t pos)
@@ -4924,10 +15262,22 @@ MC_FORCEINLINE mcvalue_t mc_vm_thisstackpop(mcstate_t* state)
     return mc_vallist_get(state->execstate.valthisstack, state->execstate.thisstpos);
 }
 
-MC_FORCEINLINE mcvalue_t mc_vm_thisstackget(mcstate_t* state, int nthitem)
+MC_FORCEINLINE mcvalue_t mc_vm_thisstackget(mcstate_t* state, size_t nthitem)
 {
-    int ix;
+    size_t ix;
+    size_t cnt;
+    mcvalue_t val;
+    (void)val;
     ix = state->execstate.thisstpos - 1 - nthitem;
+    cnt = mc_vallist_count(state->execstate.valthisstack);
+    if((cnt == 0) || (ix > cnt))
+    {
+        //val = mc_value_makemap(state);
+        //mc_vallist_set(state->execstate.valthisstack, ix, val);
+        //return mc_value_makemap(state);
+        return mc_value_makenull();
+        //return val;
+    }
     return mc_vallist_get(state->execstate.valthisstack, ix);
 }
 
@@ -5113,6 +15463,7 @@ MC_FORCEINLINE mcvalue_t mc_vm_callnativefunction(mcstate_t* state, mcvalue_t ca
 
 MC_FORCEINLINE bool mc_vm_checkassign(mcstate_t* state, mcvalue_t oldvalue, mcvalue_t nvalue)
 {
+    return true;
     mcvaltype_t nvaluetype;
     mcvaltype_t oldvaluetype;
     (void)state;
@@ -5406,6 +15757,7 @@ MC_FORCEINLINE bool mc_vmdo_getindexpartial(mcstate_t* state, mcvalue_t left, mc
     const char* lefttypename;
     mcvalue_t res;
     (void)fromdot;
+    lefttypename = "unknown";
     if(lefttype == MC_VAL_MAP)
     {
         if(mc_value_mapgetvaluechecked(left, index, &res))
@@ -5444,8 +15796,8 @@ MC_FORCEINLINE bool mc_vmdo_getindexpartial(mcstate_t* state, mcvalue_t left, mc
     }
     if(lefttype != MC_VAL_ARRAY && lefttype != MC_VAL_MAP && lefttype != MC_VAL_STRING)
     {
-        lefttypename = mc_valtype_getname(lefttype);
         mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->execstate.currframe), "getindexpartial: type %s is not indexable", lefttypename);
+
         return false;
     }
     res = mc_value_makenull();
@@ -5527,6 +15879,13 @@ MC_FORCEINLINE bool mc_vmdo_setindexpartial(mcstate_t* state, mcvalue_t left, mc
     mcvalue_t oldvalue;
     if(lefttype != MC_VAL_ARRAY && lefttype != MC_VAL_MAP)
     {
+        lefttypename = mc_valtype_getname(lefttype);
+        #if 0
+        {
+            int* p = NULL;
+            p[5] += 5;
+        }
+        #endif
         lefttypename = mc_valtype_getname(lefttype);
         mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->execstate.currframe), "setindexpartial: type %s is not indexable", lefttypename);
         return false;
@@ -7533,6 +17892,7 @@ mcvalue_t mc_objfnstring_matchhelper(mcstate_t* state, void* data, mcvalue_t thi
     const char* patstr;
     mcvalue_t patval;
     mcvalue_t inpval;
+    (void)state;
     (void)data;
     (void)argc;
     (void)args;
@@ -8871,75 +19231,6 @@ void mc_cli_installotherstuff(mcstate_t* state)
     mc_cli_installdir(state);
 }
 
-void optprs_fprintmaybearg(FILE* out, const char* begin, const char* flagname, size_t flaglen, bool needval, bool maybeval, const char* delim)
-{
-    fprintf(out, "%s%.*s", begin, (int)flaglen, flagname);
-    if(needval)
-    {
-        if(maybeval)
-        {
-            fprintf(out, "[");
-        }
-        if(delim != NULL)
-        {
-            fprintf(out, "%s", delim);
-        }
-        fprintf(out, "<val>");
-        if(maybeval)
-        {
-            fprintf(out, "]");
-        }
-    }
-}
-
-void optprs_fprintusage(FILE* out, optlongflags_t* flags)
-{
-    size_t i;
-    char ch;
-    bool needval;
-    bool maybeval;
-    bool hadshort;
-    optlongflags_t* flag;
-    for(i=0; flags[i].longname != NULL; i++)
-    {
-        flag = &flags[i];
-        hadshort = false;
-        needval = (flag->argtype > OPTPARSE_NONE);
-        maybeval = (flag->argtype == OPTPARSE_OPTIONAL);
-        if(flag->shortname > 0)
-        {
-            hadshort = true;
-            ch = flag->shortname;
-            fprintf(out, "    ");
-            optprs_fprintmaybearg(out, "-", &ch, 1, needval, maybeval, NULL);
-        }
-        if(flag->longname != NULL)
-        {
-            if(hadshort)
-            {
-                fprintf(out, ", ");
-            }
-            else
-            {
-                fprintf(out, "    ");
-            }
-            optprs_fprintmaybearg(out, "--", flag->longname, mc_util_strlen(flag->longname), needval, maybeval, "=");
-        }
-        if(flag->helptext != NULL)
-        {
-            fprintf(out, "  -  %s", flag->helptext);
-        }
-        fprintf(out, "\n");
-    }
-}
-
-void mc_cli_printusage(char* argv[], optlongflags_t* flags, bool fail)
-{
-    FILE* out;
-    out = fail ? stderr : stdout;
-    fprintf(out, "Usage: %s [<options>] [<filename> | -e <code>]\n", argv[0]);
-    optprs_fprintusage(out, flags);
-}
 
 bool mc_cli_compileandrunsource(mcstate_t* state, mcvalue_t* vdest, const char* source, const char* filename)
 {
@@ -9090,6 +19381,7 @@ static optlongflags_t longopts[] =
     {"dumpbc", 'd', OPTPARSE_NONE, "dump bytecode after compiling"},
     {"exitcompile", 'x', OPTPARSE_NONE, "exit after compiling (for debugging)"},
     {"printins", 'p', OPTPARSE_NONE, "print each instruction as it is being executed"},
+    {"strict", 's', OPTPARSE_NONE, "enable strict mode"},
     {0, 0, (optargtype_t)0, NULL}
 };
 
@@ -9123,7 +19415,7 @@ int main(int argc, char* argv[])
         }
         else if(co == 'h')
         {
-            mc_cli_printusage(argv, longopts, false);
+            optprs_printusage(argv, longopts, false);
         }
         else if(co == 'e')
         {
@@ -9144,6 +19436,10 @@ int main(int argc, char* argv[])
         else if(co == 'p')
         {
             state->config.printinstructions = true;
+        }
+        else if(co == 's')
+        {
+            state->config.strictmode = true;
         }
         else if(co == 't')
         {

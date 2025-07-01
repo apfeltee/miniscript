@@ -1024,22 +1024,24 @@ void dyn_strbuf_copyover(StringBuffer* dst, size_t dstpos, const char* src, size
     size_t newlen;
     if(src == NULL || len == 0)
     {
-        return;
     }
-    dyn_strbuf_boundscheckinsert(dst, dstpos);
-    /*
-    // Check if dst buffer can handle string
-    // src may have pointed to dst, which has now moved
-    */
-    newlen = STRBUF_MAX(dstpos + len, dst->length);
-    dyn_strbuf_ensurecapacityupdateptr(dst, newlen, &src);
-    /* memmove instead of strncpy, as it can handle overlapping regions */
-    memmove(dst->data + dstpos, src, len * sizeof(char));
-    if(dstpos + len > dst->length)
+    else
     {
-        /* Extended string - add '\0' char */
-        dst->length = dstpos + len;
-        dst->data[dst->length] = '\0';
+        dyn_strbuf_boundscheckinsert(dst, dstpos);
+        /*
+        // Check if dst buffer can handle string
+        // src may have pointed to dst, which has now moved
+        */
+        newlen = STRBUF_MAX(dstpos + len, dst->length);
+        dyn_strbuf_ensurecapacityupdateptr(dst, newlen, &src);
+        /* memmove instead of strncpy, as it can handle overlapping regions */
+        memmove(dst->data + dstpos, src, len * sizeof(char));
+        if(dstpos + len > dst->length)
+        {
+            /* Extended string - add '\0' char */
+            dst->length = dstpos + len;
+            dst->data[dst->length] = '\0';
+        }
     }
 }
 
@@ -1049,45 +1051,47 @@ void dyn_strbuf_insert(StringBuffer* dst, size_t dstpos, const char* src, size_t
     char* insert;
     if(src == NULL || len == 0)
     {
-        return;
     }
-    dyn_strbuf_boundscheckinsert(dst, dstpos);
-    /*
-    // Check if dst buffer has capacity for inserted string plus \0
-    // src may have pointed to dst, which will be moved in realloc when
-    // calling ensure capacity
-    */
-    dyn_strbuf_ensurecapacityupdateptr(dst, dst->length + len, &src);
-    insert = dst->data + dstpos;
-    /* dstpos could be at the end (== dst->length) */
-    if(dstpos < dst->length)
+    else
     {
-        /* Shift some characters up */
-        memmove(insert + len, insert, (dst->length - dstpos) * sizeof(char));
-        if(src >= dst->data && src < dst->data + dst->capacity)
+        dyn_strbuf_boundscheckinsert(dst, dstpos);
+        /*
+        // Check if dst buffer has capacity for inserted string plus \0
+        // src may have pointed to dst, which will be moved in realloc when
+        // calling ensure capacity
+        */
+        dyn_strbuf_ensurecapacityupdateptr(dst, dst->length + len, &src);
+        insert = dst->data + dstpos;
+        /* dstpos could be at the end (== dst->length) */
+        if(dstpos < dst->length)
         {
-            /* src/dst strings point to the same string in memory */
-            if(src < insert)
+            /* Shift some characters up */
+            memmove(insert + len, insert, (dst->length - dstpos) * sizeof(char));
+            if(src >= dst->data && src < dst->data + dst->capacity)
+            {
+                /* src/dst strings point to the same string in memory */
+                if(src < insert)
+                {
+                    memmove(insert, src, len * sizeof(char));
+                }
+                else if(src > insert)
+                {
+                    memmove(insert, src + len, len * sizeof(char));
+                }
+            }
+            else
             {
                 memmove(insert, src, len * sizeof(char));
-            }
-            else if(src > insert)
-            {
-                memmove(insert, src + len, len * sizeof(char));
             }
         }
         else
         {
             memmove(insert, src, len * sizeof(char));
         }
+        /* Update size */
+        dst->length += len;
+        dst->data[dst->length] = '\0';
     }
-    else
-    {
-        memmove(insert, src, len * sizeof(char));
-    }
-    /* Update size */
-    dst->length += len;
-    dst->data[dst->length] = '\0';
 }
 
 /*
@@ -1108,59 +1112,58 @@ void dyn_strbuf_overwrite(StringBuffer* dst, size_t dstpos, size_t dstlen, const
     char* tgt;
     char* end;
     dyn_strbuf_boundscheckreadrange(dst, dstpos, dstlen);
-    if(src == NULL)
+    if(src != NULL)
     {
-        return;
-    }
-    if(dstlen == srclen)
-    {
-        dyn_strbuf_copyover(dst, dstpos, src, srclen);
-    }
-    newlen = dst->length + srclen - dstlen;
-    dyn_strbuf_ensurecapacityupdateptr(dst, newlen, &src);
-    if(src >= dst->data && src < dst->data + dst->capacity)
-    {
-        if(srclen < dstlen)
+        if(dstlen == srclen)
         {
-            /* copy */
-            memmove(dst->data + dstpos, src, srclen * sizeof(char));
-            /* resize (shrink) */
-            memmove(dst->data + dstpos + srclen, dst->data + dstpos + dstlen, (dst->length - dstpos - dstlen) * sizeof(char));
+            dyn_strbuf_copyover(dst, dstpos, src, srclen);
+        }
+        newlen = dst->length + srclen - dstlen;
+        dyn_strbuf_ensurecapacityupdateptr(dst, newlen, &src);
+        if(src >= dst->data && src < dst->data + dst->capacity)
+        {
+            if(srclen < dstlen)
+            {
+                /* copy */
+                memmove(dst->data + dstpos, src, srclen * sizeof(char));
+                /* resize (shrink) */
+                memmove(dst->data + dstpos + srclen, dst->data + dstpos + dstlen, (dst->length - dstpos - dstlen) * sizeof(char));
+            }
+            else
+            {
+                /*
+                // Buffer is going to grow and src points to this buffer
+                // resize (grow)
+                */
+                memmove(dst->data + dstpos + srclen, dst->data + dstpos + dstlen, (dst->length - dstpos - dstlen) * sizeof(char));
+                tgt = dst->data + dstpos;
+                end = dst->data + dstpos + srclen;
+                if(src < tgt + dstlen)
+                {
+                    len = STRBUF_MIN((size_t)(end - src), srclen);
+                    memmove(tgt, src, len);
+                    tgt += len;
+                    src += len;
+                    srclen -= len;
+                }
+                if(src >= tgt + dstlen)
+                {
+                    /* shift to account for resizing */
+                    src += srclen - dstlen;
+                    memmove(tgt, src, srclen);
+                }
+            }
         }
         else
         {
-            /*
-            // Buffer is going to grow and src points to this buffer
-            // resize (grow)
-            */
+            /* resize */
             memmove(dst->data + dstpos + srclen, dst->data + dstpos + dstlen, (dst->length - dstpos - dstlen) * sizeof(char));
-            tgt = dst->data + dstpos;
-            end = dst->data + dstpos + srclen;
-            if(src < tgt + dstlen)
-            {
-                len = STRBUF_MIN((size_t)(end - src), srclen);
-                memmove(tgt, src, len);
-                tgt += len;
-                src += len;
-                srclen -= len;
-            }
-            if(src >= tgt + dstlen)
-            {
-                /* shift to account for resizing */
-                src += srclen - dstlen;
-                memmove(tgt, src, srclen);
-            }
+            /* copy */
+            memcpy(dst->data + dstpos, src, srclen * sizeof(char));
         }
+        dst->length = newlen;
+        dst->data[dst->length] = '\0';
     }
-    else
-    {
-        /* resize */
-        memmove(dst->data + dstpos + srclen, dst->data + dstpos + dstlen, (dst->length - dstpos - dstlen) * sizeof(char));
-        /* copy */
-        memcpy(dst->data + dstpos, src, srclen * sizeof(char));
-    }
-    dst->length = newlen;
-    dst->data[dst->length] = '\0';
 }
 
 /*
@@ -1311,30 +1314,28 @@ int dyn_strbuf_appendformatnoterm(StringBuffer* sbuf, size_t pos, const char* fm
 void dyn_strbuf_triminplace(StringBuffer* sbuf)
 {
     size_t start;
-    if(sbuf->length == 0)
+    if(sbuf->length > 0)
     {
-        return;
-    }
-    /* Trim end first */
-    while(sbuf->length > 0 && isspace((int)sbuf->data[sbuf->length - 1]))
-    {
-        sbuf->length--;
-    }
-    sbuf->data[sbuf->length] = '\0';
-    if(sbuf->length == 0)
-    {
-        return;
-    }
-    start = 0;
-    while(start < sbuf->length && isspace((int)sbuf->data[start]))
-    {
-        start++;
-    }
-    if(start != 0)
-    {
-        sbuf->length -= start;
-        memmove(sbuf->data, sbuf->data + start, sbuf->length * sizeof(char));
+        /* Trim end first */
+        while(sbuf->length > 0 && isspace((int)sbuf->data[sbuf->length - 1]))
+        {
+            sbuf->length--;
+        }
         sbuf->data[sbuf->length] = '\0';
+        if(sbuf->length > 0)
+        {
+            start = 0;
+            while(start < sbuf->length && isspace((int)sbuf->data[start]))
+            {
+                start++;
+            }
+            if(start != 0)
+            {
+                sbuf->length -= start;
+                memmove(sbuf->data, sbuf->data + start, sbuf->length * sizeof(char));
+                sbuf->data[sbuf->length] = '\0';
+            }
+        }
     }
 }
 
@@ -1365,14 +1366,13 @@ void dyn_strbuf_trimleftinplace(StringBuffer* sbuf, const char* list)
 */
 void dyn_strbuf_trimrightinplace(StringBuffer* sbuf, const char* list)
 {
-    if(sbuf->length == 0)
+    if(sbuf->length > 0)
     {
-        return;
+        while(sbuf->length > 0 && strchr(list, sbuf->data[sbuf->length - 1]) != NULL)
+        {
+            sbuf->length--;
+        }
+        sbuf->data[sbuf->length] = '\0';
     }
-    while(sbuf->length > 0 && strchr(list, sbuf->data[sbuf->length - 1]) != NULL)
-    {
-        sbuf->length--;
-    }
-    sbuf->data[sbuf->length] = '\0';
 }
 

@@ -6,10 +6,10 @@ var calc_point = function(cx, cy, max_iter)
     var y = 0;
     while (i < max_iter)
     {
-        var t = x*x - y*y + cx;
-        y = 2*x*y + cy;
+        var t = (((x*x) - (y*y)) + cx);
+        y = (((2 * x) * y) + cy);
         x = t;
-        if (x*x + y*y > 4)
+        if(((x * x) + (y * y)) > 4)
         {
             break;
         }
@@ -36,7 +36,7 @@ var mandelbrot = function(x1,y1, x2,y2, size_x,size_y, max_iter)
             }
             else
             {
-                print(ec, "[37;4", c%6+1, "m ");
+                print(ec, "[37;4", ((c%6)+1), "m ");
             }
             x = x + step_x;
         }
@@ -45,17 +45,21 @@ var mandelbrot = function(x1,y1, x2,y2, size_x,size_y, max_iter)
     }
 }
 
-var lines = 40;
-print("lines=", lines, "\n");
-if (lines <= 0)
+var run = function()
 {
-    lines = 25;
-}
-lines = lines - 1;
-if (lines % 2 == 0)
-{
+    var lines = 40;
+    print("lines=", lines, "\n");
+    if (lines <= 0)
+    {
+        lines = 25;
+    }
     lines = lines - 1;
-}
-var cols = 2*lines;
-mandelbrot(-2, -2, 2, 2, cols, lines, 1500);
+    if (lines % 2 == 0)
+    {
+        lines = lines - 1;
+    }
+    var cols = 2*lines;
+    mandelbrot(-2, -2, 2, 2, cols, lines, 1500);
+}   
 
+run()

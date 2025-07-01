@@ -73,7 +73,7 @@ function main()
             {
                 print("-");
             }
-            j = j + 1
+            j++
         }
         print("\n")
         i++

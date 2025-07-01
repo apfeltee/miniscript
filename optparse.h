@@ -84,6 +84,77 @@ struct optlongflags_t
 
 static int optprs_nextshortflag(optcontext_t* ox, const char* optstring);
 
+
+void optprs_fprintmaybearg(FILE* out, const char* begin, const char* flagname, size_t flaglen, bool needval, bool maybeval, const char* delim)
+{
+    fprintf(out, "%s%.*s", begin, (int)flaglen, flagname);
+    if(needval)
+    {
+        if(maybeval)
+        {
+            fprintf(out, "[");
+        }
+        if(delim != NULL)
+        {
+            fprintf(out, "%s", delim);
+        }
+        fprintf(out, "<val>");
+        if(maybeval)
+        {
+            fprintf(out, "]");
+        }
+    }
+}
+
+void optprs_fprintusage(FILE* out, optlongflags_t* flags)
+{
+    size_t i;
+    char ch;
+    bool needval;
+    bool maybeval;
+    bool hadshort;
+    optlongflags_t* flag;
+    for(i=0; flags[i].longname != NULL; i++)
+    {
+        flag = &flags[i];
+        hadshort = false;
+        needval = (flag->argtype > OPTPARSE_NONE);
+        maybeval = (flag->argtype == OPTPARSE_OPTIONAL);
+        if(flag->shortname > 0)
+        {
+            hadshort = true;
+            ch = flag->shortname;
+            fprintf(out, "    ");
+            optprs_fprintmaybearg(out, "-", &ch, 1, needval, maybeval, NULL);
+        }
+        if(flag->longname != NULL)
+        {
+            if(hadshort)
+            {
+                fprintf(out, ", ");
+            }
+            else
+            {
+                fprintf(out, "    ");
+            }
+            optprs_fprintmaybearg(out, "--", flag->longname, strlen(flag->longname), needval, maybeval, "=");
+        }
+        if(flag->helptext != NULL)
+        {
+            fprintf(out, "  -  %s", flag->helptext);
+        }
+        fprintf(out, "\n");
+    }
+}
+
+void optprs_printusage(char* argv[], optlongflags_t* flags, bool fail)
+{
+    FILE* out;
+    out = fail ? stderr : stdout;
+    fprintf(out, "Usage: %s [<options>] [<filename> | -e <code>]\n", argv[0]);
+    optprs_fprintusage(out, flags);
+}
+
 static int optprs_makeerror(optcontext_t* ox, const char* msg, const char* data)
 {
     unsigned p;

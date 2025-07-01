@@ -34,7 +34,7 @@ function main()
                 }
                 y = x * y / 100 + y0
                 x = x_x - y_y + x0
-                i = i + 1
+                i++ 
             }
             pch = '';
             if(chcode > 50)

@@ -17,6 +17,7 @@ function recursivescan(path, recursive, fn)
             if(isdir && !isfile)
             {
                 recursivescan(fp, recursive, fn);
+                //VM.gc();
             }
         }
     }

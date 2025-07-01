@@ -100,31 +100,6 @@ uint64_t stod_leading_zeros64(uint64_t x)
     #endif
 }
 
-mcstoddiyfp_t stod_d2diyfp(double d)
-{
-    int biased_exp;
-    uint64_t significand;
-    mcstoddiyfp_t r;
-    union
-    {
-        double d;
-        uint64_t u64;
-    } u;
-    u.d = d;
-    biased_exp = (u.u64 & STOD_DBL_EXPONENT_MASK) >> STOD_DBL_SIGNIFICAND_SIZE;
-    significand = u.u64 & STOD_DBL_SIGNIFICAND_MASK;
-    if(biased_exp != 0)
-    {
-        r.significand = significand + STOD_DBL_HIDDEN_BIT;
-        r.exp = biased_exp - STOD_DBL_EXPONENT_BIAS;
-    }
-    else
-    {
-        r.significand = significand;
-        r.exp = STOD_DBL_EXPONENT_MIN + 1;
-    }
-    return r;
-}
 
 double stod_diyfp2d(mcstoddiyfp_t v)
 {

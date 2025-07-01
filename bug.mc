@@ -1,2 +1,14 @@
-println("foo", Math.floor(455.6))
+
+
+
+function foo()
+{
+    var here = {};
+    here.thing = 566;
+    return here;
+}
+
+
+f = foo()
+println(f)
 

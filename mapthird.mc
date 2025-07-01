@@ -10,6 +10,7 @@ function otherthing(n)
 function add(n)
 {
     var g = [111, 222, 333].map(otherthing);
+    println("g = ", g, ", n = ")
     return n + g[0];
 }
 

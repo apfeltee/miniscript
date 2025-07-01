@@ -1,10 +1,4 @@
 
-/*
-* this is stupid, and only really for testing.
-*/
-
-var os = import "os"
-
 class CGI
 {
     constructor()
