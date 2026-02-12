@@ -43,6 +43,9 @@
  * field to 0 after initialization.
  */
 
+#include <stdio.h>
+#include <stdlib.h>
+
 #define OPTPARSE_MSG_INVALID "invalid option"
 #define OPTPARSE_MSG_MISSING "option requires an argument"
 #define OPTPARSE_MSG_TOOMANY "option takes no arguments"

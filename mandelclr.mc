@@ -23,7 +23,6 @@ var mandelbrot = function(x1,y1, x2,y2, size_x,size_y, max_iter)
     var step_x = (x2-x1)/(size_x-1);
     var step_y = (y2-y1)/(size_y-1);
     var y = y1;
-    var ec = (27).chr();
     while (y <= y2)
     {
         var x = x1;
@@ -32,16 +31,16 @@ var mandelbrot = function(x1,y1, x2,y2, size_x,size_y, max_iter)
             var c = calc_point(x, y, max_iter);
             if (c == max_iter)
             {
-                print(ec, "[37;40m ");
+                print("\e[37;40m ");
             }
             else
             {
-                print(ec, "[37;4", ((c%6)+1), "m ");
+                print("\e[37;4", ((c%6)+1), "m ");
             }
             x = x + step_x;
         }
         y = y + step_y;
-        println(ec, "[0m");
+        println("\e[0m");
     }
 }
 

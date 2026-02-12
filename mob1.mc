@@ -27,12 +27,21 @@ function main()
         println("RECOVERED: ", e)
         return
     }
+
     while(i<11)
     {
-        print(i, " -> ");
-        print(A(i, vone, vminusone, vminusone, vone, vnull));
-        println();
-        i=i+1;
+        if(VM.hadRecovered())
+        {
+            println("all done! maximum size reached.");
+            break;
+        }
+        else
+        {
+            print(i, " -> ");
+            print(A(i, vone, vminusone, vminusone, vone, vnull));
+            println();
+            i=i+1;
+        }
     }
 }
 

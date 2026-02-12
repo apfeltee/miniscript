@@ -1,6 +1,31 @@
 
 #pragma once
 
+#include <stddef.h>
+#include <stdint.h>
+#include <limits.h>
+#include <math.h>
+
+#if defined(NAN)
+    #define STOD_CONST_NAN NAN
+#else
+    #define STOD_CONST_NAN (0.0f / 0.0f)
+#endif
+
+#if defined(INFINITY)
+    #define STOD_CONST_INFINITY INFINITY
+#else
+    #define STOD_CONST_INFINITY (1e5000f)
+#endif
+
+#if !defined(STOD_INLINE)
+    #if defined(__STRICT_ANSI__)
+        #define STOD_INLINE static
+    #else
+        #define STOD_INLINE static inline
+    #endif
+#endif
+
 /**
 * lifted out of njs
 */
@@ -52,7 +77,10 @@
 
 #define STOD_D_1_LOG2_10 0.30102999566398114 /* 1 / log2(10). */
 
+typedef struct mcstoddiyfp_t mcstoddiyfp_t;
 typedef struct mcstodcpe_t mcstodcpe_t;
+typedef union mcstoddiyfpconv_t mcstoddiyfpconv_t;
+
 
 struct mcstoddiyfp_t
 {
@@ -67,8 +95,13 @@ struct mcstodcpe_t
     int16_t dec_exp;
 };
 
+union mcstoddiyfpconv_t
+{
+    double d;
+    uint64_t u64;
+};
 
-MC_INLINE mcstoddiyfp_t stod_makediyfp(uint64_t sign, int exp)
+STOD_INLINE mcstoddiyfp_t stod_makediyfp(uint64_t sign, int exp)
 {
     mcstoddiyfp_t r;
     r.significand = sign;
@@ -97,6 +130,7 @@ uint64_t stod_leading_zeros64(uint64_t x)
             x <<= 1;
         }
         return n;
+
     #endif
 }
 
@@ -116,7 +150,7 @@ double stod_diyfp2d(mcstoddiyfp_t v)
     }
     if(exp >= STOD_DBL_EXPONENT_MAX)
     {
-        return MC_CONST_INFINITY;
+        return -1;
     }
     if(exp < STOD_DBL_EXPONENT_DENORMAL)
     {
@@ -147,11 +181,6 @@ mcstoddiyfp_t stod_diyfp_shift_left(mcstoddiyfp_t v, unsigned shift)
 mcstoddiyfp_t stod_diyfp_shift_right(mcstoddiyfp_t v, unsigned shift)
 {
     return stod_makediyfp((v.significand >> shift), (int)(v.exp + shift));
-}
-
-mcstoddiyfp_t stod_diyfp_sub(mcstoddiyfp_t lhs, mcstoddiyfp_t rhs)
-{
-    return stod_makediyfp((lhs.significand - rhs.significand), lhs.exp);
 }
 
 mcstoddiyfp_t stod_diyfp_mul(mcstoddiyfp_t lhs, mcstoddiyfp_t rhs)
@@ -484,7 +513,7 @@ static double stod_strtod_internal(const unsigned char* start, size_t length, in
     shift = (int)(left - right);
     if(exp >= STOD_DECIMAL_POWER_MAX - shift - (int)length + 1)
     {
-        return MC_CONST_INFINITY;
+        return -1;
     }
     if(exp <= STOD_DECIMAL_POWER_MIN - shift - (int)length)
     {
@@ -571,7 +600,7 @@ double stod_strtod(const unsigned char** start, const unsigned char* end, int li
     }
     if(pos == data)
     {
-        return MC_CONST_NAN;
+        return STOD_CONST_NAN;
     }
     e = p + 1;
     if(e < end && (*p == 'e' || *p == 'E'))

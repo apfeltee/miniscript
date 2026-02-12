@@ -1,7 +1,6 @@
 
-class CGI
+function CGI
 {
-    constructor()
     {
         this.m_params = {}
         this.m_pinfo = []
@@ -11,40 +10,40 @@ class CGI
         {
             this.m_pinfo = pinf.split("/")
         }
-        //STDERR.write(["pinf=", pinf, ", m_pinfo = ", this.m_pinfo, "\n"].join())
+        println(["pinf=", pinf, ", m_pinfo = ", this.m_pinfo, "\n"].join())
     }
 
-    pathIsIndex()
+    this.pathIsIndex = function()
     {
         return ((this.m_pinfo.length == 0) || this.pathIs("index"));
     }
 
-    pathIs(p)
+    this.pathIs = function(p)
     {
         return (this.m_pinfo[0] == p);
     }
 
-    beginHeaders(code)
+    this.beginHeaders = function(code)
     {
         print(["Status: ", code, "\r\n"].join())        
     }
 
-    endHeaders()
+    this.endHeaders = function()
     {
         print("\r\n")
     }
 
-    sendHeader(k, v)
+    this.sendHeader = function(k, v)
     {
         print(["", k, ": ", v, "\r\n"].join())
     }
-    
+    return this
 }
 
 
-class HTMLGen
+function HTMLGen
 {
-    constructor(out)
+                                                                                             constructor(out)
     {
         this.out = out
     }

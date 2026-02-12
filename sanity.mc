@@ -59,15 +59,15 @@ function fun() {
 println(fun())
 
 function make_person(name) {
-    return {
-        name: name,
-        hello: function() {
-            println(`hello ${this.name}`)
-        },
-        make_hello: function() {
-            return `hello ${this.name}`
-        }
+    var self = {}
+    self.name = name
+    self.hello = function() {
+        println(`hello ${self.name}`)
     }
+    self.make_hello = function() {
+        return `hello ${self.name}`
+    }
+    return self
 }
 
 const person = make_person("Krzysztof")

@@ -1,7 +1,7 @@
 
 
-const voweldata = ['a', 'e', 'i', 'o', 'u'];
-const vowelcount = voweldata.length;
+const $voweldata = ['a', 'e', 'i', 'o', 'u'];
+const vowelcount = $voweldata.length;
 
 function pig_latin(str)
 {
@@ -9,7 +9,7 @@ function pig_latin(str)
     var first = str[0];
     for(var i = 0; i < vowelcount; i++)
     {
-        if (first != voweldata[i])
+        if (first != $voweldata[i])
         {
             continue;
         }
@@ -35,3 +35,4 @@ for(term in terms)
 {
     println("'", term, "' = ", pig_latin(term));
 }
+    
