@@ -409,8 +409,6 @@ typedef enum mcastsymtype_t mcastsymtype_t;
 typedef enum mcastprecedence_t mcastprecedence_t;
 
 typedef struct mcstoddiyfp_t mcstoddiyfp_t;
-typedef struct mcptrdict_t mcptrdict_t;
-typedef struct mcgenericdict_t mcgenericdict_t;
 typedef struct mcprintconfig_t mcprintconfig_t;
 typedef struct mcastprinter_t mcastprinter_t;
 typedef struct mcerror_t mcerror_t;
@@ -488,6 +486,7 @@ typedef struct mcobjfunction_t mcobjfunction_t;
 
 class PtrList;
 class Printer;
+class mcptrdict_t;
 
 
 
@@ -525,8 +524,8 @@ char *mc_util_readfile(const char *filename, size_t *dlen);
 char *mc_fsutil_fileread(mcstate_t *state, const char *filename, size_t *flen);
 size_t mc_fsutil_filewrite(mcstate_t *state, const char *path, const char *string, size_t stringsize);
 size_t mc_util_strlen(const char *str);
-char *mc_util_strndup(mcstate_t *state, const char *string, size_t n);
-char *mc_util_strdup(mcstate_t *state, const char *string);
+char *mc_util_strndup(const char *string, size_t n);
+char *mc_util_strdup(const char *string);
 bool mc_util_strequal(const char *a, const char *b);
 bool mc_util_strnequal(const char *a, const char *b, size_t len);
 char *mc_util_canonpath(mcstate_t *state, const char *path);
@@ -535,29 +534,14 @@ size_t mc_util_hashdata(const void *ptr, size_t len);
 size_t mc_util_hashdouble(mcfloat_t val);
 size_t mc_util_upperpowoftwo(size_t v);
 mcfloat_t mc_util_strtod(const char *str, size_t slen, char **endptr);
-PtrList *mc_util_splitstring(mcstate_t *state, const char *str, const char *delimiter);
+PtrList *mc_util_splitstring(const char *str, const char *delimiter);
 char *mc_util_joinstringarray(mcstate_t *state, PtrList *items, const char *joinee, size_t jlen);
 uint64_t mc_util_doubletouint64(mcfloat_t val);
 mcfloat_t mc_util_uint64todouble(uint64_t val);
 const char *mc_valtype_getname(mcvaltype_t type);
 const char *mc_value_objtypename(mcvaltype_t type);
 
-bool mc_ptrdict_init(mcstate_t *state, mcptrdict_t *dict, unsigned int initialcapacity, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn);
-mcptrdict_t *mc_ptrdict_make(mcstate_t *state, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn);
-void mc_ptrdict_deinit(mcptrdict_t *dict, bool freekeys);
-void mc_ptrdict_destroy(mcptrdict_t *dict);
-void mc_ptrdict_destroyitemsanddict(mcptrdict_t *dict);
-bool mc_ptrdict_growandrehash(mcptrdict_t *dict);
-unsigned int mc_ptrdict_getcellindex(mcptrdict_t *dict, const char *key, unsigned long hash, bool *outfound);
-bool mc_ptrdict_setintern(mcptrdict_t *dict, unsigned int cellix, unsigned long hash, const char *ckey, char *mkey, void *value);
-bool mc_ptrdict_setactual(mcptrdict_t *dict, const char *ckey, char *mkey, void *value);
-bool mc_ptrdict_set(mcptrdict_t *dict, const char *key, void *value);
-void *mc_ptrdict_get(mcptrdict_t *dict, const char *key);
-void *mc_ptrdict_getvalueat(mcptrdict_t *dict, unsigned int ix);
-const char *mc_ptrdict_getkeyat(mcptrdict_t *dict, unsigned int ix);
-size_t mc_ptrdict_count(mcptrdict_t *dict);
-bool mc_ptrdict_remove(mcptrdict_t *dict, const char *key);
-mcptrdict_t *mc_ptrdict_copy(mcptrdict_t *dict);
+
 mcvalue_t mc_value_makestrcapacity(mcstate_t *state, int capacity);
 mcvalue_t mc_value_makestringlen(mcstate_t *state, const char *string, size_t len);
 mcvalue_t mc_value_makestring(mcstate_t *state, const char *string);
@@ -612,10 +596,6 @@ bool mc_value_maphaskey(mcvalue_t object, mcvalue_t key);
 void mc_objectdata_deinit(mcobjdata_t *data);
 bool mc_value_callbackequals(mcvalue_t *aptr, mcvalue_t *bptr);
 size_t mc_value_callbackhash(mcvalue_t *objptr);
-mcvalue_t mc_value_copydeepfuncscript(mcstate_t *state, mcvalue_t obj, mcgenericdict_t *targetdict);
-mcvalue_t mc_value_copydeeparray(mcstate_t *state, mcvalue_t obj, mcgenericdict_t *targetdict);
-mcvalue_t mc_value_copydeepmap(mcstate_t *state, mcvalue_t obj, mcgenericdict_t *targetdict);
-mcvalue_t mc_value_copydeepintern(mcstate_t *state, mcvalue_t obj, mcgenericdict_t *targetdict);
 mcvalue_t mc_value_copydeep(mcstate_t *state, mcvalue_t obj);
 mcvalue_t mc_value_copyflat(mcstate_t *state, mcvalue_t obj);
 
@@ -714,7 +694,7 @@ bool mc_lexer_addline(mcastlexer_t *lex, int offset);
 mcastprecedence_t mc_parser_getprecedence(mcasttoktype_t tk);
 mcastmathoptype_t mc_parser_tokentomathop(mcasttoktype_t tk);
 char mc_parser_getescapechar(char c);
-char *mc_parser_processandcopystring(mcstate_t *state, const char *input, size_t len);
+char *mc_parser_processandcopystring(const char *input, size_t len);
 mcastparser_t *mc_astparser_make(mcstate_t *state, mcconfig_t *config, mcerrlist_t *errors);
 void mc_astparser_destroy(mcastparser_t *parser);
 PtrList *mc_astparser_parseall(mcastparser_t *parser, const char *input, mcastcompiledfile_t *file);
@@ -936,7 +916,7 @@ bool mc_symtable_setsymbol(mcastsymtable_t *table, mcastsymbol_t *symbol);
 int mc_symtable_nextsymindex(mcastsymtable_t *table);
 int mc_symtable_getnumdefs(mcastsymtable_t *table);
 void mc_asttoken_init(mcasttoken_t *tok, mcasttoktype_t type, const char *literal, int len);
-char *mc_asttoken_dupliteralstring(mcstate_t *state, mcasttoken_t *tok);
+char *mc_asttoken_dupliteralstring(mcasttoken_t *tok);
 const char *mc_asttoken_typename(mcasttoktype_t type);
 mctraceback_t *mc_traceback_make(mcstate_t *state);
 void mc_traceback_destroy(mctraceback_t *traceback);
@@ -1742,119 +1722,107 @@ class PtrList
         }
 };
 
-struct mcgenericdict_t
+template<typename TypeKeyT, typename TypeValueT>
+class GenericDict
 {
     public:
-        static bool initDict(mcgenericdict_t* dict, unsigned int initialcapacity, size_t ktsz, size_t vtsz)
+        static bool initDict(GenericDict* dict, unsigned int initialcapacity)
         {
             unsigned int i;
-            dict->keytypesize = ktsz;
-            dict->valtypesize = vtsz;
-            dict->vdcells = nullptr;
-            dict->vdkeys = nullptr;
-            dict->vdvalues = nullptr;
-            dict->vdcellindices = nullptr;
-            dict->vdhashes = nullptr;
-            dict->vdcount = 0;
-            dict->vdcellcapacity = initialcapacity;
-            dict->vditemcapacity = (unsigned int)(initialcapacity * 0.7f);
-            dict->funckeyequalsfn = nullptr;
-            dict->funchashfn = nullptr;
-            dict->vdcells = (unsigned int*)mc_memory_malloc(dict->vdcellcapacity * sizeof(unsigned int));
-            dict->vdkeys = (char**)mc_memory_malloc(dict->vditemcapacity * dict->keytypesize);
-            dict->vdvalues = (void**)mc_memory_malloc(dict->vditemcapacity * dict->valtypesize);
-            dict->vdcellindices = (unsigned int*)mc_memory_malloc(dict->vditemcapacity * sizeof(unsigned int));
-            dict->vdhashes = (long unsigned int*)mc_memory_malloc(dict->vditemcapacity * sizeof(unsigned long));
-            if(dict->vdcells == nullptr || dict->vdkeys == nullptr || dict->vdvalues == nullptr || dict->vdcellindices == nullptr || dict->vdhashes == nullptr)
+            dict->m_vdcells = nullptr;
+            dict->m_vdkeys = nullptr;
+            dict->m_vdvalues = nullptr;
+            dict->m_vdcellindices = nullptr;
+            dict->m_vdhashes = nullptr;
+            dict->m_vdcount = 0;
+            dict->m_vdcellcapacity = initialcapacity;
+            dict->m_vditemcapacity = (unsigned int)(initialcapacity * 0.7f);
+            dict->m_funckeyequalsfn = nullptr;
+            dict->m_funchashfn = nullptr;
+            dict->m_vdcells = (unsigned int*)mc_memory_malloc(dict->m_vdcellcapacity * sizeof(unsigned int));
+            dict->m_vdkeys = (char**)mc_memory_malloc(dict->m_vditemcapacity * sizeof(TypeKeyT));
+            dict->m_vdvalues = (void**)mc_memory_malloc(dict->m_vditemcapacity * sizeof(TypeValueT));
+            dict->m_vdcellindices = (unsigned int*)mc_memory_malloc(dict->m_vditemcapacity * sizeof(unsigned int));
+            dict->m_vdhashes = (long unsigned int*)mc_memory_malloc(dict->m_vditemcapacity * sizeof(unsigned long));
+            if(dict->m_vdcells == nullptr || dict->m_vdkeys == nullptr || dict->m_vdvalues == nullptr || dict->m_vdcellindices == nullptr || dict->m_vdhashes == nullptr)
             {
                 goto dictallocfailed;
             }
-            for(i = 0; i < dict->vdcellcapacity; i++)
+            for(i = 0; i < dict->m_vdcellcapacity; i++)
             {
-                dict->vdcells[i] = MC_CONF_VALDICTINVALIDIX;
+                dict->m_vdcells[i] = MC_CONF_VALDICTINVALIDIX;
             }
             return true;
         dictallocfailed:
-            mc_memory_free(dict->vdcells);
-            mc_memory_free(dict->vdkeys);
-            mc_memory_free(dict->vdvalues);
-            mc_memory_free(dict->vdcellindices);
-            mc_memory_free(dict->vdhashes);
+            mc_memory_free(dict->m_vdcells);
+            mc_memory_free(dict->m_vdkeys);
+            mc_memory_free(dict->m_vdvalues);
+            mc_memory_free(dict->m_vdcellindices);
+            mc_memory_free(dict->m_vdhashes);
             return false;
         }
 
-        static void deinit(mcgenericdict_t* dict)
+        static void deinit(GenericDict* dict)
         {
-            dict->keytypesize = 0;
-            dict->valtypesize = 0;
-            dict->vdcount = 0;
-            dict->vditemcapacity = 0;
-            dict->vdcellcapacity = 0;
-            mc_memory_free(dict->vdcells);
-            mc_memory_free(dict->vdkeys);
-            mc_memory_free(dict->vdvalues);
-            mc_memory_free(dict->vdcellindices);
-            mc_memory_free(dict->vdhashes);
-            dict->vdcells = nullptr;
-            dict->vdkeys = nullptr;
-            dict->vdvalues = nullptr;
-            dict->vdcellindices = nullptr;
-            dict->vdhashes = nullptr;
+            dict->m_vdcount = 0;
+            dict->m_vditemcapacity = 0;
+            dict->m_vdcellcapacity = 0;
+            mc_memory_free(dict->m_vdcells);
+            mc_memory_free(dict->m_vdkeys);
+            mc_memory_free(dict->m_vdvalues);
+            mc_memory_free(dict->m_vdcellindices);
+            mc_memory_free(dict->m_vdhashes);
+            dict->m_vdcells = nullptr;
+            dict->m_vdkeys = nullptr;
+            dict->m_vdvalues = nullptr;
+            dict->m_vdcellindices = nullptr;
+            dict->m_vdhashes = nullptr;
         }
 
 
-        static void destroy(mcgenericdict_t* dict)
+        static void destroy(GenericDict* dict)
         {
             if(dict != nullptr)
             {
-                mcgenericdict_t::deinit(dict);
+                GenericDict::deinit(dict);
                 mc_memory_free(dict);
             }
         }
 
+    public:
+        unsigned int* m_vdcells;
+        unsigned long* m_vdhashes;
+        char** m_vdkeys;
+        void** m_vdvalues;
+        unsigned int* m_vdcellindices;
+        unsigned int m_vdcount;
+        unsigned int m_vditemcapacity;
+        unsigned int m_vdcellcapacity;
+        mcitemhashfn_t m_funchashfn;
+        mcitemcomparefn_t m_funckeyequalsfn;
 
     public:
-        size_t keytypesize;
-        size_t valtypesize;
-        unsigned int* vdcells;
-        unsigned long* vdhashes;
-        char** vdkeys;
-        void** vdvalues;
-        unsigned int* vdcellindices;
-        unsigned int vdcount;
-        unsigned int vditemcapacity;
-        unsigned int vdcellcapacity;
-        mcitemhashfn_t funchashfn;
-        mcitemcomparefn_t funckeyequalsfn;
-        mcitemdestroyfn_t funcdestroyfn;
-
-    public:
-        mcgenericdict_t(): mcgenericdict_t(0, 0)
+        GenericDict(): GenericDict(MC_CONF_GENERICDICTINITSIZE)
         {
         }
 
-        mcgenericdict_t(size_t ktsz, size_t vtsz): mcgenericdict_t(MC_CONF_GENERICDICTINITSIZE, ktsz, vtsz)
-        {
-        }
-
-        mcgenericdict_t(unsigned int mincapacity, size_t ktsz, size_t vtsz)
+        GenericDict(unsigned int mincapacity)
         {
             bool ok;
             unsigned int capacity;
             capacity = mc_util_upperpowoftwo(mincapacity * 2);
-            ok = mcgenericdict_t::initDict(this, capacity, ktsz, vtsz);
+            ok = GenericDict::initDict(this, capacity);
             assert(ok);
         }
 
-
         void setHashFunction(mcitemhashfn_t hashfn)
         {
-            this->funchashfn = hashfn;
+            this->m_funchashfn = hashfn;
         }
 
         void setEqualsFunction(mcitemcomparefn_t equalsfn)
         {
-            this->funckeyequalsfn = equalsfn;
+            this->m_funckeyequalsfn = equalsfn;
         }
 
         bool setKVIntern(unsigned int cellix, unsigned long hash, void* key, void* value)
@@ -1862,7 +1830,7 @@ struct mcgenericdict_t
             bool ok;
             bool found;
             unsigned int lastix;
-            if(this->vdcount >= this->vditemcapacity)
+            if(this->m_vdcount >= this->m_vditemcapacity)
             {
                 ok = this->growAndRehash();
                 if(!ok)
@@ -1871,13 +1839,13 @@ struct mcgenericdict_t
                 }
                 cellix = this->getCellIndex(key, hash, &found);
             }
-            lastix = this->vdcount;
-            this->vdcount++;
-            this->vdcells[cellix] = lastix;
+            lastix = this->m_vdcount;
+            this->m_vdcount++;
+            this->m_vdcells[cellix] = lastix;
             this->setKeyAt(lastix, key);
             this->setValueAt(lastix, value);
-            this->vdcellindices[lastix] = cellix;
-            this->vdhashes[lastix] = hash;
+            this->m_vdcellindices[lastix] = cellix;
+            this->m_vdhashes[lastix] = hash;
             return true;
         }
 
@@ -1892,7 +1860,7 @@ struct mcgenericdict_t
             cellix = this->getCellIndex(key, hash, &found);
             if(found)
             {
-                itemix = this->vdcells[cellix];
+                itemix = this->m_vdcells[cellix];
                 this->setValueAt(itemix, value);
                 return true;
             }
@@ -1905,7 +1873,7 @@ struct mcgenericdict_t
             unsigned int itemix;
             unsigned long hash;
             unsigned long cellix;
-            if(this->vdcount == 0)
+            if(this->m_vdcount == 0)
             {
                 return nullptr;
             }
@@ -1916,48 +1884,48 @@ struct mcgenericdict_t
             {
                 return nullptr;
             }
-            itemix = this->vdcells[cellix];
+            itemix = this->m_vdcells[cellix];
             return this->getValueAt(itemix);
         }
 
         void* getKeyAt(unsigned int ix)
         {
-            if(ix >= this->vdcount)
+            if(ix >= this->m_vdcount)
             {
                 return nullptr;
             }
-            return (char*)this->vdkeys + (this->keytypesize * ix);
+            return (char*)this->m_vdkeys + (sizeof(TypeKeyT) * ix);
         }
 
         void* getValueAt(unsigned int ix)
         {
-            if(ix >= this->vdcount)
+            if(ix >= this->m_vdcount)
             {
                 return nullptr;
             }
-            return (char*)this->vdvalues + (this->valtypesize * ix);
+            return (char*)this->m_vdvalues + (sizeof(TypeValueT) * ix);
         }
 
         unsigned int getCapacity()
         {
-            return this->vditemcapacity;
+            return this->m_vditemcapacity;
         }
 
         bool setValueAt(unsigned int ix, void* value)
         {
             size_t offset;
-            if(ix >= this->vdcount)
+            if(ix >= this->m_vdcount)
             {
                 return false;
             }
-            offset = ix * this->valtypesize;
-            memcpy((char*)this->vdvalues + offset, value, this->valtypesize);
+            offset = ix * sizeof(TypeValueT);
+            memcpy((char*)this->m_vdvalues + offset, value, sizeof(TypeValueT));
             return true;
         }
 
         int count()
         {
-            return this->vdcount;
+            return this->m_vdcount;
         }
 
         bool removeByKey(void* key)
@@ -1980,47 +1948,47 @@ struct mcgenericdict_t
             {
                 return false;
             }
-            itemix = this->vdcells[cell];
-            lastitemix = this->vdcount - 1;
+            itemix = this->m_vdcells[cell];
+            lastitemix = this->m_vdcount - 1;
             if(itemix < lastitemix)
             {
                 lastkey = this->getKeyAt(lastitemix);
                 this->setKeyAt(itemix, lastkey);
                 lastvalue = this->getKeyAt(lastitemix);
                 this->setValueAt(itemix, lastvalue);
-                this->vdcellindices[itemix] = this->vdcellindices[lastitemix];
-                this->vdhashes[itemix] = this->vdhashes[lastitemix];
-                this->vdcells[this->vdcellindices[itemix]] = itemix;
+                this->m_vdcellindices[itemix] = this->m_vdcellindices[lastitemix];
+                this->m_vdhashes[itemix] = this->m_vdhashes[lastitemix];
+                this->m_vdcells[this->m_vdcellindices[itemix]] = itemix;
             }
-            this->vdcount--;
+            this->m_vdcount--;
             i = cell;
             j = i;
-            for(x = 0; x < (this->vdcellcapacity - 1); x++)
+            for(x = 0; x < (this->m_vdcellcapacity - 1); x++)
             {
-                j = (j + 1) & (this->vdcellcapacity - 1);
-                if(this->vdcells[j] == MC_CONF_VALDICTINVALIDIX)
+                j = (j + 1) & (this->m_vdcellcapacity - 1);
+                if(this->m_vdcells[j] == MC_CONF_VALDICTINVALIDIX)
                 {
                     break;
                 }
-                k = (unsigned int)(this->vdhashes[this->vdcells[j]]) & (this->vdcellcapacity - 1);
+                k = (unsigned int)(this->m_vdhashes[this->m_vdcells[j]]) & (this->m_vdcellcapacity - 1);
                 if((j > i && (k <= i || k > j)) || (j < i && (k <= i && k > j)))
                 {
-                    this->vdcellindices[this->vdcells[j]] = i;
-                    this->vdcells[i] = this->vdcells[j];
+                    this->m_vdcellindices[this->m_vdcells[j]] = i;
+                    this->m_vdcells[i] = this->m_vdcells[j];
                     i = j;
                 }
             }
-            this->vdcells[i] = MC_CONF_VALDICTINVALIDIX;
+            this->m_vdcells[i] = MC_CONF_VALDICTINVALIDIX;
             return true;
         }
 
         void clear()
         {
             unsigned int i;
-            this->vdcount = 0;
-            for(i = 0; i < this->vdcellcapacity; i++)
+            this->m_vdcount = 0;
+            for(i = 0; i < this->m_vdcellcapacity; i++)
             {
-                this->vdcells[i] = MC_CONF_VALDICTINVALIDIX;
+                this->m_vdcells[i] = MC_CONF_VALDICTINVALIDIX;
             }
         }
 
@@ -2034,16 +2002,16 @@ struct mcgenericdict_t
             unsigned long hashtocheck;
             void* keytocheck;
             *outfound = false;
-            cellix = (unsigned int)hash & (this->vdcellcapacity - 1);
-            for(i = 0; i < this->vdcellcapacity; i++)
+            cellix = (unsigned int)hash & (this->m_vdcellcapacity - 1);
+            for(i = 0; i < this->m_vdcellcapacity; i++)
             {
-                ix = (cellix + i) & (this->vdcellcapacity - 1);
-                cell = this->vdcells[ix];
+                ix = (cellix + i) & (this->m_vdcellcapacity - 1);
+                cell = this->m_vdcells[ix];
                 if(cell == MC_CONF_VALDICTINVALIDIX)
                 {
                     return ix;
                 }
-                hashtocheck = this->vdhashes[cell];
+                hashtocheck = this->m_vdhashes[cell];
                 if(hash != hashtocheck)
                 {
                     continue;
@@ -2062,31 +2030,26 @@ struct mcgenericdict_t
         bool growAndRehash()
         {
             bool ok;
-            mcgenericdict_t newdict;
             unsigned int i;
             unsigned ncap;
             char* key;
             void* value;
-            ncap = MC_UTIL_INCCAPACITY(this->vdcellcapacity);    
-            ok = mcgenericdict_t::initDict(&newdict, ncap, this->keytypesize, this->valtypesize);
-            if(!ok)
-            {
-                return false;
-            }
-            newdict.funckeyequalsfn = this->funckeyequalsfn;
-            newdict.funchashfn = this->funchashfn;
-            for(i = 0; i < this->vdcount; i++)
+            ncap = MC_UTIL_INCCAPACITY(this->m_vdcellcapacity);    
+            GenericDict newdict(ncap);
+            newdict.m_funckeyequalsfn = this->m_funckeyequalsfn;
+            newdict.m_funchashfn = this->m_funchashfn;
+            for(i = 0; i < this->m_vdcount; i++)
             {
                 key = (char*)this->getKeyAt(i);
                 value = this->getValueAt(i);
                 ok = newdict.setKV(key, value);
                 if(!ok)
                 {
-                    mcgenericdict_t::deinit(&newdict);
+                    GenericDict::deinit(&newdict);
                     return false;
                 }
             }
-            mcgenericdict_t::deinit(this);
+            GenericDict::deinit(this);
             *this = newdict;
             return true;
         }
@@ -2094,50 +2057,405 @@ struct mcgenericdict_t
         bool setKeyAt(unsigned int ix, void* key)
         {
             size_t offset;
-            if(ix >= this->vdcount)
+            if(ix >= this->m_vdcount)
             {
                 return false;
             }
-            offset = ix * this->keytypesize;
-            memcpy((char*)this->vdkeys + offset, key, this->keytypesize);
+            offset = ix * sizeof(TypeKeyT);
+            memcpy((char*)this->m_vdkeys + offset, key, sizeof(TypeKeyT));
             return true;
         }
 
         bool keysAreEqual(void* a, void* b)
         {
-            if(this->funckeyequalsfn)
+            if(this->m_funckeyequalsfn)
             {
-                return this->funckeyequalsfn(a, b);
+                return this->m_funckeyequalsfn(a, b);
             }
-            return memcmp(a, b, this->keytypesize) == 0;
+            return memcmp(a, b, sizeof(TypeKeyT)) == 0;
         }
 
         unsigned long hashKey(void* key)
         {
-            if(this->funchashfn)
+            if(this->m_funchashfn)
             {
-                return this->funchashfn(key);
+                return this->m_funchashfn(key);
             }
-            return mc_util_hashdata(key, this->keytypesize);
+            return mc_util_hashdata(key, sizeof(TypeKeyT));
         }
-
 
 };
 
 
-struct mcptrdict_t
+class mcptrdict_t
 {
-    mcstate_t* pstate;
-    unsigned int* gdcells;
-    unsigned long* gdhashes;
-    char** gdkeys;
-    void** gdvalues;
-    unsigned int* gdcellindices;
-    unsigned int gdcount;
-    unsigned int gditemcapacity;
-    unsigned int gdcellcapacity;
-    mcitemcopyfn_t funccopyfn;
-    mcitemdestroyfn_t funcdestroyfn;
+    public:
+        static bool initValues(mcptrdict_t* dict, unsigned int initialcapacity, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
+        {
+            unsigned int i;
+            dict->gdcells = nullptr;
+            dict->gdkeys = nullptr;
+            dict->gdvalues = nullptr;
+            dict->gdcellindices = nullptr;
+            dict->gdhashes = nullptr;
+            dict->gdcount = 0;
+            dict->gdcellcapacity = 0;
+            dict->gdcellcapacity += initialcapacity;
+            dict->gditemcapacity = (unsigned int)(initialcapacity * 0.7f);
+            dict->funccopyfn = copyfn;
+            dict->funcdestroyfn = dfn;
+            dict->gdcells = (unsigned int*)mc_memory_malloc(dict->gdcellcapacity * sizeof(*dict->gdcells));
+            dict->gdkeys = (char**)mc_memory_malloc(dict->gditemcapacity * sizeof(*dict->gdkeys));
+            dict->gdvalues = (void**)mc_memory_malloc(dict->gditemcapacity * sizeof(*dict->gdvalues));
+            dict->gdcellindices = (unsigned int*)mc_memory_malloc(dict->gditemcapacity * sizeof(*dict->gdcellindices));
+            dict->gdhashes = (long unsigned int*)mc_memory_malloc(dict->gditemcapacity * sizeof(*dict->gdhashes));
+            if(dict->gdcells == nullptr || dict->gdkeys == nullptr || dict->gdvalues == nullptr || dict->gdcellindices == nullptr || dict->gdhashes == nullptr)
+            {
+                goto dictallocfailed;
+            }
+            for(i = 0; i < dict->gdcellcapacity; i++)
+            {
+                dict->gdcells[i] = MC_CONF_GENERICDICTINVALIDIX;
+            }
+            return true;
+        dictallocfailed:
+            mc_memory_free(dict->gdcells);
+            mc_memory_free(dict->gdkeys);
+            mc_memory_free(dict->gdvalues);
+            mc_memory_free(dict->gdcellindices);
+            mc_memory_free(dict->gdhashes);
+            return false;
+        }
+
+        static void deinitValues(mcptrdict_t* dict, bool freekeys)
+        {
+            unsigned int i;
+            if(freekeys)
+            {
+                for(i = 0; i < dict->gdcount; i++)
+                {
+                    if(dict->gdkeys[i] != nullptr)
+                    {
+                        mc_memory_free(dict->gdkeys[i]);
+                        dict->gdkeys[i] = nullptr;
+                    }
+                }
+            }
+            dict->gdcount = 0;
+            dict->gditemcapacity = 0;
+            dict->gdcellcapacity = 0;
+            mc_memory_free(dict->gdcells);
+            mc_memory_free(dict->gdkeys);
+            mc_memory_free(dict->gdvalues);
+            mc_memory_free(dict->gdcellindices);
+            mc_memory_free(dict->gdhashes);
+            dict->gdcells = nullptr;
+            dict->gdkeys = nullptr;
+            dict->gdvalues = nullptr;
+            dict->gdcellindices = nullptr;
+            dict->gdhashes = nullptr;
+        }
+
+        static void destroy(mcptrdict_t* dict)
+        {
+            if(dict != nullptr)
+            {
+                mcptrdict_t::deinitValues(dict, true);
+                mc_memory_free(dict);
+            }
+        }
+
+        static void destroyItemsAndDict(mcptrdict_t* dict)
+        {
+            unsigned int i;
+            if(dict != nullptr)
+            {    
+                if(dict->funcdestroyfn)
+                {
+                    for(i = 0; i < dict->gdcount; i++)
+                    {
+                        dict->funcdestroyfn(dict->gdvalues[i]);
+                    }
+                }
+                mcptrdict_t::destroy(dict);
+            }
+        }
+
+    public:
+        unsigned int* gdcells;
+        unsigned long* gdhashes;
+        char** gdkeys;
+        void** gdvalues;
+        unsigned int* gdcellindices;
+        unsigned int gdcount;
+        unsigned int gditemcapacity;
+        unsigned int gdcellcapacity;
+        mcitemcopyfn_t funccopyfn;
+        mcitemdestroyfn_t funcdestroyfn;
+
+    public:
+        mcptrdict_t(): mcptrdict_t(nullptr, nullptr)
+        {
+        }
+
+        mcptrdict_t(size_t cap, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
+        {
+            bool ok;
+            ok = mcptrdict_t::initValues(this, cap, copyfn, dfn);
+            assert(ok);
+        }
+
+        mcptrdict_t(mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
+        {
+            bool ok;
+            ok = mcptrdict_t::initValues(this, MC_CONF_GENERICDICTINITSIZE, copyfn, dfn);
+            assert(ok);
+        }
+
+        bool growAndRehash()
+        {
+            bool ok;
+            unsigned int i;
+            char* key;
+            void* value;
+            size_t ncap;
+            ncap = MC_UTIL_INCCAPACITY(this->gdcellcapacity);
+            mcptrdict_t newdict(ncap, this->funccopyfn, this->funcdestroyfn);
+            for(i = 0; i < this->gdcount; i++)
+            {
+                key = this->gdkeys[i];
+                value = this->gdvalues[i];
+                ok = newdict.setActual(key, key, value);
+                if(!ok)
+                {
+                    mcptrdict_t::deinitValues(&newdict, false);
+                    return false;
+                }
+            }
+            mcptrdict_t::deinitValues(this, false);
+            *this = newdict;
+            return true;
+        }
+
+        unsigned int getCellIndex(const char* key, unsigned long hash, bool* outfound)
+        {
+            unsigned int i;
+            unsigned int ix;
+            unsigned int cell;
+            unsigned int cellix;
+            unsigned long hashtocheck;
+            const char* keytocheck;
+            *outfound = false;
+            cellix = (unsigned int)hash & (this->gdcellcapacity - 1);
+            for(i = 0; i < this->gdcellcapacity; i++)
+            {
+                ix = (cellix + i) & (this->gdcellcapacity - 1);
+                cell = this->gdcells[ix];
+                if(cell == MC_CONF_GENERICDICTINVALIDIX)
+                {
+                    return ix;
+                }
+                hashtocheck = this->gdhashes[cell];
+                if(hash != hashtocheck)
+                {
+                    continue;
+                }
+                keytocheck = this->gdkeys[cell];
+                if(strcmp(key, keytocheck) == 0)
+                {
+                    *outfound = true;
+                    return ix;
+                }
+            }
+            return MC_CONF_GENERICDICTINVALIDIX;
+        }
+
+        bool setIntern(unsigned int cellix, unsigned long hash, const char* ckey, char* mkey, void* value)
+        {
+            bool ok;
+            bool found;
+            char* keycopy;
+            if(this->gdcount >= this->gditemcapacity)
+            {
+                ok = this->growAndRehash();
+                if(!ok)
+                {
+                    return false;
+                }
+                cellix = this->getCellIndex(ckey, hash, &found);
+            }
+            if(mkey)
+            {
+                this->gdkeys[this->gdcount] = mkey;
+            }
+            else
+            {
+                keycopy = mc_util_strdup(ckey);
+                if(!keycopy)
+                {
+                    return false;
+                }
+                this->gdkeys[this->gdcount] = keycopy;
+            }
+            this->gdcells[cellix] = this->gdcount;
+            this->gdvalues[this->gdcount] = value;
+            this->gdcellindices[this->gdcount] = cellix;
+            this->gdhashes[this->gdcount] = hash;
+            this->gdcount++;
+            return true;
+        }
+
+        bool setActual(const char* ckey, char* mkey, void* value)
+        {
+            bool found;
+            unsigned int cellix;
+            unsigned int itemix;
+            unsigned long hash;
+            hash = mc_util_hashdata(ckey, mc_util_strlen(ckey));
+            found = false;
+            cellix = this->getCellIndex(ckey, hash, &found);
+            if(found)
+            {
+                itemix = this->gdcells[cellix];
+                this->gdvalues[itemix] = value;
+                return true;
+            }
+            return this->setIntern(cellix, hash, ckey, mkey, value);
+        }
+
+        bool set(const char* key, void* value)
+        {
+            return this->setActual(key, nullptr, value);
+        }
+
+        void* get(const char* key)
+        {
+            bool found;
+            unsigned int itemix;
+            unsigned long hash;
+            unsigned long cellix;
+            hash = mc_util_hashdata(key, mc_util_strlen(key));
+            found = false;
+            cellix = this->getCellIndex(key, hash, &found);
+            if(found == false)
+            {
+                return nullptr;
+            }
+            itemix = this->gdcells[cellix];
+            return this->gdvalues[itemix];
+        }
+
+        void* getValueAt(unsigned int ix)
+        {
+            if(ix >= this->gdcount)
+            {
+                return nullptr;
+            }
+            return this->gdvalues[ix];
+        }
+
+        const char* getKeyAt(unsigned int ix)
+        {
+            if(ix >= this->gdcount)
+            {
+                return nullptr;
+            }
+            return this->gdkeys[ix];
+        }
+
+        size_t count()
+        {
+            return this->gdcount;
+        }
+
+        bool removeByKey(const char* key)
+        {
+            bool found;
+            unsigned int x;
+            unsigned int k;
+            unsigned int i;
+            unsigned int j;
+            unsigned int cell;
+            unsigned int itemix;
+            unsigned int lastitemix;
+            unsigned long hash;
+            hash = mc_util_hashdata(key, mc_util_strlen(key));
+            found = false;
+            cell = this->getCellIndex(key, hash, &found);
+            if(!found)
+            {
+                return false;
+            }
+            itemix = this->gdcells[cell];
+            mc_memory_free(this->gdkeys[itemix]);
+            lastitemix = this->gdcount - 1;
+            if(itemix < lastitemix)
+            {
+                this->gdkeys[itemix] = this->gdkeys[lastitemix];
+                this->gdvalues[itemix] = this->gdvalues[lastitemix];
+                this->gdcellindices[itemix] = this->gdcellindices[lastitemix];
+                this->gdhashes[itemix] = this->gdhashes[lastitemix];
+                this->gdcells[this->gdcellindices[itemix]] = itemix;
+            }
+            this->gdcount--;
+            i = cell;
+            j = i;
+            for(x = 0; x < (this->gdcellcapacity - 1); x++)
+            {
+                j = (j + 1) & (this->gdcellcapacity - 1);
+                if(this->gdcells[j] == MC_CONF_GENERICDICTINVALIDIX)
+                {
+                    break;
+                }
+                k = (unsigned int)(this->gdhashes[this->gdcells[j]]) & (this->gdcellcapacity - 1);
+                if((j > i && (k <= i || k > j)) || (j < i && (k <= i && k > j)))
+                {
+                    this->gdcellindices[this->gdcells[j]] = i;
+                    this->gdcells[i] = this->gdcells[j];
+                    i = j;
+                }
+            }
+            this->gdcells[i] = MC_CONF_GENERICDICTINVALIDIX;
+            return true;
+        }
+
+        mcptrdict_t* copy()
+        {
+            bool ok;
+            size_t i;
+            void* item;
+            void* itemcopy;
+            const char* key;
+            mcptrdict_t* dictcopy;
+            if(!this->funccopyfn || !this->funcdestroyfn)
+            {
+                return nullptr;
+            }
+            dictcopy = Memory::make<mcptrdict_t>(this->funccopyfn, this->funcdestroyfn);
+            if(!dictcopy)
+            {
+                return nullptr;
+            }
+            for(i = 0; i < this->count(); i++)
+            {
+                key = this->getKeyAt(i);
+                item = this->getValueAt(i);
+                itemcopy = dictcopy->funccopyfn(item);
+                if(item && !itemcopy)
+                {
+                    mcptrdict_t::destroyItemsAndDict(dictcopy);
+                    return nullptr;
+                }
+                ok = dictcopy->set(key, itemcopy);
+                if(!ok)
+                {
+                    dictcopy->funcdestroyfn(itemcopy);
+                    mcptrdict_t::destroyItemsAndDict(dictcopy);
+                    return nullptr;
+                }
+            }
+            return dictcopy;
+        }
 };
 
 
@@ -2376,7 +2694,7 @@ struct mcobjstring_t
 
 struct mcobjmap_t
 {
-    mcgenericdict_t* actualmap;
+    GenericDict<mcvalue_t, mcvalue_t>* actualmap;
 };
 
 struct mcobjarray_t
@@ -3101,7 +3419,7 @@ size_t mc_util_strlen(const char* str)
     return len;
 }
 
-char* mc_util_strndup(mcstate_t* state, const char* string, size_t n)
+char* mc_util_strndup(const char* string, size_t n)
 {
     char* outputstring;
     outputstring = (char*)mc_memory_malloc(n + 1);
@@ -3114,13 +3432,13 @@ char* mc_util_strndup(mcstate_t* state, const char* string, size_t n)
     return outputstring;
 }
 
-char* mc_util_strdup(mcstate_t* state, const char* string)
+char* mc_util_strdup(const char* string)
 {
     if(!string)
     {
         return nullptr;
     }
-    return mc_util_strndup(state, string, mc_util_strlen(string));
+    return mc_util_strndup(string, mc_util_strlen(string));
 }
 
 
@@ -3146,9 +3464,9 @@ char* mc_util_canonpath(mcstate_t* state, const char* path)
     PtrList* split;
     if(!strchr(path, '/') || (!strstr(path, "/../") && !strstr(path, "./")))
     {
-        return mc_util_strdup(state, path);
+        return mc_util_strdup(path);
     }
-    split = mc_util_splitstring(state, path, "/");
+    split = mc_util_splitstring(path, "/");
     if(!split)
     {
         return nullptr;
@@ -3248,7 +3566,7 @@ mcfloat_t mc_util_strtod(const char* str, size_t slen, char** endptr)
     return stod_strtod(&p, end, true);
 }
 
-PtrList* mc_util_splitstring(mcstate_t* state, const char* str, const char* delimiter)
+PtrList* mc_util_splitstring(const char* str, const char* delimiter)
 {
     bool ok;
     size_t i;
@@ -3269,7 +3587,7 @@ PtrList* mc_util_splitstring(mcstate_t* state, const char* str, const char* deli
     while(lineend != nullptr)
     {
         len = lineend - linestart;
-        line = mc_util_strndup(state, linestart, len);
+        line = mc_util_strndup(linestart, len);
         if(!line)
         {
             goto err;
@@ -3283,7 +3601,7 @@ PtrList* mc_util_splitstring(mcstate_t* state, const char* str, const char* deli
         linestart = lineend + 1;
         lineend = strstr(linestart, delimiter);
     }
-    rest = mc_util_strdup(state, linestart);
+    rest = mc_util_strdup(linestart);
     if(!rest)
     {
         goto err;
@@ -3331,7 +3649,7 @@ char* mc_util_joinstringarray(mcstate_t* state, PtrList* items, const char* join
 }
 
 template<typename... ArgsT>
-char* mc_util_stringallocfmt(mcstate_t* state, const char* format, ArgsT&&... args)
+char* mc_util_stringallocfmt(const char* format, ArgsT&&... args)
 {
     int needsz;
     int printedsz;
@@ -3638,368 +3956,6 @@ MC_FORCEINLINE bool mc_value_ishashable(mcvalue_t obj)
 
 
 
-bool mc_ptrdict_init(mcstate_t* state, mcptrdict_t* dict, unsigned int initialcapacity, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
-{
-    unsigned int i;
-    dict->pstate = state;
-    dict->gdcells = nullptr;
-    dict->gdkeys = nullptr;
-    dict->gdvalues = nullptr;
-    dict->gdcellindices = nullptr;
-    dict->gdhashes = nullptr;
-    dict->gdcount = 0;
-    dict->gdcellcapacity = 0;
-    dict->gdcellcapacity += initialcapacity;
-    dict->gditemcapacity = (unsigned int)(initialcapacity * 0.7f);
-    dict->funccopyfn = copyfn;
-    dict->funcdestroyfn = dfn;
-    dict->gdcells = (unsigned int*)mc_memory_malloc(dict->gdcellcapacity * sizeof(*dict->gdcells));
-    dict->gdkeys = (char**)mc_memory_malloc(dict->gditemcapacity * sizeof(*dict->gdkeys));
-    dict->gdvalues = (void**)mc_memory_malloc(dict->gditemcapacity * sizeof(*dict->gdvalues));
-    dict->gdcellindices = (unsigned int*)mc_memory_malloc(dict->gditemcapacity * sizeof(*dict->gdcellindices));
-    dict->gdhashes = (long unsigned int*)mc_memory_malloc(dict->gditemcapacity * sizeof(*dict->gdhashes));
-    if(dict->gdcells == nullptr || dict->gdkeys == nullptr || dict->gdvalues == nullptr || dict->gdcellindices == nullptr || dict->gdhashes == nullptr)
-    {
-        goto dictallocfailed;
-    }
-    for(i = 0; i < dict->gdcellcapacity; i++)
-    {
-        dict->gdcells[i] = MC_CONF_GENERICDICTINVALIDIX;
-    }
-    return true;
-dictallocfailed:
-    mc_memory_free(dict->gdcells);
-    mc_memory_free(dict->gdkeys);
-    mc_memory_free(dict->gdvalues);
-    mc_memory_free(dict->gdcellindices);
-    mc_memory_free(dict->gdhashes);
-    return false;
-}
-
-mcptrdict_t* mc_ptrdict_make(mcstate_t* state, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
-{
-    bool ok;
-    mcptrdict_t* dict;
-    dict = Memory::make<mcptrdict_t>();
-    if(dict == nullptr)
-    {
-        return nullptr;
-    }
-    ok = mc_ptrdict_init(state, dict, MC_CONF_GENERICDICTINITSIZE, copyfn, dfn);
-    if(!ok)
-    {
-        Memory::destroy(dict);
-        return nullptr;
-    }
-    dict->pstate = state;
-    return dict;
-}
-
-void mc_ptrdict_deinit(mcptrdict_t* dict, bool freekeys)
-{
-    unsigned int i;
-    if(freekeys)
-    {
-        for(i = 0; i < dict->gdcount; i++)
-        {
-            mc_memory_free(dict->gdkeys[i]);
-        }
-    }
-    dict->gdcount = 0;
-    dict->gditemcapacity = 0;
-    dict->gdcellcapacity = 0;
-    mc_memory_free(dict->gdcells);
-    mc_memory_free(dict->gdkeys);
-    mc_memory_free(dict->gdvalues);
-    mc_memory_free(dict->gdcellindices);
-    mc_memory_free(dict->gdhashes);
-    dict->gdcells = nullptr;
-    dict->gdkeys = nullptr;
-    dict->gdvalues = nullptr;
-    dict->gdcellindices = nullptr;
-    dict->gdhashes = nullptr;
-}
-
-void mc_ptrdict_destroy(mcptrdict_t* dict)
-{
-    if(dict != nullptr)
-    {
-        mc_ptrdict_deinit(dict, true);
-        Memory::destroy(dict);
-    }
-}
-
-void mc_ptrdict_destroyitemsanddict(mcptrdict_t* dict)
-{
-    unsigned int i;
-    if(dict != nullptr)
-    {    
-        if(dict->funcdestroyfn)
-        {
-            for(i = 0; i < dict->gdcount; i++)
-            {
-                dict->funcdestroyfn(dict->gdvalues[i]);
-            }
-        }
-        mc_ptrdict_destroy(dict);
-    }
-}
-
-bool mc_ptrdict_growandrehash(mcptrdict_t* dict)
-{
-    bool ok;
-    unsigned int i;
-    char* key;
-    void* value;
-    size_t ncap;
-    mcptrdict_t newdict;
-    ncap = MC_UTIL_INCCAPACITY(dict->gdcellcapacity);
-    ok = mc_ptrdict_init(dict->pstate, &newdict, ncap, dict->funccopyfn, dict->funcdestroyfn);
-    if(!ok)
-    {
-        return false;
-    }
-    for(i = 0; i < dict->gdcount; i++)
-    {
-        key = dict->gdkeys[i];
-        value = dict->gdvalues[i];
-        ok = mc_ptrdict_setactual(&newdict, key, key, value);
-        if(!ok)
-        {
-            mc_ptrdict_deinit(&newdict, false);
-            return false;
-        }
-    }
-    mc_ptrdict_deinit(dict, false);
-    *dict = newdict;
-    return true;
-}
-
-unsigned int mc_ptrdict_getcellindex(mcptrdict_t* dict, const char* key, unsigned long hash, bool* outfound)
-{
-    unsigned int i;
-    unsigned int ix;
-    unsigned int cell;
-    unsigned int cellix;
-    unsigned long hashtocheck;
-    const char* keytocheck;
-    *outfound = false;
-    cellix = (unsigned int)hash & (dict->gdcellcapacity - 1);
-    for(i = 0; i < dict->gdcellcapacity; i++)
-    {
-        ix = (cellix + i) & (dict->gdcellcapacity - 1);
-        cell = dict->gdcells[ix];
-        if(cell == MC_CONF_GENERICDICTINVALIDIX)
-        {
-            return ix;
-        }
-        hashtocheck = dict->gdhashes[cell];
-        if(hash != hashtocheck)
-        {
-            continue;
-        }
-        keytocheck = dict->gdkeys[cell];
-        if(strcmp(key, keytocheck) == 0)
-        {
-            *outfound = true;
-            return ix;
-        }
-    }
-    return MC_CONF_GENERICDICTINVALIDIX;
-}
-
-bool mc_ptrdict_setintern(mcptrdict_t* dict, unsigned int cellix, unsigned long hash, const char* ckey, char* mkey, void* value)
-{
-    bool ok;
-    bool found;
-    char* keycopy;
-    if(dict->gdcount >= dict->gditemcapacity)
-    {
-        ok = mc_ptrdict_growandrehash(dict);
-        if(!ok)
-        {
-            return false;
-        }
-        cellix = mc_ptrdict_getcellindex(dict, ckey, hash, &found);
-    }
-    if(mkey)
-    {
-        dict->gdkeys[dict->gdcount] = mkey;
-    }
-    else
-    {
-        keycopy = mc_util_strdup(dict->pstate, ckey);
-        if(!keycopy)
-        {
-            return false;
-        }
-        dict->gdkeys[dict->gdcount] = keycopy;
-    }
-    dict->gdcells[cellix] = dict->gdcount;
-    dict->gdvalues[dict->gdcount] = value;
-    dict->gdcellindices[dict->gdcount] = cellix;
-    dict->gdhashes[dict->gdcount] = hash;
-    dict->gdcount++;
-    return true;
-}
-
-bool mc_ptrdict_setactual(mcptrdict_t* dict, const char* ckey, char* mkey, void* value)
-{
-    bool found;
-    unsigned int cellix;
-    unsigned int itemix;
-    unsigned long hash;
-    hash = mc_util_hashdata(ckey, mc_util_strlen(ckey));
-    found = false;
-    cellix = mc_ptrdict_getcellindex(dict, ckey, hash, &found);
-    if(found)
-    {
-        itemix = dict->gdcells[cellix];
-        dict->gdvalues[itemix] = value;
-        return true;
-    }
-    return mc_ptrdict_setintern(dict, cellix, hash, ckey, mkey, value);
-}
-
-bool mc_ptrdict_set(mcptrdict_t* dict, const char* key, void* value)
-{
-    return mc_ptrdict_setactual(dict, key, nullptr, value);
-}
-
-void* mc_ptrdict_get(mcptrdict_t* dict, const char* key)
-{
-    bool found;
-    unsigned int itemix;
-    unsigned long hash;
-    unsigned long cellix;
-    hash = mc_util_hashdata(key, mc_util_strlen(key));
-    found = false;
-    cellix = mc_ptrdict_getcellindex(dict, key, hash, &found);
-    if(found == false)
-    {
-        return nullptr;
-    }
-    itemix = dict->gdcells[cellix];
-    return dict->gdvalues[itemix];
-}
-
-void* mc_ptrdict_getvalueat(mcptrdict_t* dict, unsigned int ix)
-{
-    if(ix >= dict->gdcount)
-    {
-        return nullptr;
-    }
-    return dict->gdvalues[ix];
-}
-
-const char* mc_ptrdict_getkeyat(mcptrdict_t* dict, unsigned int ix)
-{
-    if(ix >= dict->gdcount)
-    {
-        return nullptr;
-    }
-    return dict->gdkeys[ix];
-}
-
-size_t mc_ptrdict_count(mcptrdict_t* dict)
-{
-    if(!dict)
-    {
-        return 0;
-    }
-    return dict->gdcount;
-}
-
-bool mc_ptrdict_remove(mcptrdict_t* dict, const char* key)
-{
-    bool found;
-    unsigned int x;
-    unsigned int k;
-    unsigned int i;
-    unsigned int j;
-    unsigned int cell;
-    unsigned int itemix;
-    unsigned int lastitemix;
-    unsigned long hash;
-    hash = mc_util_hashdata(key, mc_util_strlen(key));
-    found = false;
-    cell = mc_ptrdict_getcellindex(dict, key, hash, &found);
-    if(!found)
-    {
-        return false;
-    }
-    itemix = dict->gdcells[cell];
-    mc_memory_free(dict->gdkeys[itemix]);
-    lastitemix = dict->gdcount - 1;
-    if(itemix < lastitemix)
-    {
-        dict->gdkeys[itemix] = dict->gdkeys[lastitemix];
-        dict->gdvalues[itemix] = dict->gdvalues[lastitemix];
-        dict->gdcellindices[itemix] = dict->gdcellindices[lastitemix];
-        dict->gdhashes[itemix] = dict->gdhashes[lastitemix];
-        dict->gdcells[dict->gdcellindices[itemix]] = itemix;
-    }
-    dict->gdcount--;
-    i = cell;
-    j = i;
-    for(x = 0; x < (dict->gdcellcapacity - 1); x++)
-    {
-        j = (j + 1) & (dict->gdcellcapacity - 1);
-        if(dict->gdcells[j] == MC_CONF_GENERICDICTINVALIDIX)
-        {
-            break;
-        }
-        k = (unsigned int)(dict->gdhashes[dict->gdcells[j]]) & (dict->gdcellcapacity - 1);
-        if((j > i && (k <= i || k > j)) || (j < i && (k <= i && k > j)))
-        {
-            dict->gdcellindices[dict->gdcells[j]] = i;
-            dict->gdcells[i] = dict->gdcells[j];
-            i = j;
-        }
-    }
-    dict->gdcells[i] = MC_CONF_GENERICDICTINVALIDIX;
-    return true;
-}
-
-mcptrdict_t* mc_ptrdict_copy(mcptrdict_t* dict)
-{
-    bool ok;
-    size_t i;
-    void* item;
-    void* itemcopy;
-    const char* key;
-    mcptrdict_t* dictcopy;
-    if(!dict->funccopyfn || !dict->funcdestroyfn)
-    {
-        return nullptr;
-    }
-    dictcopy = mc_ptrdict_make(dict->pstate, dict->funccopyfn, dict->funcdestroyfn);
-    if(!dictcopy)
-    {
-        return nullptr;
-    }
-    dictcopy->pstate = dict->pstate;
-    for(i = 0; i < mc_ptrdict_count(dict); i++)
-    {
-        key = mc_ptrdict_getkeyat(dict, i);
-        item = mc_ptrdict_getvalueat(dict, i);
-        itemcopy = dictcopy->funccopyfn(item);
-        if(item && !itemcopy)
-        {
-            mc_ptrdict_destroyitemsanddict(dictcopy);
-            return nullptr;
-        }
-        ok = mc_ptrdict_set(dictcopy, key, itemcopy);
-        if(!ok)
-        {
-            dictcopy->funcdestroyfn(itemcopy);
-            mc_ptrdict_destroyitemsanddict(dictcopy);
-            return nullptr;
-        }
-    }
-    return dictcopy;
-}
-
 
 
 
@@ -4066,7 +4022,7 @@ mcvalue_t mc_value_makefuncnative(mcstate_t* state, const char* name, mcnativefn
     {
         return mc_value_makenull();
     }
-    obj->uvobj.valfunc.as_nativefunc.natfnname = mc_util_strdup(state, name);
+    obj->uvobj.valfunc.as_nativefunc.natfnname = mc_util_strdup(name);
     if(!obj->uvobj.valfunc.as_nativefunc.natfnname)
     {
         return mc_value_makenull();
@@ -4127,7 +4083,7 @@ mcvalue_t mc_value_makemapcapacity(mcstate_t* state, size_t capacity)
         return mc_value_makenull();
     }
     data->uvobj.valmap = Memory::make<mcobjmap_t>();
-    data->uvobj.valmap->actualmap = Memory::make<mcgenericdict_t>(capacity, sizeof(mcvalue_t), sizeof(mcvalue_t));
+    data->uvobj.valmap->actualmap = Memory::make<GenericDict<mcvalue_t, mcvalue_t>>(capacity);
     if(!data->uvobj.valmap->actualmap)
     {
         return mc_value_makenull();
@@ -4141,7 +4097,7 @@ mcvalue_t mc_value_makeerror(mcstate_t* state, const char* error)
 {
     char* errorstr;
     mcvalue_t res;
-    errorstr = mc_util_strdup(state, error);
+    errorstr = mc_util_strdup(error);
     if(!errorstr)
     {
         return mc_value_makenull();
@@ -4207,7 +4163,7 @@ mcvalue_t mc_value_makefuncscript(mcstate_t* state, const char* name, mccompiled
     }
     if(ownsdt)
     {
-        data->uvobj.valfunc.as_scriptfunc.unamev.fallocname = name ? mc_util_strdup(state, name) : mc_util_strdup(state, "anonymous");
+        data->uvobj.valfunc.as_scriptfunc.unamev.fallocname = name ? mc_util_strdup(name) : mc_util_strdup("anonymous");
         if(!data->uvobj.valfunc.as_scriptfunc.unamev.fallocname)
         {
             return mc_value_makenull();
@@ -4837,7 +4793,7 @@ void mc_objectdata_deinit(mcobjdata_t* data)
             break;
         case MC_VAL_MAP:
             {
-                mcgenericdict_t::destroy(data->uvobj.valmap->actualmap);
+                Memory::destroy(data->uvobj.valmap->actualmap);
                 Memory::destroy(data->uvobj.valmap);
             }
             break;
@@ -5003,8 +4959,8 @@ size_t mc_value_callbackhash(mcvalue_t* objptr)
     return 0;
 }
 
-
-mcvalue_t mc_value_copydeepfuncscript(mcstate_t* state, mcvalue_t obj, mcgenericdict_t* targetdict)
+template<typename TypeKeyT, typename TypeValueT>
+mcvalue_t mc_value_copydeepfuncscript(mcstate_t* state, mcvalue_t obj, GenericDict<TypeKeyT, TypeValueT>* targetdict)
 {
     bool ok;
     int i;
@@ -5077,7 +5033,8 @@ mcvalue_t mc_value_copydeepfuncscript(mcstate_t* state, mcvalue_t obj, mcgeneric
     return copy;
 }
 
-mcvalue_t mc_value_copydeeparray(mcstate_t* state, mcvalue_t obj, mcgenericdict_t* targetdict)
+template<typename TypeKeyT, typename TypeValueT>
+mcvalue_t mc_value_copydeeparray(mcstate_t* state, mcvalue_t obj, GenericDict<TypeKeyT, TypeValueT>* targetdict)
 {
     bool ok;
     int i;
@@ -5113,7 +5070,8 @@ mcvalue_t mc_value_copydeeparray(mcstate_t* state, mcvalue_t obj, mcgenericdict_
     return copy;
 }
 
-mcvalue_t mc_value_copydeepmap(mcstate_t* state, mcvalue_t obj, mcgenericdict_t* targetdict)
+template<typename TypeKeyT, typename TypeValueT>
+mcvalue_t mc_value_copydeepmap(mcstate_t* state, mcvalue_t obj, GenericDict<TypeKeyT, TypeValueT>* targetdict)
 {
     bool ok;
     int i;
@@ -5155,7 +5113,8 @@ mcvalue_t mc_value_copydeepmap(mcstate_t* state, mcvalue_t obj, mcgenericdict_t*
     return copy;
 }
 
-mcvalue_t mc_value_copydeepintern(mcstate_t* state, mcvalue_t obj, mcgenericdict_t* targetdict)
+template<typename TypeKeyT, typename TypeValueT>
+mcvalue_t mc_value_copydeepintern(mcstate_t* state, mcvalue_t obj, GenericDict<TypeKeyT, TypeValueT>* targetdict)
 {
     mcvaltype_t type;
     mcvalue_t copy;
@@ -5233,14 +5192,13 @@ mcvalue_t mc_value_copydeepintern(mcstate_t* state, mcvalue_t obj, mcgenericdict
 mcvalue_t mc_value_copydeep(mcstate_t* state, mcvalue_t obj)
 {
     mcvalue_t res;
-    mcgenericdict_t* targetdict;
-    targetdict = Memory::make<mcgenericdict_t>(sizeof(mcvalue_t), sizeof(mcvalue_t));
+    auto targetdict = Memory::make<GenericDict<mcvalue_t, mcvalue_t>>();
     if(!targetdict)
     {
         return mc_value_makenull();
     }
     res = mc_value_copydeepintern(state, obj, targetdict);
-    mcgenericdict_t::destroy(targetdict);
+    Memory::destroy(targetdict);
     return res;
 }
 
@@ -5751,7 +5709,7 @@ char* mc_valtype_getunionname(mcstate_t* state, mcvaltype_t type)
     Printer* res;
     if(type == MC_VAL_ANY || type == MC_VAL_NONE || type == MC_VAL_FREED)
     {
-        return mc_util_strdup(state, mc_valtype_getname(type));
+        return mc_util_strdup(mc_valtype_getname(type));
     }
     res = Printer::make(state, nullptr);
     if(!res)
@@ -5916,7 +5874,7 @@ mcmodule_t* mc_module_make(mcstate_t* state, const char* name)
     }
     memset(module, 0, sizeof(mcmodule_t));
     module->pstate = state;
-    module->name = mc_util_strdup(state, name);
+    module->name = mc_util_strdup(name);
     if(!module->name)
     {
         mc_module_destroy(module);
@@ -6000,7 +5958,7 @@ mcmodule_t* mc_module_copy(mcmodule_t* src)
     }
     memset(copy, 0, sizeof(mcmodule_t));
     copy->pstate = src->pstate;
-    copy->name = mc_util_strdup(copy->pstate, src->name);
+    copy->name = mc_util_strdup(src->name);
     if(!copy->name)
     {
         mc_module_destroy(copy);
@@ -6471,7 +6429,7 @@ mcastexpression_t* mc_astexpr_copyexpr(mcastexpression_t* expr)
         case MC_EXPR_STRINGLITERAL:
             {
                 char* stringcopy;
-                stringcopy = mc_util_strndup(expr->pstate, expr->uexpr.exprlitstring.data, expr->uexpr.exprlitstring.length);
+                stringcopy = mc_util_strndup(expr->uexpr.exprlitstring.data, expr->uexpr.exprlitstring.length);
                 if(!stringcopy)
                 {
                     return nullptr;
@@ -6572,7 +6530,7 @@ mcastexpression_t* mc_astexpr_copyexpr(mcastexpression_t* expr)
                 mcastexprcodeblock_t* bodycopy;
                 pacopy = PtrList::copy(expr->uexpr.exprlitfunction.funcparamlist, (mcitemcopyfn_t)mc_astfuncparam_copy, (mcitemdestroyfn_t)mc_astfuncparam_destroy);
                 bodycopy = mc_astcodeblock_copy(expr->uexpr.exprlitfunction.body);
-                namecopy = mc_util_strdup(expr->pstate, expr->uexpr.exprlitfunction.name);
+                namecopy = mc_util_strdup(expr->uexpr.exprlitfunction.name);
                 if(!pacopy || !bodycopy)
                 {
                     PtrList::destroy(pacopy, (mcitemdestroyfn_t)mc_astfuncparam_destroy);
@@ -6869,7 +6827,7 @@ mcastexpression_t* mc_astexpr_copyexpr(mcastexpression_t* expr)
         case MC_EXPR_STMTIMPORT:
             {
                 char* pathcopy;
-                pathcopy = mc_util_strdup(expr->pstate, expr->uexpr.exprimportstmt.path);
+                pathcopy = mc_util_strdup(expr->uexpr.exprimportstmt.path);
                 if(!pathcopy)
                 {
                     return nullptr;
@@ -7165,7 +7123,7 @@ mcastexprident_t* mc_astident_make(mcstate_t* state, mcasttoken_t tok)
         return nullptr;
     }
     res->pstate = state;
-    res->value = mc_asttoken_dupliteralstring(state, &tok);
+    res->value = mc_asttoken_dupliteralstring(&tok);
     if(!res->value)
     {
         mc_memory_free(res);
@@ -7183,7 +7141,7 @@ mcastexprident_t* mc_astident_copy(mcastexprident_t* ident)
         return nullptr;
     }
     res->pstate = ident->pstate;
-    res->value = mc_util_strdup(ident->pstate, ident->value);
+    res->value = mc_util_strdup(ident->value);
     if(!res->value)
     {
         mc_memory_free(res);
@@ -8000,12 +7958,12 @@ bool mc_lexer_addline(mcastlexer_t* lex, int offset)
     line = nullptr;
     if(!newlineptr)
     {
-        line = mc_util_strdup(lex->pstate, linestart);
+        line = mc_util_strdup(linestart);
     }
     else
     {
         linelen = newlineptr - linestart;
-        line = mc_util_strndup(lex->pstate, linestart, linelen);
+        line = mc_util_strndup(linestart, linelen);
     }
     if(!line)
     {
@@ -8193,7 +8151,7 @@ char mc_parser_getescapechar(char c)
     return c;
 }
 
-char* mc_parser_processandcopystring(mcstate_t* state, const char* input, size_t len)
+char* mc_parser_processandcopystring(const char* input, size_t len)
 {
     size_t ini;
     size_t outi;
@@ -8491,7 +8449,7 @@ mcastexpression_t* mc_parser_parsevarletstmt(mcastparser_t* p)
     }
     if(value->exprtype == MC_EXPR_FUNCTIONLITERAL)
     {
-        value->uexpr.exprlitfunction.name = mc_util_strdup(p->pstate, nameident->value);
+        value->uexpr.exprlitfunction.name = mc_util_strdup(nameident->value);
         if(!value->uexpr.exprlitfunction.name)
         {
             goto err;
@@ -8748,7 +8706,7 @@ mcastexpression_t* mc_parser_parseimportstmt(mcastparser_t* p)
     {
         return nullptr;
     }
-    processedname = mc_parser_processandcopystring(p->pstate, p->lexer.currtoken.tokstrdata, p->lexer.currtoken.tokstrlen);
+    processedname = mc_parser_processandcopystring(p->lexer.currtoken.tokstrdata, p->lexer.currtoken.tokstrlen);
     if(!processedname)
     {
         mc_errlist_addf(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "error when parsing module name");
@@ -9018,7 +8976,7 @@ mcastexpression_t* mc_parser_parseexpression(mcastparser_t* p, mcastprecedence_t
     parserightassoc = p->rightassocfuncs[p->lexer.currtoken.toktype];
     if(!parserightassoc)
     {
-        literal = mc_asttoken_dupliteralstring(p->pstate, &p->lexer.currtoken);
+        literal = mc_asttoken_dupliteralstring(&p->lexer.currtoken);
         mc_errlist_addf(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "no prefix parse function for \"%s\" found", literal);
         mc_memory_free(literal);
         return nullptr;
@@ -9083,7 +9041,7 @@ mcastexpression_t* mc_parser_parseliteralnumber(mcastparser_t* p)
     parsedlen = end - p->lexer.currtoken.tokstrdata;
     if(errno || parsedlen != p->lexer.currtoken.tokstrlen)
     {
-        literal = mc_asttoken_dupliteralstring(p->pstate, &p->lexer.currtoken);
+        literal = mc_asttoken_dupliteralstring(&p->lexer.currtoken);
         mc_errlist_addf(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "failed to parse number literal \"%s\"", literal);
         mc_memory_free(literal);
         return nullptr;
@@ -9105,7 +9063,7 @@ mcastexpression_t* mc_parser_parseliteralstring(mcastparser_t* p)
     size_t len;
     char* processedliteral;
     mcastexpression_t* res;
-    processedliteral = mc_parser_processandcopystring(p->pstate, p->lexer.currtoken.tokstrdata, p->lexer.currtoken.tokstrlen);
+    processedliteral = mc_parser_processandcopystring(p->lexer.currtoken.tokstrdata, p->lexer.currtoken.tokstrlen);
     if(!processedliteral)
     {
         mc_errlist_addf(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "error parsing string literal");
@@ -9140,7 +9098,7 @@ mcastexpression_t* mc_parser_parseliteraltemplatestring(mcastparser_t* p)
     leftaddexpr = nullptr;
     rightexpr = nullptr;
     rightaddexpr = nullptr;
-    processedliteral = mc_parser_processandcopystring(p->pstate, p->lexer.currtoken.tokstrdata, p->lexer.currtoken.tokstrlen);
+    processedliteral = mc_parser_processandcopystring(p->lexer.currtoken.tokstrdata, p->lexer.currtoken.tokstrlen);
     if(!processedliteral)
     {
         mc_errlist_addf(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "error parsing string literal");
@@ -9262,7 +9220,7 @@ mcastexpression_t* mc_parser_parseliteralmap(mcastparser_t* p)
         key = nullptr;
         if(mc_lexer_currtokenis(&p->lexer, MC_TOK_IDENT))
         {
-            str = mc_asttoken_dupliteralstring(p->pstate, &p->lexer.currtoken);
+            str = mc_asttoken_dupliteralstring(&p->lexer.currtoken);
             len = mc_util_strlen(str);
             key = mc_astexpr_makeliteralstring(p->pstate, str, len);
             if(!key)
@@ -9526,7 +9484,7 @@ mcastexpression_t* mc_parser_parsefunctionstmt(mcastparser_t* p)
         goto err;
     }
     value->pos = pos;
-    value->uexpr.exprlitfunction.name = mc_util_strdup(p->pstate, nameident->value);
+    value->uexpr.exprlitfunction.name = mc_util_strdup(nameident->value);
     if(!value->uexpr.exprlitfunction.name)
     {
         goto err;
@@ -9885,7 +9843,7 @@ mcastexpression_t* mc_parser_parsedotexpression(mcastparser_t* p, mcastexpressio
     {
         return nullptr;
     }
-    str = mc_asttoken_dupliteralstring(p->pstate, &p->lexer.currtoken);
+    str = mc_asttoken_dupliteralstring(&p->lexer.currtoken);
     len = mc_util_strlen(str);
     index = mc_astexpr_makeliteralstring(p->pstate, str, len);
     if(!index)
@@ -10052,7 +10010,7 @@ mcastexpression_t* mc_optimizer_optinfixexpr(mcastexpression_t* expr)
         const char* strright;
         strleft = left->uexpr.exprlitstring.data;
         strright = right->uexpr.exprlitstring.data;
-        resstr = mc_util_stringallocfmt(state, "%s%s", strleft, strright);
+        resstr = mc_util_stringallocfmt("%s%s", strleft, strright);
         len = mc_util_strlen(resstr);
         if(resstr)
         {
@@ -10217,7 +10175,7 @@ bool mc_compiler_init(mcastcompiler_t* comp, mcstate_t* state, mcconfig_t* cfg, 
     {
         goto compilerinitfailed;
     }
-    comp->modules = mc_ptrdict_make(state, (mcitemcopyfn_t)mc_module_copy, (mcitemdestroyfn_t)mc_module_destroy);
+    comp->modules = Memory::make<mcptrdict_t>((mcitemcopyfn_t)mc_module_copy, (mcitemdestroyfn_t)mc_module_destroy);
     if(!comp->modules)
     {
         goto compilerinitfailed;
@@ -10239,7 +10197,7 @@ bool mc_compiler_init(mcastcompiler_t* comp, mcstate_t* state, mcconfig_t* cfg, 
         goto compilerinitfailed;
     }
     #endif
-    comp->stringconstposdict = mc_ptrdict_make(comp->pstate, nullptr, nullptr);
+    comp->stringconstposdict = Memory::make<mcptrdict_t>(nullptr, nullptr);
     if(!comp->stringconstposdict)
     {
         goto compilerinitfailed;
@@ -10257,12 +10215,12 @@ void mc_compiler_deinit(mcastcompiler_t* comp)
     int* val;
     if(comp != nullptr)
     {
-        for(i = 0; i < mc_ptrdict_count(comp->stringconstposdict); i++)
+        for(i = 0; i < comp->stringconstposdict->count(); i++)
         {
-            val = (int*)mc_ptrdict_getvalueat(comp->stringconstposdict, i);
+            val = (int*)comp->stringconstposdict->getValueAt(i);
             mc_memory_free(val);
         }
-        mc_ptrdict_destroy(comp->stringconstposdict);
+        Memory::destroy(comp->stringconstposdict);
         while(comp->filescopelist->count() > 0)
         {
             mc_compiler_filescopepop(comp);
@@ -10271,7 +10229,7 @@ void mc_compiler_deinit(mcastcompiler_t* comp)
         {
             mc_compiler_popcompilationscope(comp);
         }
-        mc_ptrdict_destroyitemsanddict(comp->modules);
+        mcptrdict_t::destroyItemsAndDict(comp->modules);
         PtrList::destroy(comp->srcposstack, nullptr);
         Memory::destroy(comp->constants);
         PtrList::destroy(comp->filescopelist, nullptr);
@@ -10314,12 +10272,12 @@ bool mc_compiler_initshallowcopy(mcastcompiler_t* copy, mcastcompiler_t* src)
     mc_symtable_destroy(copyst);
     copyst = nullptr;
     mc_compiler_setsymtable(copy, srcstocopy);
-    modulescopy = mc_ptrdict_copy(src->modules);
+    modulescopy = src->modules->copy();
     if(!modulescopy)
     {
         goto compilercopyfailed;
     }
-    mc_ptrdict_destroyitemsanddict(copy->modules);
+    mcptrdict_t::destroyItemsAndDict(copy->modules);
     copy->modules = modulescopy;
     constantscopy = mcvallist_t::copy(src->constants);
     if(!constantscopy)
@@ -10328,17 +10286,17 @@ bool mc_compiler_initshallowcopy(mcastcompiler_t* copy, mcastcompiler_t* src)
     }
     Memory::destroy(copy->constants);
     copy->constants = constantscopy;
-    for(i = 0; i < mc_ptrdict_count(src->stringconstposdict); i++)
+    for(i = 0; i < src->stringconstposdict->count(); i++)
     {
-        key = mc_ptrdict_getkeyat(src->stringconstposdict, i);
-        val = (int*)mc_ptrdict_getvalueat(src->stringconstposdict, i);
+        key = src->stringconstposdict->getKeyAt(i);
+        val = (int*)src->stringconstposdict->getValueAt(i);
         valcopy = (int*)mc_memory_malloc(sizeof(int));
         if(!valcopy)
         {
             goto compilercopyfailed;
         }
         *valcopy = *val;
-        ok = mc_ptrdict_set(copy->stringconstposdict, key, valcopy);
+        ok = copy->stringconstposdict->set(key, valcopy);
         if(!ok)
         {
             mc_memory_free(valcopy);
@@ -10352,7 +10310,7 @@ bool mc_compiler_initshallowcopy(mcastcompiler_t* copy, mcastcompiler_t* src)
     for(i = 0; i < srcloadedmodulenames->count(); i++)
     {
         loadedname = (const char*)srcloadedmodulenames->get(i);
-        loadednamecopy = mc_util_strdup(copy->pstate, loadedname);
+        loadednamecopy = mc_util_strdup(loadedname);
         if(!loadednamecopy)
         {
             goto compilercopyfailed;
@@ -10792,7 +10750,7 @@ bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_t* imports
             goto end;
         }
     }
-    module = (mcmodule_t*)mc_ptrdict_get(comp->modules, filepath);
+    module = (mcmodule_t*)comp->modules->get(filepath);
     if(!module)
     {
         /* todo: create new module function */
@@ -10831,7 +10789,7 @@ bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_t* imports
             mc_module_addsymbol(module, symbol);
         }
         mc_compiler_filescopepop(comp);
-        ok = mc_ptrdict_set(comp->modules, filepath, module);
+        ok = comp->modules->set(filepath, module);
         if(!ok)
         {
             mc_module_destroy(module);
@@ -10849,7 +10807,7 @@ bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_t* imports
             goto end;
         }
     }
-    namecopy = mc_util_strdup(comp->pstate, modname);
+    namecopy = mc_util_strdup(modname);
     if(!namecopy)
     {
         result = false;
@@ -11273,7 +11231,7 @@ bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexpression_t* exp
                 int* posval;
                 int* currentpos;
                 mcvalue_t obj;
-                currentpos = (int*)mc_ptrdict_get(comp->stringconstposdict, expr->uexpr.exprlitstring.data);
+                currentpos = (int*)comp->stringconstposdict->get(expr->uexpr.exprlitstring.data);
                 if(currentpos)
                 {
                     pos = *currentpos;
@@ -11296,7 +11254,7 @@ bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexpression_t* exp
                         goto error;
                     }
                     *posval = pos;
-                    ok = mc_ptrdict_set(comp->stringconstposdict, expr->uexpr.exprlitstring.data, posval);
+                    ok = comp->stringconstposdict->set(expr->uexpr.exprlitstring.data, posval);
                     if(!ok)
                     {
                         mc_memory_free(posval);
@@ -12656,17 +12614,17 @@ mcastcompiledfile_t* mc_compiledfile_make(mcstate_t* state, const char* path)
     if(lastslashpos)
     {
         len = lastslashpos - path + 1;
-        file->dir_path = mc_util_strndup(state, path, len);
+        file->dir_path = mc_util_strndup(path, len);
     }
     else
     {
-        file->dir_path = mc_util_strdup(state, "");
+        file->dir_path = mc_util_strdup("");
     }
     if(!file->dir_path)
     {
         goto error;
     }
-    file->path = mc_util_strdup(state, path);
+    file->path = mc_util_strdup(path);
     if(!file->path)
     {
         goto error;
@@ -14578,7 +14536,7 @@ mcglobalstore_t* mc_globalstore_make(mcstate_t* state)
     }
     memset(store, 0, sizeof(mcglobalstore_t));
     store->pstate = state;
-    store->storedsymbols = mc_ptrdict_make(state, (mcitemcopyfn_t)mc_symbol_copy, (mcitemdestroyfn_t)mc_symbol_destroy);
+    store->storedsymbols = Memory::make<mcptrdict_t>((mcitemcopyfn_t)mc_symbol_copy, (mcitemdestroyfn_t)mc_symbol_destroy);
     if(!store->storedsymbols)
     {
         goto err;
@@ -14598,7 +14556,7 @@ void mc_globalstore_destroy(mcglobalstore_t* store)
 {
     if(store != nullptr)
     {
-        mc_ptrdict_destroyitemsanddict(store->storedsymbols);
+        mcptrdict_t::destroyItemsAndDict(store->storedsymbols);
         Memory::destroy(store->storedobjects);
         mc_memory_free(store);
         store = nullptr;
@@ -14607,7 +14565,7 @@ void mc_globalstore_destroy(mcglobalstore_t* store)
 
 mcastsymbol_t* mc_globalstore_getsymbol(mcglobalstore_t* store, const char* name)
 {
-    return (mcastsymbol_t*)mc_ptrdict_get(store->storedsymbols, name);
+    return (mcastsymbol_t*)store->storedsymbols->get(name);
 }
 
 bool mc_globalstore_setnamed(mcglobalstore_t* store, const char* name, mcvalue_t object)
@@ -14633,7 +14591,7 @@ bool mc_globalstore_setnamed(mcglobalstore_t* store, const char* name, mcvalue_t
     {
         goto err;
     }
-    ok = mc_ptrdict_set(store->storedsymbols, name, symbol);
+    ok = store->storedsymbols->set(name, symbol);
     if(!ok)
     {
         mc_symbol_destroy(symbol);
@@ -14679,7 +14637,7 @@ mcastsymbol_t* mc_symbol_make(mcstate_t* state, const char* name, mcastsymtype_t
     }
     memset(symbol, 0, sizeof(mcastsymbol_t));
     symbol->pstate = state;
-    symbol->name = mc_util_strdup(state, name);
+    symbol->name = mc_util_strdup(name);
     if(!symbol->name)
     {
         mc_memory_free(symbol);
@@ -14991,7 +14949,7 @@ mcastsymbol_t* mc_symtable_resolve(mcastsymtable_t* table, const char* name)
     for(i = table->blockscopes->count() - 1; i >= 0; i--)
     {
         scope = (mcastscopeblock_t*)table->blockscopes->get(i);
-        symbol = (mcastsymbol_t*)mc_ptrdict_get(scope->scopestore, name);
+        symbol = (mcastsymbol_t*)scope->scopestore->get(name);
         if(symbol)
         {
             break;
@@ -15028,7 +14986,7 @@ bool mc_symtable_isdefined(mcastsymtable_t* table, const char* name)
         return true;
     }
     topscope = (mcastscopeblock_t*)table->blockscopes->top();
-    symbol = (mcastsymbol_t*)mc_ptrdict_get(topscope->scopestore, name);
+    symbol = (mcastsymbol_t*)topscope->scopestore->get(name);
     if(symbol)
     {
         return true;
@@ -15116,7 +15074,7 @@ mcastscopeblock_t* mc_astblockscope_make(mcstate_t* state, int offset)
     }
     memset(newscope, 0, sizeof(mcastscopeblock_t));
     newscope->pstate = state;
-    newscope->scopestore = mc_ptrdict_make(state, (mcitemcopyfn_t)mc_symbol_copy, (mcitemdestroyfn_t)mc_symbol_destroy);
+    newscope->scopestore = Memory::make<mcptrdict_t>((mcitemcopyfn_t)mc_symbol_copy, (mcitemdestroyfn_t)mc_symbol_destroy);
     if(!newscope->scopestore)
     {
         mc_astblockscope_destroy(newscope);
@@ -15129,7 +15087,7 @@ mcastscopeblock_t* mc_astblockscope_make(mcstate_t* state, int offset)
 
 void mc_astblockscope_destroy(mcastscopeblock_t* scope)
 {
-    mc_ptrdict_destroyitemsanddict(scope->scopestore);
+    mcptrdict_t::destroyItemsAndDict(scope->scopestore);
     mc_memory_free(scope);
     scope = nullptr;
 }
@@ -15146,7 +15104,7 @@ mcastscopeblock_t* mc_astblockscope_copy(mcastscopeblock_t* scope)
     copy->pstate = scope->pstate;
     copy->numdefinitions = scope->numdefinitions;
     copy->offset = scope->offset;
-    copy->scopestore = mc_ptrdict_copy(scope->scopestore);
+    copy->scopestore = scope->scopestore->copy();
     if(!copy->scopestore)
     {
         mc_astblockscope_destroy(copy);
@@ -15160,12 +15118,12 @@ bool mc_symtable_setsymbol(mcastsymtable_t* table, mcastsymbol_t* symbol)
     mcastscopeblock_t* topscope;
     mcastsymbol_t* existing;
     topscope = (mcastscopeblock_t*)table->blockscopes->top();
-    existing = (mcastsymbol_t*)mc_ptrdict_get(topscope->scopestore, symbol->name);
+    existing = (mcastsymbol_t*)topscope->scopestore->get(symbol->name);
     if(existing)
     {
         mc_symbol_destroy(existing);
     }
-    return mc_ptrdict_set(topscope->scopestore, symbol->name, symbol);
+    return topscope->scopestore->set(symbol->name, symbol);
 }
 
 int mc_symtable_nextsymindex(mcastsymtable_t* table)
@@ -15198,9 +15156,9 @@ void mc_asttoken_init(mcasttoken_t* tok, mcasttoktype_t type, const char* litera
     tok->tokstrlen = len;
 }
 
-char* mc_asttoken_dupliteralstring(mcstate_t* state, mcasttoken_t* tok)
+char* mc_asttoken_dupliteralstring(mcasttoken_t* tok)
 {
-    return mc_util_strndup(state, tok->tokstrdata, tok->tokstrlen);
+    return mc_util_strndup(tok->tokstrdata, tok->tokstrlen);
 }
 
 const char* mc_asttoken_typename(mcasttoktype_t type)
@@ -15382,7 +15340,7 @@ bool mc_traceback_push(mctraceback_t* traceback, const char* fname, mcastlocatio
 {
     bool ok;
     mctraceitem_t item;
-    item.trfuncname = mc_util_strdup(traceback->pstate, fname);
+    item.trfuncname = mc_util_strdup(fname);
     if(!item.trfuncname)
     {
         return false;
@@ -19745,8 +19703,8 @@ void mc_cli_installargv(mcstate_t* state, int argc, char** argv, int beginat)
     mc_state_setglobalconstant(state, "ARGV", argvobj);
 }
 
-#define printtypesize(typ) \
-    mc_cli_printtypesize(#typ, sizeof(typ))
+#define printtypesize(typexpr...) \
+    mc_cli_printtypesize(#typexpr, sizeof(typexpr))
 
 void mc_cli_printtypesize(const char* name, size_t sz)
 {
@@ -19756,7 +19714,7 @@ void mc_cli_printtypesize(const char* name, size_t sz)
 void mc_cli_printtypesizes()
 {
     printtypesize(mcptrdict_t);
-    printtypesize(mcgenericdict_t);
+    printtypesize(GenericDict<mcvalue_t, mcvalue_t>);
     printtypesize(PtrList);
     printtypesize(mcprintconfig_t);
     printtypesize(Printer);
