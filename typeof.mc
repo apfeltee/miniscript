@@ -5,7 +5,7 @@ function testtypeof(val, expect)
     if(ts != expect)
     {
         println("ERROR: for <", val, "> expected '", expect, "', but got '", ts, "'");
-        null();
+        //exit(1);
     }
 }
 

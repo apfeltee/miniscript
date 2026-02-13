@@ -410,7 +410,7 @@ typedef enum mcastprecedence_t mcastprecedence_t;
 
 typedef struct mcstoddiyfp_t mcstoddiyfp_t;
 typedef struct mcptrdict_t mcptrdict_t;
-typedef struct mcvaldict_t mcvaldict_t;
+typedef struct mcgenericdict_t mcgenericdict_t;
 typedef struct mcprintconfig_t mcprintconfig_t;
 typedef struct mcastprinter_t mcastprinter_t;
 typedef struct mcerror_t mcerror_t;
@@ -558,28 +558,6 @@ const char *mc_ptrdict_getkeyat(mcptrdict_t *dict, unsigned int ix);
 size_t mc_ptrdict_count(mcptrdict_t *dict);
 bool mc_ptrdict_remove(mcptrdict_t *dict, const char *key);
 mcptrdict_t *mc_ptrdict_copy(mcptrdict_t *dict);
-bool mc_valdict_init(mcstate_t *state, mcvaldict_t *dict, unsigned int initialcapacity, size_t ktsz, size_t vtsz, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn);
-void mc_valdict_deinit(mcvaldict_t *dict);
-mcvaldict_t* mc_valdict_makedefault(mcstate_t* state, size_t ktsz, size_t vtsz, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn);
-mcvaldict_t* mc_valdict_makecapacity(mcstate_t* state, unsigned int mincapacity, size_t ktsz, size_t vtsz, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn);
-void mc_valdict_destroy(mcvaldict_t *dict);
-void mc_valdict_sethashfunction(mcvaldict_t *dict, mcitemhashfn_t hashfn);
-void mc_valdict_setequalsfunction(mcvaldict_t *dict, mcitemcomparefn_t equalsfn);
-bool mc_valdict_setkvintern(mcvaldict_t *dict, unsigned int cellix, unsigned long hash, void *key, void *value);
-bool mc_valdict_setkv(mcvaldict_t *dict, void *key, void *value);
-void *mc_valdict_get(mcvaldict_t *dict, void *key);
-void *mc_valdict_getkeyat(mcvaldict_t *dict, unsigned int ix);
-void *mc_valdict_getvalueat(mcvaldict_t *dict, unsigned int ix);
-unsigned int mc_valdict_getcapacity(mcvaldict_t *dict);
-bool mc_valdict_setvalueat(mcvaldict_t *dict, unsigned int ix, void *value);
-int mc_valdict_count(mcvaldict_t *dict);
-bool mc_valdict_removebykey(mcvaldict_t *dict, void *key);
-void mc_valdict_clear(mcvaldict_t *dict);
-unsigned int mc_valdict_getcellindex(mcvaldict_t *dict, void *key, unsigned long hash, bool *outfound);
-bool mc_valdict_growandrehash(mcvaldict_t *dict);
-bool mc_valdict_setkeyat(mcvaldict_t *dict, unsigned int ix, void *key);
-bool mc_valdict_keysareequal(mcvaldict_t *dict, void *a, void *b);
-unsigned long mc_valdict_hashkey(mcvaldict_t *dict, void *key);
 mcvalue_t mc_value_makestrcapacity(mcstate_t *state, int capacity);
 mcvalue_t mc_value_makestringlen(mcstate_t *state, const char *string, size_t len);
 mcvalue_t mc_value_makestring(mcstate_t *state, const char *string);
@@ -634,10 +612,10 @@ bool mc_value_maphaskey(mcvalue_t object, mcvalue_t key);
 void mc_objectdata_deinit(mcobjdata_t *data);
 bool mc_value_callbackequals(mcvalue_t *aptr, mcvalue_t *bptr);
 size_t mc_value_callbackhash(mcvalue_t *objptr);
-mcvalue_t mc_value_copydeepfuncscript(mcstate_t *state, mcvalue_t obj, mcvaldict_t *targetdict);
-mcvalue_t mc_value_copydeeparray(mcstate_t *state, mcvalue_t obj, mcvaldict_t *targetdict);
-mcvalue_t mc_value_copydeepmap(mcstate_t *state, mcvalue_t obj, mcvaldict_t *targetdict);
-mcvalue_t mc_value_copydeepintern(mcstate_t *state, mcvalue_t obj, mcvaldict_t *targetdict);
+mcvalue_t mc_value_copydeepfuncscript(mcstate_t *state, mcvalue_t obj, mcgenericdict_t *targetdict);
+mcvalue_t mc_value_copydeeparray(mcstate_t *state, mcvalue_t obj, mcgenericdict_t *targetdict);
+mcvalue_t mc_value_copydeepmap(mcstate_t *state, mcvalue_t obj, mcgenericdict_t *targetdict);
+mcvalue_t mc_value_copydeepintern(mcstate_t *state, mcvalue_t obj, mcgenericdict_t *targetdict);
 mcvalue_t mc_value_copydeep(mcstate_t *state, mcvalue_t obj);
 mcvalue_t mc_value_copyflat(mcstate_t *state, mcvalue_t obj);
 
@@ -1764,23 +1742,386 @@ class PtrList
         }
 };
 
-struct mcvaldict_t
+struct mcgenericdict_t
 {
-    mcstate_t* pstate;
-    size_t keytypesize;
-    size_t valtypesize;
-    unsigned int* vdcells;
-    unsigned long* vdhashes;
-    char** vdkeys;
-    void** vdvalues;
-    unsigned int* vdcellindices;
-    unsigned int vdcount;
-    unsigned int vditemcapacity;
-    unsigned int vdcellcapacity;
-    mcitemhashfn_t funchashfn;
-    mcitemcomparefn_t funckeyequalsfn;
-    mcitemcopyfn_t funccopyfn;
-    mcitemdestroyfn_t funcdestroyfn;
+    public:
+        static bool initDict(mcgenericdict_t* dict, unsigned int initialcapacity, size_t ktsz, size_t vtsz)
+        {
+            unsigned int i;
+            dict->keytypesize = ktsz;
+            dict->valtypesize = vtsz;
+            dict->vdcells = nullptr;
+            dict->vdkeys = nullptr;
+            dict->vdvalues = nullptr;
+            dict->vdcellindices = nullptr;
+            dict->vdhashes = nullptr;
+            dict->vdcount = 0;
+            dict->vdcellcapacity = initialcapacity;
+            dict->vditemcapacity = (unsigned int)(initialcapacity * 0.7f);
+            dict->funckeyequalsfn = nullptr;
+            dict->funchashfn = nullptr;
+            dict->vdcells = (unsigned int*)mc_memory_malloc(dict->vdcellcapacity * sizeof(unsigned int));
+            dict->vdkeys = (char**)mc_memory_malloc(dict->vditemcapacity * dict->keytypesize);
+            dict->vdvalues = (void**)mc_memory_malloc(dict->vditemcapacity * dict->valtypesize);
+            dict->vdcellindices = (unsigned int*)mc_memory_malloc(dict->vditemcapacity * sizeof(unsigned int));
+            dict->vdhashes = (long unsigned int*)mc_memory_malloc(dict->vditemcapacity * sizeof(unsigned long));
+            if(dict->vdcells == nullptr || dict->vdkeys == nullptr || dict->vdvalues == nullptr || dict->vdcellindices == nullptr || dict->vdhashes == nullptr)
+            {
+                goto dictallocfailed;
+            }
+            for(i = 0; i < dict->vdcellcapacity; i++)
+            {
+                dict->vdcells[i] = MC_CONF_VALDICTINVALIDIX;
+            }
+            return true;
+        dictallocfailed:
+            mc_memory_free(dict->vdcells);
+            mc_memory_free(dict->vdkeys);
+            mc_memory_free(dict->vdvalues);
+            mc_memory_free(dict->vdcellindices);
+            mc_memory_free(dict->vdhashes);
+            return false;
+        }
+
+        static void deinit(mcgenericdict_t* dict)
+        {
+            dict->keytypesize = 0;
+            dict->valtypesize = 0;
+            dict->vdcount = 0;
+            dict->vditemcapacity = 0;
+            dict->vdcellcapacity = 0;
+            mc_memory_free(dict->vdcells);
+            mc_memory_free(dict->vdkeys);
+            mc_memory_free(dict->vdvalues);
+            mc_memory_free(dict->vdcellindices);
+            mc_memory_free(dict->vdhashes);
+            dict->vdcells = nullptr;
+            dict->vdkeys = nullptr;
+            dict->vdvalues = nullptr;
+            dict->vdcellindices = nullptr;
+            dict->vdhashes = nullptr;
+        }
+
+
+        static void destroy(mcgenericdict_t* dict)
+        {
+            if(dict != nullptr)
+            {
+                mcgenericdict_t::deinit(dict);
+                mc_memory_free(dict);
+            }
+        }
+
+
+    public:
+        size_t keytypesize;
+        size_t valtypesize;
+        unsigned int* vdcells;
+        unsigned long* vdhashes;
+        char** vdkeys;
+        void** vdvalues;
+        unsigned int* vdcellindices;
+        unsigned int vdcount;
+        unsigned int vditemcapacity;
+        unsigned int vdcellcapacity;
+        mcitemhashfn_t funchashfn;
+        mcitemcomparefn_t funckeyequalsfn;
+        mcitemdestroyfn_t funcdestroyfn;
+
+    public:
+        mcgenericdict_t(): mcgenericdict_t(0, 0)
+        {
+        }
+
+        mcgenericdict_t(size_t ktsz, size_t vtsz): mcgenericdict_t(MC_CONF_GENERICDICTINITSIZE, ktsz, vtsz)
+        {
+        }
+
+        mcgenericdict_t(unsigned int mincapacity, size_t ktsz, size_t vtsz)
+        {
+            bool ok;
+            unsigned int capacity;
+            capacity = mc_util_upperpowoftwo(mincapacity * 2);
+            ok = mcgenericdict_t::initDict(this, capacity, ktsz, vtsz);
+            assert(ok);
+        }
+
+
+        void setHashFunction(mcitemhashfn_t hashfn)
+        {
+            this->funchashfn = hashfn;
+        }
+
+        void setEqualsFunction(mcitemcomparefn_t equalsfn)
+        {
+            this->funckeyequalsfn = equalsfn;
+        }
+
+        bool setKVIntern(unsigned int cellix, unsigned long hash, void* key, void* value)
+        {
+            bool ok;
+            bool found;
+            unsigned int lastix;
+            if(this->vdcount >= this->vditemcapacity)
+            {
+                ok = this->growAndRehash();
+                if(!ok)
+                {
+                    return false;
+                }
+                cellix = this->getCellIndex(key, hash, &found);
+            }
+            lastix = this->vdcount;
+            this->vdcount++;
+            this->vdcells[cellix] = lastix;
+            this->setKeyAt(lastix, key);
+            this->setValueAt(lastix, value);
+            this->vdcellindices[lastix] = cellix;
+            this->vdhashes[lastix] = hash;
+            return true;
+        }
+
+        bool setKV(void* key, void* value)
+        {
+            bool found;
+            unsigned long hash;
+            unsigned int cellix;
+            unsigned int itemix;
+            hash = this->hashKey(key);
+            found = false;
+            cellix = this->getCellIndex(key, hash, &found);
+            if(found)
+            {
+                itemix = this->vdcells[cellix];
+                this->setValueAt(itemix, value);
+                return true;
+            }
+            return this->setKVIntern(cellix, hash, key, value);
+        }
+
+        void* get(void* key)
+        {
+            bool found;
+            unsigned int itemix;
+            unsigned long hash;
+            unsigned long cellix;
+            if(this->vdcount == 0)
+            {
+                return nullptr;
+            }
+            hash = this->hashKey(key);
+            found = false;
+            cellix = this->getCellIndex(key, hash, &found);
+            if(!found)
+            {
+                return nullptr;
+            }
+            itemix = this->vdcells[cellix];
+            return this->getValueAt(itemix);
+        }
+
+        void* getKeyAt(unsigned int ix)
+        {
+            if(ix >= this->vdcount)
+            {
+                return nullptr;
+            }
+            return (char*)this->vdkeys + (this->keytypesize * ix);
+        }
+
+        void* getValueAt(unsigned int ix)
+        {
+            if(ix >= this->vdcount)
+            {
+                return nullptr;
+            }
+            return (char*)this->vdvalues + (this->valtypesize * ix);
+        }
+
+        unsigned int getCapacity()
+        {
+            return this->vditemcapacity;
+        }
+
+        bool setValueAt(unsigned int ix, void* value)
+        {
+            size_t offset;
+            if(ix >= this->vdcount)
+            {
+                return false;
+            }
+            offset = ix * this->valtypesize;
+            memcpy((char*)this->vdvalues + offset, value, this->valtypesize);
+            return true;
+        }
+
+        int count()
+        {
+            return this->vdcount;
+        }
+
+        bool removeByKey(void* key)
+        {
+            bool found;
+            unsigned int x;
+            unsigned int k;
+            unsigned int i;
+            unsigned int j;
+            unsigned int cell;
+            unsigned int itemix;
+            unsigned int lastitemix;
+            unsigned long hash;
+            void* lastkey;
+            void* lastvalue;
+            hash = this->hashKey(key);
+            found = false;
+            cell = this->getCellIndex(key, hash, &found);
+            if(!found)
+            {
+                return false;
+            }
+            itemix = this->vdcells[cell];
+            lastitemix = this->vdcount - 1;
+            if(itemix < lastitemix)
+            {
+                lastkey = this->getKeyAt(lastitemix);
+                this->setKeyAt(itemix, lastkey);
+                lastvalue = this->getKeyAt(lastitemix);
+                this->setValueAt(itemix, lastvalue);
+                this->vdcellindices[itemix] = this->vdcellindices[lastitemix];
+                this->vdhashes[itemix] = this->vdhashes[lastitemix];
+                this->vdcells[this->vdcellindices[itemix]] = itemix;
+            }
+            this->vdcount--;
+            i = cell;
+            j = i;
+            for(x = 0; x < (this->vdcellcapacity - 1); x++)
+            {
+                j = (j + 1) & (this->vdcellcapacity - 1);
+                if(this->vdcells[j] == MC_CONF_VALDICTINVALIDIX)
+                {
+                    break;
+                }
+                k = (unsigned int)(this->vdhashes[this->vdcells[j]]) & (this->vdcellcapacity - 1);
+                if((j > i && (k <= i || k > j)) || (j < i && (k <= i && k > j)))
+                {
+                    this->vdcellindices[this->vdcells[j]] = i;
+                    this->vdcells[i] = this->vdcells[j];
+                    i = j;
+                }
+            }
+            this->vdcells[i] = MC_CONF_VALDICTINVALIDIX;
+            return true;
+        }
+
+        void clear()
+        {
+            unsigned int i;
+            this->vdcount = 0;
+            for(i = 0; i < this->vdcellcapacity; i++)
+            {
+                this->vdcells[i] = MC_CONF_VALDICTINVALIDIX;
+            }
+        }
+
+        unsigned int getCellIndex(void* key, unsigned long hash, bool* outfound)
+        {
+            bool areequal;
+            unsigned int i;
+            unsigned int ix;
+            unsigned int cell;
+            unsigned int cellix;
+            unsigned long hashtocheck;
+            void* keytocheck;
+            *outfound = false;
+            cellix = (unsigned int)hash & (this->vdcellcapacity - 1);
+            for(i = 0; i < this->vdcellcapacity; i++)
+            {
+                ix = (cellix + i) & (this->vdcellcapacity - 1);
+                cell = this->vdcells[ix];
+                if(cell == MC_CONF_VALDICTINVALIDIX)
+                {
+                    return ix;
+                }
+                hashtocheck = this->vdhashes[cell];
+                if(hash != hashtocheck)
+                {
+                    continue;
+                }
+                keytocheck = this->getKeyAt(cell);
+                areequal = this->keysAreEqual(key, keytocheck);
+                if(areequal)
+                {
+                    *outfound = true;
+                    return ix;
+                }
+            }
+            return MC_CONF_VALDICTINVALIDIX;
+        }
+
+        bool growAndRehash()
+        {
+            bool ok;
+            mcgenericdict_t newdict;
+            unsigned int i;
+            unsigned ncap;
+            char* key;
+            void* value;
+            ncap = MC_UTIL_INCCAPACITY(this->vdcellcapacity);    
+            ok = mcgenericdict_t::initDict(&newdict, ncap, this->keytypesize, this->valtypesize);
+            if(!ok)
+            {
+                return false;
+            }
+            newdict.funckeyequalsfn = this->funckeyequalsfn;
+            newdict.funchashfn = this->funchashfn;
+            for(i = 0; i < this->vdcount; i++)
+            {
+                key = (char*)this->getKeyAt(i);
+                value = this->getValueAt(i);
+                ok = newdict.setKV(key, value);
+                if(!ok)
+                {
+                    mcgenericdict_t::deinit(&newdict);
+                    return false;
+                }
+            }
+            mcgenericdict_t::deinit(this);
+            *this = newdict;
+            return true;
+        }
+
+        bool setKeyAt(unsigned int ix, void* key)
+        {
+            size_t offset;
+            if(ix >= this->vdcount)
+            {
+                return false;
+            }
+            offset = ix * this->keytypesize;
+            memcpy((char*)this->vdkeys + offset, key, this->keytypesize);
+            return true;
+        }
+
+        bool keysAreEqual(void* a, void* b)
+        {
+            if(this->funckeyequalsfn)
+            {
+                return this->funckeyequalsfn(a, b);
+            }
+            return memcmp(a, b, this->keytypesize) == 0;
+        }
+
+        unsigned long hashKey(void* key)
+        {
+            if(this->funchashfn)
+            {
+                return this->funchashfn(key);
+            }
+            return mc_util_hashdata(key, this->keytypesize);
+        }
+
+
 };
 
 
@@ -2035,7 +2376,7 @@ struct mcobjstring_t
 
 struct mcobjmap_t
 {
-    mcvaldict_t* actualmap;
+    mcgenericdict_t* actualmap;
 };
 
 struct mcobjarray_t
@@ -3660,380 +4001,6 @@ mcptrdict_t* mc_ptrdict_copy(mcptrdict_t* dict)
 }
 
 
-bool mc_valdict_init(mcstate_t* state, mcvaldict_t* dict, unsigned int initialcapacity, size_t ktsz, size_t vtsz, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
-{
-    unsigned int i;
-    dict->pstate = state;
-    dict->keytypesize = ktsz;
-    dict->valtypesize = vtsz;
-    dict->vdcells = nullptr;
-    dict->vdkeys = nullptr;
-    dict->vdvalues = nullptr;
-    dict->vdcellindices = nullptr;
-    dict->vdhashes = nullptr;
-    dict->vdcount = 0;
-    dict->vdcellcapacity = initialcapacity;
-    dict->vditemcapacity = (unsigned int)(initialcapacity * 0.7f);
-    dict->funckeyequalsfn = nullptr;
-    dict->funchashfn = nullptr;
-    dict->funccopyfn = copyfn;
-    dict->funcdestroyfn = dfn;
-    dict->vdcells = (unsigned int*)mc_memory_malloc(dict->vdcellcapacity * sizeof(unsigned int));
-    dict->vdkeys = (char**)mc_memory_malloc(dict->vditemcapacity * dict->keytypesize);
-    dict->vdvalues = (void**)mc_memory_malloc(dict->vditemcapacity * dict->valtypesize);
-    dict->vdcellindices = (unsigned int*)mc_memory_malloc(dict->vditemcapacity * sizeof(unsigned int));
-    dict->vdhashes = (long unsigned int*)mc_memory_malloc(dict->vditemcapacity * sizeof(unsigned long));
-    if(dict->vdcells == nullptr || dict->vdkeys == nullptr || dict->vdvalues == nullptr || dict->vdcellindices == nullptr || dict->vdhashes == nullptr)
-    {
-        goto dictallocfailed;
-    }
-    for(i = 0; i < dict->vdcellcapacity; i++)
-    {
-        dict->vdcells[i] = MC_CONF_VALDICTINVALIDIX;
-    }
-    return true;
-dictallocfailed:
-    mc_memory_free(dict->vdcells);
-    mc_memory_free(dict->vdkeys);
-    mc_memory_free(dict->vdvalues);
-    mc_memory_free(dict->vdcellindices);
-    mc_memory_free(dict->vdhashes);
-    return false;
-}
-
-void mc_valdict_deinit(mcvaldict_t* dict)
-{
-    dict->keytypesize = 0;
-    dict->valtypesize = 0;
-    dict->vdcount = 0;
-    dict->vditemcapacity = 0;
-    dict->vdcellcapacity = 0;
-    mc_memory_free(dict->vdcells);
-    mc_memory_free(dict->vdkeys);
-    mc_memory_free(dict->vdvalues);
-    mc_memory_free(dict->vdcellindices);
-    mc_memory_free(dict->vdhashes);
-    dict->vdcells = nullptr;
-    dict->vdkeys = nullptr;
-    dict->vdvalues = nullptr;
-    dict->vdcellindices = nullptr;
-    dict->vdhashes = nullptr;
-}
-
-mcvaldict_t* mc_valdict_makedefault(mcstate_t* state, size_t ktsz, size_t vtsz, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
-{
-    return mc_valdict_makecapacity(state, MC_CONF_GENERICDICTINITSIZE, ktsz, vtsz, copyfn, dfn);
-}
-
-mcvaldict_t* mc_valdict_makecapacity(mcstate_t* state, unsigned int mincapacity, size_t ktsz, size_t vtsz, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
-{
-    bool ok;
-    unsigned int capacity;
-    mcvaldict_t* dict;
-    capacity = mc_util_upperpowoftwo(mincapacity * 2);
-    dict = Memory::make<mcvaldict_t>();
-    if(!dict)
-    {
-        return nullptr;
-    }
-    ok = mc_valdict_init(state, dict, capacity, ktsz, vtsz, copyfn, dfn);
-    if(!ok)
-    {
-        Memory::destroy(dict);
-        return nullptr;
-    }
-    dict->pstate = state;
-    dict->funccopyfn = copyfn;
-    dict->funcdestroyfn = dfn;
-    return dict;
-}
-
-void mc_valdict_destroy(mcvaldict_t* dict)
-{
-    if(dict != nullptr)
-    {
-        mc_valdict_deinit(dict);
-        Memory::destroy(dict);
-    }
-}
-
-void mc_valdict_sethashfunction(mcvaldict_t* dict, mcitemhashfn_t hashfn)
-{
-    dict->funchashfn = hashfn;
-}
-
-void mc_valdict_setequalsfunction(mcvaldict_t* dict, mcitemcomparefn_t equalsfn)
-{
-    dict->funckeyequalsfn = equalsfn;
-}
-
-bool mc_valdict_setkvintern(mcvaldict_t* dict, unsigned int cellix, unsigned long hash, void* key, void* value)
-{
-    bool ok;
-    bool found;
-    unsigned int lastix;
-    if(dict->vdcount >= dict->vditemcapacity)
-    {
-        ok = mc_valdict_growandrehash(dict);
-        if(!ok)
-        {
-            return false;
-        }
-        cellix = mc_valdict_getcellindex(dict, key, hash, &found);
-    }
-    lastix = dict->vdcount;
-    dict->vdcount++;
-    dict->vdcells[cellix] = lastix;
-    mc_valdict_setkeyat(dict, lastix, key);
-    mc_valdict_setvalueat(dict, lastix, value);
-    dict->vdcellindices[lastix] = cellix;
-    dict->vdhashes[lastix] = hash;
-    return true;
-}
-
-bool mc_valdict_setkv(mcvaldict_t* dict, void* key, void* value)
-{
-    bool found;
-    unsigned long hash;
-    unsigned int cellix;
-    unsigned int itemix;
-    hash = mc_valdict_hashkey(dict, key);
-    found = false;
-    cellix = mc_valdict_getcellindex(dict, key, hash, &found);
-    if(found)
-    {
-        itemix = dict->vdcells[cellix];
-        mc_valdict_setvalueat(dict, itemix, value);
-        return true;
-    }
-    return mc_valdict_setkvintern(dict, cellix, hash, key, value);
-}
-
-void* mc_valdict_get(mcvaldict_t* dict, void* key)
-{
-    bool found;
-    unsigned int itemix;
-    unsigned long hash;
-    unsigned long cellix;
-    if(dict->vdcount == 0)
-    {
-        return nullptr;
-    }
-    hash = mc_valdict_hashkey(dict, key);
-    found = false;
-    cellix = mc_valdict_getcellindex(dict, key, hash, &found);
-    if(!found)
-    {
-        return nullptr;
-    }
-    itemix = dict->vdcells[cellix];
-    return mc_valdict_getvalueat(dict, itemix);
-}
-
-void* mc_valdict_getkeyat(mcvaldict_t* dict, unsigned int ix)
-{
-    if(ix >= dict->vdcount)
-    {
-        return nullptr;
-    }
-    return (char*)dict->vdkeys + (dict->keytypesize * ix);
-}
-
-void* mc_valdict_getvalueat(mcvaldict_t* dict, unsigned int ix)
-{
-    if(ix >= dict->vdcount)
-    {
-        return nullptr;
-    }
-    return (char*)dict->vdvalues + (dict->valtypesize * ix);
-}
-
-unsigned int mc_valdict_getcapacity(mcvaldict_t* dict)
-{
-    return dict->vditemcapacity;
-}
-
-bool mc_valdict_setvalueat(mcvaldict_t* dict, unsigned int ix, void* value)
-{
-    size_t offset;
-    if(ix >= dict->vdcount)
-    {
-        return false;
-    }
-    offset = ix * dict->valtypesize;
-    memcpy((char*)dict->vdvalues + offset, value, dict->valtypesize);
-    return true;
-}
-
-int mc_valdict_count(mcvaldict_t* dict)
-{
-    if(!dict)
-    {
-        return 0;
-    }
-    return dict->vdcount;
-}
-
-bool mc_valdict_removebykey(mcvaldict_t* dict, void* key)
-{
-    bool found;
-    unsigned int x;
-    unsigned int k;
-    unsigned int i;
-    unsigned int j;
-    unsigned int cell;
-    unsigned int itemix;
-    unsigned int lastitemix;
-    unsigned long hash;
-    void* lastkey;
-    void* lastvalue;
-    hash = mc_valdict_hashkey(dict, key);
-    found = false;
-    cell = mc_valdict_getcellindex(dict, key, hash, &found);
-    if(!found)
-    {
-        return false;
-    }
-    itemix = dict->vdcells[cell];
-    lastitemix = dict->vdcount - 1;
-    if(itemix < lastitemix)
-    {
-        lastkey = mc_valdict_getkeyat(dict, lastitemix);
-        mc_valdict_setkeyat(dict, itemix, lastkey);
-        lastvalue = mc_valdict_getkeyat(dict, lastitemix);
-        mc_valdict_setvalueat(dict, itemix, lastvalue);
-        dict->vdcellindices[itemix] = dict->vdcellindices[lastitemix];
-        dict->vdhashes[itemix] = dict->vdhashes[lastitemix];
-        dict->vdcells[dict->vdcellindices[itemix]] = itemix;
-    }
-    dict->vdcount--;
-    i = cell;
-    j = i;
-    for(x = 0; x < (dict->vdcellcapacity - 1); x++)
-    {
-        j = (j + 1) & (dict->vdcellcapacity - 1);
-        if(dict->vdcells[j] == MC_CONF_VALDICTINVALIDIX)
-        {
-            break;
-        }
-        k = (unsigned int)(dict->vdhashes[dict->vdcells[j]]) & (dict->vdcellcapacity - 1);
-        if((j > i && (k <= i || k > j)) || (j < i && (k <= i && k > j)))
-        {
-            dict->vdcellindices[dict->vdcells[j]] = i;
-            dict->vdcells[i] = dict->vdcells[j];
-            i = j;
-        }
-    }
-    dict->vdcells[i] = MC_CONF_VALDICTINVALIDIX;
-    return true;
-}
-
-void mc_valdict_clear(mcvaldict_t* dict)
-{
-    unsigned int i;
-    dict->vdcount = 0;
-    for(i = 0; i < dict->vdcellcapacity; i++)
-    {
-        dict->vdcells[i] = MC_CONF_VALDICTINVALIDIX;
-    }
-}
-
-unsigned int mc_valdict_getcellindex(mcvaldict_t* dict, void* key, unsigned long hash, bool* outfound)
-{
-    bool areequal;
-    unsigned int i;
-    unsigned int ix;
-    unsigned int cell;
-    unsigned int cellix;
-    unsigned long hashtocheck;
-    void* keytocheck;
-    *outfound = false;
-    cellix = (unsigned int)hash & (dict->vdcellcapacity - 1);
-    for(i = 0; i < dict->vdcellcapacity; i++)
-    {
-        ix = (cellix + i) & (dict->vdcellcapacity - 1);
-        cell = dict->vdcells[ix];
-        if(cell == MC_CONF_VALDICTINVALIDIX)
-        {
-            return ix;
-        }
-        hashtocheck = dict->vdhashes[cell];
-        if(hash != hashtocheck)
-        {
-            continue;
-        }
-        keytocheck = mc_valdict_getkeyat(dict, cell);
-        areequal = mc_valdict_keysareequal(dict, key, keytocheck);
-        if(areequal)
-        {
-            *outfound = true;
-            return ix;
-        }
-    }
-    return MC_CONF_VALDICTINVALIDIX;
-}
-
-bool mc_valdict_growandrehash(mcvaldict_t* dict)
-{
-    bool ok;
-    mcvaldict_t newdict;
-    unsigned int i;
-    unsigned ncap;
-    char* key;
-    void* value;
-    ncap = MC_UTIL_INCCAPACITY(dict->vdcellcapacity);    
-    ok = mc_valdict_init(dict->pstate, &newdict, ncap, dict->keytypesize, dict->valtypesize, dict->funccopyfn, dict->funcdestroyfn);
-    if(!ok)
-    {
-        return false;
-    }
-    newdict.funckeyequalsfn = dict->funckeyequalsfn;
-    newdict.funchashfn = dict->funchashfn;
-    for(i = 0; i < dict->vdcount; i++)
-    {
-        key = (char*)mc_valdict_getkeyat(dict, i);
-        value = mc_valdict_getvalueat(dict, i);
-        ok = mc_valdict_setkv(&newdict, key, value);
-        if(!ok)
-        {
-            mc_valdict_deinit(&newdict);
-            return false;
-        }
-    }
-    mc_valdict_deinit(dict);
-    *dict = newdict;
-    return true;
-}
-
-bool mc_valdict_setkeyat(mcvaldict_t* dict, unsigned int ix, void* key)
-{
-    size_t offset;
-    if(ix >= dict->vdcount)
-    {
-        return false;
-    }
-    offset = ix * dict->keytypesize;
-    memcpy((char*)dict->vdkeys + offset, key, dict->keytypesize);
-    return true;
-}
-
-bool mc_valdict_keysareequal(mcvaldict_t* dict, void* a, void* b)
-{
-    if(dict->funckeyequalsfn)
-    {
-        return dict->funckeyequalsfn(a, b);
-    }
-    return memcmp(a, b, dict->keytypesize) == 0;
-}
-
-unsigned long mc_valdict_hashkey(mcvaldict_t* dict, void* key)
-{
-    if(dict->funchashfn)
-    {
-        return dict->funchashfn(key);
-    }
-    return mc_util_hashdata(key, dict->keytypesize);
-}
 
 
 
@@ -4151,7 +4118,7 @@ mcvalue_t mc_value_makemapcapacity(mcstate_t* state, size_t capacity)
     data = mc_gcmemory_getdatafrompool(state, MC_VAL_MAP);
     if(data)
     {
-        mc_valdict_clear(data->uvobj.valmap->actualmap);
+        data->uvobj.valmap->actualmap->clear();
         return mc_object_makedatafrom(MC_VAL_MAP, data);
     }
     data = mc_gcmemory_allocobjectdata(state);
@@ -4160,13 +4127,13 @@ mcvalue_t mc_value_makemapcapacity(mcstate_t* state, size_t capacity)
         return mc_value_makenull();
     }
     data->uvobj.valmap = Memory::make<mcobjmap_t>();
-    data->uvobj.valmap->actualmap = mc_valdict_makecapacity(state, capacity, sizeof(mcvalue_t), sizeof(mcvalue_t), nullptr, nullptr);
+    data->uvobj.valmap->actualmap = Memory::make<mcgenericdict_t>(capacity, sizeof(mcvalue_t), sizeof(mcvalue_t));
     if(!data->uvobj.valmap->actualmap)
     {
         return mc_value_makenull();
     }
-    mc_valdict_sethashfunction(data->uvobj.valmap->actualmap, (mcitemhashfn_t)mc_value_callbackhash);
-    mc_valdict_setequalsfunction(data->uvobj.valmap->actualmap, (mcitemcomparefn_t)mc_value_callbackequals);
+    data->uvobj.valmap->actualmap->setHashFunction((mcitemhashfn_t)mc_value_callbackhash);
+    data->uvobj.valmap->actualmap->setEqualsFunction((mcitemcomparefn_t)mc_value_callbackequals);
     return mc_object_makedatafrom(MC_VAL_MAP, data);
 }
 
@@ -4699,7 +4666,7 @@ int mc_value_mapgetlength(mcvalue_t object)
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
     data = mc_value_getallocateddata(object);
-    return mc_valdict_count(data->uvobj.valmap->actualmap);
+    return data->uvobj.valmap->actualmap->count();
 }
 
 mcvalue_t mc_value_mapgetkeyat(mcvalue_t object, int ix)
@@ -4708,7 +4675,7 @@ mcvalue_t mc_value_mapgetkeyat(mcvalue_t object, int ix)
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
     data = mc_value_getallocateddata(object);
-    res = (mcvalue_t*)mc_valdict_getkeyat(data->uvobj.valmap->actualmap, ix);
+    res = (mcvalue_t*)data->uvobj.valmap->actualmap->getKeyAt(ix);
     if(!res)
     {
         return mc_value_makenull();
@@ -4722,7 +4689,7 @@ mcvalue_t mc_value_mapgetvalueat(mcvalue_t object, int ix)
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
     data = mc_value_getallocateddata(object);
-    res = (mcvalue_t*)mc_valdict_getvalueat(data->uvobj.valmap->actualmap, ix);
+    res = (mcvalue_t*)data->uvobj.valmap->actualmap->getValueAt(ix);
     if(!res)
     {
         return mc_value_makenull();
@@ -4739,7 +4706,7 @@ bool mc_value_mapsetvalueat(mcvalue_t object, int ix, mcvalue_t val)
         return false;
     }
     data = mc_value_getallocateddata(object);
-    return mc_valdict_setvalueat(data->uvobj.valmap->actualmap, ix, &val);
+    return data->uvobj.valmap->actualmap->setValueAt(ix, &val);
 }
 
 mcvalue_t mc_value_mapgetkvpairat(mcstate_t* state, mcvalue_t object, int ix)
@@ -4752,7 +4719,7 @@ mcvalue_t mc_value_mapgetkvpairat(mcstate_t* state, mcvalue_t object, int ix)
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
     data = mc_value_getallocateddata(object);
-    if(ix >= mc_valdict_count(data->uvobj.valmap->actualmap))
+    if(ix >= data->uvobj.valmap->actualmap->count())
     {
         return mc_value_makenull();
     }
@@ -4783,7 +4750,7 @@ bool mc_value_mapsetvalue(mcvalue_t object, mcvalue_t key, mcvalue_t val)
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
     data = mc_value_getallocateddata(object);
-    return mc_valdict_setkv(data->uvobj.valmap->actualmap, &key, &val);
+    return data->uvobj.valmap->actualmap->setKV(&key, &val);
 }
 
 bool mc_value_mapsetvaluestring(mcvalue_t object, const char* strkey, mcvalue_t val)
@@ -4801,7 +4768,7 @@ mcvalue_t mc_value_mapgetvalue(mcvalue_t object, mcvalue_t key)
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
     data = mc_value_getallocateddata(object);
-    res = (mcvalue_t*)mc_valdict_get(data->uvobj.valmap->actualmap, &key);
+    res = (mcvalue_t*)data->uvobj.valmap->actualmap->get(&key);
     if(!res)
     {
         return mc_value_makenull();
@@ -4815,7 +4782,7 @@ bool mc_value_mapgetvaluechecked(mcvalue_t object, mcvalue_t key, mcvalue_t* des
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
     data = mc_value_getallocateddata(object);
-    res = (mcvalue_t*)mc_valdict_get(data->uvobj.valmap->actualmap, &key);
+    res = (mcvalue_t*)data->uvobj.valmap->actualmap->get(&key);
     if(!res)
     {
         *dest = mc_value_makenull();
@@ -4831,7 +4798,7 @@ bool mc_value_maphaskey(mcvalue_t object, mcvalue_t key)
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
     data = mc_value_getallocateddata(object);
-    res = (mcvalue_t*)mc_valdict_get(data->uvobj.valmap->actualmap, &key);
+    res = (mcvalue_t*)data->uvobj.valmap->actualmap->get(&key);
     return res != nullptr;
 }
 
@@ -4870,7 +4837,7 @@ void mc_objectdata_deinit(mcobjdata_t* data)
             break;
         case MC_VAL_MAP:
             {
-                mc_valdict_destroy(data->uvobj.valmap->actualmap);
+                mcgenericdict_t::destroy(data->uvobj.valmap->actualmap);
                 Memory::destroy(data->uvobj.valmap);
             }
             break;
@@ -5037,7 +5004,7 @@ size_t mc_value_callbackhash(mcvalue_t* objptr)
 }
 
 
-mcvalue_t mc_value_copydeepfuncscript(mcstate_t* state, mcvalue_t obj, mcvaldict_t* targetdict)
+mcvalue_t mc_value_copydeepfuncscript(mcstate_t* state, mcvalue_t obj, mcgenericdict_t* targetdict)
 {
     bool ok;
     int i;
@@ -5082,7 +5049,7 @@ mcvalue_t mc_value_copydeepfuncscript(mcstate_t* state, mcvalue_t obj, mcvaldict
         mc_astcompresult_destroy(comprescopy);
         return mc_value_makenull();
     }
-    ok = mc_valdict_setkv(targetdict, &obj, &copy);
+    ok = targetdict->setKV(&obj, &copy);
     if(!ok)
     {
         return mc_value_makenull();
@@ -5110,7 +5077,7 @@ mcvalue_t mc_value_copydeepfuncscript(mcstate_t* state, mcvalue_t obj, mcvaldict
     return copy;
 }
 
-mcvalue_t mc_value_copydeeparray(mcstate_t* state, mcvalue_t obj, mcvaldict_t* targetdict)
+mcvalue_t mc_value_copydeeparray(mcstate_t* state, mcvalue_t obj, mcgenericdict_t* targetdict)
 {
     bool ok;
     int i;
@@ -5124,7 +5091,7 @@ mcvalue_t mc_value_copydeeparray(mcstate_t* state, mcvalue_t obj, mcvaldict_t* t
     {
         return mc_value_makenull();
     }
-    ok = mc_valdict_setkv(targetdict, &obj, &copy);
+    ok = targetdict->setKV(&obj, &copy);
     if(!ok)
     {
         return mc_value_makenull();
@@ -5146,7 +5113,7 @@ mcvalue_t mc_value_copydeeparray(mcstate_t* state, mcvalue_t obj, mcvaldict_t* t
     return copy;
 }
 
-mcvalue_t mc_value_copydeepmap(mcstate_t* state, mcvalue_t obj, mcvaldict_t* targetdict)
+mcvalue_t mc_value_copydeepmap(mcstate_t* state, mcvalue_t obj, mcgenericdict_t* targetdict)
 {
     bool ok;
     int i;
@@ -5160,7 +5127,7 @@ mcvalue_t mc_value_copydeepmap(mcstate_t* state, mcvalue_t obj, mcvaldict_t* tar
     {
         return mc_value_makenull();
     }
-    ok = mc_valdict_setkv(targetdict, &obj, &copy);
+    ok = targetdict->setKV(&obj, &copy);
     if(!ok)
     {
         return mc_value_makenull();
@@ -5188,12 +5155,12 @@ mcvalue_t mc_value_copydeepmap(mcstate_t* state, mcvalue_t obj, mcvaldict_t* tar
     return copy;
 }
 
-mcvalue_t mc_value_copydeepintern(mcstate_t* state, mcvalue_t obj, mcvaldict_t* targetdict)
+mcvalue_t mc_value_copydeepintern(mcstate_t* state, mcvalue_t obj, mcgenericdict_t* targetdict)
 {
     mcvaltype_t type;
     mcvalue_t copy;
     mcvalue_t* copyptr;
-    copyptr = (mcvalue_t*)mc_valdict_get(targetdict, &obj);
+    copyptr = (mcvalue_t*)targetdict->get(&obj);
     if(copyptr)
     {
         return *copyptr;
@@ -5226,7 +5193,7 @@ mcvalue_t mc_value_copydeepintern(mcstate_t* state, mcvalue_t obj, mcvaldict_t* 
                 str = mc_value_stringgetdata(obj);
                 len = mc_value_stringgetlength(obj);
                 copy = mc_value_makestringlen(state, str, len);
-                ok = mc_valdict_setkv(targetdict, &obj, &copy);
+                ok = targetdict->setKV(&obj, &copy);
                 if(!ok)
                 {
                     return mc_value_makenull();
@@ -5266,14 +5233,14 @@ mcvalue_t mc_value_copydeepintern(mcstate_t* state, mcvalue_t obj, mcvaldict_t* 
 mcvalue_t mc_value_copydeep(mcstate_t* state, mcvalue_t obj)
 {
     mcvalue_t res;
-    mcvaldict_t* targetdict;
-    targetdict = mc_valdict_makedefault(state, sizeof(mcvalue_t), sizeof(mcvalue_t), nullptr, nullptr);
+    mcgenericdict_t* targetdict;
+    targetdict = Memory::make<mcgenericdict_t>(sizeof(mcvalue_t), sizeof(mcvalue_t));
     if(!targetdict)
     {
         return mc_value_makenull();
     }
     res = mc_value_copydeepintern(state, obj, targetdict);
-    mc_valdict_destroy(targetdict);
+    mcgenericdict_t::destroy(targetdict);
     return res;
 }
 
@@ -19789,7 +19756,7 @@ void mc_cli_printtypesize(const char* name, size_t sz)
 void mc_cli_printtypesizes()
 {
     printtypesize(mcptrdict_t);
-    printtypesize(mcvaldict_t);
+    printtypesize(mcgenericdict_t);
     printtypesize(PtrList);
     printtypesize(mcprintconfig_t);
     printtypesize(Printer);
