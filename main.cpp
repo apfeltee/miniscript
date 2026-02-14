@@ -57,12 +57,6 @@ THE SOFTWARE.
 */
 
 
-
-#if !defined(va_copy)
-    #define va_copy(dest, src) memcpy(&dest, &src, sizeof(va_list))
-#endif
-
-
 #define MC_CONF_DEBUG 0
 #define MC_CONF_MINVMVALSTACKSIZE (4)
 #define MC_CONF_MINVMFRAMES (4)
@@ -486,7 +480,7 @@ typedef struct mcobjfunction_t mcobjfunction_t;
 
 class PtrList;
 class Printer;
-class mcptrdict_t;
+class PtrDict;
 
 
 
@@ -499,12 +493,10 @@ typedef void (*mcitemdeinitfn_t)(void*);
 typedef mcastexpression_t* (*mcastrightassocparsefn_t)(mcastparser_t*);
 typedef mcastexpression_t* (*mcleftassocparsefn_t)(mcastparser_t*, mcastexpression_t*);
 
-MC_INLINE void mc_util_assert(bool x, const char* exprstr, const char* file, int line, const char* fmt, ...);
 
 
 MC_FORCEINLINE mcvalue_t mc_value_makenull();
 
-/* main.c */
 void optprs_fprintmaybearg(FILE *out, const char *begin, const char *flagname, size_t flaglen, bool needval, bool maybeval, const char *delim);
 void optprs_fprintusage(FILE *out, optlongflags_t *flags);
 void optprs_printusage(char *argv[], optlongflags_t *flags, bool fail);
@@ -552,7 +544,6 @@ mcvalue_t mc_value_makemap(mcstate_t *state);
 mcvalue_t mc_value_makemapcapacity(mcstate_t *state, size_t capacity);
 mcvalue_t mc_value_makeerror(mcstate_t *state, const char *error);
 mcvalue_t mc_value_makeerrornocopy(mcstate_t *state, char *error);
-mcvalue_t mc_value_makeerrorf(mcstate_t *state, const char *fmt, ...);
 mcvalue_t mc_value_makefuncscript(mcstate_t *state, const char *name, mccompiledprogram_t *cres, bool ownsdt, int nlocals, int nargs, int fvc);
 mcvalue_t mc_value_makeuserobject(mcstate_t *state, void *data);
 bool mc_objfunction_freevalsareallocated(mcobjfunction_t *fun);
@@ -613,39 +604,15 @@ void mc_printer_printvalue(Printer *pr, mcvalue_t obj, bool accurate);
 mcastlocation_t mc_astlocation_make(mcastcompiledfile_t *file, int line, int column);
 mcgcmemory_t *mc_value_getmem(mcvalue_t obj);
 char *mc_valtype_getunionname(mcstate_t *state, mcvaltype_t type);
-void mc_errlist_init(mcerrlist_t *errors);
-void mc_errlist_deinit(mcerrlist_t *errors);
-void mc_errlist_pushmessage(mcerrlist_t *errors, mcerrtype_t type, mcastlocation_t pos, const char *message);
-void mc_errlist_addfv(mcerrlist_t *errors, mcerrtype_t type, mcastlocation_t pos, const char *format, va_list va);
-void mc_errlist_addf(mcerrlist_t *errors, mcerrtype_t type, mcastlocation_t pos, const char *format, ...);
-void mc_errlist_clear(mcerrlist_t *errors);
-mcerror_t *mc_errlist_get(mcerrlist_t *errors, int ix);
-const char *mc_util_errtypename(mcerrtype_t type);
-mcerror_t *mc_errlist_getlast(mcerrlist_t *errors);
+
 mcmodule_t *mc_module_make(mcstate_t *state, const char *name);
 void mc_module_destroy(mcmodule_t *module);
 bool mc_module_addsymbol(mcmodule_t *module, mcastsymbol_t *symbol);
 const char *mc_util_getmodulename(const char *path);
 const char *mc_module_findfile(mcstate_t *state, const char *filename);
 mcmodule_t *mc_module_copy(mcmodule_t *src);
-mcastexpression_t *mc_astexpr_makeident(mcstate_t *state, mcastexprident_t *ident);
-mcastexpression_t *mc_astexpr_makeliteralnumber(mcstate_t *state, mcfloat_t val);
-mcastexpression_t *mc_astexpr_makeliteralbool(mcstate_t *state, bool val);
-mcastexpression_t *mc_astexpr_makeliteralstring(mcstate_t *state, char *value, size_t len);
-mcastexpression_t *mc_astexpr_makeliteralnull(mcstate_t *state);
-mcastexpression_t *mc_astexpr_makeliteralarray(mcstate_t *state, PtrList *values);
-mcastexpression_t *mc_astexpr_makeliteralmap(mcstate_t *state, PtrList *keys, PtrList *values);
-mcastexpression_t *mc_astexpr_makeprefixexpr(mcstate_t *state, mcastmathoptype_t op, mcastexpression_t *right);
-mcastexpression_t *mc_astexpr_makeinfixexpr(mcstate_t *state, mcastmathoptype_t op, mcastexpression_t *left, mcastexpression_t *right);
-mcastexpression_t *mc_astexpr_makeliteralfunction(mcstate_t *state, PtrList *params, mcastexprcodeblock_t *body);
-mcastexpression_t *mc_astexpr_makecallexpr(mcstate_t *state, mcastexpression_t *function, PtrList *args);
-mcastexpression_t *mc_astexpr_makeindexexpr(mcstate_t *state, mcastexpression_t *left, mcastexpression_t *index, bool isdot);
-mcastexpression_t *mc_astexpr_makeassignexpr(mcstate_t *state, mcastexpression_t *dest, mcastexpression_t *source, bool is_postfix);
-mcastexpression_t *mc_astexpr_makelogicalexpr(mcstate_t *state, mcastmathoptype_t op, mcastexpression_t *left, mcastexpression_t *right);
-mcastexpression_t *mc_astexpr_maketernaryexpr(mcstate_t *state, mcastexpression_t *test, mcastexpression_t *ift, mcastexpression_t *iffalse);
-mcastexpression_t *mc_parser_makefunccallexpr(mcstate_t *state, mcastexpression_t *expr, const char *fname);
+
 void mc_astexpr_destroy(mcastexpression_t *expr);
-mcastexpression_t *mc_astexpr_copyexpr(mcastexpression_t *expr);
 mcastexpression_t *mc_astexpr_makedefineexpr(mcstate_t *state, mcastexprident_t *name, mcastexpression_t *value, bool assignable);
 mcastexpression_t *mc_astexpr_makeifexpr(mcstate_t *state, PtrList *cases, mcastexprcodeblock_t *alternative);
 mcastexpression_t *mc_astexpr_makereturnexpr(mcstate_t *state, mcastexpression_t *value);
@@ -658,46 +625,17 @@ mcastexpression_t *mc_astexpr_makecontinueexpr(mcstate_t *state);
 mcastexpression_t *mc_astexpr_makeblockexpr(mcstate_t *state, mcastexprcodeblock_t *block);
 mcastexpression_t *mc_astexpr_makeimportexpr(mcstate_t *state, char *path);
 mcastexpression_t *mc_astexpr_makerecoverexpr(mcstate_t *state, mcastexprident_t *eid, mcastexprcodeblock_t *body);
-mcastexprcodeblock_t *mc_astcodeblock_make(mcstate_t *state, PtrList *statements);
 void mc_astcodeblock_destroy(mcastexprcodeblock_t *block);
 mcastexprcodeblock_t *mc_astcodeblock_copy(mcastexprcodeblock_t *block);
-mcastfuncparam_t *mc_astfuncparam_make(mcstate_t *state, mcastexprident_t *ident);
 mcastfuncparam_t *mc_astfuncparam_copy(mcastfuncparam_t *param);
 void mc_astfuncparam_destroy(mcastfuncparam_t *param);
 mcastexprident_t *mc_astident_make(mcstate_t *state, mcasttoken_t tok);
 mcastexprident_t *mc_astident_copy(mcastexprident_t *ident);
 void mc_astident_destroy(mcastexprident_t *ident);
-mcastexprifcase_t *mc_astifcase_make(mcstate_t *state, mcastexpression_t *test, mcastexprcodeblock_t *consequence);
 void mc_astifcase_destroy(mcastexprifcase_t *cond);
 mcastexprifcase_t *mc_astifcase_copy(mcastexprifcase_t *ifcase);
 mcastexpression_t *mc_astexpr_makeexpression(mcstate_t *state, mcastexprtype_t type);
-bool mc_lexer_init(mcastlexer_t *lex, mcstate_t *state, mcerrlist_t *errs, const char *input, mcastcompiledfile_t *file);
-bool mc_lexer_failed(mcastlexer_t *lex);
-void mc_lexer_conttplstring(mcastlexer_t *lex);
-bool mc_lexer_currtokenis(mcastlexer_t *lex, mcasttoktype_t type);
-bool mc_lexer_peektokenis(mcastlexer_t *lex, mcasttoktype_t type);
-bool mc_lexer_nexttoken(mcastlexer_t *lex);
-bool mc_lexer_previoustoken(mcastlexer_t *lex);
 mcasttoken_t mc_lexer_nexttokinternal(mcastlexer_t *lex);
-bool mc_lexer_expectcurrent(mcastlexer_t *lex, mcasttoktype_t type);
-bool mc_lexer_readchar(mcastlexer_t *lex);
-char mc_lexer_peekchar(mcastlexer_t *lex);
-bool mc_lexer_charisletter(char ch);
-bool mc_lexer_charisdigit(char ch);
-bool mc_lexer_charisoneof(char ch, const char *allowed, int allowedlen);
-const char *mc_lexer_scanident(mcastlexer_t *lex, int *outlen);
-const char *mc_lexer_scannumber(mcastlexer_t *lex, int *outlen);
-const char *mc_lexer_scanstring(mcastlexer_t *lex, char delimiter, bool istemplate, bool *outtemplatefound, int *outlen);
-mcasttoktype_t mc_lexer_lookupident(const char *ident, int len);
-void mc_lexer_skipspace(mcastlexer_t *lex);
-bool mc_lexer_addline(mcastlexer_t *lex, int offset);
-mcastprecedence_t mc_parser_getprecedence(mcasttoktype_t tk);
-mcastmathoptype_t mc_parser_tokentomathop(mcasttoktype_t tk);
-char mc_parser_getescapechar(char c);
-char *mc_parser_processandcopystring(const char *input, size_t len);
-mcastparser_t *mc_astparser_make(mcstate_t *state, mcconfig_t *config, mcerrlist_t *errors);
-void mc_astparser_destroy(mcastparser_t *parser);
-PtrList *mc_astparser_parseall(mcastparser_t *parser, const char *input, mcastcompiledfile_t *file);
 mcastexpression_t *mc_astparser_parsestatement(mcastparser_t *p);
 mcastexpression_t *mc_parser_parsevarletstmt(mcastparser_t *p);
 mcastexpression_t *mc_parser_parseifstmt(mcastparser_t *p);
@@ -709,9 +647,9 @@ mcastexpression_t *mc_parser_parsecontinuestmt(mcastparser_t *p);
 mcastexpression_t *mc_parser_parseblockstmt(mcastparser_t *p);
 mcastexpression_t *mc_parser_parseimportstmt(mcastparser_t *p);
 mcastexpression_t *mc_parser_parserecoverstmt(mcastparser_t *p);
-mcastexpression_t *mc_parser_parseloopforstmt(mcastparser_t *p);
+mcastexpression_t *mc_parser_parseloopforloopstmt(mcastparser_t *p);
 mcastexpression_t *mc_parser_parseloopforeachstmt(mcastparser_t *p);
-mcastexpression_t *mc_parser_parseloopforclassicstmt(mcastparser_t *p);
+mcastexpression_t *mc_parser_parseloopforcstylestmt(mcastparser_t *p);
 mcastexprcodeblock_t *mc_parser_parsecodeblock(mcastparser_t *p);
 mcastexpression_t *mc_parser_parseexpression(mcastparser_t *p, mcastprecedence_t prec);
 mcastexpression_t *mc_parser_parseident(mcastparser_t *p);
@@ -725,7 +663,6 @@ mcastexpression_t *mc_parser_parseliteralmap(mcastparser_t *p);
 mcastexpression_t *mc_parser_parseprefixexpr(mcastparser_t *p);
 mcastexpression_t *mc_parser_parseinfixexpr(mcastparser_t *p, mcastexpression_t *left);
 mcastexpression_t *mc_parser_parsegroupedexpr(mcastparser_t *p);
-bool mc_parser_parsefuncparams(mcastparser_t *p, PtrList *outparams);
 mcastexpression_t *mc_parser_parseliteralfunction(mcastparser_t *p);
 mcastexpression_t *mc_parser_parsefunctionstmt(mcastparser_t *p);
 mcastexpression_t *mc_parser_parsecallexpr(mcastparser_t *p, mcastexpression_t *left);
@@ -737,38 +674,17 @@ mcastexpression_t *mc_parser_parseternaryexpr(mcastparser_t *p, mcastexpression_
 mcastexpression_t *mc_parser_parseincdecprefixexpr(mcastparser_t *p);
 mcastexpression_t *mc_parser_parseincdecpostfixexpr(mcastparser_t *p, mcastexpression_t *left);
 mcastexpression_t *mc_parser_parsedotexpression(mcastparser_t *p, mcastexpression_t *left);
-mcastexpression_t *mc_optimizer_optexpression(mcastexpression_t *expr);
 mcastexpression_t *mc_optimizer_optinfixexpr(mcastexpression_t *expr);
 mcastexpression_t *mc_optimizer_optprefixexpr(mcastexpression_t *expr);
-mcastscopecomp_t *mc_astcompscope_make(mcstate_t *state, mcastscopecomp_t *outer);
 void mc_astcompscope_destroy(mcastscopecomp_t *scope);
-mccompiledprogram_t *mc_astcompscope_orphanresult(mcastscopecomp_t *scope);
 mccompiledprogram_t *mc_astcompresult_make(mcstate_t *state, uint16_t *bytecode, mcastlocation_t *srcposlist, int count);
 void mc_astcompresult_destroy(mccompiledprogram_t *res);
-bool mc_compiler_init(mcastcompiler_t *comp, mcstate_t *state, mcconfig_t *cfg, mcgcmemory_t *mem, mcerrlist_t *errors, PtrList *files, mcglobalstore_t *gstor);
 void mc_compiler_deinit(mcastcompiler_t *comp);
-bool mc_compiler_initshallowcopy(mcastcompiler_t *copy, mcastcompiler_t *src);
-mcopdefinition_t *mc_parser_makedef(mcopdefinition_t *dest, const char *name, int numop, int opa1, int opa2);
 mcopdefinition_t *mc_opdef_lookup(mcopdefinition_t *def, mcinternopcode_t op);
-const char *mc_opdef_getname(mcinternopcode_t op);
-int mc_compiler_gencode(mcinternopcode_t op, int operandscount, const uint64_t *operands, PtrList *res);
-int mc_compiler_emit(mcastcompiler_t *comp, mcinternopcode_t op, int operandscount, uint64_t *operands);
 mcastscopecomp_t *mc_compiler_getcompilationscope(mcastcompiler_t *comp);
 bool mc_compiler_pushcompilationscope(mcastcompiler_t *comp);
 void mc_compiler_popcompilationscope(mcastcompiler_t *comp);
-bool mc_compiler_pushsymtable(mcastcompiler_t *comp, int globaloffset);
-void mc_compiler_popsymtable(mcastcompiler_t *comp);
-mcinternopcode_t mc_compiler_getlastopcode(mcastcompiler_t *comp);
-bool mc_compiler_docompilesource(mcastcompiler_t *comp, const char *code);
 bool mc_compiler_compilestmtlist(mcastcompiler_t *comp, PtrList *statements);
-bool mc_compiler_compileimport(mcastcompiler_t *comp, mcastexpression_t *importstmt);
-mcastsymbol_t *mc_compiler_defsymbol(mcastcompiler_t *comp, mcastlocation_t pos, const char *name, bool assignable, bool canshadow);
-bool mc_compiler_compiledefine(mcastcompiler_t *comp, mcastexpression_t *expr);
-bool mc_compiler_compileifstmt(mcastcompiler_t *comp, uint64_t *opbuf, mcastexpression_t *expr);
-bool mc_compiler_compilereturnstmt(mcastcompiler_t *comp, mcastscopecomp_t *compscope, mcastexpression_t *expr);
-bool mc_compiler_compilewhilestmt(mcastcompiler_t *comp, uint64_t *opbuf, mcastexpression_t *expr);
-bool mc_compiler_compilebreakstmt(mcastcompiler_t *comp, uint64_t *opbuf, mcastexpression_t *expr);
-bool mc_compiler_compilecontinuestmt(mcastcompiler_t *comp, uint64_t *opbuf, mcastexpression_t *expr);
 bool mc_compiler_compileexpression(mcastcompiler_t *comp, mcastexpression_t *expr);
 bool mc_compiler_compilecodeblock(mcastcompiler_t *comp, mcastexprcodeblock_t *block);
 int mc_compiler_addconstant(mcastcompiler_t *comp, mcvalue_t obj);
@@ -783,6 +699,7 @@ bool mc_compiler_pushcontinueip(mcastcompiler_t *comp, int ip);
 void mc_compiler_popcontinueip(mcastcompiler_t *comp);
 int mc_compiler_getcontinueip(mcastcompiler_t *comp);
 int mc_compiler_getip(mcastcompiler_t *comp);
+
 PtrList *mc_compiler_getsrcpositions(mcastcompiler_t *comp);
 PtrList *mc_compiler_getbytecode(mcastcompiler_t *comp);
 mcastscopefile_t *mc_compiler_filescopemake(mcastcompiler_t *comp, mcastcompiledfile_t *file);
@@ -820,11 +737,6 @@ mcerror_t *mc_state_geterror(mcstate_t *state, int index);
 bool mc_state_setnativefunction(mcstate_t *state, const char *name, mcnativefn_t fn, void *data);
 bool mc_state_setglobalconstant(mcstate_t *state, const char *name, mcvalue_t obj);
 mcvalue_t mc_state_getglobalobjectbyname(mcstate_t *state, const char *name);
-void mc_state_pusherrorfv(mcstate_t *state, mcerrtype_t type, mcastlocation_t pos, const char *fmt, va_list va);
-void mc_state_pusherrorf(mcstate_t *state, mcerrtype_t type, mcastlocation_t pos, const char *fmt, ...);
-void mc_state_complainv(mcstate_t *state, mcastlocation_t pos, const char *fmt, va_list va);
-void mc_state_complain(mcstate_t *state, mcastlocation_t pos, const char *fmt, ...);
-void mc_state_setruntimeerrorf(mcstate_t *state, const char *fmt, ...);
 const char *mc_error_getmessage(mcerror_t *error);
 const char *mc_error_getfilepath(mcerror_t *error);
 const char *mc_error_getsourcelinecode(mcerror_t *error);
@@ -1038,60 +950,7 @@ void *mc_memory_malloc(size_t sz);
 void *mc_memory_realloc(void *p, size_t nsz);
 void *mc_memory_calloc(size_t count, size_t typsize);
 void mc_memory_free(void *ptr);
-/* strbuf.c */
-size_t dyn_strutil_rndup2pow64(uint64_t x);
-char *dyn_strutil_safencpy(char *dst, const char *src, size_t n);
-size_t dyn_strutil_splitstr(char *str, char sep, char **ptrs, size_t nptrs);
-size_t dyn_strutil_charreplace(char *str, char from, char to);
-void dyn_strutil_reverseregion(char *str, size_t length);
-bool dyn_strutil_isallspace(const char *s);
-char *dyn_strutil_nextspace(char *s);
-char *dyn_strutil_trim(char *str);
-size_t dyn_strutil_chomp(char *str, size_t len);
-size_t dyn_strutil_countchar(const char *str, char c);
-size_t dyn_strutil_split(const char *splitat, const char *sourcetxt, char ***result);
 
-
-StringBuffer *dyn_strbuf_makefromstring(const char *str, size_t slen);
-StringBuffer *dyn_strbuf_makeclone(const StringBuffer *sbuf);
-void dyn_strbuf_reset(StringBuffer *sb);
-void dyn_strutil_cbufcapacity(char **buf, size_t *sizeptr, size_t len);
-void dyn_strutil_cbufappendchar(char **buf, size_t *lenptr, size_t *sizeptr, char c);
-bool dyn_strbuf_containschar(StringBuffer *sb, char ch);
-void dyn_strutil_faststrncat(char *dest, const char *src, size_t *size);
-size_t dyn_strutil_strreplace1(char **str, size_t selflen, const char *findstr, size_t findlen, const char *substr, size_t sublen);
-size_t dyn_strutil_strrepcount(const char *str, size_t slen, const char *findstr, size_t findlen, size_t sublen);
-void dyn_strutil_strreplace2(char *target, size_t tgtlen, const char *findstr, size_t findlen, const char *substr, size_t sublen);
-bool dyn_strbuf_fullreplace(StringBuffer *sb, const char *findstr, size_t findlen, const char *substr, size_t sublen);
-bool dyn_strutil_inpreplhelper(char *dest, const char *src, size_t srclen, int findme, const char *substr, size_t sublen, size_t maxlen, size_t *dlen);
-size_t dyn_strutil_inpreplace(char *target, size_t tgtlen, int findme, const char *substr, size_t sublen, size_t maxlen);
-bool dyn_strbuf_charreplace(StringBuffer *sb, int findme, const char *substr, size_t sublen);
-void dyn_strbuf_set(StringBuffer *sb, const char *str);
-void dyn_strbuf_setbuff(StringBuffer *dest, StringBuffer *from);
-bool dyn_strbuf_appendchar(StringBuffer *sb, int c);
-
-bool dyn_strbuf_appendstr(StringBuffer *sb, const char *str);
-bool dyn_strbuf_appendbuff(StringBuffer *sb1, const StringBuffer *sb2);
-size_t dyn_strutil_numofdigits(unsigned long v);
-bool dyn_strbuf_appendnumulong(StringBuffer *buf, unsigned long value);
-bool dyn_strbuf_appendnumlong(StringBuffer *buf, long value);
-bool dyn_strbuf_appendnumint(StringBuffer *buf, int value);
-bool dyn_strbuf_appendstrnlowercase(StringBuffer *buf, const char *str, size_t len);
-bool dyn_strbuf_appendstrnuppercase(StringBuffer *buf, const char *str, size_t len);
-bool dyn_strbuf_appendcharn(StringBuffer *buf, char c, size_t n);
-void dyn_strbuf_shrink(StringBuffer *sb, size_t len);
-size_t dyn_strbuf_chomp(StringBuffer *sbuf);
-void dyn_strbuf_reverse(StringBuffer *sbuf);
-char *dyn_strbuf_substr(const StringBuffer *sbuf, size_t start, size_t len);
-void dyn_strbuf_touppercase(StringBuffer *sbuf);
-void dyn_strbuf_tolowercase(StringBuffer *sbuf);
-void dyn_strbuf_copyover(StringBuffer *dst, size_t dstpos, const char *src, size_t len);
-void dyn_strbuf_insert(StringBuffer *dst, size_t dstpos, const char *src, size_t len);
-void dyn_strbuf_overwrite(StringBuffer *dst, size_t dstpos, size_t dstlen, const char *src, size_t srclen);
-void dyn_strbuf_erase(StringBuffer *sbuf, size_t pos, size_t len);
-void dyn_strbuf_triminplace(StringBuffer *sbuf);
-void dyn_strbuf_trimleftinplace(StringBuffer *sbuf, const char *list);
-void dyn_strbuf_trimrightinplace(StringBuffer *sbuf, const char *list);
 /* utilos.c */
 char *osfn_utilstrndup(const char *src, size_t len);
 char *osfn_utilstrdup(const char *src);
@@ -1141,8 +1000,28 @@ mcstoddiyfp_t stod_cached_power_dec(int exp, int *dec_exp);
 mcstoddiyfp_t stod_adjust_pow10(int exp);
 int stod_diyfp_sgnd_size(int order);
 double stod_strtod(const unsigned char **start, const unsigned char *end, int literal);
-/* strbuf.h */
-/* utilos.h */
+
+
+
+/* must come before any other function/class body */
+template<typename... ArgsT>
+MC_INLINE void mc_util_assert(bool x, const char* exprstr, const char* file, int line, const char* fmt, ArgsT&&... args)
+{
+    static auto tmpfprintf = fprintf;
+    if(!x)
+    {
+        fprintf(stderr, "ASSERTION FAILED at %s:%d: %s", file, line, exprstr);
+        if(fmt != nullptr)
+        {
+            fprintf(stderr, ": ");
+            tmpfprintf(stderr, fmt, args...);
+        }
+        fprintf(stderr, "\n");
+        fflush(stderr);
+        abort();
+    }
+}
+
 
 
 
@@ -1211,16 +1090,16 @@ class GenericList
             size_t tomovebytes;
             void* src;
             void* dest;
-            if(ix == (this->m_listcount - 1))
+            if(ix == (m_listcount - 1))
             {
-                this->m_listcount--;
+                m_listcount--;
                 return true;
             }
-            tomovebytes = (this->m_listcount - 1 - ix) * sizeof(ValType);
-            dest = this->m_listitems + (ix * sizeof(ValType));
-            src = this->m_listitems + ((ix + 1) * sizeof(ValType));
+            tomovebytes = (m_listcount - 1 - ix) * sizeof(ValType);
+            dest = m_listitems + (ix * sizeof(ValType));
+            src = m_listitems + ((ix + 1) * sizeof(ValType));
             memmove(dest, src, tomovebytes);
-            this->m_listcount--;
+            m_listcount--;
             return true;
         }
 
@@ -1230,22 +1109,22 @@ class GenericList
             size_t ncap;
             size_t oldcap;
             (void)first;
-            if(this->m_listcapacity < needsize)
+            if(m_listcapacity < needsize)
             {
-                oldcap = this->m_listcapacity;
-                ncap = MC_UTIL_INCCAPACITY(this->m_listcapacity + needsize);
-                this->m_listcapacity = ncap;
-                if(this->m_listitems == nullptr)
+                oldcap = m_listcapacity;
+                ncap = MC_UTIL_INCCAPACITY(m_listcapacity + needsize);
+                m_listcapacity = ncap;
+                if(m_listitems == nullptr)
                 {
-                    this->m_listitems = (ValType*)mc_memory_malloc(sizeof(ValType) * ncap);
+                    m_listitems = (ValType*)mc_memory_malloc(sizeof(ValType) * ncap);
                 }
                 else
                 {
-                    this->m_listitems = (ValType*)mc_memory_realloc(this->m_listitems, sizeof(ValType) * ncap);
+                    m_listitems = (ValType*)mc_memory_realloc(m_listitems, sizeof(ValType) * ncap);
                 }
                 for(i = oldcap; i < ncap; i++)
                 {
-                    this->m_listitems[i] = fillval;
+                    m_listitems[i] = fillval;
                 }
             }
         }
@@ -1253,13 +1132,13 @@ class GenericList
     public:
         inline GenericList(size_t initialsize, ValType nullval)
         {
-            this->m_listcount = 0;
-            this->m_listcapacity = 0;
-            this->m_listitems = nullptr;
-            this->m_nullvalue = nullval;
+            m_listcount = 0;
+            m_listcapacity = 0;
+            m_listitems = nullptr;
+            m_nullvalue = nullval;
             if(initialsize > 0)
             {
-                this->ensureCapacity(initialsize, this->m_nullvalue, true);
+                this->ensureCapacity(initialsize, m_nullvalue, true);
             }
         }
 
@@ -1270,67 +1149,67 @@ class GenericList
 
         inline size_t count()
         {
-            return this->m_listcount;
+            return m_listcount;
         }
 
         inline ValType* data()
         {
-            return this->m_listitems;
+            return m_listitems;
         }
 
         inline ValType get(size_t idx)
         {
-            return this->m_listitems[idx];
+            return m_listitems[idx];
         }
 
         inline ValType* getp(size_t idx)
         {
-            return &this->m_listitems[idx];
+            return &m_listitems[idx];
         }
 
         inline ValType* set(size_t idx, ValType val)
         {
             size_t need;
             need = idx + 1;
-            if(((idx == 0) || (this->m_listcapacity == 0)) || (idx >= this->m_listcapacity))
+            if(((idx == 0) || (m_listcapacity == 0)) || (idx >= m_listcapacity))
             {
-                this->ensureCapacity(need, this->m_nullvalue, false);
+                this->ensureCapacity(need, m_nullvalue, false);
             }
-            if(idx > this->m_listcount)
+            if(idx > m_listcount)
             {
-                this->m_listcount = idx;
+                m_listcount = idx;
             }
-            this->m_listitems[idx] = val;
-            return &this->m_listitems[idx];
+            m_listitems[idx] = val;
+            return &m_listitems[idx];
         }
 
         inline bool push(ValType value)
         {
             size_t oldcap;
-            if(this->m_listcapacity < this->m_listcount + 1)
+            if(m_listcapacity < m_listcount + 1)
             {
-                oldcap = this->m_listcapacity;
-                this->m_listcapacity = MC_UTIL_INCCAPACITY(oldcap);
-                if(this->m_listitems == nullptr)
+                oldcap = m_listcapacity;
+                m_listcapacity = MC_UTIL_INCCAPACITY(oldcap);
+                if(m_listitems == nullptr)
                 {
-                    this->m_listitems = (ValType*)mc_memory_malloc(sizeof(ValType) * this->m_listcapacity);
+                    m_listitems = (ValType*)mc_memory_malloc(sizeof(ValType) * m_listcapacity);
                 }
                 else
                 {
-                    this->m_listitems = (ValType*)mc_memory_realloc(this->m_listitems, sizeof(ValType) * this->m_listcapacity);
+                    m_listitems = (ValType*)mc_memory_realloc(m_listitems, sizeof(ValType) * m_listcapacity);
                 }
             }
-            this->m_listitems[this->m_listcount] = value;
-            this->m_listcount++;
+            m_listitems[m_listcount] = value;
+            m_listcount++;
             return true;
         }
 
         inline bool pop(ValType* dest)
         {
-            if(this->m_listcount > 0)
+            if(m_listcount > 0)
             {
-                *dest = this->m_listitems[this->m_listcount - 1];
-                this->m_listcount--;
+                *dest = m_listitems[m_listcount - 1];
+                m_listcount--;
                 return true;
             }
             return false;
@@ -1338,15 +1217,15 @@ class GenericList
 
         inline bool removeAt(unsigned int ix)
         {
-            if(ix >= this->m_listcount)
+            if(ix >= m_listcount)
             {
                 return false;
             }
             if(ix == 0)
             {
-                this->m_listitems += sizeof(ValType);
-                this->m_listcapacity--;
-                this->m_listcount--;
+                m_listitems += sizeof(ValType);
+                m_listcapacity--;
+                m_listcount--;
                 return true;
             }
             return this->removeAtIntern(ix);
@@ -1354,28 +1233,29 @@ class GenericList
 
         inline void setEmpty()
         {
-            if((this->m_listcapacity > 0) && (this->m_listitems != nullptr))
+            if((m_listcapacity > 0) && (m_listitems != nullptr))
             {
-                memset(this->m_listitems, 0, sizeof(ValType) * this->m_listcapacity);
+                memset(m_listitems, 0, sizeof(ValType) * m_listcapacity);
             }
-            this->m_listcount = 0;
-            this->m_listcapacity = 0;
+            m_listcount = 0;
+            m_listcapacity = 0;
         }
 };
 
-using mcvallist_t = GenericList<mcvalue_t>;
-using mcframelist_t = GenericList<mcvmframe_t>;
-
-#define MC_BASICLIST_INITIALSIZE (32)
 
 class PtrList
 {
     public:
-        static bool initCapacity(PtrList* list, unsigned int capacity, size_t tsz, bool isp)
+        enum {
+            InitialSize = 32,
+        };
+
+    public:
+        static inline bool initCapacity(PtrList* list, unsigned int capacity, size_t tsz, bool isp)
         {
             if(isp)
             {
-                tsz = 8;
+                tsz = sizeof(void*);
             }
             list->m_ptrlisttypesize = tsz;
             list->m_ptrlistisptr = isp;
@@ -1399,12 +1279,12 @@ class PtrList
             return true;
         }
 
-        static void deInit(PtrList* list)
+        static inline void deInit(PtrList* list)
         {
             mc_memory_free(list->m_ptrlistallocdata);
         }
 
-        static void destroy(PtrList* list, mcitemdestroyfn_t dfn)
+        static inline void destroy(PtrList* list, mcitemdestroyfn_t dfn)
         {
             if(list != nullptr)
             {    
@@ -1417,7 +1297,7 @@ class PtrList
             }
         }
 
-        static void clearAndDestroy(PtrList* list, mcitemdestroyfn_t dfn)
+        static inline void clearAndDestroy(PtrList* list, mcitemdestroyfn_t dfn)
         {
             size_t i;
             void* item;
@@ -1429,24 +1309,50 @@ class PtrList
             list->clear();
         }
 
-        static void orphanData(PtrList* list)
+        static inline void orphanData(PtrList* list)
         {
             PtrList::initCapacity(list, 0, list->m_ptrlisttypesize, list->m_ptrlistisptr);
         }
 
-        static PtrList* copy(PtrList* list, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
+    protected:
+        unsigned char* m_ptrlistitems;
+        unsigned char* m_ptrlistallocdata;
+        unsigned int m_ptrlistcount;
+        unsigned int m_listcapacity;
+        size_t m_ptrlisttypesize;
+        bool m_ptrlistcaplocked;
+        bool m_ptrlistisptr;
+
+    public:
+        inline PtrList(size_t tsz, bool isp): PtrList(PtrList::InitialSize, tsz, isp)
+        {
+        }
+
+        inline PtrList(unsigned int capacity, size_t tsz, bool isp)
+        {
+            bool ok;
+            ok = initCapacity(this, capacity, tsz, isp);
+            assert(ok);
+        }
+
+        inline ~PtrList()
+        {
+            PtrList::destroy(this, nullptr);
+        }
+
+        inline PtrList* copy(mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
         {
             bool ok;
             size_t i;
             void* item;
             void* itemcopy;
             PtrList* arrcopy;
-            arrcopy = Memory::make<PtrList>(list->m_ptrlisttypesize, list->m_ptrlistisptr);
+            arrcopy = Memory::make<PtrList>(m_ptrlisttypesize, m_ptrlistisptr);
             if(copyfn)
             {
-                for(i = 0; i < list->count(); i++)
+                for(i = 0; i < this->count(); i++)
                 {
-                    item = (void*)list->get(i);
+                    item = (void*)this->get(i);
                     itemcopy = item;
                     if(copyfn)
                     {
@@ -1466,20 +1372,20 @@ class PtrList
             }
             else
             {
-                arrcopy->m_listcapacity = list->m_listcapacity;
-                arrcopy->m_ptrlistcount = list->m_ptrlistcount;
-                arrcopy->m_ptrlisttypesize = list->m_ptrlisttypesize;
-                arrcopy->m_ptrlistcaplocked = list->m_ptrlistcaplocked;
-                if(list->m_ptrlistallocdata)
+                arrcopy->m_listcapacity = m_listcapacity;
+                arrcopy->m_ptrlistcount = m_ptrlistcount;
+                arrcopy->m_ptrlisttypesize = m_ptrlisttypesize;
+                arrcopy->m_ptrlistcaplocked = m_ptrlistcaplocked;
+                if(m_ptrlistallocdata)
                 {
-                    arrcopy->m_ptrlistallocdata = (unsigned char*)mc_memory_malloc(list->m_listcapacity * list->m_ptrlisttypesize);
+                    arrcopy->m_ptrlistallocdata = (unsigned char*)mc_memory_malloc(m_listcapacity * m_ptrlisttypesize);
                     if(!arrcopy->m_ptrlistallocdata)
                     {
                         mc_memory_free(arrcopy);
                         return nullptr;
                     }
                     arrcopy->m_ptrlistitems = arrcopy->m_ptrlistallocdata;
-                    memcpy(arrcopy->m_ptrlistallocdata, list->m_ptrlistitems, list->m_listcapacity * list->m_ptrlisttypesize);
+                    memcpy(arrcopy->m_ptrlistallocdata, m_ptrlistitems, m_listcapacity * m_ptrlisttypesize);
                 }
                 else
                 {
@@ -1493,92 +1399,66 @@ class PtrList
             return nullptr;
         }
 
-    protected:
-        unsigned char* m_ptrlistitems;
-        unsigned char* m_ptrlistallocdata;
-        unsigned int m_ptrlistcount;
-        unsigned int m_listcapacity;
-        size_t m_ptrlisttypesize;
-        bool m_ptrlistcaplocked;
-        bool m_ptrlistisptr;
-
-    public:
-        PtrList(size_t tsz, bool isp): PtrList(MC_BASICLIST_INITIALSIZE, tsz, isp)
-        {
-        }
-
-        PtrList(unsigned int capacity, size_t tsz, bool isp)
-        {
-            bool ok;
-            ok = initCapacity(this, capacity, tsz, isp);
-            assert(ok);
-        }
-
-        ~PtrList()
-        {
-            PtrList::destroy(this, nullptr);
-        }
-
-        bool push(void* value)
+        inline bool push(void* value)
         {
             unsigned int ncap;
             unsigned char* newdata;
-            if(this->m_ptrlistcount >= this->m_listcapacity)
+            if(m_ptrlistcount >= m_listcapacity)
             {
-                MC_ASSERT(!this->m_ptrlistcaplocked);
-                if(this->m_ptrlistcaplocked)
+                MC_ASSERT(!m_ptrlistcaplocked);
+                if(m_ptrlistcaplocked)
                 {
                     return false;
                 }
-                ncap = MC_UTIL_INCCAPACITY(this->m_listcapacity);
-                newdata = (unsigned char*)mc_memory_realloc(this->m_ptrlistallocdata, ncap * this->m_ptrlisttypesize);
+                ncap = MC_UTIL_INCCAPACITY(m_listcapacity);
+                newdata = (unsigned char*)mc_memory_realloc(m_ptrlistallocdata, ncap * m_ptrlisttypesize);
                 if(!newdata)
                 {
                     return false;
                 }
-                this->m_ptrlistallocdata = newdata;
-                this->m_ptrlistitems = this->m_ptrlistallocdata;
-                this->m_listcapacity = ncap;
+                m_ptrlistallocdata = newdata;
+                m_ptrlistitems = m_ptrlistallocdata;
+                m_listcapacity = ncap;
             }
             if(value)
             {
-                if(this->m_ptrlistisptr)
+                if(m_ptrlistisptr)
                 {
-                    ((void**)this->m_ptrlistitems)[this->m_ptrlistcount] = value;
+                    ((void**)m_ptrlistitems)[m_ptrlistcount] = value;
                 }
                 else
                 {
-                    memcpy(this->m_ptrlistitems + (this->m_ptrlistcount * this->m_ptrlisttypesize), value, this->m_ptrlisttypesize);
+                    memcpy(m_ptrlistitems + (m_ptrlistcount * m_ptrlisttypesize), value, m_ptrlisttypesize);
                 }
             }
-            this->m_ptrlistcount++;
+            m_ptrlistcount++;
             return true;
         }
 
-        bool pop(void** outvalue)
+        inline bool pop(void** outvalue)
         {
             void* res;
-            if(this->m_ptrlistcount <= 0)
+            if(m_ptrlistcount <= 0)
             {
                 return false;
             }
             if(outvalue != nullptr)
             {
-                res = this->get(this->m_ptrlistcount - 1);
-                if(this->m_ptrlistisptr)
+                res = this->get(m_ptrlistcount - 1);
+                if(m_ptrlistisptr)
                 {
                     *outvalue = res;
                 }
                 else
                 {
-                    memcpy(*outvalue, res, this->m_ptrlisttypesize);
+                    memcpy(*outvalue, res, m_ptrlisttypesize);
                 }
             }
-            this->removeAt(this->m_ptrlistcount - 1);
+            this->removeAt(m_ptrlistcount - 1);
             return true;
         }
 
-        void* popReturn()
+        inline void* popReturn()
         {
             void* dest;
             if(this->pop(&dest))
@@ -1588,111 +1468,111 @@ class PtrList
             return nullptr;
         }
 
-        void* top()
+        inline void* top()
         {
-            if(this->m_ptrlistcount <= 0)
+            if(m_ptrlistcount <= 0)
             {
                 return nullptr;
             }
-            return this->get(this->m_ptrlistcount - 1);
+            return this->get(m_ptrlistcount - 1);
         }
 
-        bool set(unsigned int ix, void* value)
+        inline bool set(unsigned int ix, void* value)
         {
             size_t offset;
-            if(ix >= this->m_ptrlistcount)
+            if(ix >= m_ptrlistcount)
             {
                 MC_ASSERT(false);
                 return false;
             }
-            if(this->m_ptrlistisptr)
+            if(m_ptrlistisptr)
             {
-                ((void**)this->m_ptrlistitems)[ix] = value;
+                ((void**)m_ptrlistitems)[ix] = value;
             }
             else
             {
-                offset = ix * this->m_ptrlisttypesize;
-                memmove(this->m_ptrlistitems + offset, value, this->m_ptrlisttypesize);
+                offset = ix * m_ptrlisttypesize;
+                memmove(m_ptrlistitems + offset, value, m_ptrlisttypesize);
             }
             return true;
         }
 
-        void* get(unsigned int ix)
+        inline void* get(unsigned int ix)
         {
             size_t offset;
-            if(ix >= this->m_ptrlistcount)
+            if(ix >= m_ptrlistcount)
             {
                 MC_ASSERT(false);
                 return nullptr;
             }
-            if(this->m_ptrlistisptr)
+            if(m_ptrlistisptr)
             {
-                return ((void**)this->m_ptrlistitems)[ix];
+                return ((void**)m_ptrlistitems)[ix];
             }
-            offset = ix * this->m_ptrlisttypesize;
-            return this->m_ptrlistitems + offset;
+            offset = ix * m_ptrlisttypesize;
+            return m_ptrlistitems + offset;
         }
 
-        size_t count()
+        inline size_t count()
         {
-            return this->m_ptrlistcount;
+            return m_ptrlistcount;
         }
 
-        bool removeAt(unsigned int ix)
+        inline bool removeAt(unsigned int ix)
         {
             size_t tomovebytes;
             void* dest;
             void* src;
-            if(ix >= this->m_ptrlistcount)
+            if(ix >= m_ptrlistcount)
             {
                 return false;
             }
-            if(!this->m_ptrlistisptr)
+            if(!m_ptrlistisptr)
             {
                 if(ix == 0)
                 {
-                    this->m_ptrlistitems += this->m_ptrlisttypesize;
-                    this->m_listcapacity--;
-                    this->m_ptrlistcount--;
+                    m_ptrlistitems += m_ptrlisttypesize;
+                    m_listcapacity--;
+                    m_ptrlistcount--;
                     return true;
                 }
-                if(ix == (this->m_ptrlistcount - 1))
+                if(ix == (m_ptrlistcount - 1))
                 {
-                    this->m_ptrlistcount--;
+                    m_ptrlistcount--;
                     return true;
                 }
-                tomovebytes = (this->m_ptrlistcount - 1 - ix) * this->m_ptrlisttypesize;
-                dest = this->m_ptrlistitems + (ix * this->m_ptrlisttypesize);
-                src = this->m_ptrlistitems + ((ix + 1) * this->m_ptrlisttypesize);
+                tomovebytes = (m_ptrlistcount - 1 - ix) * m_ptrlisttypesize;
+                dest = m_ptrlistitems + (ix * m_ptrlisttypesize);
+                src = m_ptrlistitems + ((ix + 1) * m_ptrlisttypesize);
                 memmove(dest, src, tomovebytes);
             }
-            this->m_ptrlistcount--;
+            m_ptrlistcount--;
             return true;
         }
 
-        void clear()
+        inline void clear()
         {
-            this->m_ptrlistcount = 0;
+            m_ptrlistcount = 0;
         }
 
-        void* data()
+        inline void* data()
         {
-            return this->m_ptrlistitems;
+            return m_ptrlistitems;
         }
 
-        void* getConstAt(unsigned int ix)
+        inline void* getConstAt(unsigned int ix)
         {
             size_t offset;
-            if(ix >= this->m_ptrlistcount)
+            if(ix >= m_ptrlistcount)
             {
                 MC_ASSERT(false);
                 return nullptr;
             }
-            offset = ix * this->m_ptrlisttypesize;
-            return this->m_ptrlistitems + offset;
+            offset = ix * m_ptrlisttypesize;
+            return m_ptrlistitems + offset;
         }
 
-        int getIndexOf(void* ptr)
+        inline int getIndexOf(void* ptr)
         {
             size_t i;
             for(i = 0; i < this->count(); i++)
@@ -1705,7 +1585,7 @@ class PtrList
             return -1;
         }
 
-        bool removeItem(void* ptr)
+        inline bool removeItem(void* ptr)
         {
             int ix;
             ix = this->getIndexOf(ptr);
@@ -1716,7 +1596,7 @@ class PtrList
             return this->removeAt(ix);
         }
 
-        bool contains(void* ptr)
+        inline bool contains(void* ptr)
         {
             return this->getIndexOf(ptr) >= 0;
         }
@@ -1726,7 +1606,7 @@ template<typename TypeKeyT, typename TypeValueT>
 class GenericDict
 {
     public:
-        static bool initDict(GenericDict* dict, unsigned int initialcapacity)
+        static inline bool initDict(GenericDict* dict, unsigned int initialcapacity)
         {
             unsigned int i;
             dict->m_vdcells = nullptr;
@@ -1762,7 +1642,7 @@ class GenericDict
             return false;
         }
 
-        static void deinit(GenericDict* dict)
+        static inline void deinit(GenericDict* dict)
         {
             dict->m_vdcount = 0;
             dict->m_vditemcapacity = 0;
@@ -1780,7 +1660,7 @@ class GenericDict
         }
 
 
-        static void destroy(GenericDict* dict)
+        static inline void destroy(GenericDict* dict)
         {
             if(dict != nullptr)
             {
@@ -1802,11 +1682,11 @@ class GenericDict
         mcitemcomparefn_t m_funckeyequalsfn;
 
     public:
-        GenericDict(): GenericDict(MC_CONF_GENERICDICTINITSIZE)
+        inline GenericDict(): GenericDict(MC_CONF_GENERICDICTINITSIZE)
         {
         }
 
-        GenericDict(unsigned int mincapacity)
+        inline GenericDict(unsigned int mincapacity)
         {
             bool ok;
             unsigned int capacity;
@@ -1815,22 +1695,22 @@ class GenericDict
             assert(ok);
         }
 
-        void setHashFunction(mcitemhashfn_t hashfn)
+        inline void setHashFunction(mcitemhashfn_t hashfn)
         {
-            this->m_funchashfn = hashfn;
+            m_funchashfn = hashfn;
         }
 
-        void setEqualsFunction(mcitemcomparefn_t equalsfn)
+        inline void setEqualsFunction(mcitemcomparefn_t equalsfn)
         {
-            this->m_funckeyequalsfn = equalsfn;
+            m_funckeyequalsfn = equalsfn;
         }
 
-        bool setKVIntern(unsigned int cellix, unsigned long hash, void* key, void* value)
+        inline bool setKVIntern(unsigned int cellix, unsigned long hash, void* key, void* value)
         {
             bool ok;
             bool found;
             unsigned int lastix;
-            if(this->m_vdcount >= this->m_vditemcapacity)
+            if(m_vdcount >= m_vditemcapacity)
             {
                 ok = this->growAndRehash();
                 if(!ok)
@@ -1839,17 +1719,17 @@ class GenericDict
                 }
                 cellix = this->getCellIndex(key, hash, &found);
             }
-            lastix = this->m_vdcount;
-            this->m_vdcount++;
-            this->m_vdcells[cellix] = lastix;
+            lastix = m_vdcount;
+            m_vdcount++;
+            m_vdcells[cellix] = lastix;
             this->setKeyAt(lastix, key);
             this->setValueAt(lastix, value);
-            this->m_vdcellindices[lastix] = cellix;
-            this->m_vdhashes[lastix] = hash;
+            m_vdcellindices[lastix] = cellix;
+            m_vdhashes[lastix] = hash;
             return true;
         }
 
-        bool setKV(void* key, void* value)
+        inline bool setKV(void* key, void* value)
         {
             bool found;
             unsigned long hash;
@@ -1860,20 +1740,20 @@ class GenericDict
             cellix = this->getCellIndex(key, hash, &found);
             if(found)
             {
-                itemix = this->m_vdcells[cellix];
+                itemix = m_vdcells[cellix];
                 this->setValueAt(itemix, value);
                 return true;
             }
             return this->setKVIntern(cellix, hash, key, value);
         }
 
-        void* get(void* key)
+        inline void* get(void* key)
         {
             bool found;
             unsigned int itemix;
             unsigned long hash;
             unsigned long cellix;
-            if(this->m_vdcount == 0)
+            if(m_vdcount == 0)
             {
                 return nullptr;
             }
@@ -1884,51 +1764,51 @@ class GenericDict
             {
                 return nullptr;
             }
-            itemix = this->m_vdcells[cellix];
+            itemix = m_vdcells[cellix];
             return this->getValueAt(itemix);
         }
 
-        void* getKeyAt(unsigned int ix)
+        inline void* getKeyAt(unsigned int ix)
         {
-            if(ix >= this->m_vdcount)
+            if(ix >= m_vdcount)
             {
                 return nullptr;
             }
-            return (char*)this->m_vdkeys + (sizeof(TypeKeyT) * ix);
+            return (char*)m_vdkeys + (sizeof(TypeKeyT) * ix);
         }
 
-        void* getValueAt(unsigned int ix)
+        inline void* getValueAt(unsigned int ix)
         {
-            if(ix >= this->m_vdcount)
+            if(ix >= m_vdcount)
             {
                 return nullptr;
             }
-            return (char*)this->m_vdvalues + (sizeof(TypeValueT) * ix);
+            return (char*)m_vdvalues + (sizeof(TypeValueT) * ix);
         }
 
-        unsigned int getCapacity()
+        inline unsigned int getCapacity()
         {
-            return this->m_vditemcapacity;
+            return m_vditemcapacity;
         }
 
-        bool setValueAt(unsigned int ix, void* value)
+        inline bool setValueAt(unsigned int ix, void* value)
         {
             size_t offset;
-            if(ix >= this->m_vdcount)
+            if(ix >= m_vdcount)
             {
                 return false;
             }
             offset = ix * sizeof(TypeValueT);
-            memcpy((char*)this->m_vdvalues + offset, value, sizeof(TypeValueT));
+            memcpy((char*)m_vdvalues + offset, value, sizeof(TypeValueT));
             return true;
         }
 
-        int count()
+        inline int count()
         {
-            return this->m_vdcount;
+            return m_vdcount;
         }
 
-        bool removeByKey(void* key)
+        inline bool removeByKey(void* key)
         {
             bool found;
             unsigned int x;
@@ -1948,51 +1828,51 @@ class GenericDict
             {
                 return false;
             }
-            itemix = this->m_vdcells[cell];
-            lastitemix = this->m_vdcount - 1;
+            itemix = m_vdcells[cell];
+            lastitemix = m_vdcount - 1;
             if(itemix < lastitemix)
             {
                 lastkey = this->getKeyAt(lastitemix);
                 this->setKeyAt(itemix, lastkey);
                 lastvalue = this->getKeyAt(lastitemix);
                 this->setValueAt(itemix, lastvalue);
-                this->m_vdcellindices[itemix] = this->m_vdcellindices[lastitemix];
-                this->m_vdhashes[itemix] = this->m_vdhashes[lastitemix];
-                this->m_vdcells[this->m_vdcellindices[itemix]] = itemix;
+                m_vdcellindices[itemix] = m_vdcellindices[lastitemix];
+                m_vdhashes[itemix] = m_vdhashes[lastitemix];
+                m_vdcells[m_vdcellindices[itemix]] = itemix;
             }
-            this->m_vdcount--;
+            m_vdcount--;
             i = cell;
             j = i;
-            for(x = 0; x < (this->m_vdcellcapacity - 1); x++)
+            for(x = 0; x < (m_vdcellcapacity - 1); x++)
             {
-                j = (j + 1) & (this->m_vdcellcapacity - 1);
-                if(this->m_vdcells[j] == MC_CONF_VALDICTINVALIDIX)
+                j = (j + 1) & (m_vdcellcapacity - 1);
+                if(m_vdcells[j] == MC_CONF_VALDICTINVALIDIX)
                 {
                     break;
                 }
-                k = (unsigned int)(this->m_vdhashes[this->m_vdcells[j]]) & (this->m_vdcellcapacity - 1);
+                k = (unsigned int)(m_vdhashes[m_vdcells[j]]) & (m_vdcellcapacity - 1);
                 if((j > i && (k <= i || k > j)) || (j < i && (k <= i && k > j)))
                 {
-                    this->m_vdcellindices[this->m_vdcells[j]] = i;
-                    this->m_vdcells[i] = this->m_vdcells[j];
+                    m_vdcellindices[m_vdcells[j]] = i;
+                    m_vdcells[i] = m_vdcells[j];
                     i = j;
                 }
             }
-            this->m_vdcells[i] = MC_CONF_VALDICTINVALIDIX;
+            m_vdcells[i] = MC_CONF_VALDICTINVALIDIX;
             return true;
         }
 
-        void clear()
+        inline void clear()
         {
             unsigned int i;
-            this->m_vdcount = 0;
-            for(i = 0; i < this->m_vdcellcapacity; i++)
+            m_vdcount = 0;
+            for(i = 0; i < m_vdcellcapacity; i++)
             {
-                this->m_vdcells[i] = MC_CONF_VALDICTINVALIDIX;
+                m_vdcells[i] = MC_CONF_VALDICTINVALIDIX;
             }
         }
 
-        unsigned int getCellIndex(void* key, unsigned long hash, bool* outfound)
+        inline unsigned int getCellIndex(void* key, unsigned long hash, bool* outfound)
         {
             bool areequal;
             unsigned int i;
@@ -2002,16 +1882,16 @@ class GenericDict
             unsigned long hashtocheck;
             void* keytocheck;
             *outfound = false;
-            cellix = (unsigned int)hash & (this->m_vdcellcapacity - 1);
-            for(i = 0; i < this->m_vdcellcapacity; i++)
+            cellix = (unsigned int)hash & (m_vdcellcapacity - 1);
+            for(i = 0; i < m_vdcellcapacity; i++)
             {
-                ix = (cellix + i) & (this->m_vdcellcapacity - 1);
-                cell = this->m_vdcells[ix];
+                ix = (cellix + i) & (m_vdcellcapacity - 1);
+                cell = m_vdcells[ix];
                 if(cell == MC_CONF_VALDICTINVALIDIX)
                 {
                     return ix;
                 }
-                hashtocheck = this->m_vdhashes[cell];
+                hashtocheck = m_vdhashes[cell];
                 if(hash != hashtocheck)
                 {
                     continue;
@@ -2027,18 +1907,18 @@ class GenericDict
             return MC_CONF_VALDICTINVALIDIX;
         }
 
-        bool growAndRehash()
+        inline bool growAndRehash()
         {
             bool ok;
             unsigned int i;
             unsigned ncap;
             char* key;
             void* value;
-            ncap = MC_UTIL_INCCAPACITY(this->m_vdcellcapacity);    
+            ncap = MC_UTIL_INCCAPACITY(m_vdcellcapacity);    
             GenericDict newdict(ncap);
-            newdict.m_funckeyequalsfn = this->m_funckeyequalsfn;
-            newdict.m_funchashfn = this->m_funchashfn;
-            for(i = 0; i < this->m_vdcount; i++)
+            newdict.m_funckeyequalsfn = m_funckeyequalsfn;
+            newdict.m_funchashfn = m_funchashfn;
+            for(i = 0; i < m_vdcount; i++)
             {
                 key = (char*)this->getKeyAt(i);
                 value = this->getValueAt(i);
@@ -2054,43 +1934,42 @@ class GenericDict
             return true;
         }
 
-        bool setKeyAt(unsigned int ix, void* key)
+        inline bool setKeyAt(unsigned int ix, void* key)
         {
             size_t offset;
-            if(ix >= this->m_vdcount)
+            if(ix >= m_vdcount)
             {
                 return false;
             }
             offset = ix * sizeof(TypeKeyT);
-            memcpy((char*)this->m_vdkeys + offset, key, sizeof(TypeKeyT));
+            memcpy((char*)m_vdkeys + offset, key, sizeof(TypeKeyT));
             return true;
         }
 
-        bool keysAreEqual(void* a, void* b)
+        inline bool keysAreEqual(void* a, void* b)
         {
-            if(this->m_funckeyequalsfn)
+            if(m_funckeyequalsfn)
             {
-                return this->m_funckeyequalsfn(a, b);
+                return m_funckeyequalsfn(a, b);
             }
             return memcmp(a, b, sizeof(TypeKeyT)) == 0;
         }
 
-        unsigned long hashKey(void* key)
+        inline unsigned long hashKey(void* key)
         {
-            if(this->m_funchashfn)
+            if(m_funchashfn)
             {
-                return this->m_funchashfn(key);
+                return m_funchashfn(key);
             }
             return mc_util_hashdata(key, sizeof(TypeKeyT));
         }
-
 };
 
 
-class mcptrdict_t
+class PtrDict
 {
     public:
-        static bool initValues(mcptrdict_t* dict, unsigned int initialcapacity, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
+        static bool initValues(PtrDict* dict, unsigned int initialcapacity, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
         {
             unsigned int i;
             dict->gdcells = nullptr;
@@ -2127,7 +2006,7 @@ class mcptrdict_t
             return false;
         }
 
-        static void deinitValues(mcptrdict_t* dict, bool freekeys)
+        static void deinitValues(PtrDict* dict, bool freekeys)
         {
             unsigned int i;
             if(freekeys)
@@ -2156,16 +2035,16 @@ class mcptrdict_t
             dict->gdhashes = nullptr;
         }
 
-        static void destroy(mcptrdict_t* dict)
+        static void destroy(PtrDict* dict)
         {
             if(dict != nullptr)
             {
-                mcptrdict_t::deinitValues(dict, true);
+                PtrDict::deinitValues(dict, true);
                 mc_memory_free(dict);
             }
         }
 
-        static void destroyItemsAndDict(mcptrdict_t* dict)
+        static void destroyItemsAndDict(PtrDict* dict)
         {
             unsigned int i;
             if(dict != nullptr)
@@ -2177,7 +2056,7 @@ class mcptrdict_t
                         dict->funcdestroyfn(dict->gdvalues[i]);
                     }
                 }
-                mcptrdict_t::destroy(dict);
+                PtrDict::destroy(dict);
             }
         }
 
@@ -2194,21 +2073,21 @@ class mcptrdict_t
         mcitemdestroyfn_t funcdestroyfn;
 
     public:
-        mcptrdict_t(): mcptrdict_t(nullptr, nullptr)
+        PtrDict(): PtrDict(nullptr, nullptr)
         {
         }
 
-        mcptrdict_t(size_t cap, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
+        PtrDict(size_t cap, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
         {
             bool ok;
-            ok = mcptrdict_t::initValues(this, cap, copyfn, dfn);
+            ok = PtrDict::initValues(this, cap, copyfn, dfn);
             assert(ok);
         }
 
-        mcptrdict_t(mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
+        PtrDict(mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
         {
             bool ok;
-            ok = mcptrdict_t::initValues(this, MC_CONF_GENERICDICTINITSIZE, copyfn, dfn);
+            ok = PtrDict::initValues(this, MC_CONF_GENERICDICTINITSIZE, copyfn, dfn);
             assert(ok);
         }
 
@@ -2220,7 +2099,7 @@ class mcptrdict_t
             void* value;
             size_t ncap;
             ncap = MC_UTIL_INCCAPACITY(this->gdcellcapacity);
-            mcptrdict_t newdict(ncap, this->funccopyfn, this->funcdestroyfn);
+            PtrDict newdict(ncap, this->funccopyfn, this->funcdestroyfn);
             for(i = 0; i < this->gdcount; i++)
             {
                 key = this->gdkeys[i];
@@ -2228,11 +2107,11 @@ class mcptrdict_t
                 ok = newdict.setActual(key, key, value);
                 if(!ok)
                 {
-                    mcptrdict_t::deinitValues(&newdict, false);
+                    PtrDict::deinitValues(&newdict, false);
                     return false;
                 }
             }
-            mcptrdict_t::deinitValues(this, false);
+            PtrDict::deinitValues(this, false);
             *this = newdict;
             return true;
         }
@@ -2419,19 +2298,19 @@ class mcptrdict_t
             return true;
         }
 
-        mcptrdict_t* copy()
+        PtrDict* copy()
         {
             bool ok;
             size_t i;
             void* item;
             void* itemcopy;
             const char* key;
-            mcptrdict_t* dictcopy;
+            PtrDict* dictcopy;
             if(!this->funccopyfn || !this->funcdestroyfn)
             {
                 return nullptr;
             }
-            dictcopy = Memory::make<mcptrdict_t>(this->funccopyfn, this->funcdestroyfn);
+            dictcopy = Memory::make<PtrDict>(this->funccopyfn, this->funcdestroyfn);
             if(!dictcopy)
             {
                 return nullptr;
@@ -2443,14 +2322,14 @@ class mcptrdict_t
                 itemcopy = dictcopy->funccopyfn(item);
                 if(item && !itemcopy)
                 {
-                    mcptrdict_t::destroyItemsAndDict(dictcopy);
+                    PtrDict::destroyItemsAndDict(dictcopy);
                     return nullptr;
                 }
                 ok = dictcopy->set(key, itemcopy);
                 if(!ok)
                 {
                     dictcopy->funcdestroyfn(itemcopy);
-                    mcptrdict_t::destroyItemsAndDict(dictcopy);
+                    PtrDict::destroyItemsAndDict(dictcopy);
                     return nullptr;
                 }
             }
@@ -2699,7 +2578,7 @@ struct mcobjmap_t
 
 struct mcobjarray_t
 {
-    mcvallist_t* actualarray;
+    GenericList<mcvalue_t>* actualarray;
 };
 
 struct mcobjfunction_t
@@ -2773,7 +2652,7 @@ struct mcastsymbol_t
 struct mcastscopeblock_t
 {
     mcstate_t* pstate;
-    mcptrdict_t* scopestore;
+    PtrDict* scopestore;
     int offset;
     int numdefinitions;
 };
@@ -2836,6 +2715,30 @@ struct mcastcompiledfile_t
 
 struct mcerror_t
 {
+    public:
+        static const char* mc_util_errtypename(mcerrtype_t type)
+        {
+            switch(type)
+            {
+                case MC_ERROR_PARSING:
+                    return "PARSING";
+                case MC_ERROR_COMPILING:
+                    return "COMPILATION";
+                case MC_ERROR_RUNTIME:
+                    return "RUNTIME";
+                case MC_ERROR_TIMEOUT:
+                    return "TIMEOUT";
+                case MC_ERROR_MEMORY:
+                    return "ALLOCATION";
+                case MC_ERROR_USER:
+                    return "USER";
+                default:
+                    break;
+            }
+            return "INVALID";
+        }
+
+    public:
     mcerrtype_t errtype;
     char message[MC_CONF_MAXERRORMSGLENGTH];
     mcastlocation_t pos;
@@ -2844,37 +2747,874 @@ struct mcerror_t
 
 struct mcerrlist_t
 {
-    mcerror_t errors[MC_CONF_MAXERRORCOUNT];
-    int count;
+
+    public:
+        mcerror_t errors[MC_CONF_MAXERRORCOUNT];
+        int count;
+
+    public:
+        static void init(mcerrlist_t* tgt)
+        {
+            memset(tgt, 0, sizeof(mcerrlist_t));
+            tgt->count = 0;
+        }
+
+        static void deinit(mcerrlist_t* tgt)
+        {
+            tgt->clear();
+        }
+
+        void pushMessage(mcerrtype_t type, mcastlocation_t pos, const char* message)
+        {
+            int len;
+            int tocopy;
+            mcerror_t err;
+            if(this->count >= MC_CONF_MAXERRORCOUNT)
+            {
+            }
+            else
+            {
+                memset(&err, 0, sizeof(mcerror_t));
+                err.errtype = type;
+                len = mc_util_strlen(message);
+                tocopy = len;
+                if(tocopy >= (MC_CONF_MAXERRORMSGLENGTH - 1))
+                {
+                    tocopy = MC_CONF_MAXERRORMSGLENGTH - 1;
+                }
+                memcpy(err.message, message, tocopy);
+                err.message[tocopy] = '\0';
+                err.pos = pos;
+                err.traceback = nullptr;
+                this->errors[this->count] = err;
+                this->count++;
+            }
+        }
+
+        template<typename... ArgsT>
+        void pushFormat(mcerrtype_t type, mcastlocation_t pos, const char* format, ArgsT&&... args)
+        {
+            static auto tmpsnprintf = snprintf;
+            int needsz;
+            int printedsz;
+            char res[MC_CONF_MAXERRORMSGLENGTH];
+            (void)needsz;
+            (void)printedsz;
+            needsz = tmpsnprintf(nullptr, 0, format, args...);
+            printedsz = tmpsnprintf(res, MC_CONF_MAXERRORMSGLENGTH, format, args...);
+            MC_ASSERT(needsz == printedsz);
+            this->pushMessage(type, pos, res);
+        }
+
+
+        void clear()
+        {
+            int i;
+            mcerror_t* error;
+            for(i = 0; i < this->count; i++)
+            {
+                error = this->get(i);
+                if(error->traceback)
+                {
+                    mc_traceback_destroy(error->traceback);
+                }
+            }
+            this->count = 0;
+        }
+
+        mcerror_t* get(int ix)
+        {
+            if(ix >= this->count)
+            {
+                return nullptr;
+            }
+            return &this->errors[ix];
+        }
+
+        mcerror_t* getLast()
+        {
+            if(this->count <= 0)
+            {
+                return nullptr;
+            }
+            return &this->errors[this->count - 1];
+        }
+
+
+
 };
 
 struct mcastlexprevinfo_t
 {
-    int position;
-    int nextposition;
-    char ch;
-    int line;
-    int column;
+        mcstate_t* pstate;
+        mcerrlist_t* m_errors;
+        const char* m_inputsource;
+        int m_inputlength;
+        int m_position;
+        int m_nextposition;
+        char m_ch;
+        size_t m_line;
+        size_t m_column;
+        mcastcompiledfile_t* m_file;
+        bool m_failed;
+        bool m_continuetplstring;
+        mcasttoken_t m_prevtoken;
+        mcasttoken_t m_currtoken;
+        mcasttoken_t m_peektoken;
 };
 
-struct mcastlexer_t
+struct mcastlexer_t: public mcastlexprevinfo_t
 {
-    mcstate_t* pstate;
-    mcerrlist_t* errors;
-    const char* inputsource;
-    int inputlength;
-    int position;
-    int nextposition;
-    char ch;
-    size_t line;
-    size_t column;
-    mcastcompiledfile_t* file;
-    bool failed;
-    bool continuetplstring;
-    mcastlexprevinfo_t prevstate;
-    mcasttoken_t prevtoken;
-    mcasttoken_t currtoken;
-    mcasttoken_t peektoken;
+    public:
+        static bool charIsLetter(char ch)
+        {
+            return (
+                (('a' <= ch) && (ch <= 'z')) || (('A' <= ch) && (ch <= 'Z')) || (ch == '_')
+            );
+        }
+
+        static bool charIsDigit(char ch)
+        {
+            return (
+                (ch >= '0') && (ch <= '9')
+            );
+        }
+
+
+        static bool charIsOneOf(char ch, const char* allowed, int allowedlen)
+        {
+            int i;
+            for(i = 0; i < allowedlen; i++)
+            {
+                if(ch == allowed[i])
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        static bool init(mcastlexer_t* lex, mcstate_t* state, mcerrlist_t* errs, const char* input, mcastcompiledfile_t* file)
+        {
+            bool ok;
+            lex->pstate = state;
+            lex->m_errors = errs;
+            lex->m_inputsource = input;
+            lex->m_inputlength = (int)mc_util_strlen(input);
+            lex->m_position = 0;
+            lex->m_nextposition = 0;
+            lex->m_ch = '\0';
+            if(file)
+            {
+                lex->m_line = file->lines->count();
+            }
+            else
+            {
+                lex->m_line = 0;
+            }
+            lex->m_column = -1;
+            lex->m_file = file;
+            ok = lex->addLineAt(0);
+            if(!ok)
+            {
+                return false;
+            }
+            ok = lex->readChar();
+            if(!ok)
+            {
+                return false;
+            }
+            lex->m_failed = false;
+            lex->m_continuetplstring = false;
+            memset(&lex->m_prevstate, 0, sizeof(lex->m_prevstate));
+            mc_asttoken_init(&lex->m_prevtoken, MC_TOK_INVALID, nullptr, 0);
+            mc_asttoken_init(&lex->m_currtoken, MC_TOK_INVALID, nullptr, 0);
+            mc_asttoken_init(&lex->m_peektoken, MC_TOK_INVALID, nullptr, 0);
+            return true;
+        }
+
+    public:
+        mcastlexprevinfo_t m_prevstate;
+
+
+    public:
+        bool failed()
+        {
+            return this->m_failed;
+        }
+
+        void conttplstring()
+        {
+            this->m_continuetplstring = true;
+        }
+
+        bool currentTokenIs(mcasttoktype_t type)
+        {
+            return this->m_currtoken.toktype == type;
+        }
+
+        bool peekTokenIs(mcasttoktype_t type)
+        {
+            return this->m_peektoken.toktype == type;
+        }
+
+        bool nextToken()
+        {
+            this->m_prevtoken = this->m_currtoken;
+            this->m_currtoken = this->m_peektoken;
+            this->m_peektoken = this->nextTokenInternal();
+            return !this->m_failed;
+        }
+
+        bool previousToken()
+        {
+            if(this->m_prevtoken.toktype == MC_TOK_INVALID)
+            {
+                return false;
+            }
+            this->m_peektoken = this->m_currtoken;
+            this->m_currtoken = this->m_prevtoken;
+            mc_asttoken_init(&this->m_prevtoken, MC_TOK_INVALID, nullptr, 0);
+            this->m_ch = this->m_prevstate.m_ch;
+            this->m_column = this->m_prevstate.m_column;
+            this->m_line = this->m_prevstate.m_line;
+            this->m_position = this->m_prevstate.m_position;
+            this->m_nextposition = this->m_prevstate.m_nextposition;
+            return true;
+        }
+
+        mcasttoken_t nextTokenInternal()
+        {
+            char c;
+            mcasttoken_t outtok;
+            this->m_prevstate.m_ch = this->m_ch;
+            this->m_prevstate.m_column = this->m_column;
+            this->m_prevstate.m_line = this->m_line;
+            this->m_prevstate.m_position = this->m_position;
+            this->m_prevstate.m_nextposition = this->m_nextposition;
+            while(true)
+            {
+                if(!this->m_continuetplstring)
+                {
+                    this->skipSpace();
+                }
+                outtok.toktype = MC_TOK_INVALID;
+                outtok.tokstrdata = this->m_inputsource + this->m_position;
+                outtok.tokstrlen = 1;
+                outtok.pos = mc_astlocation_make(this->m_file, this->m_line, this->m_column);
+                c = this->m_continuetplstring ? '`' : this->m_ch;
+                switch(c)
+                {
+                    case '\0':
+                        {
+                            mc_asttoken_init(&outtok, MC_TOK_EOF, "EOF", 3);
+                        }
+                        break;
+                    case '=':
+                        {
+                            if(this->peekChar() == '=')
+                            {
+                                mc_asttoken_init(&outtok, MC_TOK_EQ, "==", 2);
+                                this->readChar();
+                            }
+                            else
+                            {
+                                mc_asttoken_init(&outtok, MC_TOK_ASSIGN, "=", 1);
+                            }
+                        }
+                        break;
+                    case '&':
+                        {
+                            if(this->peekChar() == '&')
+                            {
+                                mc_asttoken_init(&outtok, MC_TOK_AND, "&&", 2);
+                                this->readChar();
+                            }
+                            else if(this->peekChar() == '=')
+                            {
+                                mc_asttoken_init(&outtok, MC_TOK_ASSIGNBINAND, "&=", 2);
+                                this->readChar();
+                            }
+                            else
+                            {
+                                mc_asttoken_init(&outtok, MC_TOK_BINAND, "&", 1);
+                            }
+                        }
+                        break;
+                    case '|':
+                        {
+                            if(this->peekChar() == '|')
+                            {
+                                mc_asttoken_init(&outtok, MC_TOK_OR, "||", 2);
+                                this->readChar();
+                            }
+                            else if(this->peekChar() == '=')
+                            {
+                                mc_asttoken_init(&outtok, MC_TOK_ASSIGNBINOR, "|=", 2);
+                                this->readChar();
+                            }
+                            else
+                            {
+                                mc_asttoken_init(&outtok, MC_TOK_BINOR, "|", 1);
+                            }
+                        }
+                        break;
+                    case '^':
+                        {
+                            if(this->peekChar() == '=')
+                            {
+                                mc_asttoken_init(&outtok, MC_TOK_ASSIGNBINXOR, "^=", 2);
+                                this->readChar();
+                            }
+                            else
+                            {
+                                mc_asttoken_init(&outtok, MC_TOK_BINXOR, "^", 1);
+                                break;
+                            }
+                        }
+                        break;
+                    case '+':
+                        {
+                            if(this->peekChar() == '=')
+                            {
+                                mc_asttoken_init(&outtok, MC_TOK_ASSIGNPLUS, "+=", 2);
+                                this->readChar();
+                            }
+                            else if(this->peekChar() == '+')
+                            {
+                                mc_asttoken_init(&outtok, MC_TOK_PLUSPLUS, "++", 2);
+                                this->readChar();
+                            }
+                            else
+                            {
+                                mc_asttoken_init(&outtok, MC_TOK_PLUS, "+", 1);
+                                break;
+                            }
+                        }
+                        break;
+                    case '-':
+                        {
+                            if(this->peekChar() == '=')
+                            {
+                                mc_asttoken_init(&outtok, MC_TOK_ASSIGNMINUS, "-=", 2);
+                                this->readChar();
+                            }
+                            else if(this->peekChar() == '-')
+                            {
+                                mc_asttoken_init(&outtok, MC_TOK_MINUSMINUS, "--", 2);
+                                this->readChar();
+                            }
+                            else
+                            {
+                                mc_asttoken_init(&outtok, MC_TOK_UNARYMINUS, "-", 1);
+                                break;
+                            }
+                        }
+                        break;
+                    case '~':
+                        {
+                            mc_asttoken_init(&outtok, MC_TOK_UNARYBINNOT, "~", 1);
+                        }
+                        break;
+                    case '!':
+                        {
+                            if(this->peekChar() == '=')
+                            {
+                                mc_asttoken_init(&outtok, MC_TOK_NOTEQ, "!=", 2);
+                                this->readChar();
+                            }
+                            else
+                            {
+                                mc_asttoken_init(&outtok, MC_TOK_BANG, "!", 1);
+                            }
+                        }
+                        break;
+                    case '*':
+                        {
+                            if(this->peekChar() == '=')
+                            {
+                                mc_asttoken_init(&outtok, MC_TOK_ASSIGNASTERISK, "*=", 2);
+                                this->readChar();
+                            }
+                            else
+                            {
+                                mc_asttoken_init(&outtok, MC_TOK_ASTERISK, "*", 1);
+                                break;
+                            }
+                        }
+                        break;
+                    case '/':
+                        {
+                            if(this->peekChar() == '/')
+                            {
+                                this->readChar();
+                                while(this->m_ch != '\n' && this->m_ch != '\0')
+                                {
+                                    this->readChar();
+                                }
+                                continue;
+                            }
+                            if(this->peekChar() == '=')
+                            {
+                                mc_asttoken_init(&outtok, MC_TOK_ASSIGNSLASH, "/=", 2);
+                                this->readChar();
+                            }
+                            else
+                            {
+                                mc_asttoken_init(&outtok, MC_TOK_SLASH, "/", 1);
+                                break;
+                            }
+                        }
+                        break;
+                    case '<':
+                        {
+                            if(this->peekChar() == '=')
+                            {
+                                mc_asttoken_init(&outtok, MC_TOK_LTE, "<=", 2);
+                                this->readChar();
+                            }
+                            else if(this->peekChar() == '<')
+                            {
+                                this->readChar();
+                                if(this->peekChar() == '=')
+                                {
+                                    mc_asttoken_init(&outtok, MC_TOK_ASSIGNLSHIFT, "<<=", 3);
+                                    this->readChar();
+                                }
+                                else
+                                {
+                                    mc_asttoken_init(&outtok, MC_TOK_LSHIFT, "<<", 2);
+                                }
+                            }
+                            else
+                            {
+                                mc_asttoken_init(&outtok, MC_TOK_LT, "<", 1);
+                                break;
+                            }
+                        }
+                        break;
+                    case '>':
+                        {
+                            if(this->peekChar() == '=')
+                            {
+                                mc_asttoken_init(&outtok, MC_TOK_GTE, ">=", 2);
+                                this->readChar();
+                            }
+                            else if(this->peekChar() == '>')
+                            {
+                                this->readChar();
+                                if(this->peekChar() == '=')
+                                {
+                                    mc_asttoken_init(&outtok, MC_TOK_ASSIGNRSHIFT, ">>=", 3);
+                                    this->readChar();
+                                }
+                                else
+                                {
+                                    mc_asttoken_init(&outtok, MC_TOK_RSHIFT, ">>", 2);
+                                }
+                            }
+                            else
+                            {
+                                mc_asttoken_init(&outtok, MC_TOK_GT, ">", 1);
+                            }
+                        }
+                        break;
+                    case ',':
+                        {
+                            mc_asttoken_init(&outtok, MC_TOK_COMMA, ",", 1);
+                        }
+                        break;
+                    case ';':
+                        {
+                            mc_asttoken_init(&outtok, MC_TOK_SEMICOLON, ";", 1);
+                        }
+                        break;
+                    case ':':
+                        {
+                            mc_asttoken_init(&outtok, MC_TOK_COLON, ":", 1);
+                        }
+                        break;
+                    case '(':
+                        {
+                            mc_asttoken_init(&outtok, MC_TOK_LPAREN, "(", 1);
+                        }
+                        break;
+                    case ')':
+                        {
+                            mc_asttoken_init(&outtok, MC_TOK_RPAREN, ")", 1);
+                        }
+                        break;
+                    case '{':
+                        {
+                            mc_asttoken_init(&outtok, MC_TOK_LBRACE, "{", 1);
+                        }
+                        break;
+                    case '}':
+                        {
+                            mc_asttoken_init(&outtok, MC_TOK_RBRACE, "}", 1);
+                        }
+                        break;
+                    case '[':
+                        {
+                            mc_asttoken_init(&outtok, MC_TOK_LBRACKET, "[", 1);
+                        }
+                        break;
+                    case ']':
+                        {
+                            mc_asttoken_init(&outtok, MC_TOK_RBRACKET, "]", 1);
+                        }
+                        break;
+                    case '.':
+                        {
+                            mc_asttoken_init(&outtok, MC_TOK_DOT, ".", 1);
+                        }
+                        break;
+                    case '?':
+                        {
+                            mc_asttoken_init(&outtok, MC_TOK_QUESTION, "?", 1);
+                        }
+                        break;
+                    case '%':
+                        {
+                            if(this->peekChar() == '=')
+                            {
+                                mc_asttoken_init(&outtok, MC_TOK_ASSIGNPERCENT, "%=", 2);
+                                this->readChar();
+                            }
+                            else
+                            {
+                                mc_asttoken_init(&outtok, MC_TOK_PERCENT, "%", 1);
+                                break;
+                            }
+                        }
+                        break;
+                    case '"':
+                        {
+                            int len;
+                            const char* str;
+                            this->readChar();
+                            str = this->scanString('"', false, nullptr, &len);
+                            if(str)
+                            {
+                                mc_asttoken_init(&outtok, MC_TOK_STRING, str, len);
+                            }
+                            else
+                            {
+                                mc_asttoken_init(&outtok, MC_TOK_INVALID, nullptr, 0);
+                            }
+                        }
+                        break;
+                    case '\'':
+                        {
+                            int len;
+                            const char* str;
+                            this->readChar();
+                            str = this->scanString('\'', false, nullptr, &len);
+                            if(str)
+                            {
+                                mc_asttoken_init(&outtok, MC_TOK_STRING, str, len);
+                            }
+                            else
+                            {
+                                mc_asttoken_init(&outtok, MC_TOK_INVALID, nullptr, 0);
+                            }
+                        }
+                        break;
+                    case '`':
+                        {
+                            int len;
+                            bool templatefound;
+                            const char* str;
+                            if(!this->m_continuetplstring)
+                            {
+                                this->readChar();
+                            }
+                            templatefound = false;
+                            str = this->scanString('`', true, &templatefound, &len);
+                            if(str)
+                            {
+                                if(templatefound)
+                                {
+                                    mc_asttoken_init(&outtok, MC_TOK_TEMPLATESTRING, str, len);
+                                }
+                                else
+                                {
+                                    mc_asttoken_init(&outtok, MC_TOK_STRING, str, len);
+                                }
+                            }
+                            else
+                            {
+                                mc_asttoken_init(&outtok, MC_TOK_INVALID, nullptr, 0);
+                            }
+                        }
+                        break;
+                    default:
+                        {
+                            int identlen;
+                            int numberlen;
+                            const char* ident;
+                            const char* number;
+                            mcasttoktype_t type;
+                            if(charIsLetter(this->m_ch) || (this->m_ch == '$'))
+                            {
+                                identlen = 0;
+                                ident = this->scanIdent(&identlen);
+                                type = this->lookupIdent(ident, identlen);
+                                mc_asttoken_init(&outtok, type, ident, identlen);
+                                return outtok;
+                            }
+                            if(charIsDigit(this->m_ch))
+                            {
+                                numberlen = 0;
+                                number = this->scanNumber(&numberlen);
+                                mc_asttoken_init(&outtok, MC_TOK_NUMBER, number, numberlen);
+                                return outtok;
+                            }
+                        }
+                        break;
+                }
+                this->readChar();
+                if(this->failed())
+                {
+                    mc_asttoken_init(&outtok, MC_TOK_INVALID, nullptr, 0);
+                }
+                this->m_continuetplstring = false;
+                return outtok;
+            }
+            /* NB. never reached; but keep the compiler from complaining. */
+            return outtok;
+        }
+
+        bool expectCurrent(mcasttoktype_t type)
+        {
+            const char* actualtypestr;
+            const char* expectedtypestr;
+            if(this->failed())
+            {
+                return false;
+            }
+            if(!this->currentTokenIs(type))
+            {
+                expectedtypestr = mc_asttoken_typename(type);
+                actualtypestr = mc_asttoken_typename(this->m_currtoken.toktype);
+                this->m_errors->pushFormat(MC_ERROR_PARSING, this->m_currtoken.pos, "expected token \"%s\", but got \"%s\"", expectedtypestr, actualtypestr);
+                return false;
+            }
+            return true;
+        }
+
+        bool readChar()
+        {
+            bool ok; 
+            if(this->m_nextposition >= this->m_inputlength)
+            {
+                this->m_ch = '\0';
+            }
+            else
+            {
+                this->m_ch = this->m_inputsource[this->m_nextposition];
+            }
+            this->m_position = this->m_nextposition;
+            this->m_nextposition++;
+            if(this->m_ch == '\n')
+            {
+                this->m_line++;
+                this->m_column = -1;
+                ok = this->addLineAt(this->m_nextposition);
+                if(!ok)
+                {
+                    this->m_failed = true;
+                    return false;
+                }
+            }
+            else
+            {
+                this->m_column++;
+            }
+            return true;
+        }
+
+        char peekChar()
+        {
+            if(this->m_nextposition >= this->m_inputlength)
+            {
+                return '\0';
+            }
+            return this->m_inputsource[this->m_nextposition];
+        }
+
+        const char* scanIdent(int* outlen)
+        {
+            int len;
+            int position;
+            len = 0;
+            /*if(this->ch == '$')
+            {
+                this->readChar();
+            }
+            */
+            position = this->m_position;
+            while(charIsDigit(this->m_ch) || charIsLetter(this->m_ch) ||(this->m_ch == '$') || (this->m_ch == ':'))
+            {
+                if(this->m_ch == ':')
+                {
+                    if(this->peekChar() != ':')
+                    {
+                        goto end;
+                    }
+                    this->readChar();
+                }
+                this->readChar();
+            }
+        end:
+            len = this->m_position - position;
+            *outlen = len;
+            return this->m_inputsource + position;
+        }
+
+        const char* scanNumber(int* outlen)
+        {
+            int len;
+            int position;
+            static const char allowed[] = ".xXaAbBcCdDeEfF";
+            position = this->m_position;
+            while(charIsDigit(this->m_ch) || charIsOneOf(this->m_ch, allowed, MC_UTIL_STATICARRAYSIZE(allowed) - 1))
+            {
+                this->readChar();
+            }
+            len = this->m_position - position;
+            *outlen = len;
+            return this->m_inputsource + position;
+        }
+
+        const char* scanString(char delimiter, bool istemplate, bool* outtemplatefound, int* outlen)
+        {
+            bool escaped;
+            int len;
+            int position;
+            *outlen = 0;
+            escaped = false;
+            position = this->m_position;
+            while(true)
+            {
+                if(this->m_ch == '\0')
+                {
+                    return nullptr;
+                }
+                if(this->m_ch == delimiter && !escaped)
+                {
+                    break;
+                }
+                if(istemplate && !escaped && this->m_ch == '$' && this->peekChar() == '{')
+                {
+                    *outtemplatefound = true;
+                    break;
+                }
+                escaped = false;
+                if(this->m_ch == '\\')
+                {
+                    escaped = true;
+                }
+                this->readChar();
+            }
+            len = this->m_position - position;
+            *outlen = len;
+            return this->m_inputsource + position;
+        }
+
+        mcasttoktype_t lookupIdent(const char* ident, int len)
+        {
+            int i;
+            int klen;
+            static struct
+            {
+                const char* value;
+                mcasttoktype_t type;
+            } keywords[] = {
+                { "function", MC_TOK_FUNCTION },
+                { "const", MC_TOK_CONST },
+                { "var", MC_TOK_VAR },
+                { "let", MC_TOK_VAR },
+                { "true", MC_TOK_TRUE },
+                { "false", MC_TOK_FALSE },
+                { "if", MC_TOK_IF },
+                { "else", MC_TOK_ELSE },
+                { "return", MC_TOK_RETURN },
+                { "while", MC_TOK_WHILE },
+                { "break", MC_TOK_BREAK },
+                { "for", MC_TOK_FOR },
+                { "in", MC_TOK_IN },
+                { "continue", MC_TOK_CONTINUE },
+                { "null", MC_TOK_NULL },
+                { "import", MC_TOK_IMPORT },
+                { "recover", MC_TOK_RECOVER },
+                { nullptr, (mcasttoktype_t)0}
+            };
+            for(i = 0; keywords[i].value != nullptr; i++)
+            {
+                klen = mc_util_strlen(keywords[i].value);
+                if(klen == len && mc_util_strnequal(ident, keywords[i].value, len))
+                {
+                    return keywords[i].type;
+                }
+            }
+            return MC_TOK_IDENT;
+        }
+
+        void skipSpace()
+        {
+            char ch;
+            ch = this->m_ch;
+            while(ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r')
+            {
+                this->readChar();
+                ch = this->m_ch;
+            }
+        }
+
+        bool addLineAt(int offset)
+        {
+            bool ok;
+            size_t linelen;
+            char* line;
+            const char* linestart;
+            const char* newlineptr;
+            if(!this->m_file)
+            {
+                return true;
+            }
+            if(this->m_line < this->m_file->lines->count())
+            {
+                return true;
+            }
+            linestart = this->m_inputsource + offset;
+            newlineptr = strchr(linestart, '\n');
+            line = nullptr;
+            if(!newlineptr)
+            {
+                line = mc_util_strdup(linestart);
+            }
+            else
+            {
+                linelen = newlineptr - linestart;
+                line = mc_util_strndup(linestart, linelen);
+            }
+            if(!line)
+            {
+                this->m_failed = true;
+                return false;
+            }
+            ok = this->m_file->lines->push(line);
+            if(!ok)
+            {
+                this->m_failed = true;
+                mc_memory_free(line);
+                return false;
+            }
+            return true;
+        }
+
+
 };
 
 struct mcastparser_t
@@ -2929,11 +3669,11 @@ struct mcexecstate_t
 {
     size_t vsposition;
     mcvmframe_t* currframe;
-    mcvallist_t* valuestack;
-    mcvallist_t* valthisstack;
-    mcvallist_t* nativethisstack;
+    GenericList<mcvalue_t>* valuestack;
+    GenericList<mcvalue_t>* valthisstack;
+    GenericList<mcvalue_t>* nativethisstack;
     size_t thisstpos;
-    mcframelist_t* framestack;
+    GenericList<mcvmframe_t>* framestack;
     mcvalue_t lastpopped;
 
 };
@@ -2944,7 +3684,7 @@ struct mcstate_t
     mcerrlist_t errors;
     mcgcmemory_t* mem;
     mcglobalstore_t* vmglobalstore;
-    mcvallist_t* globalvalstack;
+    GenericList<mcvalue_t>* globalvalstack;
     size_t globalvalcount;
     bool hadrecovered;
     bool running;
@@ -2965,8 +3705,8 @@ struct mcstate_t
 struct mcglobalstore_t
 {
     mcstate_t* pstate;
-    mcptrdict_t* storedsymbols;
-    mcvallist_t* storedobjects;
+    PtrDict* storedsymbols;
+    GenericList<mcvalue_t>* storedobjects;
 };
 
 struct mcprintconfig_t
@@ -3047,7 +3787,7 @@ class Printer
     public:
         inline bool put(const char* str, size_t len)
         {
-            if(this->m_prfailed)
+            if(m_prfailed)
             {
                 return false;
             }
@@ -3055,16 +3795,16 @@ class Printer
             {
                 return true;
             }
-            if(this->m_prdestrfile == nullptr)
+            if(m_prdestrfile == nullptr)
             {
-                this->m_prdestbuf->append(str, len);
+                m_prdestbuf->append(str, len);
             }
             else
             {
-                fwrite(str, sizeof(char), len, this->m_prdestrfile);
-                if(this->m_prconfig.shouldflush)
+                fwrite(str, sizeof(char), len, m_prdestrfile);
+                if(m_prconfig.shouldflush)
                 {
-                    fflush(this->m_prdestrfile);
+                    fflush(m_prdestrfile);
                 }
             }
             return true;
@@ -3086,20 +3826,20 @@ class Printer
         inline bool format(const char* fmt, ArgsT&&... args)
         {
             static auto tmprintf = fprintf;
-            if(this->m_prfailed)
+            if(m_prfailed)
             {
                 return false;
             }
-            if(this->m_prdestrfile == nullptr)
+            if(m_prdestrfile == nullptr)
             {
-                this->m_prdestbuf->appendFormat(fmt, args...);
+                m_prdestbuf->appendFormat(fmt, args...);
             }
             else
             {
-                tmprintf(this->m_prdestrfile, fmt, args...);
-                if(this->m_prconfig.shouldflush)
+                tmprintf(m_prdestrfile, fmt, args...);
+                if(m_prconfig.shouldflush)
                 {
-                    fflush(this->m_prdestrfile);
+                    fflush(m_prdestrfile);
                 }
             }
             return true;
@@ -3184,48 +3924,48 @@ class Printer
 
         inline const char* getString()
         {
-            if(this->m_prfailed)
+            if(m_prfailed)
             {
                 return nullptr;
             }
-            if(this->m_prdestrfile != nullptr)
+            if(m_prdestrfile != nullptr)
             {
                 return nullptr;
             }
-            return this->m_prdestbuf->data();
+            return m_prdestbuf->data();
         }
 
         inline size_t getLength()
         {
-            if(this->m_prfailed)
+            if(m_prfailed)
             {
                 return 0;
             }
-            if(this->m_prdestrfile != nullptr)
+            if(m_prdestrfile != nullptr)
             {
                 return 0;
             }
-            return this->m_prdestbuf->length();
+            return m_prdestbuf->length();
         }
 
         inline char* getStringAndDestroy(size_t* lendest)
         {
             char* res;
-            if(this->m_prfailed)
+            if(m_prfailed)
             {
                 Printer::destroy(this);
                 return nullptr;
             }
-            if(this->m_prdestrfile != nullptr)
+            if(m_prdestrfile != nullptr)
             {
                 return nullptr;
             }
-            res = this->m_prdestbuf->data();
+            res = m_prdestbuf->data();
             if(lendest != nullptr)
             {
-                *lendest = this->m_prdestbuf->length();
+                *lendest = m_prdestbuf->length();
             }
-            this->m_prdestbuf = nullptr;
+            m_prdestbuf = nullptr;
             Printer::destroy(this);
             return res;
         }
@@ -3280,46 +4020,16 @@ struct mcastcompiler_t
     mcerrlist_t* errors;
     PtrList* files;
     mcglobalstore_t* compglobalstore;
-    mcvallist_t* constants;
+    GenericList<mcvalue_t>* constants;
     mcastscopecomp_t* compilationscope;
     PtrList* filescopelist;
     PtrList* srcposstack;
-    mcptrdict_t* modules;
-    mcptrdict_t* stringconstposdict;
+    PtrDict* modules;
+    PtrDict* stringconstposdict;
 };
-
-
-
-#if defined(__STRICT_ANSI__)
-extern int vsnprintf (char* destb, size_t maxlen, const char* fmt, va_list va);
-#endif
 
 /* endheader */
 const mcastlocation_t srcposinvalid = { nullptr, -1, -1 };
-
-MC_INLINE void mc_util_assertva(bool x, const char* exprstr, const char* file, int line, const char* fmt, va_list va)
-{
-    if(!x)
-    {
-        fprintf(stderr, "ASSERTION FAILED at %s:%d: %s", file, line, exprstr);
-        if(fmt != nullptr)
-        {
-            fprintf(stderr, ": ");
-            vfprintf(stderr, fmt, va);
-        }
-        fprintf(stderr, "\n");
-        fflush(stderr);
-        abort();
-    }
-}
-
-MC_INLINE void mc_util_assert(bool x, const char* exprstr, const char* file, int line, const char* fmt, ...)
-{
-    va_list va;
-    va_start(va, fmt);
-    mc_util_assertva(x, exprstr, file, line, fmt, va);
-    va_end(va);
-}
 
 char* mc_util_readhandle(FILE* hnd, size_t* dlen)
 {
@@ -3688,6 +4398,31 @@ mcfloat_t mc_util_uint64todouble(uint64_t val)
     return temp.val_double;
 }
 
+template<typename... ArgsT>
+void mc_util_complain(mcastlocation_t pos, const char *fmt, ArgsT&&... args)
+{
+    static auto tmpfprintf = fprintf;
+    int ncol;
+    int nline;
+    const char* fname;
+    fname = "unknown";
+    ncol = 0;
+    nline = 0;
+    if(pos.file != nullptr)
+    {
+        if(pos.file->path != nullptr)
+        {
+            fname = pos.file->path;
+        }
+        nline = pos.line;
+        ncol = pos.column;
+    }
+    fprintf(stderr, "**WARNING** [%s:%d:%d] ", fname, nline, ncol);
+    tmpfprintf(stderr, fmt, args...);
+    fprintf(stderr, "\n");
+}
+
+
 MC_FORCEINLINE mcshiftint_t mc_mathutil_binshiftleft(mcfloat_t dnleft, mcfloat_t dnright)
 {
     int64_t sileft;
@@ -4055,7 +4790,7 @@ mcvalue_t mc_value_makearraycapacity(mcstate_t* state, size_t capacity)
         return mc_value_makenull();
     }
     data->uvobj.valarray = Memory::make<mcobjarray_t>();
-    data->uvobj.valarray->actualarray = Memory::make<mcvallist_t>(capacity, mc_value_makenull());
+    data->uvobj.valarray->actualarray = Memory::make<GenericList<mcvalue_t>>(capacity, mc_value_makenull());
     if(!data->uvobj.valarray->actualarray)
     {
         return mc_value_makenull();
@@ -4124,35 +4859,6 @@ mcvalue_t mc_value_makeerrornocopy(mcstate_t* state, char* error)
     return mc_object_makedatafrom(MC_VAL_ERROR, data);
 }
 
-mcvalue_t mc_value_makeerrorf(mcstate_t* state, const char* fmt, ...)
-{
-    int needsz;
-    int printedsz;
-    char* res;
-    va_list args;
-    mcvalue_t resobj;
-    (void)printedsz;
-    va_start(args, fmt);
-    needsz = vsnprintf(nullptr, 0, fmt, args);
-    va_end(args);
-    va_start(args, fmt);
-    res = (char*)mc_memory_malloc(needsz + 1);
-    if(!res)
-    {
-        return mc_value_makenull();
-    }
-    printedsz = vsprintf(res, fmt, args);
-    MC_ASSERT(printedsz == needsz);
-    va_end(args);
-    resobj = mc_value_makeerrornocopy(state, res);
-    if(mc_value_isnull(resobj))
-    {
-        mc_memory_free(res);
-        return mc_value_makenull();
-    }
-    return resobj;
-}
-
 mcvalue_t mc_value_makefuncscript(mcstate_t* state, const char* name, mccompiledprogram_t* cres, bool ownsdt, int nlocals, int nargs, int fvc)
 {
     mcobjdata_t* data;
@@ -4203,7 +4909,7 @@ mcvalue_t mc_value_makeuserobject(mcstate_t* state, void* data)
     return mc_object_makedatafrom(MC_VAL_EXTERNAL, obj);
 }
 
-mcvallist_t* mc_value_arraygetactualarray(mcvalue_t object)
+GenericList<mcvalue_t>* mc_value_arraygetactualarray(mcvalue_t object)
 {
     mcobjdata_t* data;
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_ARRAY);
@@ -4543,7 +5249,7 @@ mctraceback_t* mc_value_errorgettraceback(mcvalue_t object)
 mcvalue_t mc_value_arraygetvalue(mcvalue_t object, size_t ix)
 {
     mcvalue_t* res;
-    mcvallist_t* array;
+    GenericList<mcvalue_t>* array;
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_ARRAY);
     array = mc_value_arraygetactualarray(object);
     if(ix >= array->count())
@@ -4562,7 +5268,7 @@ bool mc_value_arraysetvalue(mcvalue_t object, size_t ix, mcvalue_t val)
 {
     size_t len;
     size_t toadd;
-    mcvallist_t* array;
+    GenericList<mcvalue_t>* array;
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_ARRAY);
     array = mc_value_arraygetactualarray(object);
     len = array->count();
@@ -4583,7 +5289,7 @@ bool mc_value_arraysetvalue(mcvalue_t object, size_t ix, mcvalue_t val)
 
 bool mc_value_arraypush(mcvalue_t object, mcvalue_t val)
 {
-    mcvallist_t* array;
+    GenericList<mcvalue_t>* array;
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_ARRAY);
     array = mc_value_arraygetactualarray(object);
     return array->push(val);
@@ -4591,7 +5297,7 @@ bool mc_value_arraypush(mcvalue_t object, mcvalue_t val)
 
 int mc_value_arraygetlength(mcvalue_t object)
 {
-    mcvallist_t* array;
+    GenericList<mcvalue_t>* array;
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_ARRAY);
     array = mc_value_arraygetactualarray(object);
     return array->count();
@@ -4600,7 +5306,7 @@ int mc_value_arraygetlength(mcvalue_t object)
 mcvalue_t mc_valarray_pop(mcvalue_t object)
 {
     mcvalue_t dest;
-    mcvallist_t* array;
+    GenericList<mcvalue_t>* array;
     MC_ASSERT(mc_value_gettype(object) == MC_VAL_ARRAY);
     array = mc_value_arraygetactualarray(object);
     if(array->pop(&dest))
@@ -4612,7 +5318,7 @@ mcvalue_t mc_valarray_pop(mcvalue_t object)
 
 bool mc_value_arrayremoveat(mcvalue_t object, int ix)
 {
-    mcvallist_t* array;
+    GenericList<mcvalue_t>* array;
     array = mc_value_arraygetactualarray(object);
     return array->removeAt(ix);
 }
@@ -5482,8 +6188,8 @@ void mc_printer_printobjarray(Printer* pr, mcvalue_t obj)
     size_t alen;
     bool prevquot;
     mcvalue_t iobj;
-    mcvallist_t* actualary;
-    mcvallist_t* otherary;
+    GenericList<mcvalue_t>* actualary;
+    GenericList<mcvalue_t>* otherary;
     actualary = mc_value_arraygetactualarray(obj);
     alen = mc_value_arraygetlength(obj);
     pr->put("[");
@@ -5745,125 +6451,6 @@ char* mc_valtype_getunionname(mcstate_t* state, mcvaltype_t type)
 }
 
 
-
-void mc_errlist_init(mcerrlist_t* errors)
-{
-    memset(errors, 0, sizeof(mcerrlist_t));
-    errors->count = 0;
-}
-
-void mc_errlist_deinit(mcerrlist_t* errors)
-{
-    mc_errlist_clear(errors);
-}
-
-void mc_errlist_pushmessage(mcerrlist_t* errors, mcerrtype_t type, mcastlocation_t pos, const char* message)
-{
-    int len;
-    int tocopy;
-    mcerror_t err;
-    if(errors->count >= MC_CONF_MAXERRORCOUNT)
-    {
-    }
-    else
-    {
-        memset(&err, 0, sizeof(mcerror_t));
-        err.errtype = type;
-        len = mc_util_strlen(message);
-        tocopy = len;
-        if(tocopy >= (MC_CONF_MAXERRORMSGLENGTH - 1))
-        {
-            tocopy = MC_CONF_MAXERRORMSGLENGTH - 1;
-        }
-        memcpy(err.message, message, tocopy);
-        err.message[tocopy] = '\0';
-        err.pos = pos;
-        err.traceback = nullptr;
-        errors->errors[errors->count] = err;
-        errors->count++;
-    }
-}
-
-void mc_errlist_addfv(mcerrlist_t* errors, mcerrtype_t type, mcastlocation_t pos, const char* format, va_list va)
-{
-    int needsz;
-    int printedsz;
-    char res[MC_CONF_MAXERRORMSGLENGTH];
-    va_list vcopy;
-    (void)needsz;
-    (void)printedsz;
-    va_copy(vcopy, va);
-    needsz = vsnprintf(nullptr, 0, format, vcopy);
-    printedsz = vsnprintf(res, MC_CONF_MAXERRORMSGLENGTH, format, va);
-    MC_ASSERT(needsz == printedsz);
-    mc_errlist_pushmessage(errors, type, pos, res);
-}
-
-void mc_errlist_addf(mcerrlist_t* errors, mcerrtype_t type, mcastlocation_t pos, const char* format, ...)
-{
-    va_list va;
-    va_start(va, format);
-    mc_errlist_addfv(errors,type, pos, format, va);
-    va_end(va);
-}
-
-void mc_errlist_clear(mcerrlist_t* errors)
-{
-    int i;
-    mcerror_t* error;
-    for(i = 0; i < errors->count; i++)
-    {
-        error = mc_errlist_get(errors, i);
-        if(error->traceback)
-        {
-            mc_traceback_destroy(error->traceback);
-        }
-    }
-    errors->count = 0;
-}
-
-mcerror_t* mc_errlist_get(mcerrlist_t* errors, int ix)
-{
-    if(ix >= errors->count)
-    {
-        return nullptr;
-    }
-    return &errors->errors[ix];
-}
-
-const char* mc_util_errtypename(mcerrtype_t type)
-{
-    switch(type)
-    {
-        case MC_ERROR_PARSING:
-            return "PARSING";
-        case MC_ERROR_COMPILING:
-            return "COMPILATION";
-        case MC_ERROR_RUNTIME:
-            return "RUNTIME";
-        case MC_ERROR_TIMEOUT:
-            return "TIMEOUT";
-        case MC_ERROR_MEMORY:
-            return "ALLOCATION";
-        case MC_ERROR_USER:
-            return "USER";
-        default:
-            break;
-    }
-    return "INVALID";
-}
-
-mcerror_t* mc_errlist_getlast(mcerrlist_t* errors)
-{
-    if(errors->count <= 0)
-    {
-        return nullptr;
-    }
-    return &errors->errors[errors->count - 1];
-}
-
-
-
 mcmodule_t* mc_module_make(mcstate_t* state, const char* name)
 {
     mcmodule_t* module;
@@ -5964,7 +6551,7 @@ mcmodule_t* mc_module_copy(mcmodule_t* src)
         mc_module_destroy(copy);
         return nullptr;
     }
-    copy->modsymbols = PtrList::copy(src->modsymbols, (mcitemcopyfn_t)mc_symbol_copy, (mcitemdestroyfn_t)mc_symbol_destroy);
+    copy->modsymbols = src->modsymbols->copy((mcitemcopyfn_t)mc_symbol_copy, (mcitemdestroyfn_t)mc_symbol_destroy);
     if(!copy->modsymbols)
     {
         mc_module_destroy(copy);
@@ -6451,7 +7038,7 @@ mcastexpression_t* mc_astexpr_copyexpr(mcastexpression_t* expr)
         case MC_EXPR_ARRAYLITERAL:
             {
                 PtrList* valuescopy;
-                valuescopy = PtrList::copy(expr->uexpr.exprlitarray.litarritems, (mcitemcopyfn_t)mc_astexpr_copyexpr, (mcitemdestroyfn_t)mc_astexpr_destroy);
+                valuescopy = expr->uexpr.exprlitarray.litarritems->copy((mcitemcopyfn_t)mc_astexpr_copyexpr, (mcitemdestroyfn_t)mc_astexpr_destroy);
                 if(!valuescopy)
                 {
                     return nullptr;
@@ -6469,8 +7056,8 @@ mcastexpression_t* mc_astexpr_copyexpr(mcastexpression_t* expr)
             {
                 PtrList* keyscopy;
                 PtrList* valuescopy;
-                keyscopy = PtrList::copy(expr->uexpr.exprlitmap.litmapkeys, (mcitemcopyfn_t)mc_astexpr_copyexpr, (mcitemdestroyfn_t)mc_astexpr_destroy);
-                valuescopy = PtrList::copy(expr->uexpr.exprlitmap.litmapvalues, (mcitemcopyfn_t)mc_astexpr_copyexpr, (mcitemdestroyfn_t)mc_astexpr_destroy);
+                keyscopy = expr->uexpr.exprlitmap.litmapkeys->copy((mcitemcopyfn_t)mc_astexpr_copyexpr, (mcitemdestroyfn_t)mc_astexpr_destroy);
+                valuescopy = expr->uexpr.exprlitmap.litmapvalues->copy((mcitemcopyfn_t)mc_astexpr_copyexpr, (mcitemdestroyfn_t)mc_astexpr_destroy);
                 if(!keyscopy || !valuescopy)
                 {
                     PtrList::destroy(keyscopy, (mcitemdestroyfn_t)mc_astexpr_destroy);
@@ -6528,7 +7115,7 @@ mcastexpression_t* mc_astexpr_copyexpr(mcastexpression_t* expr)
                 char* namecopy;
                 PtrList* pacopy;
                 mcastexprcodeblock_t* bodycopy;
-                pacopy = PtrList::copy(expr->uexpr.exprlitfunction.funcparamlist, (mcitemcopyfn_t)mc_astfuncparam_copy, (mcitemdestroyfn_t)mc_astfuncparam_destroy);
+                pacopy = expr->uexpr.exprlitfunction.funcparamlist->copy((mcitemcopyfn_t)mc_astfuncparam_copy, (mcitemdestroyfn_t)mc_astfuncparam_destroy);
                 bodycopy = mc_astcodeblock_copy(expr->uexpr.exprlitfunction.body);
                 namecopy = mc_util_strdup(expr->uexpr.exprlitfunction.name);
                 if(!pacopy || !bodycopy)
@@ -6554,7 +7141,7 @@ mcastexpression_t* mc_astexpr_copyexpr(mcastexpression_t* expr)
                 mcastexpression_t* fcopy;
                 PtrList* argscopy;
                 fcopy = mc_astexpr_copyexpr(expr->uexpr.exprcall.function);
-                argscopy = PtrList::copy(expr->uexpr.exprcall.args, (mcitemcopyfn_t)mc_astexpr_copyexpr, (mcitemdestroyfn_t)mc_astexpr_destroy);
+                argscopy = expr->uexpr.exprcall.args->copy((mcitemcopyfn_t)mc_astexpr_copyexpr, (mcitemdestroyfn_t)mc_astexpr_destroy);
                 if(!fcopy || !argscopy)
                 {
                     mc_astexpr_destroy(fcopy);
@@ -6678,7 +7265,7 @@ mcastexpression_t* mc_astexpr_copyexpr(mcastexpression_t* expr)
             {
                 PtrList* casescopy;
                 mcastexprcodeblock_t* alternativecopy;
-                casescopy = PtrList::copy(expr->uexpr.exprifstmt.cases, (mcitemcopyfn_t)mc_astifcase_copy, (mcitemdestroyfn_t)mc_astifcase_destroy);
+                casescopy = expr->uexpr.exprifstmt.cases->copy((mcitemcopyfn_t)mc_astifcase_copy, (mcitemdestroyfn_t)mc_astifcase_destroy);
                 alternativecopy = mc_astcodeblock_copy(expr->uexpr.exprifstmt.alternative);
                 if(!casescopy || !alternativecopy)
                 {
@@ -7056,7 +7643,7 @@ mcastexprcodeblock_t* mc_astcodeblock_copy(mcastexprcodeblock_t* block)
     {
         return nullptr;
     }
-    statementscopy = PtrList::copy(block->statements, (mcitemcopyfn_t)mc_astexpr_copyexpr, (mcitemdestroyfn_t)mc_astexpr_destroy);
+    statementscopy = block->statements->copy((mcitemcopyfn_t)mc_astexpr_copyexpr, (mcitemdestroyfn_t)mc_astexpr_destroy);
     if(!statementscopy)
     {
         return nullptr;
@@ -7236,748 +7823,6 @@ mcastexpression_t* mc_astexpr_makeexpression(mcstate_t* state, mcastexprtype_t t
     res->exprtype = type;
     res->pos = srcposinvalid;
     return res;
-}
-
-bool mc_lexer_init(mcastlexer_t* lex, mcstate_t* state, mcerrlist_t* errs, const char* input, mcastcompiledfile_t* file)
-{
-    bool ok;
-    lex->pstate = state;
-    lex->errors = errs;
-    lex->inputsource = input;
-    lex->inputlength = (int)mc_util_strlen(input);
-    lex->position = 0;
-    lex->nextposition = 0;
-    lex->ch = '\0';
-    if(file)
-    {
-        lex->line = file->lines->count();
-    }
-    else
-    {
-        lex->line = 0;
-    }
-    lex->column = -1;
-    lex->file = file;
-    ok = mc_lexer_addline(lex, 0);
-    if(!ok)
-    {
-        return false;
-    }
-    ok = mc_lexer_readchar(lex);
-    if(!ok)
-    {
-        return false;
-    }
-    lex->failed = false;
-    lex->continuetplstring = false;
-    memset(&lex->prevstate, 0, sizeof(lex->prevstate));
-    mc_asttoken_init(&lex->prevtoken, MC_TOK_INVALID, nullptr, 0);
-    mc_asttoken_init(&lex->currtoken, MC_TOK_INVALID, nullptr, 0);
-    mc_asttoken_init(&lex->peektoken, MC_TOK_INVALID, nullptr, 0);
-    return true;
-}
-
-bool mc_lexer_failed(mcastlexer_t* lex)
-{
-    return lex->failed;
-}
-
-void mc_lexer_conttplstring(mcastlexer_t* lex)
-{
-    lex->continuetplstring = true;
-}
-
-bool mc_lexer_currtokenis(mcastlexer_t* lex, mcasttoktype_t type)
-{
-    return lex->currtoken.toktype == type;
-}
-
-bool mc_lexer_peektokenis(mcastlexer_t* lex, mcasttoktype_t type)
-{
-    return lex->peektoken.toktype == type;
-}
-
-bool mc_lexer_nexttoken(mcastlexer_t* lex)
-{
-    lex->prevtoken = lex->currtoken;
-    lex->currtoken = lex->peektoken;
-    lex->peektoken = mc_lexer_nexttokinternal(lex);
-    return !lex->failed;
-}
-
-bool mc_lexer_previoustoken(mcastlexer_t* lex)
-{
-    if(lex->prevtoken.toktype == MC_TOK_INVALID)
-    {
-        return false;
-    }
-    lex->peektoken = lex->currtoken;
-    lex->currtoken = lex->prevtoken;
-    mc_asttoken_init(&lex->prevtoken, MC_TOK_INVALID, nullptr, 0);
-    lex->ch = lex->prevstate.ch;
-    lex->column = lex->prevstate.column;
-    lex->line = lex->prevstate.line;
-    lex->position = lex->prevstate.position;
-    lex->nextposition = lex->prevstate.nextposition;
-    return true;
-}
-
-mcasttoken_t mc_lexer_nexttokinternal(mcastlexer_t* lex)
-{
-    char c;
-    mcasttoken_t outtok;
-    lex->prevstate.ch = lex->ch;
-    lex->prevstate.column = lex->column;
-    lex->prevstate.line = lex->line;
-    lex->prevstate.position = lex->position;
-    lex->prevstate.nextposition = lex->nextposition;
-    while(true)
-    {
-        if(!lex->continuetplstring)
-        {
-            mc_lexer_skipspace(lex);
-        }
-        outtok.toktype = MC_TOK_INVALID;
-        outtok.tokstrdata = lex->inputsource + lex->position;
-        outtok.tokstrlen = 1;
-        outtok.pos = mc_astlocation_make(lex->file, lex->line, lex->column);
-        c = lex->continuetplstring ? '`' : lex->ch;
-        switch(c)
-        {
-            case '\0':
-                {
-                    mc_asttoken_init(&outtok, MC_TOK_EOF, "EOF", 3);
-                }
-                break;
-            case '=':
-                {
-                    if(mc_lexer_peekchar(lex) == '=')
-                    {
-                        mc_asttoken_init(&outtok, MC_TOK_EQ, "==", 2);
-                        mc_lexer_readchar(lex);
-                    }
-                    else
-                    {
-                        mc_asttoken_init(&outtok, MC_TOK_ASSIGN, "=", 1);
-                    }
-                }
-                break;
-            case '&':
-                {
-                    if(mc_lexer_peekchar(lex) == '&')
-                    {
-                        mc_asttoken_init(&outtok, MC_TOK_AND, "&&", 2);
-                        mc_lexer_readchar(lex);
-                    }
-                    else if(mc_lexer_peekchar(lex) == '=')
-                    {
-                        mc_asttoken_init(&outtok, MC_TOK_ASSIGNBINAND, "&=", 2);
-                        mc_lexer_readchar(lex);
-                    }
-                    else
-                    {
-                        mc_asttoken_init(&outtok, MC_TOK_BINAND, "&", 1);
-                    }
-                }
-                break;
-            case '|':
-                {
-                    if(mc_lexer_peekchar(lex) == '|')
-                    {
-                        mc_asttoken_init(&outtok, MC_TOK_OR, "||", 2);
-                        mc_lexer_readchar(lex);
-                    }
-                    else if(mc_lexer_peekchar(lex) == '=')
-                    {
-                        mc_asttoken_init(&outtok, MC_TOK_ASSIGNBINOR, "|=", 2);
-                        mc_lexer_readchar(lex);
-                    }
-                    else
-                    {
-                        mc_asttoken_init(&outtok, MC_TOK_BINOR, "|", 1);
-                    }
-                }
-                break;
-            case '^':
-                {
-                    if(mc_lexer_peekchar(lex) == '=')
-                    {
-                        mc_asttoken_init(&outtok, MC_TOK_ASSIGNBINXOR, "^=", 2);
-                        mc_lexer_readchar(lex);
-                    }
-                    else
-                    {
-                        mc_asttoken_init(&outtok, MC_TOK_BINXOR, "^", 1);
-                        break;
-                    }
-                }
-                break;
-            case '+':
-                {
-                    if(mc_lexer_peekchar(lex) == '=')
-                    {
-                        mc_asttoken_init(&outtok, MC_TOK_ASSIGNPLUS, "+=", 2);
-                        mc_lexer_readchar(lex);
-                    }
-                    else if(mc_lexer_peekchar(lex) == '+')
-                    {
-                        mc_asttoken_init(&outtok, MC_TOK_PLUSPLUS, "++", 2);
-                        mc_lexer_readchar(lex);
-                    }
-                    else
-                    {
-                        mc_asttoken_init(&outtok, MC_TOK_PLUS, "+", 1);
-                        break;
-                    }
-                }
-                break;
-            case '-':
-                {
-                    if(mc_lexer_peekchar(lex) == '=')
-                    {
-                        mc_asttoken_init(&outtok, MC_TOK_ASSIGNMINUS, "-=", 2);
-                        mc_lexer_readchar(lex);
-                    }
-                    else if(mc_lexer_peekchar(lex) == '-')
-                    {
-                        mc_asttoken_init(&outtok, MC_TOK_MINUSMINUS, "--", 2);
-                        mc_lexer_readchar(lex);
-                    }
-                    else
-                    {
-                        mc_asttoken_init(&outtok, MC_TOK_UNARYMINUS, "-", 1);
-                        break;
-                    }
-                }
-                break;
-            case '~':
-                {
-                    mc_asttoken_init(&outtok, MC_TOK_UNARYBINNOT, "~", 1);
-                }
-                break;
-            case '!':
-                {
-                    if(mc_lexer_peekchar(lex) == '=')
-                    {
-                        mc_asttoken_init(&outtok, MC_TOK_NOTEQ, "!=", 2);
-                        mc_lexer_readchar(lex);
-                    }
-                    else
-                    {
-                        mc_asttoken_init(&outtok, MC_TOK_BANG, "!", 1);
-                    }
-                }
-                break;
-            case '*':
-                {
-                    if(mc_lexer_peekchar(lex) == '=')
-                    {
-                        mc_asttoken_init(&outtok, MC_TOK_ASSIGNASTERISK, "*=", 2);
-                        mc_lexer_readchar(lex);
-                    }
-                    else
-                    {
-                        mc_asttoken_init(&outtok, MC_TOK_ASTERISK, "*", 1);
-                        break;
-                    }
-                }
-                break;
-            case '/':
-                {
-                    if(mc_lexer_peekchar(lex) == '/')
-                    {
-                        mc_lexer_readchar(lex);
-                        while(lex->ch != '\n' && lex->ch != '\0')
-                        {
-                            mc_lexer_readchar(lex);
-                        }
-                        continue;
-                    }
-                    if(mc_lexer_peekchar(lex) == '=')
-                    {
-                        mc_asttoken_init(&outtok, MC_TOK_ASSIGNSLASH, "/=", 2);
-                        mc_lexer_readchar(lex);
-                    }
-                    else
-                    {
-                        mc_asttoken_init(&outtok, MC_TOK_SLASH, "/", 1);
-                        break;
-                    }
-                }
-                break;
-            case '<':
-                {
-                    if(mc_lexer_peekchar(lex) == '=')
-                    {
-                        mc_asttoken_init(&outtok, MC_TOK_LTE, "<=", 2);
-                        mc_lexer_readchar(lex);
-                    }
-                    else if(mc_lexer_peekchar(lex) == '<')
-                    {
-                        mc_lexer_readchar(lex);
-                        if(mc_lexer_peekchar(lex) == '=')
-                        {
-                            mc_asttoken_init(&outtok, MC_TOK_ASSIGNLSHIFT, "<<=", 3);
-                            mc_lexer_readchar(lex);
-                        }
-                        else
-                        {
-                            mc_asttoken_init(&outtok, MC_TOK_LSHIFT, "<<", 2);
-                        }
-                    }
-                    else
-                    {
-                        mc_asttoken_init(&outtok, MC_TOK_LT, "<", 1);
-                        break;
-                    }
-                }
-                break;
-            case '>':
-                {
-                    if(mc_lexer_peekchar(lex) == '=')
-                    {
-                        mc_asttoken_init(&outtok, MC_TOK_GTE, ">=", 2);
-                        mc_lexer_readchar(lex);
-                    }
-                    else if(mc_lexer_peekchar(lex) == '>')
-                    {
-                        mc_lexer_readchar(lex);
-                        if(mc_lexer_peekchar(lex) == '=')
-                        {
-                            mc_asttoken_init(&outtok, MC_TOK_ASSIGNRSHIFT, ">>=", 3);
-                            mc_lexer_readchar(lex);
-                        }
-                        else
-                        {
-                            mc_asttoken_init(&outtok, MC_TOK_RSHIFT, ">>", 2);
-                        }
-                    }
-                    else
-                    {
-                        mc_asttoken_init(&outtok, MC_TOK_GT, ">", 1);
-                    }
-                }
-                break;
-            case ',':
-                {
-                    mc_asttoken_init(&outtok, MC_TOK_COMMA, ",", 1);
-                }
-                break;
-            case ';':
-                {
-                    mc_asttoken_init(&outtok, MC_TOK_SEMICOLON, ";", 1);
-                }
-                break;
-            case ':':
-                {
-                    mc_asttoken_init(&outtok, MC_TOK_COLON, ":", 1);
-                }
-                break;
-            case '(':
-                {
-                    mc_asttoken_init(&outtok, MC_TOK_LPAREN, "(", 1);
-                }
-                break;
-            case ')':
-                {
-                    mc_asttoken_init(&outtok, MC_TOK_RPAREN, ")", 1);
-                }
-                break;
-            case '{':
-                {
-                    mc_asttoken_init(&outtok, MC_TOK_LBRACE, "{", 1);
-                }
-                break;
-            case '}':
-                {
-                    mc_asttoken_init(&outtok, MC_TOK_RBRACE, "}", 1);
-                }
-                break;
-            case '[':
-                {
-                    mc_asttoken_init(&outtok, MC_TOK_LBRACKET, "[", 1);
-                }
-                break;
-            case ']':
-                {
-                    mc_asttoken_init(&outtok, MC_TOK_RBRACKET, "]", 1);
-                }
-                break;
-            case '.':
-                {
-                    mc_asttoken_init(&outtok, MC_TOK_DOT, ".", 1);
-                }
-                break;
-            case '?':
-                {
-                    mc_asttoken_init(&outtok, MC_TOK_QUESTION, "?", 1);
-                }
-                break;
-            case '%':
-                {
-                    if(mc_lexer_peekchar(lex) == '=')
-                    {
-                        mc_asttoken_init(&outtok, MC_TOK_ASSIGNPERCENT, "%=", 2);
-                        mc_lexer_readchar(lex);
-                    }
-                    else
-                    {
-                        mc_asttoken_init(&outtok, MC_TOK_PERCENT, "%", 1);
-                        break;
-                    }
-                }
-                break;
-            case '"':
-                {
-                    int len;
-                    const char* str;
-                    mc_lexer_readchar(lex);
-                    str = mc_lexer_scanstring(lex, '"', false, nullptr, &len);
-                    if(str)
-                    {
-                        mc_asttoken_init(&outtok, MC_TOK_STRING, str, len);
-                    }
-                    else
-                    {
-                        mc_asttoken_init(&outtok, MC_TOK_INVALID, nullptr, 0);
-                    }
-                }
-                break;
-            case '\'':
-                {
-                    int len;
-                    const char* str;
-                    mc_lexer_readchar(lex);
-                    str = mc_lexer_scanstring(lex, '\'', false, nullptr, &len);
-                    if(str)
-                    {
-                        mc_asttoken_init(&outtok, MC_TOK_STRING, str, len);
-                    }
-                    else
-                    {
-                        mc_asttoken_init(&outtok, MC_TOK_INVALID, nullptr, 0);
-                    }
-                }
-                break;
-            case '`':
-                {
-                    int len;
-                    bool templatefound;
-                    const char* str;
-                    if(!lex->continuetplstring)
-                    {
-                        mc_lexer_readchar(lex);
-                    }
-                    templatefound = false;
-                    str = mc_lexer_scanstring(lex, '`', true, &templatefound, &len);
-                    if(str)
-                    {
-                        if(templatefound)
-                        {
-                            mc_asttoken_init(&outtok, MC_TOK_TEMPLATESTRING, str, len);
-                        }
-                        else
-                        {
-                            mc_asttoken_init(&outtok, MC_TOK_STRING, str, len);
-                        }
-                    }
-                    else
-                    {
-                        mc_asttoken_init(&outtok, MC_TOK_INVALID, nullptr, 0);
-                    }
-                }
-                break;
-            default:
-                {
-                    int identlen;
-                    int numberlen;
-                    const char* ident;
-                    const char* number;
-                    mcasttoktype_t type;
-                    if(mc_lexer_charisletter(lex->ch) || (lex->ch == '$'))
-                    {
-                        identlen = 0;
-                        ident = mc_lexer_scanident(lex, &identlen);
-                        type = mc_lexer_lookupident(ident, identlen);
-                        mc_asttoken_init(&outtok, type, ident, identlen);
-                        return outtok;
-                    }
-                    if(mc_lexer_charisdigit(lex->ch))
-                    {
-                        numberlen = 0;
-                        number = mc_lexer_scannumber(lex, &numberlen);
-                        mc_asttoken_init(&outtok, MC_TOK_NUMBER, number, numberlen);
-                        return outtok;
-                    }
-                }
-                break;
-        }
-        mc_lexer_readchar(lex);
-        if(mc_lexer_failed(lex))
-        {
-            mc_asttoken_init(&outtok, MC_TOK_INVALID, nullptr, 0);
-        }
-        lex->continuetplstring = false;
-        return outtok;
-    }
-    /* NB. never reached; but keep the compiler from complaining. */
-    return outtok;
-}
-
-bool mc_lexer_expectcurrent(mcastlexer_t* lex, mcasttoktype_t type)
-{
-    const char* actualtypestr;
-    const char* expectedtypestr;
-    if(mc_lexer_failed(lex))
-    {
-        return false;
-    }
-    if(!mc_lexer_currtokenis(lex, type))
-    {
-        expectedtypestr = mc_asttoken_typename(type);
-        actualtypestr = mc_asttoken_typename(lex->currtoken.toktype);
-        mc_errlist_addf(lex->errors, MC_ERROR_PARSING, lex->currtoken.pos, "expected token \"%s\", but got \"%s\"", expectedtypestr, actualtypestr);
-        return false;
-    }
-    return true;
-}
-
-bool mc_lexer_readchar(mcastlexer_t* lex)
-{
-    bool ok; 
-    if(lex->nextposition >= lex->inputlength)
-    {
-        lex->ch = '\0';
-    }
-    else
-    {
-        lex->ch = lex->inputsource[lex->nextposition];
-    }
-    lex->position = lex->nextposition;
-    lex->nextposition++;
-    if(lex->ch == '\n')
-    {
-        lex->line++;
-        lex->column = -1;
-        ok = mc_lexer_addline(lex, lex->nextposition);
-        if(!ok)
-        {
-            lex->failed = true;
-            return false;
-        }
-    }
-    else
-    {
-        lex->column++;
-    }
-    return true;
-}
-
-char mc_lexer_peekchar(mcastlexer_t* lex)
-{
-    if(lex->nextposition >= lex->inputlength)
-    {
-        return '\0';
-    }
-    return lex->inputsource[lex->nextposition];
-}
-
-bool mc_lexer_charisletter(char ch)
-{
-    return (
-        (('a' <= ch) && (ch <= 'z')) || (('A' <= ch) && (ch <= 'Z')) || (ch == '_')
-    );
-}
-
-bool mc_lexer_charisdigit(char ch)
-{
-    return (
-        (ch >= '0') && (ch <= '9')
-    );
-}
-
-bool mc_lexer_charisoneof(char ch, const char* allowed, int allowedlen)
-{
-    int i;
-    for(i = 0; i < allowedlen; i++)
-    {
-        if(ch == allowed[i])
-        {
-            return true;
-        }
-    }
-    return false;
-}
-
-const char* mc_lexer_scanident(mcastlexer_t* lex, int* outlen)
-{
-    int len;
-    int position;
-    len = 0;
-    /*if(lex->ch == '$')
-    {
-        mc_lexer_readchar(lex);
-    }
-    */
-    position = lex->position;
-    while(mc_lexer_charisdigit(lex->ch) || mc_lexer_charisletter(lex->ch) ||(lex->ch == '$') || (lex->ch == ':'))
-    {
-        if(lex->ch == ':')
-        {
-            if(mc_lexer_peekchar(lex) != ':')
-            {
-                goto end;
-            }
-            mc_lexer_readchar(lex);
-        }
-        mc_lexer_readchar(lex);
-    }
-end:
-    len = lex->position - position;
-    *outlen = len;
-    return lex->inputsource + position;
-}
-
-const char* mc_lexer_scannumber(mcastlexer_t* lex, int* outlen)
-{
-    int len;
-    int position;
-    static const char allowed[] = ".xXaAbBcCdDeEfF";
-    position = lex->position;
-    while(mc_lexer_charisdigit(lex->ch) || mc_lexer_charisoneof(lex->ch, allowed, MC_UTIL_STATICARRAYSIZE(allowed) - 1))
-    {
-        mc_lexer_readchar(lex);
-    }
-    len = lex->position - position;
-    *outlen = len;
-    return lex->inputsource + position;
-}
-
-const char* mc_lexer_scanstring(mcastlexer_t* lex, char delimiter, bool istemplate, bool* outtemplatefound, int* outlen)
-{
-    bool escaped;
-    int len;
-    int position;
-    *outlen = 0;
-    escaped = false;
-    position = lex->position;
-    while(true)
-    {
-        if(lex->ch == '\0')
-        {
-            return nullptr;
-        }
-        if(lex->ch == delimiter && !escaped)
-        {
-            break;
-        }
-        if(istemplate && !escaped && lex->ch == '$' && mc_lexer_peekchar(lex) == '{')
-        {
-            *outtemplatefound = true;
-            break;
-        }
-        escaped = false;
-        if(lex->ch == '\\')
-        {
-            escaped = true;
-        }
-        mc_lexer_readchar(lex);
-    }
-    len = lex->position - position;
-    *outlen = len;
-    return lex->inputsource + position;
-}
-
-mcasttoktype_t mc_lexer_lookupident(const char* ident, int len)
-{
-    int i;
-    int klen;
-    static struct
-    {
-        const char* value;
-        mcasttoktype_t type;
-    } keywords[] = {
-        { "function", MC_TOK_FUNCTION },
-        { "const", MC_TOK_CONST },
-        { "var", MC_TOK_VAR },
-        { "let", MC_TOK_VAR },
-        { "true", MC_TOK_TRUE },
-        { "false", MC_TOK_FALSE },
-        { "if", MC_TOK_IF },
-        { "else", MC_TOK_ELSE },
-        { "return", MC_TOK_RETURN },
-        { "while", MC_TOK_WHILE },
-        { "break", MC_TOK_BREAK },
-        { "for", MC_TOK_FOR },
-        { "in", MC_TOK_IN },
-        { "continue", MC_TOK_CONTINUE },
-        { "null", MC_TOK_NULL },
-        { "import", MC_TOK_IMPORT },
-        { "recover", MC_TOK_RECOVER },
-        { nullptr, (mcasttoktype_t)0}
-    };
-    for(i = 0; keywords[i].value != nullptr; i++)
-    {
-        klen = mc_util_strlen(keywords[i].value);
-        if(klen == len && mc_util_strnequal(ident, keywords[i].value, len))
-        {
-            return keywords[i].type;
-        }
-    }
-    return MC_TOK_IDENT;
-}
-
-void mc_lexer_skipspace(mcastlexer_t* lex)
-{
-    char ch;
-    ch = lex->ch;
-    while(ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r')
-    {
-        mc_lexer_readchar(lex);
-        ch = lex->ch;
-    }
-}
-
-bool mc_lexer_addline(mcastlexer_t* lex, int offset)
-{
-    bool ok;
-    size_t linelen;
-    char* line;
-    const char* linestart;
-    const char* newlineptr;
-    if(!lex->file)
-    {
-        return true;
-    }
-    if(lex->line < lex->file->lines->count())
-    {
-        return true;
-    }
-    linestart = lex->inputsource + offset;
-    newlineptr = strchr(linestart, '\n');
-    line = nullptr;
-    if(!newlineptr)
-    {
-        line = mc_util_strdup(linestart);
-    }
-    else
-    {
-        linelen = newlineptr - linestart;
-        line = mc_util_strndup(linestart, linelen);
-    }
-    if(!line)
-    {
-        lex->failed = true;
-        return false;
-    }
-    ok = lex->file->lines->push(line);
-    if(!ok)
-    {
-        lex->failed = true;
-        mc_memory_free(line);
-        return false;
-    }
-    return true;
 }
 
 
@@ -8280,23 +8125,23 @@ PtrList* mc_astparser_parseall(mcastparser_t* parser, const char* input, mcastco
     mcastexpression_t* expr;
     PtrList* statements;
     parser->depth = 0;
-    ok = mc_lexer_init(&parser->lexer, parser->pstate, parser->errors, input, file);
+    ok = mcastlexer_t::init(&parser->lexer, parser->pstate, parser->errors, input, file);
     if(!ok)
     {
         return nullptr;
     }
-    mc_lexer_nexttoken(&parser->lexer);
-    mc_lexer_nexttoken(&parser->lexer);
+    parser->lexer.nextToken();
+    parser->lexer.nextToken();
     statements = Memory::make<PtrList>(sizeof(void*), true);
     if(!statements)
     {
         return nullptr;
     }
-    while(!mc_lexer_currtokenis(&parser->lexer, MC_TOK_EOF))
+    while(!parser->lexer.currentTokenIs(MC_TOK_EOF))
     {
-        if(mc_lexer_currtokenis(&parser->lexer, MC_TOK_SEMICOLON))
+        if(parser->lexer.currentTokenIs(MC_TOK_SEMICOLON))
         {
-            mc_lexer_nexttoken(&parser->lexer);
+            parser->lexer.nextToken();
             continue;
         }
         expr = mc_astparser_parsestatement(parser);
@@ -8325,9 +8170,9 @@ mcastexpression_t* mc_astparser_parsestatement(mcastparser_t* p)
 {
     mcastlocation_t pos;
     mcastexpression_t* res;
-    pos = p->lexer.currtoken.pos;
+    pos = p->lexer.m_currtoken.pos;
     res = nullptr;
-    switch(p->lexer.currtoken.toktype)
+    switch(p->lexer.m_currtoken.toktype)
     {
         case MC_TOK_VAR:
         case MC_TOK_CONST:
@@ -8357,12 +8202,12 @@ mcastexpression_t* mc_astparser_parsestatement(mcastparser_t* p)
             break;
         case MC_TOK_FOR:
             {
-                res = mc_parser_parseloopforstmt(p);
+                res = mc_parser_parseloopforloopstmt(p);
             }
             break;
         case MC_TOK_FUNCTION:
             {
-                if(mc_lexer_peektokenis(&p->lexer, MC_TOK_IDENT))
+                if(p->lexer.peekTokenIs(MC_TOK_IDENT))
                 {
                     res = mc_parser_parsefunctionstmt(p);
                 }
@@ -8420,28 +8265,28 @@ mcastexpression_t* mc_parser_parsevarletstmt(mcastparser_t* p)
     mcastexpression_t* res;
     nameident = nullptr;
     value = nullptr;
-    assignable = mc_lexer_currtokenis(&p->lexer, MC_TOK_VAR);
-    mc_lexer_nexttoken(&p->lexer);
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_IDENT))
+    assignable = p->lexer.currentTokenIs(MC_TOK_VAR);
+    p->lexer.nextToken();
+    if(!p->lexer.expectCurrent(MC_TOK_IDENT))
     {
         goto err;
     }
-    nameident = mc_astident_make(p->pstate, p->lexer.currtoken);
+    nameident = mc_astident_make(p->pstate, p->lexer.m_currtoken);
     if(!nameident)
     {
         goto err;
     }
-    mc_lexer_nexttoken(&p->lexer);
+    p->lexer.nextToken();
     #if 0
-        if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_ASSIGN))
+        if(!p->lexer.expectCurrent(MC_TOK_ASSIGN))
     #else
-        if(!mc_lexer_currtokenis(&p->lexer, MC_TOK_ASSIGN))
+        if(!p->lexer.currentTokenIs(MC_TOK_ASSIGN))
     #endif
     {
         value = mc_astexpr_makeliteralnull(p->pstate);
         goto finish;
     }
-    mc_lexer_nexttoken(&p->lexer);
+    p->lexer.nextToken();
     value = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
     if(!value)
     {
@@ -8483,12 +8328,12 @@ mcastexpression_t* mc_parser_parseifstmt(mcastparser_t* p)
     {
         goto err;
     }
-    mc_lexer_nexttoken(&p->lexer);
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LPAREN))
+    p->lexer.nextToken();
+    if(!p->lexer.expectCurrent(MC_TOK_LPAREN))
     {
         goto err;
     }
-    mc_lexer_nexttoken(&p->lexer);
+    p->lexer.nextToken();
     cond = mc_astifcase_make(p->pstate, nullptr, nullptr);
     if(!cond)
     {
@@ -8505,27 +8350,27 @@ mcastexpression_t* mc_parser_parseifstmt(mcastparser_t* p)
     {
         goto err;
     }
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
+    if(!p->lexer.expectCurrent(MC_TOK_RPAREN))
     {
         goto err;
     }
-    mc_lexer_nexttoken(&p->lexer);
+    p->lexer.nextToken();
     cond->consequence = mc_parser_parsecodeblock(p);
     if(!cond->consequence)
     {
         goto err;
     }
-    while(mc_lexer_currtokenis(&p->lexer, MC_TOK_ELSE))
+    while(p->lexer.currentTokenIs(MC_TOK_ELSE))
     {
-        mc_lexer_nexttoken(&p->lexer);
-        if(mc_lexer_currtokenis(&p->lexer, MC_TOK_IF))
+        p->lexer.nextToken();
+        if(p->lexer.currentTokenIs(MC_TOK_IF))
         {
-            mc_lexer_nexttoken(&p->lexer);
-            if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LPAREN))
+            p->lexer.nextToken();
+            if(!p->lexer.expectCurrent(MC_TOK_LPAREN))
             {
                 goto err;
             }
-            mc_lexer_nexttoken(&p->lexer);
+            p->lexer.nextToken();
             elif = mc_astifcase_make(p->pstate, nullptr, nullptr);
             if(!elif)
             {
@@ -8542,11 +8387,11 @@ mcastexpression_t* mc_parser_parseifstmt(mcastparser_t* p)
             {
                 goto err;
             }
-            if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
+            if(!p->lexer.expectCurrent(MC_TOK_RPAREN))
             {
                 goto err;
             }
-            mc_lexer_nexttoken(&p->lexer);
+            p->lexer.nextToken();
             elif->consequence = mc_parser_parsecodeblock(p);
             if(!elif->consequence)
             {
@@ -8579,8 +8424,8 @@ mcastexpression_t* mc_parser_parsereturnstmt(mcastparser_t* p)
     mcastexpression_t* res;
     mcastexpression_t* expr;
     expr = nullptr;
-    mc_lexer_nexttoken(&p->lexer);
-    if(!mc_lexer_currtokenis(&p->lexer, MC_TOK_SEMICOLON) && !mc_lexer_currtokenis(&p->lexer, MC_TOK_RBRACE) && !mc_lexer_currtokenis(&p->lexer, MC_TOK_EOF))
+    p->lexer.nextToken();
+    if(!p->lexer.currentTokenIs(MC_TOK_SEMICOLON) && !p->lexer.currentTokenIs(MC_TOK_RBRACE) && !p->lexer.currentTokenIs(MC_TOK_EOF))
     {
         expr = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
         if(!expr)
@@ -8612,7 +8457,7 @@ mcastexpression_t* mc_parser_parseexprstmt(mcastparser_t* p)
         /* this is actually completely unnecessary */
         if(expr->exprtype != MC_EXPR_ASSIGN && expr->exprtype != MC_EXPR_CALL)
         {
-            mc_errlist_addf(p->errors, MC_ERROR_PARSING, expr->pos, "only assignments and function calls can be expression statements");
+            p->errors->pushFormat(MC_ERROR_PARSING, expr->pos, "only assignments and function calls can be expression statements");
             mc_astexpr_destroy(expr);
             return nullptr;
         }
@@ -8634,22 +8479,22 @@ mcastexpression_t* mc_parser_parseloopwhilestmt(mcastparser_t* p)
     mcastexprcodeblock_t* body;
     test = nullptr;
     body = nullptr;
-    mc_lexer_nexttoken(&p->lexer);
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LPAREN))
+    p->lexer.nextToken();
+    if(!p->lexer.expectCurrent(MC_TOK_LPAREN))
     {
         goto err;
     }
-    mc_lexer_nexttoken(&p->lexer);
+    p->lexer.nextToken();
     test = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
     if(!test)
     {
         goto err;
     }
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
+    if(!p->lexer.expectCurrent(MC_TOK_RPAREN))
     {
         goto err;
     }
-    mc_lexer_nexttoken(&p->lexer);
+    p->lexer.nextToken();
     body = mc_parser_parsecodeblock(p);
     if(!body)
     {
@@ -8669,13 +8514,13 @@ err:
 
 mcastexpression_t* mc_parser_parsebreakstmt(mcastparser_t* p)
 {
-    mc_lexer_nexttoken(&p->lexer);
+    p->lexer.nextToken();
     return mc_astexpr_makebreakexpr(p->pstate);
 }
 
 mcastexpression_t* mc_parser_parsecontinuestmt(mcastparser_t* p)
 {
-    mc_lexer_nexttoken(&p->lexer);
+    p->lexer.nextToken();
     return mc_astexpr_makecontinueexpr(p->pstate);
 }
 
@@ -8701,18 +8546,18 @@ mcastexpression_t* mc_parser_parseimportstmt(mcastparser_t* p)
 {
     char* processedname;
     mcastexpression_t* res;
-    mc_lexer_nexttoken(&p->lexer);
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_STRING))
+    p->lexer.nextToken();
+    if(!p->lexer.expectCurrent(MC_TOK_STRING))
     {
         return nullptr;
     }
-    processedname = mc_parser_processandcopystring(p->lexer.currtoken.tokstrdata, p->lexer.currtoken.tokstrlen);
+    processedname = mc_parser_processandcopystring(p->lexer.m_currtoken.tokstrdata, p->lexer.m_currtoken.tokstrlen);
     if(!processedname)
     {
-        mc_errlist_addf(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "error when parsing module name");
+        p->errors->pushFormat(MC_ERROR_PARSING, p->lexer.m_currtoken.pos, "error when parsing module name");
         return nullptr;
     }
-    mc_lexer_nexttoken(&p->lexer);
+    p->lexer.nextToken();
     res = mc_astexpr_makeimportexpr(p->pstate, processedname);
     if(!res)
     {
@@ -8729,27 +8574,27 @@ mcastexpression_t* mc_parser_parserecoverstmt(mcastparser_t* p)
     mcastexprcodeblock_t* body;
     eid = nullptr;
     body = nullptr;
-    mc_lexer_nexttoken(&p->lexer);
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LPAREN))
+    p->lexer.nextToken();
+    if(!p->lexer.expectCurrent(MC_TOK_LPAREN))
     {
         return nullptr;
     }
-    mc_lexer_nexttoken(&p->lexer);
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_IDENT))
+    p->lexer.nextToken();
+    if(!p->lexer.expectCurrent(MC_TOK_IDENT))
     {
         return nullptr;
     }
-    eid = mc_astident_make(p->pstate, p->lexer.currtoken);
+    eid = mc_astident_make(p->pstate, p->lexer.m_currtoken);
     if(!eid)
     {
         return nullptr;
     }
-    mc_lexer_nexttoken(&p->lexer);
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
+    p->lexer.nextToken();
+    if(!p->lexer.expectCurrent(MC_TOK_RPAREN))
     {
         goto err;
     }
-    mc_lexer_nexttoken(&p->lexer);
+    p->lexer.nextToken();
     body = mc_parser_parsecodeblock(p);
     if(!body)
     {
@@ -8767,19 +8612,19 @@ err:
     return nullptr;
 }
 
-mcastexpression_t* mc_parser_parseloopforstmt(mcastparser_t* p)
+mcastexpression_t* mc_parser_parseloopforloopstmt(mcastparser_t* p)
 {
-    mc_lexer_nexttoken(&p->lexer);
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LPAREN))
+    p->lexer.nextToken();
+    if(!p->lexer.expectCurrent(MC_TOK_LPAREN))
     {
         return nullptr;
     }
-    mc_lexer_nexttoken(&p->lexer);
-    if(mc_lexer_currtokenis(&p->lexer, MC_TOK_IDENT) && mc_lexer_peektokenis(&p->lexer, MC_TOK_IN))
+    p->lexer.nextToken();
+    if(p->lexer.currentTokenIs(MC_TOK_IDENT) && p->lexer.peekTokenIs(MC_TOK_IN))
     {
         return mc_parser_parseloopforeachstmt(p);
     }
-    return mc_parser_parseloopforclassicstmt(p);
+    return mc_parser_parseloopforcstylestmt(p);
 }
 
 mcastexpression_t* mc_parser_parseloopforeachstmt(mcastparser_t* p)
@@ -8791,27 +8636,27 @@ mcastexpression_t* mc_parser_parseloopforeachstmt(mcastparser_t* p)
     source = nullptr;
     body = nullptr;
     iteratorident = nullptr;
-    iteratorident = mc_astident_make(p->pstate, p->lexer.currtoken);
+    iteratorident = mc_astident_make(p->pstate, p->lexer.m_currtoken);
     if(!iteratorident)
     {
         goto err;
     }
-    mc_lexer_nexttoken(&p->lexer);
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_IN))
+    p->lexer.nextToken();
+    if(!p->lexer.expectCurrent(MC_TOK_IN))
     {
         goto err;
     }
-    mc_lexer_nexttoken(&p->lexer);
+    p->lexer.nextToken();
     source = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
     if(!source)
     {
         goto err;
     }
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
+    if(!p->lexer.expectCurrent(MC_TOK_RPAREN))
     {
         goto err;
     }
-    mc_lexer_nexttoken(&p->lexer);
+    p->lexer.nextToken();
     body = mc_parser_parsecodeblock(p);
     if(!body)
     {
@@ -8830,7 +8675,7 @@ err:
     return nullptr;
 }
 
-mcastexpression_t* mc_parser_parseloopforclassicstmt(mcastparser_t* p)
+mcastexpression_t* mc_parser_parseloopforcstylestmt(mcastparser_t* p)
 {
     mcastexpression_t* res;
     mcastexpression_t* init;
@@ -8841,7 +8686,7 @@ mcastexpression_t* mc_parser_parseloopforclassicstmt(mcastparser_t* p)
     test = nullptr;
     update = nullptr;
     body = nullptr;
-    if(!mc_lexer_currtokenis(&p->lexer, MC_TOK_SEMICOLON))
+    if(!p->lexer.currentTokenIs(MC_TOK_SEMICOLON))
     {
         init = mc_astparser_parsestatement(p);
         if(!init)
@@ -8850,41 +8695,41 @@ mcastexpression_t* mc_parser_parseloopforclassicstmt(mcastparser_t* p)
         }
         if(init->exprtype != MC_EXPR_STMTDEFINE && init->exprtype != MC_EXPR_STMTEXPRESSION)
         {
-            mc_errlist_addf(p->errors, MC_ERROR_PARSING, init->pos, "expected a definition or expression as 'for' loop init clause");
+            p->errors->pushFormat(MC_ERROR_PARSING, init->pos, "expected a definition or expression as 'for' loop init clause");
             goto err;
         }
-        if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_SEMICOLON))
+        if(!p->lexer.expectCurrent(MC_TOK_SEMICOLON))
         {
             goto err;
         }
     }
-    mc_lexer_nexttoken(&p->lexer);
-    if(!mc_lexer_currtokenis(&p->lexer, MC_TOK_SEMICOLON))
+    p->lexer.nextToken();
+    if(!p->lexer.currentTokenIs(MC_TOK_SEMICOLON))
     {
         test = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
         if(!test)
         {
             goto err;
         }
-        if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_SEMICOLON))
+        if(!p->lexer.expectCurrent(MC_TOK_SEMICOLON))
         {
             goto err;
         }
     }
-    mc_lexer_nexttoken(&p->lexer);
-    if(!mc_lexer_currtokenis(&p->lexer, MC_TOK_RPAREN))
+    p->lexer.nextToken();
+    if(!p->lexer.currentTokenIs(MC_TOK_RPAREN))
     {
         update = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
         if(!update)
         {
             goto err;
         }
-        if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
+        if(!p->lexer.expectCurrent(MC_TOK_RPAREN))
         {
             goto err;
         }
     }
-    mc_lexer_nexttoken(&p->lexer);
+    p->lexer.nextToken();
     body = mc_parser_parsecodeblock(p);
     if(!body)
     {
@@ -8910,27 +8755,27 @@ mcastexprcodeblock_t* mc_parser_parsecodeblock(mcastparser_t* p)
     mcastexprcodeblock_t* res;
     mcastexpression_t* expr;
     PtrList* statements;
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LBRACE))
+    if(!p->lexer.expectCurrent(MC_TOK_LBRACE))
     {
         return nullptr;
     }
-    mc_lexer_nexttoken(&p->lexer);
+    p->lexer.nextToken();
     p->depth++;
     statements = Memory::make<PtrList>(sizeof(void*), true);
     if(!statements)
     {
         goto err;
     }
-    while(!mc_lexer_currtokenis(&p->lexer, MC_TOK_RBRACE))
+    while(!p->lexer.currentTokenIs(MC_TOK_RBRACE))
     {
-        if(mc_lexer_currtokenis(&p->lexer, MC_TOK_EOF))
+        if(p->lexer.currentTokenIs(MC_TOK_EOF))
         {
-            mc_errlist_addf(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "unexpected EOF");
+            p->errors->pushFormat(MC_ERROR_PARSING, p->lexer.m_currtoken.pos, "unexpected EOF");
             goto err;
         }
-        if(mc_lexer_currtokenis(&p->lexer, MC_TOK_SEMICOLON))
+        if(p->lexer.currentTokenIs(MC_TOK_SEMICOLON))
         {
-            mc_lexer_nexttoken(&p->lexer);
+            p->lexer.nextToken();
             continue;
         }
         expr = mc_astparser_parsestatement(p);
@@ -8945,7 +8790,7 @@ mcastexprcodeblock_t* mc_parser_parsecodeblock(mcastparser_t* p)
             goto err;
         }
     }
-    mc_lexer_nexttoken(&p->lexer);
+    p->lexer.nextToken();
     p->depth--;
     res = mc_astcodeblock_make(p->pstate, statements);
     if(!res)
@@ -8967,17 +8812,17 @@ mcastexpression_t* mc_parser_parseexpression(mcastparser_t* p, mcastprecedence_t
     mcastrightassocparsefn_t parserightassoc;
     mcastexpression_t* newleftexpr;
     mcastexpression_t* leftexpr;
-    pos = p->lexer.currtoken.pos;
-    if(p->lexer.currtoken.toktype == MC_TOK_INVALID)
+    pos = p->lexer.m_currtoken.pos;
+    if(p->lexer.m_currtoken.toktype == MC_TOK_INVALID)
     {
-        mc_errlist_addf(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "illegal token");
+        p->errors->pushFormat(MC_ERROR_PARSING, p->lexer.m_currtoken.pos, "illegal token");
         return nullptr;
     }
-    parserightassoc = p->rightassocfuncs[p->lexer.currtoken.toktype];
+    parserightassoc = p->rightassocfuncs[p->lexer.m_currtoken.toktype];
     if(!parserightassoc)
     {
-        literal = mc_asttoken_dupliteralstring(&p->lexer.currtoken);
-        mc_errlist_addf(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "no prefix parse function for \"%s\" found", literal);
+        literal = mc_asttoken_dupliteralstring(&p->lexer.m_currtoken);
+        p->errors->pushFormat(MC_ERROR_PARSING, p->lexer.m_currtoken.pos, "no prefix parse function for \"%s\" found", literal);
         mc_memory_free(literal);
         return nullptr;
     }
@@ -8987,14 +8832,14 @@ mcastexpression_t* mc_parser_parseexpression(mcastparser_t* p, mcastprecedence_t
         return nullptr;
     }
     leftexpr->pos = pos;
-    while(!mc_lexer_currtokenis(&p->lexer, MC_TOK_SEMICOLON) && prec < mc_parser_getprecedence(p->lexer.currtoken.toktype))
+    while(!p->lexer.currentTokenIs(MC_TOK_SEMICOLON) && prec < mc_parser_getprecedence(p->lexer.m_currtoken.toktype))
     {
-        parseleftassoc = p->leftassocfuncs[p->lexer.currtoken.toktype];
+        parseleftassoc = p->leftassocfuncs[p->lexer.m_currtoken.toktype];
         if(!parseleftassoc)
         {
             return leftexpr;
         }
-        pos = p->lexer.currtoken.pos;
+        pos = p->lexer.m_currtoken.pos;
         newleftexpr = parseleftassoc(p, leftexpr);
         if(!newleftexpr)
         {
@@ -9011,7 +8856,7 @@ mcastexpression_t* mc_parser_parseident(mcastparser_t* p)
 {
     mcastexprident_t* ident;
     mcastexpression_t* res;
-    ident = mc_astident_make(p->pstate, p->lexer.currtoken);
+    ident = mc_astident_make(p->pstate, p->lexer.m_currtoken);
     if(!ident)
     {
         return nullptr;
@@ -9022,7 +8867,7 @@ mcastexpression_t* mc_parser_parseident(mcastparser_t* p)
         mc_astident_destroy(ident);
         return nullptr;
     }
-    mc_lexer_nexttoken(&p->lexer);
+    p->lexer.nextToken();
     return res;
 }
 
@@ -9034,27 +8879,27 @@ mcastexpression_t* mc_parser_parseliteralnumber(mcastparser_t* p)
     char* literal;
     number = 0;
     errno = 0;
-    number = mc_util_strtod(p->lexer.currtoken.tokstrdata, p->lexer.currtoken.tokstrlen, &end);
+    number = mc_util_strtod(p->lexer.m_currtoken.tokstrdata, p->lexer.m_currtoken.tokstrlen, &end);
     #if 0
-        fprintf(stderr, "literal=<%s> number=<%f>\n", p->lexer.currtoken.tokstrdata, number);
+        fprintf(stderr, "literal=<%s> number=<%f>\n", p->lexer.m_currtoken.tokstrdata, number);
     #endif
-    parsedlen = end - p->lexer.currtoken.tokstrdata;
-    if(errno || parsedlen != p->lexer.currtoken.tokstrlen)
+    parsedlen = end - p->lexer.m_currtoken.tokstrdata;
+    if(errno || parsedlen != p->lexer.m_currtoken.tokstrlen)
     {
-        literal = mc_asttoken_dupliteralstring(&p->lexer.currtoken);
-        mc_errlist_addf(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "failed to parse number literal \"%s\"", literal);
+        literal = mc_asttoken_dupliteralstring(&p->lexer.m_currtoken);
+        p->errors->pushFormat(MC_ERROR_PARSING, p->lexer.m_currtoken.pos, "failed to parse number literal \"%s\"", literal);
         mc_memory_free(literal);
         return nullptr;
     }    
-    mc_lexer_nexttoken(&p->lexer);
+    p->lexer.nextToken();
     return mc_astexpr_makeliteralnumber(p->pstate, number);
 }
 
 mcastexpression_t* mc_parser_parseliteralbool(mcastparser_t* p)
 {
     mcastexpression_t* res;
-    res = mc_astexpr_makeliteralbool(p->pstate, p->lexer.currtoken.toktype == MC_TOK_TRUE);
-    mc_lexer_nexttoken(&p->lexer);
+    res = mc_astexpr_makeliteralbool(p->pstate, p->lexer.m_currtoken.toktype == MC_TOK_TRUE);
+    p->lexer.nextToken();
     return res;
 }
 
@@ -9063,13 +8908,13 @@ mcastexpression_t* mc_parser_parseliteralstring(mcastparser_t* p)
     size_t len;
     char* processedliteral;
     mcastexpression_t* res;
-    processedliteral = mc_parser_processandcopystring(p->lexer.currtoken.tokstrdata, p->lexer.currtoken.tokstrlen);
+    processedliteral = mc_parser_processandcopystring(p->lexer.m_currtoken.tokstrdata, p->lexer.m_currtoken.tokstrlen);
     if(!processedliteral)
     {
-        mc_errlist_addf(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "error parsing string literal");
+        p->errors->pushFormat(MC_ERROR_PARSING, p->lexer.m_currtoken.pos, "error parsing string literal");
         return nullptr;
     }
-    mc_lexer_nexttoken(&p->lexer);
+    p->lexer.nextToken();
     len = mc_util_strlen(processedliteral);
     res = mc_astexpr_makeliteralstring(p->pstate, processedliteral, len);
     if(!res)
@@ -9098,19 +8943,19 @@ mcastexpression_t* mc_parser_parseliteraltemplatestring(mcastparser_t* p)
     leftaddexpr = nullptr;
     rightexpr = nullptr;
     rightaddexpr = nullptr;
-    processedliteral = mc_parser_processandcopystring(p->lexer.currtoken.tokstrdata, p->lexer.currtoken.tokstrlen);
+    processedliteral = mc_parser_processandcopystring(p->lexer.m_currtoken.tokstrdata, p->lexer.m_currtoken.tokstrlen);
     if(!processedliteral)
     {
-        mc_errlist_addf(p->errors, MC_ERROR_PARSING, p->lexer.currtoken.pos, "error parsing string literal");
+        p->errors->pushFormat(MC_ERROR_PARSING, p->lexer.m_currtoken.pos, "error parsing string literal");
         return nullptr;
     }
-    mc_lexer_nexttoken(&p->lexer);
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LBRACE))
+    p->lexer.nextToken();
+    if(!p->lexer.expectCurrent(MC_TOK_LBRACE))
     {
         goto err;
     }
-    mc_lexer_nexttoken(&p->lexer);
-    pos = p->lexer.currtoken.pos;
+    p->lexer.nextToken();
+    pos = p->lexer.m_currtoken.pos;
     len = mc_util_strlen(processedliteral);
     leftstringexpr = mc_astexpr_makeliteralstring(p->pstate, processedliteral, len);
     if(!leftstringexpr)
@@ -9119,7 +8964,7 @@ mcastexpression_t* mc_parser_parseliteraltemplatestring(mcastparser_t* p)
     }
     leftstringexpr->pos = pos;
     processedliteral = nullptr;
-    pos = p->lexer.currtoken.pos;
+    pos = p->lexer.m_currtoken.pos;
     templateexpr = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
     if(!templateexpr)
     {
@@ -9140,15 +8985,15 @@ mcastexpression_t* mc_parser_parseliteraltemplatestring(mcastparser_t* p)
     leftaddexpr->pos = pos;
     leftstringexpr = nullptr;
     tostrcallexpr = nullptr;
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RBRACE))
+    if(!p->lexer.expectCurrent(MC_TOK_RBRACE))
     {
         goto err;
     }
-    mc_lexer_previoustoken(&p->lexer);
-    mc_lexer_conttplstring(&p->lexer);
-    mc_lexer_nexttoken(&p->lexer);
-    mc_lexer_nexttoken(&p->lexer);
-    pos = p->lexer.currtoken.pos;
+    p->lexer.previousToken();
+    p->lexer.conttplstring();
+    p->lexer.nextToken();
+    p->lexer.nextToken();
+    pos = p->lexer.m_currtoken.pos;
     rightexpr = mc_parser_parseexpression(p, MC_ASTPREC_HIGHEST);
     if(!rightexpr)
     {
@@ -9176,7 +9021,7 @@ err:
 
 mcastexpression_t* mc_parser_parseliteralnull(mcastparser_t* p)
 {
-    mc_lexer_nexttoken(&p->lexer);
+    p->lexer.nextToken();
     return mc_astexpr_makeliteralnull(p->pstate);
 }
 
@@ -9214,13 +9059,13 @@ mcastexpression_t* mc_parser_parseliteralmap(mcastparser_t* p)
     {
         goto err;
     }
-    mc_lexer_nexttoken(&p->lexer);
-    while(!mc_lexer_currtokenis(&p->lexer, MC_TOK_RBRACE))
+    p->lexer.nextToken();
+    while(!p->lexer.currentTokenIs(MC_TOK_RBRACE))
     {
         key = nullptr;
-        if(mc_lexer_currtokenis(&p->lexer, MC_TOK_IDENT))
+        if(p->lexer.currentTokenIs(MC_TOK_IDENT))
         {
-            str = mc_asttoken_dupliteralstring(&p->lexer.currtoken);
+            str = mc_asttoken_dupliteralstring(&p->lexer.m_currtoken);
             len = mc_util_strlen(str);
             key = mc_astexpr_makeliteralstring(p->pstate, str, len);
             if(!key)
@@ -9228,8 +9073,8 @@ mcastexpression_t* mc_parser_parseliteralmap(mcastparser_t* p)
                 mc_memory_free(str);
                 goto err;
             }
-            key->pos = p->lexer.currtoken.pos;
-            mc_lexer_nexttoken(&p->lexer);
+            key->pos = p->lexer.m_currtoken.pos;
+            p->lexer.nextToken();
         }
         else
         {
@@ -9248,7 +9093,7 @@ mcastexpression_t* mc_parser_parseliteralmap(mcastparser_t* p)
                     break;
                 default:
                     {
-                        mc_errlist_addf(p->errors, MC_ERROR_PARSING, key->pos, "can only use primitive types as literal 'map' object keys");
+                        p->errors->pushFormat(MC_ERROR_PARSING, key->pos, "can only use primitive types as literal 'map' object keys");
                         mc_astexpr_destroy(key);
                         goto err;
                     }
@@ -9261,11 +9106,11 @@ mcastexpression_t* mc_parser_parseliteralmap(mcastparser_t* p)
             mc_astexpr_destroy(key);
             goto err;
         }
-        if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_COLON))
+        if(!p->lexer.expectCurrent(MC_TOK_COLON))
         {
             goto err;
         }
-        mc_lexer_nexttoken(&p->lexer);
+        p->lexer.nextToken();
         value = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
         if(!value)
         {
@@ -9277,17 +9122,17 @@ mcastexpression_t* mc_parser_parseliteralmap(mcastparser_t* p)
             mc_astexpr_destroy(value);
             goto err;
         }
-        if(mc_lexer_currtokenis(&p->lexer, MC_TOK_RBRACE))
+        if(p->lexer.currentTokenIs(MC_TOK_RBRACE))
         {
             break;
         }
-        if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_COMMA))
+        if(!p->lexer.expectCurrent(MC_TOK_COMMA))
         {
             goto err;
         }
-        mc_lexer_nexttoken(&p->lexer);
+        p->lexer.nextToken();
     }
-    mc_lexer_nexttoken(&p->lexer);
+    p->lexer.nextToken();
     res = mc_astexpr_makeliteralmap(p->pstate, keys, values);
     if(!res)
     {
@@ -9305,8 +9150,8 @@ mcastexpression_t* mc_parser_parseprefixexpr(mcastparser_t* p)
     mcastmathoptype_t op;
     mcastexpression_t* res;
     mcastexpression_t* right;
-    op = mc_parser_tokentomathop(p->lexer.currtoken.toktype);
-    mc_lexer_nexttoken(&p->lexer);
+    op = mc_parser_tokentomathop(p->lexer.m_currtoken.toktype);
+    p->lexer.nextToken();
     right = mc_parser_parseexpression(p, MC_ASTPREC_PREFIX);
     if(!right)
     {
@@ -9327,9 +9172,9 @@ mcastexpression_t* mc_parser_parseinfixexpr(mcastparser_t* p, mcastexpression_t*
     mcastprecedence_t prec;
     mcastexpression_t* res;
     mcastexpression_t* right;
-    op = mc_parser_tokentomathop(p->lexer.currtoken.toktype);
-    prec = mc_parser_getprecedence(p->lexer.currtoken.toktype);
-    mc_lexer_nexttoken(&p->lexer);
+    op = mc_parser_tokentomathop(p->lexer.m_currtoken.toktype);
+    prec = mc_parser_getprecedence(p->lexer.m_currtoken.toktype);
+    p->lexer.nextToken();
     right = mc_parser_parseexpression(p, prec);
     if(!right)
     {
@@ -9347,14 +9192,14 @@ mcastexpression_t* mc_parser_parseinfixexpr(mcastparser_t* p, mcastexpression_t*
 mcastexpression_t* mc_parser_parsegroupedexpr(mcastparser_t* p)
 {
     mcastexpression_t* expr;
-    mc_lexer_nexttoken(&p->lexer);
+    p->lexer.nextToken();
     expr = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
-    if(!expr || !mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
+    if(!expr || !p->lexer.expectCurrent(MC_TOK_RPAREN))
     {
         mc_astexpr_destroy(expr);
         return nullptr;
     }
-    mc_lexer_nexttoken(&p->lexer);
+    p->lexer.nextToken();
     return expr;
 }
 
@@ -9364,21 +9209,21 @@ bool mc_parser_parsefuncparams(mcastparser_t* p, PtrList* outparams)
     bool ok;
     mcastexprident_t* ident;
     mcastfuncparam_t* param;
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_LPAREN))
+    if(!p->lexer.expectCurrent(MC_TOK_LPAREN))
     {
         return false;
     }
-    mc_lexer_nexttoken(&p->lexer);
-    if(mc_lexer_currtokenis(&p->lexer, MC_TOK_RPAREN))
+    p->lexer.nextToken();
+    if(p->lexer.currentTokenIs(MC_TOK_RPAREN))
     {
-        mc_lexer_nexttoken(&p->lexer);
+        p->lexer.nextToken();
         return true;
     }
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_IDENT))
+    if(!p->lexer.expectCurrent(MC_TOK_IDENT))
     {
         return false;
     }
-    ident = mc_astident_make(p->pstate, p->lexer.currtoken);
+    ident = mc_astident_make(p->pstate, p->lexer.m_currtoken);
     if(!ident)
     {
         return false;
@@ -9390,15 +9235,15 @@ bool mc_parser_parsefuncparams(mcastparser_t* p, PtrList* outparams)
         mc_astident_destroy(ident);
         return false;
     }
-    mc_lexer_nexttoken(&p->lexer);
-    while(mc_lexer_currtokenis(&p->lexer, MC_TOK_COMMA))
+    p->lexer.nextToken();
+    while(p->lexer.currentTokenIs(MC_TOK_COMMA))
     {
-        mc_lexer_nexttoken(&p->lexer);
-        if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_IDENT))
+        p->lexer.nextToken();
+        if(!p->lexer.expectCurrent(MC_TOK_IDENT))
         {
             return false;
         }
-        ident = mc_astident_make(p->pstate, p->lexer.currtoken);
+        ident = mc_astident_make(p->pstate, p->lexer.m_currtoken);
         if(!ident)
         {
             return false;
@@ -9410,13 +9255,13 @@ bool mc_parser_parsefuncparams(mcastparser_t* p, PtrList* outparams)
             mc_astfuncparam_destroy(param);
             return false;
         }
-        mc_lexer_nexttoken(&p->lexer);
+        p->lexer.nextToken();
     }
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RPAREN))
+    if(!p->lexer.expectCurrent(MC_TOK_RPAREN))
     {
         return false;
     }
-    mc_lexer_nexttoken(&p->lexer);
+    p->lexer.nextToken();
     return true;
 }
 
@@ -9429,9 +9274,9 @@ mcastexpression_t* mc_parser_parseliteralfunction(mcastparser_t* p)
     p->depth++;
     params = nullptr;
     body = nullptr;
-    if(mc_lexer_currtokenis(&p->lexer, MC_TOK_FUNCTION))
+    if(p->lexer.currentTokenIs(MC_TOK_FUNCTION))
     {
-        mc_lexer_nexttoken(&p->lexer);
+        p->lexer.nextToken();
     }
     params = Memory::make<PtrList>(sizeof(void*), true);
     ok = mc_parser_parsefuncparams(p, params);
@@ -9466,18 +9311,18 @@ mcastexpression_t* mc_parser_parsefunctionstmt(mcastparser_t* p)
     mcastlocation_t pos;
     nameident = nullptr;
     value = nullptr;
-    pos = p->lexer.currtoken.pos;
-    mc_lexer_nexttoken(&p->lexer);
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_IDENT))
+    pos = p->lexer.m_currtoken.pos;
+    p->lexer.nextToken();
+    if(!p->lexer.expectCurrent(MC_TOK_IDENT))
     {
         goto err;
     }
-    nameident = mc_astident_make(p->pstate, p->lexer.currtoken);
+    nameident = mc_astident_make(p->pstate, p->lexer.m_currtoken);
     if(!nameident)
     {
         goto err;
     }
-    mc_lexer_nexttoken(&p->lexer);
+    p->lexer.nextToken();
     value = mc_parser_parseliteralfunction(p);
     if(!value)
     {
@@ -9527,15 +9372,15 @@ PtrList* mc_parser_parseexprlist(mcastparser_t* p, mcasttoktype_t starttoken, mc
     bool ok;
     PtrList* res;
     mcastexpression_t* argexpr;
-    if(!mc_lexer_expectcurrent(&p->lexer, starttoken))
+    if(!p->lexer.expectCurrent(starttoken))
     {
         return nullptr;
     }
-    mc_lexer_nexttoken(&p->lexer);
+    p->lexer.nextToken();
     res = Memory::make<PtrList>(sizeof(void*), true);
-    if(mc_lexer_currtokenis(&p->lexer, endtoken))
+    if(p->lexer.currentTokenIs(endtoken))
     {
-        mc_lexer_nexttoken(&p->lexer);
+        p->lexer.nextToken();
         return res;
     }
     argexpr = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
@@ -9549,10 +9394,10 @@ PtrList* mc_parser_parseexprlist(mcastparser_t* p, mcasttoktype_t starttoken, mc
         mc_astexpr_destroy(argexpr);
         goto err;
     }
-    while(mc_lexer_currtokenis(&p->lexer, MC_TOK_COMMA))
+    while(p->lexer.currentTokenIs(MC_TOK_COMMA))
     {
-        mc_lexer_nexttoken(&p->lexer);
-        if(trailingcommaallowed && mc_lexer_currtokenis(&p->lexer, endtoken))
+        p->lexer.nextToken();
+        if(trailingcommaallowed && p->lexer.currentTokenIs(endtoken))
         {
             break;
         }
@@ -9568,11 +9413,11 @@ PtrList* mc_parser_parseexprlist(mcastparser_t* p, mcasttoktype_t starttoken, mc
             goto err;
         }
     }
-    if(!mc_lexer_expectcurrent(&p->lexer, endtoken))
+    if(!p->lexer.expectCurrent(endtoken))
     {
         goto err;
     }
-    mc_lexer_nexttoken(&p->lexer);
+    p->lexer.nextToken();
     return res;
 err:
     PtrList::destroy(res, (mcitemdestroyfn_t)mc_astexpr_destroy);
@@ -9583,18 +9428,18 @@ mcastexpression_t* mc_parser_parseindexexpr(mcastparser_t* p, mcastexpression_t*
 {
     mcastexpression_t* res;
     mcastexpression_t* index;
-    mc_lexer_nexttoken(&p->lexer);
+    p->lexer.nextToken();
     index = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
     if(!index)
     {
         return nullptr;
     }
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_RBRACKET))
+    if(!p->lexer.expectCurrent(MC_TOK_RBRACKET))
     {
         mc_astexpr_destroy(index);
         return nullptr;
     }
-    mc_lexer_nexttoken(&p->lexer);
+    p->lexer.nextToken();
     res = mc_astexpr_makeindexexpr(p->pstate, left, index, false);
     if(!res)
     {
@@ -9614,8 +9459,8 @@ mcastexpression_t* mc_parser_parseassignexpr(mcastparser_t* p, mcastexpression_t
     mcastexpression_t* leftcopy;
     mcastexpression_t* newsource;
     source = nullptr;
-    assigntype = p->lexer.currtoken.toktype;
-    mc_lexer_nexttoken(&p->lexer);
+    assigntype = p->lexer.m_currtoken.toktype;
+    p->lexer.nextToken();
     source = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
     if(!source)
     {
@@ -9678,9 +9523,9 @@ mcastexpression_t* mc_parser_parselogicalexpr(mcastparser_t* p, mcastexpression_
     mcastprecedence_t prec;
     mcastexpression_t* res;
     mcastexpression_t* right;
-    op = mc_parser_tokentomathop(p->lexer.currtoken.toktype);
-    prec = mc_parser_getprecedence(p->lexer.currtoken.toktype);
-    mc_lexer_nexttoken(&p->lexer);
+    op = mc_parser_tokentomathop(p->lexer.m_currtoken.toktype);
+    prec = mc_parser_getprecedence(p->lexer.m_currtoken.toktype);
+    p->lexer.nextToken();
     right = mc_parser_parseexpression(p, prec);
     if(!right)
     {
@@ -9700,18 +9545,18 @@ mcastexpression_t* mc_parser_parseternaryexpr(mcastparser_t* p, mcastexpression_
     mcastexpression_t* res;
     mcastexpression_t* ift;
     mcastexpression_t* iffalse;
-    mc_lexer_nexttoken(&p->lexer);
+    p->lexer.nextToken();
     ift = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
     if(!ift)
     {
         return nullptr;
     }
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_COLON))
+    if(!p->lexer.expectCurrent(MC_TOK_COLON))
     {
         mc_astexpr_destroy(ift);
         return nullptr;
     }
-    mc_lexer_nexttoken(&p->lexer);
+    p->lexer.nextToken();
     iffalse = mc_parser_parseexpression(p, MC_ASTPREC_LOWEST);
     if(!iffalse)
     {
@@ -9740,9 +9585,9 @@ mcastexpression_t* mc_parser_parseincdecprefixexpr(mcastparser_t* p)
     mcastexpression_t* operation;
     mcastexpression_t* oneliteral;
     source = nullptr;
-    operationtype = p->lexer.currtoken.toktype;
-    pos = p->lexer.currtoken.pos;
-    mc_lexer_nexttoken(&p->lexer);
+    operationtype = p->lexer.m_currtoken.toktype;
+    pos = p->lexer.m_currtoken.pos;
+    p->lexer.nextToken();
     op = mc_parser_tokentomathop(operationtype);
     dest = mc_parser_parseexpression(p, MC_ASTPREC_PREFIX);
     if(!dest)
@@ -9796,9 +9641,9 @@ mcastexpression_t* mc_parser_parseincdecpostfixexpr(mcastparser_t* p, mcastexpre
     mcastexpression_t* operation;
     mcastexpression_t* oneliteral;
     source = nullptr;
-    operationtype = p->lexer.currtoken.toktype;
-    pos = p->lexer.currtoken.pos;
-    mc_lexer_nexttoken(&p->lexer);
+    operationtype = p->lexer.m_currtoken.toktype;
+    pos = p->lexer.m_currtoken.pos;
+    p->lexer.nextToken();
     op = mc_parser_tokentomathop(operationtype);
     leftcopy = mc_astexpr_copyexpr(left);
     if(!leftcopy)
@@ -9838,12 +9683,12 @@ mcastexpression_t* mc_parser_parsedotexpression(mcastparser_t* p, mcastexpressio
     char* str;
     mcastexpression_t* res;
     mcastexpression_t* index;
-    mc_lexer_nexttoken(&p->lexer);
-    if(!mc_lexer_expectcurrent(&p->lexer, MC_TOK_IDENT))
+    p->lexer.nextToken();
+    if(!p->lexer.expectCurrent(MC_TOK_IDENT))
     {
         return nullptr;
     }
-    str = mc_asttoken_dupliteralstring(&p->lexer.currtoken);
+    str = mc_asttoken_dupliteralstring(&p->lexer.m_currtoken);
     len = mc_util_strlen(str);
     index = mc_astexpr_makeliteralstring(p->pstate, str, len);
     if(!index)
@@ -9851,8 +9696,8 @@ mcastexpression_t* mc_parser_parsedotexpression(mcastparser_t* p, mcastexpressio
         mc_memory_free(str);
         return nullptr;
     }
-    index->pos = p->lexer.currtoken.pos;
-    mc_lexer_nexttoken(&p->lexer);
+    index->pos = p->lexer.m_currtoken.pos;
+    p->lexer.nextToken();
     res = mc_astexpr_makeindexexpr(p->pstate, left, index, true);
     if(!res)
     {
@@ -10165,7 +10010,7 @@ bool mc_compiler_init(mcastcompiler_t* comp, mcstate_t* state, mcconfig_t* cfg, 
     {
         goto compilerinitfailed;
     }
-    comp->constants = Memory::make<mcvallist_t>(0, mc_value_makenull());
+    comp->constants = Memory::make<GenericList<mcvalue_t>>(0, mc_value_makenull());
     if(!comp->constants)
     {
         goto compilerinitfailed;
@@ -10175,7 +10020,7 @@ bool mc_compiler_init(mcastcompiler_t* comp, mcstate_t* state, mcconfig_t* cfg, 
     {
         goto compilerinitfailed;
     }
-    comp->modules = Memory::make<mcptrdict_t>((mcitemcopyfn_t)mc_module_copy, (mcitemdestroyfn_t)mc_module_destroy);
+    comp->modules = Memory::make<PtrDict>((mcitemcopyfn_t)mc_module_copy, (mcitemdestroyfn_t)mc_module_destroy);
     if(!comp->modules)
     {
         goto compilerinitfailed;
@@ -10197,7 +10042,7 @@ bool mc_compiler_init(mcastcompiler_t* comp, mcstate_t* state, mcconfig_t* cfg, 
         goto compilerinitfailed;
     }
     #endif
-    comp->stringconstposdict = Memory::make<mcptrdict_t>(nullptr, nullptr);
+    comp->stringconstposdict = Memory::make<PtrDict>(nullptr, nullptr);
     if(!comp->stringconstposdict)
     {
         goto compilerinitfailed;
@@ -10229,7 +10074,7 @@ void mc_compiler_deinit(mcastcompiler_t* comp)
         {
             mc_compiler_popcompilationscope(comp);
         }
-        mcptrdict_t::destroyItemsAndDict(comp->modules);
+        PtrDict::destroyItemsAndDict(comp->modules);
         PtrList::destroy(comp->srcposstack, nullptr);
         Memory::destroy(comp->constants);
         PtrList::destroy(comp->filescopelist, nullptr);
@@ -10246,8 +10091,8 @@ bool mc_compiler_initshallowcopy(mcastcompiler_t* copy, mcastcompiler_t* src)
     char* loadednamecopy;
     const char* key;
     const char* loadedname;
-    mcptrdict_t* modulescopy;
-    mcvallist_t* constantscopy;
+    PtrDict* modulescopy;
+    GenericList<mcvalue_t>* constantscopy;
     PtrList* srcloadedmodulenames;
     PtrList* copyloadedmodulenames;
     mcastsymtable_t* srcst;
@@ -10277,9 +10122,9 @@ bool mc_compiler_initshallowcopy(mcastcompiler_t* copy, mcastcompiler_t* src)
     {
         goto compilercopyfailed;
     }
-    mcptrdict_t::destroyItemsAndDict(copy->modules);
+    PtrDict::destroyItemsAndDict(copy->modules);
     copy->modules = modulescopy;
-    constantscopy = mcvallist_t::copy(src->constants);
+    constantscopy = GenericList<mcvalue_t>::copy(src->constants);
     if(!constantscopy)
     {
         goto compilercopyfailed;
@@ -10693,12 +10538,12 @@ bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_t* imports
         {
             if(comp->pstate->config.fatalcomplaints)
             {
-                mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, importstmt->pos, "module \"%s\" was already imported", modname);
+                comp->errors->pushFormat(MC_ERROR_COMPILING, importstmt->pos, "module \"%s\" was already imported", modname);
                 result = false;
             }
             else
             {
-                mc_state_complain(comp->pstate, importstmt->pos, "module \"%s\" already imported; ignoring 'import' statement", modname);
+                mc_util_complain(importstmt->pos, "module \"%s\" already imported; ignoring 'import' statement", modname);
                 result = true;
             }
             goto end;
@@ -10736,7 +10581,7 @@ bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_t* imports
     symtab = mc_compiler_getsymtable(comp);
     if(symtab->outer != nullptr || symtab->blockscopes->count() > 1)
     {
-        mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, importstmt->pos, "modules can only be imported in global scope");
+        comp->errors->pushFormat(MC_ERROR_COMPILING, importstmt->pos, "modules can only be imported in global scope");
         result = false;
         goto end;
     }
@@ -10745,7 +10590,7 @@ bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_t* imports
         fs = (mcastscopefile_t*)comp->filescopelist->get(i);
         if(mc_util_strequal(fs->file->path, filepath))
         {
-            mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, importstmt->pos, "cyclic reference of file \"%s\"", filepath);
+            comp->errors->pushFormat(MC_ERROR_COMPILING, importstmt->pos, "cyclic reference of file \"%s\"", filepath);
             result = false;
             goto end;
         }
@@ -10758,7 +10603,7 @@ bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_t* imports
         code = mc_fsutil_fileread(comp->pstate, searchedpath, &flen);
         if(!code)
         {
-            mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, importstmt->pos, "reading module file \"%s\" failed", filepath);
+            comp->errors->pushFormat(MC_ERROR_COMPILING, importstmt->pos, "reading module file \"%s\" failed", filepath);
             result = false;
             goto end;
         }
@@ -10838,14 +10683,14 @@ mcastsymbol_t* mc_compiler_defsymbol(mcastcompiler_t* comp, mcastlocation_t pos,
         currentsymbol = mc_symtable_resolve(symtab, name);
         if(currentsymbol)
         {
-            mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, pos, "symbol \"%s\" is already defined", name);
+            comp->errors->pushFormat(MC_ERROR_COMPILING, pos, "symbol \"%s\" is already defined", name);
             return nullptr;
         }
     }
     symbol = mc_symtable_define(symtab, name, assignable);
     if(!symbol)
     {
-        mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, pos, "cannot define symbol \"%s\"", name);
+        comp->errors->pushFormat(MC_ERROR_COMPILING, pos, "cannot define symbol \"%s\"", name);
         return nullptr;
     }
     return symbol;
@@ -10947,7 +10792,7 @@ bool mc_compiler_compilereturnstmt(mcastcompiler_t* comp, mcastscopecomp_t* comp
     int ip;
     if(compscope->outer == nullptr)
     {
-        mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "nothing to return from");
+        comp->errors->pushFormat( MC_ERROR_COMPILING, expr->pos, "nothing to return from");
         return false;
     }
     ip = -1;
@@ -11035,7 +10880,7 @@ bool mc_compiler_compilebreakstmt(mcastcompiler_t* comp, uint64_t* opbuf, mcaste
     breakip = mc_compiler_getbreakip(comp);
     if(breakip < 0)
     {
-        mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "nothing to break from.");
+        comp->errors->pushFormat(MC_ERROR_COMPILING, expr->pos, "nothing to break from.");
         return false;
     }
     opbuf[0] = breakip;
@@ -11054,7 +10899,7 @@ bool mc_compiler_compilecontinuestmt(mcastcompiler_t* comp, uint64_t* opbuf, mca
     continueip = mc_compiler_getcontinueip(comp);
     if(continueip < 0)
     {
-        mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "nothing to continue from.");
+        comp->errors->pushFormat(MC_ERROR_COMPILING, expr->pos, "nothing to continue from.");
         return false;
     }
     opbuf[0] = continueip;
@@ -11158,7 +11003,7 @@ bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexpression_t* exp
                         break;
                     default:
                         {
-                            mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "unknown infix operator");
+                            comp->errors->pushFormat(MC_ERROR_COMPILING, expr->pos, "unknown infix operator");
                             goto error;
                         }
                         break;
@@ -11366,7 +11211,7 @@ bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexpression_t* exp
                         break;
                     default:
                         {
-                            mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "unknown prefix operator.");
+                            comp->errors->pushFormat(MC_ERROR_COMPILING, expr->pos, "unknown prefix operator.");
                             goto error;
                         }
                         break;
@@ -11388,7 +11233,7 @@ bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexpression_t* exp
                 {
                     if(comp->pstate->config.strictmode)
                     {
-                        mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, ident->pos, "compilation: failed to resolve symbol \"%s\"", ident->value);
+                        comp->errors->pushFormat(MC_ERROR_COMPILING, ident->pos, "compilation: failed to resolve symbol \"%s\"", ident->value);
                         goto error;
                     }
                     else
@@ -11465,14 +11310,14 @@ bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexpression_t* exp
                     fnsymbol = mc_symtable_definefunctionname(symtab, fn->name, false);
                     if(!fnsymbol)
                     {
-                        mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "cannot define function name as \"%s\"", fn->name);
+                        comp->errors->pushFormat(MC_ERROR_COMPILING, expr->pos, "cannot define function name as \"%s\"", fn->name);
                         goto error;
                     }
                 }
                 thissymbol = mc_symtable_definethis(symtab);
                 if(!thissymbol)
                 {
-                    mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "cannot define \"this\" symbol");
+                    comp->errors->pushFormat(MC_ERROR_COMPILING, expr->pos, "cannot define \"this\" symbol");
                     goto error;
                 }
                 for(i = 0; i < expr->uexpr.exprlitfunction.funcparamlist->count(); i++)
@@ -11581,7 +11426,7 @@ bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexpression_t* exp
                 assign = &expr->uexpr.exprassign;
                 if(assign->dest->exprtype != MC_EXPR_IDENT && assign->dest->exprtype != MC_EXPR_INDEX)
                 {
-                    mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, assign->dest->pos, "expression is not assignable");
+                    comp->errors->pushFormat(MC_ERROR_COMPILING, assign->dest->pos, "expression is not assignable");
                     goto error;
                 }
                 if(assign->is_postfix)
@@ -11615,7 +11460,7 @@ bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexpression_t* exp
                     {
                         if(comp->pstate->config.strictmode)
                         {
-                            mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, assign->dest->pos, "cannot assign to undeclared symbol \"%s\"", ident->value);
+                            comp->errors->pushFormat(MC_ERROR_COMPILING, assign->dest->pos, "cannot assign to undeclared symbol \"%s\"", ident->value);
                             goto error;
                         }
                         else
@@ -11623,14 +11468,14 @@ bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexpression_t* exp
                             symbol = mc_compiler_defsymbol(comp, ident->pos, ident->value, true, false);
                             if(!symbol)
                             {
-                                mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, assign->dest->pos, "failed to implicitly create symbol \"%s\"", ident->value);
+                                comp->errors->pushFormat(MC_ERROR_COMPILING, assign->dest->pos, "failed to implicitly create symbol \"%s\"", ident->value);
                                 goto error;
                             }
                         }
                     }
                     if(!symbol->assignable)
                     {
-                        mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, assign->dest->pos, "compilation: cannot assign to readonly symbol \"%s\"", ident->value);
+                        comp->errors->pushFormat(MC_ERROR_COMPILING, assign->dest->pos, "compilation: cannot assign to readonly symbol \"%s\"", ident->value);
                         goto error;
                     }
                     ok = mc_compiler_storesymbol(comp, symbol, false);
@@ -11852,7 +11697,7 @@ bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexpression_t* exp
                     sourcesymbol = mc_symtable_resolve(symtab, foreach->source->uexpr.exprident->value);
                     if(!sourcesymbol)
                     {
-                        mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, foreach->source->pos, "symbol \"%s\" could not be resolved", foreach->source->uexpr.exprident->value);
+                        comp->errors->pushFormat(MC_ERROR_COMPILING, foreach->source->pos, "symbol \"%s\" could not be resolved", foreach->source->uexpr.exprident->value);
                         return false;
                     }
                 }
@@ -12147,14 +11992,14 @@ bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexpression_t* exp
                 {
                     if(mc_symtable_ismodglobalscope(symtab))
                     {
-                        mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "recover statement cannot be defined in global scope");
+                        comp->errors->pushFormat(MC_ERROR_COMPILING, expr->pos, "recover statement cannot be defined in global scope");
                         return false;
                     }
                 }
                 #if 0
                 if(!mc_symtable_istopblockscope(symtab))
                 {
-                    mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "recover statement cannot be defined within other statements");
+                    comp->errors->pushFormat(MC_ERROR_COMPILING, expr->pos, "recover statement cannot be defined within other statements");
                     return false;
                 }
                 #endif
@@ -12195,10 +12040,10 @@ bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexpression_t* exp
                 if(!mc_compiler_lastopcodeis(comp, MC_OPCODE_RETURN) && !mc_compiler_lastopcodeis(comp, MC_OPCODE_RETURNVALUE))
                 {
                     #if 0
-                        mc_errlist_addf(comp->errors, MC_ERROR_COMPILING, expr->pos, "recover body must end with a return statement");
+                        comp->errors->pushFormat(MC_ERROR_COMPILING, expr->pos, "recover body must end with a return statement");
                         return false;
                     #else
-                        mc_state_complain(comp->pstate, expr->pos, "recover body should end with a return statement");
+                        mc_util_complain(expr->pos, "recover body should end with a return statement");
                     #endif
                 }
                 mc_symtable_popblockscope(symtab);
@@ -12755,7 +12600,7 @@ void mc_compiler_setsymtable(mcastcompiler_t* comp, mcastsymtable_t* table)
     filescope->filesymtab = table;
 }
 
-mcvallist_t* mc_compiler_getconstants(mcastcompiler_t* comp)
+GenericList<mcvalue_t>* mc_compiler_getconstants(mcastcompiler_t* comp)
 {
     return comp->constants;
 }
@@ -12820,12 +12665,12 @@ mcstate_t* mc_state_make()
     }
     memset(state, 0, sizeof(mcstate_t));
     mc_state_setdefaultconfig(state);
-    state->execstate.valuestack = Memory::make<mcvallist_t>(MC_CONF_MINVMVALSTACKSIZE, mc_value_makenull());
-    state->execstate.valthisstack = Memory::make<mcvallist_t>(MC_CONF_MINVMTHISSTACKSIZE, mc_value_makenull());
-    state->execstate.nativethisstack = Memory::make<mcvallist_t>(MC_CONF_MINNATIVETHISSTACKSIZE, mc_value_makenull());
-    state->globalvalstack = Memory::make<mcvallist_t>(MC_CONF_MAXVMGLOBALS, mc_value_makenull());
-    state->execstate.framestack = Memory::make<mcframelist_t>(MC_CONF_MINVMFRAMES, mcvmframe_t{});
-    mc_errlist_init(&state->errors);
+    state->execstate.valuestack = Memory::make<GenericList<mcvalue_t>>(MC_CONF_MINVMVALSTACKSIZE, mc_value_makenull());
+    state->execstate.valthisstack = Memory::make<GenericList<mcvalue_t>>(MC_CONF_MINVMTHISSTACKSIZE, mc_value_makenull());
+    state->execstate.nativethisstack = Memory::make<GenericList<mcvalue_t>>(MC_CONF_MINNATIVETHISSTACKSIZE, mc_value_makenull());
+    state->globalvalstack = Memory::make<GenericList<mcvalue_t>>(MC_CONF_MAXVMGLOBALS, mc_value_makenull());
+    state->execstate.framestack = Memory::make<GenericList<mcvmframe_t>>(MC_CONF_MINVMFRAMES, mcvmframe_t{});
+    mcerrlist_t::init(&state->errors);
     state->mem = mc_gcmemory_make(state);
     if(!state->mem)
     {
@@ -12863,7 +12708,7 @@ void mc_state_deinit(mcstate_t* state)
     mc_globalstore_destroy(state->vmglobalstore);
     mc_gcmemory_destroy(state->mem);
     PtrList::destroy(state->files, (mcitemdestroyfn_t)mc_compiledfile_destroy);
-    mc_errlist_deinit(&state->errors);
+    mcerrlist_t::deinit(&state->errors);
     Printer::destroy(state->stdoutprinter);
     Printer::destroy(state->stderrprinter);
     Memory::destroy(state->execstate.valuestack);
@@ -12906,246 +12751,19 @@ void mc_state_destroy(mcstate_t* state)
     }
 }
 
-void mc_state_printerrors(mcstate_t* state)
-{
-    int i;
-    int ecnt;
-    mcerror_t* err;
-    ecnt = mc_state_errorcount(state);
-    for(i = 0; i < ecnt; i++)
-    {
-        err = mc_state_geterror(state, i);
-        mc_error_printerror(state, state->stderrprinter, err);
-    }
-}
 
-mccompiledprogram_t* mc_state_compilesource(mcstate_t* state, const char* code, const char* filename)
+template<typename... ArgsT>
+void mc_state_pusherrorf(mcstate_t* state, mcerrtype_t type, mcastlocation_t pos, const char* fmt, ArgsT&&... args)
 {
-    mccompiledprogram_t* compres;
-    mc_state_clearerrors(state);
-    compres = mc_compiler_compilesource(state->compiler, code, filename);
-    if(state->errors.count > 0)
-    {
-        goto err;
-    }
-    return compres;
-err:
-    mc_astcompresult_destroy(compres);
-    return nullptr;
+    state->errors.pushFormat(type, pos, fmt, args...);
 }
 
 
-bool mc_vm_runexecfunc(mcstate_t* state, mccompiledprogram_t* comp_res, mcvallist_t* constants);
 
-mcvalue_t mc_program_execute(mcstate_t* state, mccompiledprogram_t* program)
+template<typename... ArgsT>
+void mc_state_setruntimeerrorf(mcstate_t* state, const char* fmt, ArgsT&&... args)
 {
-    bool ok;
-    mcvalue_t res;
-    if(program == nullptr)
-    {
-        mc_errlist_addf(&state->errors, MC_ERROR_USER, srcposinvalid, "program passed to execute was null.");
-        return mc_value_makenull();
-    }
-    mc_state_reset(state);
-    if(state != program->pstate)
-    {
-        mc_errlist_addf(&state->errors, MC_ERROR_USER, srcposinvalid, "program was compiled with an incompatible instance");
-        return mc_value_makenull();
-    }
-    ok = mc_vm_runexecfunc(state, program, mc_compiler_getconstants(state->compiler));
-    if(!ok || state->errors.count > 0)
-    {
-        return mc_value_makenull();
-    }
-    //MC_ASSERT(state->execstate.vsposition == 0);
-    res = state->execstate.lastpopped;
-    if(mc_value_gettype(res) == MC_VAL_NONE)
-    {
-        return mc_value_makenull();
-    }
-    return res;
-}
-
-void mc_program_destroy(mccompiledprogram_t* program)
-{
-    if(program != nullptr)
-    {
-        mc_astcompresult_destroy(program);
-    }
-}
-
-mcvalue_t mc_state_execcode(mcstate_t* state, const char* code, const char* filename)
-{
-    bool ok;
-    mcvalue_t res;
-    mccompiledprogram_t* compres;
-    mc_state_reset(state);
-    compres = mc_compiler_compilesource(state->compiler, code, filename);
-    if(!compres || state->errors.count > 0)
-    {
-        goto err;
-    }
-    ok = mc_vm_runexecfunc(state, compres, mc_compiler_getconstants(state->compiler));
-    if(!ok || state->errors.count > 0)
-    {
-        goto err;
-    }
-    MC_ASSERT(state->execstate.vsposition == 0);
-    res = state->execstate.lastpopped;
-    if(mc_value_gettype(res) == MC_VAL_NONE)
-    {
-        goto err;
-    }
-    mc_astcompresult_destroy(compres);
-    return res;
-err:
-    mc_astcompresult_destroy(compres);
-    return mc_value_makenull();
-}
-
-mcvalue_t mc_vm_callvalue(mcstate_t* state, mcvallist_t* constants, mcvalue_t callee, mcvalue_t thisval, size_t argc, mcvalue_t* args);
-
-
-mcvalue_t mc_state_callfunctionbyname(mcstate_t* state, const char* fname, mcvalue_t thisval, size_t argc, mcvalue_t* args)
-{
-    mcvalue_t res;
-    mcvalue_t callee;
-    mc_state_reset(state);
-    callee = mc_state_getglobalobjectbyname(state, fname);
-    if(mc_value_gettype(callee) == MC_VAL_NULL)
-    {
-        return mc_value_makenull();
-    }
-    res = mc_vm_callvalue(state, mc_compiler_getconstants(state->compiler), callee, thisval, argc, (mcvalue_t*)args);
-    if(state->errors.count > 0)
-    {
-        return mc_value_makenull();
-    }
-    return res;
-}
-
-bool mc_state_haserrors(mcstate_t* state)
-{
-    return mc_state_errorcount(state) > 0;
-}
-
-int mc_state_errorcount(mcstate_t* state)
-{
-    return state->errors.count;
-}
-
-void mc_state_clearerrors(mcstate_t* state)
-{
-    mc_errlist_clear(&state->errors);
-}
-
-mcerror_t* mc_state_geterror(mcstate_t* state, int index)
-{
-    return (mcerror_t*)mc_errlist_get(&state->errors, index);
-}
-
-bool mc_state_setnativefunction(mcstate_t* state, const char* name, mcnativefn_t fn, void* data)
-{
-    mcvalue_t obj;
-    obj = mc_value_makefuncnative(state, name, fn, data);
-    if(mc_value_isnull(obj))
-    {
-        return false;
-    }
-    return mc_state_setglobalconstant(state, name, obj);
-}
-
-bool mc_state_setglobalconstant(mcstate_t* state, const char* name, mcvalue_t obj)
-{
-    return mc_globalstore_setnamed(state->vmglobalstore, name, obj);
-}
-
-mcvalue_t mc_state_getglobalobjectbyname(mcstate_t* state, const char* name)
-{
-    bool ok;
-    mcvalue_t res;
-    mcastsymbol_t* symbol;
-    mcastsymtable_t* st;
-    st = mc_compiler_getsymtable(state->compiler);
-    symbol = mc_symtable_resolve(st, name);
-    if(!symbol)
-    {
-        mc_state_pusherrorf(state, MC_ERROR_USER, srcposinvalid, "symbol \"%s\" is not defined", name);
-        return mc_value_makenull();
-    }
-    res = mc_value_makenull();
-    if(symbol->symtype == MC_SYM_MODULEGLOBAL)
-    {
-        res = mc_vm_getglobalbyindex(state, symbol->index);
-    }
-    else if(symbol->symtype == MC_SYM_GLOBALBUILTIN)
-    {
-        ok = false;
-        res = mc_globalstore_getatindex(state->vmglobalstore, symbol->index, &ok);
-        if(!ok)
-        {
-            mc_state_pusherrorf(state, MC_ERROR_USER, srcposinvalid, "failed to get global object at %d", symbol->index);
-            return mc_value_makenull();
-        }
-    }
-    else
-    {
-        mc_state_pusherrorf(state, MC_ERROR_USER, srcposinvalid, "value associated with symbol \"%s\" could not be loaded", name);
-        return mc_value_makenull();
-    }
-    return res;
-}
-
-void mc_state_pusherrorfv(mcstate_t* state, mcerrtype_t type, mcastlocation_t pos, const char* fmt, va_list va)
-{
-    mc_errlist_addfv(&state->errors, type, pos, fmt, va);
-}
-
-void mc_state_pusherrorf(mcstate_t* state, mcerrtype_t type, mcastlocation_t pos, const char* fmt, ...)
-{
-    va_list va;
-    va_start(va, fmt);
-    mc_state_pusherrorfv(state, type, pos, fmt, va);
-    va_end(va);
-}
-
-void mc_state_complainv(mcstate_t *state, mcastlocation_t pos, const char *fmt, va_list va)
-{
-    int ncol;
-    int nline;
-    const char* fname;
-    (void)state;
-    fname = "unknown";
-    ncol = 0;
-    nline = 0;
-    if(pos.file != nullptr)
-    {
-        if(pos.file->path != nullptr)
-        {
-            fname = pos.file->path;
-        }
-        nline = pos.line;
-        ncol = pos.column;
-    }
-    fprintf(stderr, "**WARNING** [%s:%d:%d] ", fname, nline, ncol);
-    vfprintf(stderr, fmt, va);
-    fprintf(stderr, "\n");
-}
-
-void mc_state_complain(mcstate_t *state, mcastlocation_t pos, const char *fmt, ...)
-{
-    va_list va;
-    va_start(va, fmt);
-    mc_state_complainv(state, pos, fmt, va);
-    va_end(va);
-}
-
-void mc_state_setruntimeerrorf(mcstate_t* state, const char* fmt, ...)
-{
-    va_list va;
-    va_start(va, fmt);
-    mc_state_pusherrorfv(state, MC_ERROR_RUNTIME, srcposinvalid, fmt, va);
-    va_end(va);
+    mc_state_pusherrorf(state, MC_ERROR_RUNTIME, srcposinvalid, fmt, args...);
 }
 
 const char* mc_error_getmessage(mcerror_t* error)
@@ -13408,6 +13026,197 @@ const char* mc_traceback_getfunctionname(mctraceback_t* traceback, int depth)
     }
     return item->trfuncname;
 }
+
+void mc_state_printerrors(mcstate_t* state)
+{
+    int i;
+    int ecnt;
+    mcerror_t* err;
+    ecnt = mc_state_errorcount(state);
+    for(i = 0; i < ecnt; i++)
+    {
+        err = mc_state_geterror(state, i);
+        mc_error_printerror(state, state->stderrprinter, err);
+    }
+}
+
+mccompiledprogram_t* mc_state_compilesource(mcstate_t* state, const char* code, const char* filename)
+{
+    mccompiledprogram_t* compres;
+    mc_state_clearerrors(state);
+    compres = mc_compiler_compilesource(state->compiler, code, filename);
+    if(state->errors.count > 0)
+    {
+        goto err;
+    }
+    return compres;
+err:
+    mc_astcompresult_destroy(compres);
+    return nullptr;
+}
+
+
+bool mc_vm_runexecfunc(mcstate_t* state, mccompiledprogram_t* comp_res, GenericList<mcvalue_t>* constants);
+
+mcvalue_t mc_program_execute(mcstate_t* state, mccompiledprogram_t* program)
+{
+    bool ok;
+    mcvalue_t res;
+    if(program == nullptr)
+    {
+        state->errors.pushFormat(MC_ERROR_USER, srcposinvalid, "program passed to execute was null.");
+        return mc_value_makenull();
+    }
+    mc_state_reset(state);
+    if(state != program->pstate)
+    {
+        state->errors.pushFormat(MC_ERROR_USER, srcposinvalid, "program was compiled with an incompatible instance");
+        return mc_value_makenull();
+    }
+    ok = mc_vm_runexecfunc(state, program, mc_compiler_getconstants(state->compiler));
+    if(!ok || state->errors.count > 0)
+    {
+        return mc_value_makenull();
+    }
+    //MC_ASSERT(state->execstate.vsposition == 0);
+    res = state->execstate.lastpopped;
+    if(mc_value_gettype(res) == MC_VAL_NONE)
+    {
+        return mc_value_makenull();
+    }
+    return res;
+}
+
+void mc_program_destroy(mccompiledprogram_t* program)
+{
+    if(program != nullptr)
+    {
+        mc_astcompresult_destroy(program);
+    }
+}
+
+mcvalue_t mc_state_execcode(mcstate_t* state, const char* code, const char* filename)
+{
+    bool ok;
+    mcvalue_t res;
+    mccompiledprogram_t* compres;
+    mc_state_reset(state);
+    compres = mc_compiler_compilesource(state->compiler, code, filename);
+    if(!compres || state->errors.count > 0)
+    {
+        goto err;
+    }
+    ok = mc_vm_runexecfunc(state, compres, mc_compiler_getconstants(state->compiler));
+    if(!ok || state->errors.count > 0)
+    {
+        goto err;
+    }
+    MC_ASSERT(state->execstate.vsposition == 0);
+    res = state->execstate.lastpopped;
+    if(mc_value_gettype(res) == MC_VAL_NONE)
+    {
+        goto err;
+    }
+    mc_astcompresult_destroy(compres);
+    return res;
+err:
+    mc_astcompresult_destroy(compres);
+    return mc_value_makenull();
+}
+
+mcvalue_t mc_vm_callvalue(mcstate_t* state, GenericList<mcvalue_t>* constants, mcvalue_t callee, mcvalue_t thisval, size_t argc, mcvalue_t* args);
+
+
+mcvalue_t mc_state_callfunctionbyname(mcstate_t* state, const char* fname, mcvalue_t thisval, size_t argc, mcvalue_t* args)
+{
+    mcvalue_t res;
+    mcvalue_t callee;
+    mc_state_reset(state);
+    callee = mc_state_getglobalobjectbyname(state, fname);
+    if(mc_value_gettype(callee) == MC_VAL_NULL)
+    {
+        return mc_value_makenull();
+    }
+    res = mc_vm_callvalue(state, mc_compiler_getconstants(state->compiler), callee, thisval, argc, (mcvalue_t*)args);
+    if(state->errors.count > 0)
+    {
+        return mc_value_makenull();
+    }
+    return res;
+}
+
+bool mc_state_haserrors(mcstate_t* state)
+{
+    return mc_state_errorcount(state) > 0;
+}
+
+int mc_state_errorcount(mcstate_t* state)
+{
+    return state->errors.count;
+}
+
+void mc_state_clearerrors(mcstate_t* state)
+{
+    state->errors.clear();
+}
+
+mcerror_t* mc_state_geterror(mcstate_t* state, int index)
+{
+    return (mcerror_t*)state->errors.get(index);
+}
+
+bool mc_state_setnativefunction(mcstate_t* state, const char* name, mcnativefn_t fn, void* data)
+{
+    mcvalue_t obj;
+    obj = mc_value_makefuncnative(state, name, fn, data);
+    if(mc_value_isnull(obj))
+    {
+        return false;
+    }
+    return mc_state_setglobalconstant(state, name, obj);
+}
+
+bool mc_state_setglobalconstant(mcstate_t* state, const char* name, mcvalue_t obj)
+{
+    return mc_globalstore_setnamed(state->vmglobalstore, name, obj);
+}
+
+mcvalue_t mc_state_getglobalobjectbyname(mcstate_t* state, const char* name)
+{
+    bool ok;
+    mcvalue_t res;
+    mcastsymbol_t* symbol;
+    mcastsymtable_t* st;
+    st = mc_compiler_getsymtable(state->compiler);
+    symbol = mc_symtable_resolve(st, name);
+    if(!symbol)
+    {
+        mc_state_pusherrorf(state, MC_ERROR_USER, srcposinvalid, "symbol \"%s\" is not defined", name);
+        return mc_value_makenull();
+    }
+    res = mc_value_makenull();
+    if(symbol->symtype == MC_SYM_MODULEGLOBAL)
+    {
+        res = mc_vm_getglobalbyindex(state, symbol->index);
+    }
+    else if(symbol->symtype == MC_SYM_GLOBALBUILTIN)
+    {
+        ok = false;
+        res = mc_globalstore_getatindex(state->vmglobalstore, symbol->index, &ok);
+        if(!ok)
+        {
+            mc_state_pusherrorf(state, MC_ERROR_USER, srcposinvalid, "failed to get global object at %d", symbol->index);
+            return mc_value_makenull();
+        }
+    }
+    else
+    {
+        mc_state_pusherrorf(state, MC_ERROR_USER, srcposinvalid, "value associated with symbol \"%s\" could not be loaded", name);
+        return mc_value_makenull();
+    }
+    return res;
+}
+
 
 void mc_astprinter_printast(mcstate_t* state, PtrList* statements)
 {
@@ -14536,12 +14345,12 @@ mcglobalstore_t* mc_globalstore_make(mcstate_t* state)
     }
     memset(store, 0, sizeof(mcglobalstore_t));
     store->pstate = state;
-    store->storedsymbols = Memory::make<mcptrdict_t>((mcitemcopyfn_t)mc_symbol_copy, (mcitemdestroyfn_t)mc_symbol_destroy);
+    store->storedsymbols = Memory::make<PtrDict>((mcitemcopyfn_t)mc_symbol_copy, (mcitemdestroyfn_t)mc_symbol_destroy);
     if(!store->storedsymbols)
     {
         goto err;
     }
-    store->storedobjects = Memory::make<mcvallist_t>(0, mc_value_makenull());
+    store->storedobjects = Memory::make<GenericList<mcvalue_t>>(0, mc_value_makenull());
     if(!store->storedobjects)
     {
         goto err;
@@ -14556,7 +14365,7 @@ void mc_globalstore_destroy(mcglobalstore_t* store)
 {
     if(store != nullptr)
     {
-        mcptrdict_t::destroyItemsAndDict(store->storedsymbols);
+        PtrDict::destroyItemsAndDict(store->storedsymbols);
         Memory::destroy(store->storedobjects);
         mc_memory_free(store);
         store = nullptr;
@@ -14736,17 +14545,17 @@ mcastsymtable_t* mc_symtable_copy(mcastsymtable_t* table)
     copy->pstate = table->pstate;
     copy->outer = table->outer;
     copy->symglobalstore = table->symglobalstore;
-    copy->blockscopes = PtrList::copy(table->blockscopes, (mcitemcopyfn_t)mc_astblockscope_copy, (mcitemdestroyfn_t)mc_astblockscope_destroy);
+    copy->blockscopes = table->blockscopes->copy((mcitemcopyfn_t)mc_astblockscope_copy, (mcitemdestroyfn_t)mc_astblockscope_destroy);
     if(!copy->blockscopes)
     {
         goto err;
     }
-    copy->freesymbols = PtrList::copy(table->freesymbols, (mcitemcopyfn_t)mc_symbol_copy, (mcitemdestroyfn_t)mc_symbol_destroy);
+    copy->freesymbols = table->freesymbols->copy((mcitemcopyfn_t)mc_symbol_copy, (mcitemdestroyfn_t)mc_symbol_destroy);
     if(!copy->freesymbols)
     {
         goto err;
     }
-    copy->modglobalsymbols = PtrList::copy(table->modglobalsymbols, (mcitemcopyfn_t)mc_symbol_copy, (mcitemdestroyfn_t)mc_symbol_destroy);
+    copy->modglobalsymbols = table->modglobalsymbols->copy((mcitemcopyfn_t)mc_symbol_copy, (mcitemdestroyfn_t)mc_symbol_destroy);
     if(!copy->modglobalsymbols)
     {
         goto err;
@@ -15074,7 +14883,7 @@ mcastscopeblock_t* mc_astblockscope_make(mcstate_t* state, int offset)
     }
     memset(newscope, 0, sizeof(mcastscopeblock_t));
     newscope->pstate = state;
-    newscope->scopestore = Memory::make<mcptrdict_t>((mcitemcopyfn_t)mc_symbol_copy, (mcitemdestroyfn_t)mc_symbol_destroy);
+    newscope->scopestore = Memory::make<PtrDict>((mcitemcopyfn_t)mc_symbol_copy, (mcitemdestroyfn_t)mc_symbol_destroy);
     if(!newscope->scopestore)
     {
         mc_astblockscope_destroy(newscope);
@@ -15087,7 +14896,7 @@ mcastscopeblock_t* mc_astblockscope_make(mcstate_t* state, int offset)
 
 void mc_astblockscope_destroy(mcastscopeblock_t* scope)
 {
-    mcptrdict_t::destroyItemsAndDict(scope->scopestore);
+    PtrDict::destroyItemsAndDict(scope->scopestore);
     mc_memory_free(scope);
     scope = nullptr;
 }
@@ -15453,9 +15262,9 @@ void mc_vm_reset(mcstate_t* state)
     }
 }
 
-bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t* constants, bool nested);
+bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, GenericList<mcvalue_t>* constants, bool nested);
 
-bool mc_vm_runexecfunc(mcstate_t* state, mccompiledprogram_t* comp_res, mcvallist_t* constants)
+bool mc_vm_runexecfunc(mcstate_t* state, mccompiledprogram_t* comp_res, GenericList<mcvalue_t>* constants)
 {
     bool res;
     size_t oldsp;
@@ -15571,7 +15380,7 @@ MC_FORCEINLINE mcvalue_t mc_vm_stackpop(mcstate_t* state)
 #if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
     if(state->execstate.vsposition == 0)
     {
-        mc_errlist_addf(&state->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(state->execstate.currframe), "stack underflow");
+        state->errors.pushFormat(MC_ERROR_RUNTIME, mc_callframe_getpos(state->execstate.currframe), "stack underflow");
         MC_ASSERT(false);
         return mc_value_makenull();
     }
@@ -15607,7 +15416,7 @@ MC_FORCEINLINE mcvalue_t mc_vm_thisstackpop(mcstate_t* state)
 #if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
     if(state->execstate.thisstpos == 0)
     {
-        mc_errlist_addf(&state->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(state->execstate.currframe), "'this' stack underflow");
+        state->errorspushFormat(MC_ERROR_RUNTIME, mc_callframe_getpos(state->execstate.currframe), "'this' stack underflow");
         MC_ASSERT(false);
         return mc_value_makenull();
     }
@@ -15675,7 +15484,7 @@ bool mc_vm_popframe(mcstate_t* state)
     return mc_vmintern_popframe(state);
 }
 
-MC_INLINE void mc_vm_rungc(mcstate_t* state, mcvallist_t* constants)
+MC_INLINE void mc_vm_rungc(mcstate_t* state, GenericList<mcvalue_t>* constants)
 {
     size_t i;
     mcvmframe_t* frame;
@@ -15706,7 +15515,7 @@ MC_FORCEINLINE mcvalue_t mc_vm_callnativefunction(mcstate_t* state, mcvalue_t ca
     res = nativefun->as_nativefunc.natptrfn(state, nativefun->as_nativefunc.userpointer, selfval, argc, args);
     if(mc_util_unlikely(state->errors.count > 0))
     {
-        err = mc_errlist_getlast(&state->errors);
+        err = state->errors.getLast();
         err->pos = srcpos;
         err->traceback = mc_traceback_make(state);
         if(err->traceback)
@@ -15755,7 +15564,7 @@ MC_FORCEINLINE bool mc_vmdo_callobject(mcstate_t* state, mcvalue_t callee, int n
                 mc_printer_printvalue(state->stderrprinter, callee, true);
                 state->stderrprinter->format(">\n");
                 #if 0
-                    mc_errlist_addf(&state->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(state->execstate.currframe), "failed to pop native 'this'");
+                    state->errors.pushFormat(MC_ERROR_RUNTIME, mc_callframe_getpos(state->execstate.currframe), "failed to pop native 'this'");
                 #endif
             #endif
         }
@@ -15774,7 +15583,7 @@ MC_FORCEINLINE bool mc_vmdo_callobject(mcstate_t* state, mcvalue_t callee, int n
         if(nargs != calleefunction->as_scriptfunc.numargs)
         {
             #if 0
-            mc_errlist_addf(&state->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(state->execstate.currframe), "invalid number of arguments to \"%s\": expected %d, got %d",
+            state->errors.pushFormat(MC_ERROR_RUNTIME, mc_callframe_getpos(state->execstate.currframe), "invalid number of arguments to \"%s\": expected %d, got %d",
                               mc_value_functiongetname(callee), calleefunction->as_scriptfunc.numargs, nargs);
             return false;
             #endif
@@ -15782,13 +15591,13 @@ MC_FORCEINLINE bool mc_vmdo_callobject(mcstate_t* state, mcvalue_t callee, int n
         ok = mc_callframe_init(&calleeframe, callee, state->execstate.vsposition - nargs);
         if(!ok)
         {
-            mc_errlist_addf(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "frame init failed in mc_vmdo_callobject");
+            state->errors.pushFormat(MC_ERROR_RUNTIME, srcposinvalid, "frame init failed in mc_vmdo_callobject");
             return false;
         }
         ok = mc_vm_pushframe(state, calleeframe);
         if(!ok)
         {
-            mc_errlist_addf(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "pushing frame failed in mc_vmdo_callobject");
+            state->errors.pushFormat(MC_ERROR_RUNTIME, srcposinvalid, "pushing frame failed in mc_vmdo_callobject");
             return false;
         }
     }
@@ -15812,7 +15621,7 @@ MC_FORCEINLINE bool mc_vmdo_callobject(mcstate_t* state, mcvalue_t callee, int n
     else
     {
         calleetypename = mc_valtype_getname(calleetype);
-        mc_errlist_addf(&state->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(state->execstate.currframe), "%s object is not callable", calleetypename);
+        state->errors.pushFormat(MC_ERROR_RUNTIME, mc_callframe_getpos(state->execstate.currframe), "%s object is not callable", calleetypename);
         return false;
     }
     return true;
@@ -16401,7 +16210,7 @@ MC_FORCEINLINE bool mc_vmdo_getvalueatfull(mcstate_t* state)
     return true;
 }
 
-MC_FORCEINLINE bool mc_vmdo_makefunction(mcstate_t* state, mcvallist_t* constants)
+MC_FORCEINLINE bool mc_vmdo_makefunction(mcstate_t* state, GenericList<mcvalue_t>* constants)
 {
     int i;
     uint16_t numfree;
@@ -16637,7 +16446,7 @@ void mc_vmutil_getopinfo(mcopcode_t opc, const char** oname)
     }
 }
 
-bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t* constants, bool nested)
+bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, GenericList<mcvalue_t>* constants, bool nested)
 {
     bool ok;
     int fri;
@@ -16716,7 +16525,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
     #if 0
     if(mc_util_unlikely(state->running))
     {
-        mc_errlist_addf(&state->errors, MC_ERROR_USER, srcposinvalid, "state is already executing code");
+        state->error.pushFormat(MC_ERROR_USER, srcposinvalid, "state is already executing code");
         return false;
     }
     #endif
@@ -16732,7 +16541,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
     ok = mc_vm_pushframe(state, createdframe);
     if(!ok)
     {
-        mc_errlist_addf(&state->errors, MC_ERROR_USER, srcposinvalid, "pushing frame failed");
+        state->errors.pushFormat(MC_ERROR_USER, srcposinvalid, "pushing frame failed");
         return false;
     }
     {
@@ -17275,7 +17084,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
         state->hadrecovered = false;
         if(state->errors.count > 0)
         {
-            err = mc_errlist_getlast(&state->errors);
+            err = state->errors.getLast();
             if(err->errtype == MC_ERROR_RUNTIME && state->errors.count >= 1)
             {
                 recoverframeix = -1;
@@ -17313,7 +17122,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
                 mc_vmintern_stackpush(state, errobj);
                 state->execstate.currframe->bcposition = state->execstate.currframe->recoverip;
                 state->execstate.currframe->isrecovering = true;
-                mc_errlist_clear(&state->errors);
+                state->errors.clear();
                 state->hadrecovered = true;
             }
             else
@@ -17330,7 +17139,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, mcvallist_t*
 onexecfinish:
     if(state->errors.count > 0)
     {
-        err = mc_errlist_getlast(&state->errors);
+        err = state->errors.getLast();
         if(!err->traceback)
         {
             err->traceback = mc_traceback_make(state);
@@ -18344,7 +18153,7 @@ mcvalue_t mc_objfnstring_tolower(mcstate_t* state, void* data, mcvalue_t thisval
     inpstr = mc_value_stringgetdata(inpval);
     inplen = mc_value_stringgetlength(inpval);
     resstr = mc_value_makestringlen(state, inpstr, inplen);
-    dyn_strbuf_tolowercase(mc_value_getallocateddata(resstr)->uvobj.valstring.strbuf);
+    mc_value_getallocateddata(resstr)->uvobj.valstring.strbuf->toLowercase();
     return resstr;
 }
 
@@ -18362,7 +18171,7 @@ mcvalue_t mc_objfnstring_toupper(mcstate_t* state, void* data, mcvalue_t thisval
     inpstr = mc_value_stringgetdata(inpval);
     inplen = mc_value_stringgetlength(inpval);
     resstr = mc_value_makestringlen(state, inpstr, inplen);
-    dyn_strbuf_touppercase(mc_value_getallocateddata(resstr)->uvobj.valstring.strbuf);
+    mc_value_getallocateddata(resstr)->uvobj.valstring.strbuf->toUppercase();
 
     return resstr;
     
@@ -18393,7 +18202,7 @@ void mc_vm_restorestate(mcstate_t* state, mcexecstate_t* est)
     state->execstate.currframe = est->currframe;
 }
 
-mcvalue_t mc_vm_callvalue(mcstate_t* state, mcvallist_t* constants, mcvalue_t callee, mcvalue_t thisval, size_t argc, mcvalue_t* args)
+mcvalue_t mc_vm_callvalue(mcstate_t* state, GenericList<mcvalue_t>* constants, mcvalue_t callee, mcvalue_t thisval, size_t argc, mcvalue_t* args)
 {
     bool ok;
     size_t i;
@@ -18446,7 +18255,7 @@ mcvalue_t mc_vm_callvalue(mcstate_t* state, mcvallist_t* constants, mcvalue_t ca
     {
         return mc_vm_callnativefunction(state, callee, srcposinvalid, thisval, argc, args);
     }
-    mc_errlist_addf(&state->errors, MC_ERROR_USER, srcposinvalid, "object is not callable");
+    state->errors.pushFormat(MC_ERROR_USER, srcposinvalid, "object is not callable");
     return mc_value_makenull();
 }
 
@@ -18459,8 +18268,8 @@ mcvalue_t mc_objfnarray_map(mcstate_t* state, void* data, mcvalue_t thisval, siz
     mcvalue_t callee;
     mcvalue_t vargs[3];
     mcvalue_t narr;
-    mcvallist_t* ary;
-    mcvallist_t* nary;
+    GenericList<mcvalue_t>* ary;
+    GenericList<mcvalue_t>* nary;
     (void)state;
     (void)data;
     (void)argc;
@@ -18777,7 +18586,7 @@ mcvalue_t mc_scriptfn_range(mcstate_t* state, void* data, mcvalue_t thisval, siz
     }
     if(step == 0)
     {
-        mc_errlist_addf(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "range step cannot be 0");
+        state->errors.pushFormat(MC_ERROR_RUNTIME, srcposinvalid, "range step cannot be 0");
         return mc_value_makenull();
     }
     res = mc_value_makearray(state);
@@ -18973,11 +18782,11 @@ mcvalue_t mc_scriptfn_crash(mcstate_t* state, void* data, mcvalue_t thisval, siz
     (void)thisval;
     if(argc == 1 && mc_value_gettype(args[0]) == MC_VAL_STRING)
     {
-        mc_errlist_pushmessage(&state->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(state->execstate.currframe), mc_value_stringgetdata(args[0]));
+        state->errors.pushMessage(MC_ERROR_RUNTIME, mc_callframe_getpos(state->execstate.currframe), mc_value_stringgetdata(args[0]));
     }
     else
     {
-        mc_errlist_pushmessage(&state->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(state->execstate.currframe), "");
+        state->errors.pushMessage(MC_ERROR_RUNTIME, mc_callframe_getpos(state->execstate.currframe), "");
     }
     return mc_value_makenull();
 }
@@ -18994,7 +18803,7 @@ mcvalue_t mc_scriptfn_assert(mcstate_t* state, void* data, mcvalue_t thisval, si
     }
     if(!mc_value_asbool(args[0]))
     {
-        mc_errlist_addf(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "assertion failed");
+        state->errors.pushFormat(MC_ERROR_RUNTIME, srcposinvalid, "assertion failed");
         return mc_value_makenull();
     }
     return mc_value_makebool(true);
@@ -19041,14 +18850,14 @@ mcvalue_t mc_scriptfn_random(mcstate_t* state, void* data, mcvalue_t thisval, si
         max = mc_value_asnumber(args[1]);
         if(min >= max)
         {
-            mc_errlist_addf(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "max is bigger than min");
+            state->errors.pushFormat(MC_ERROR_RUNTIME, srcposinvalid, "max is bigger than min");
             return mc_value_makenull();
         }
         range = max - min;
         res = min + (res * range);
         return mc_value_makenumber(res);
     }
-    mc_errlist_addf(&state->errors, MC_ERROR_RUNTIME, srcposinvalid, "invalid number or arguments");
+    state->errors.pushFormat(MC_ERROR_RUNTIME, srcposinvalid, "invalid number or arguments");
     return mc_value_makenull();
 }
 
@@ -19492,7 +19301,7 @@ mcvalue_t mc_nsfndir_readdir(mcstate_t* state, void* data, mcvalue_t thisval, si
         fslib_dirclose(&reader);
         return res;
     }
-    mc_errlist_pushmessage(&state->errors, MC_ERROR_RUNTIME, mc_callframe_getpos(state->execstate.currframe), strerror(errno));
+    state->errors.pushMessage(MC_ERROR_RUNTIME, mc_callframe_getpos(state->execstate.currframe), strerror(errno));
     return mc_value_makenull();
 }
 
@@ -19713,7 +19522,7 @@ void mc_cli_printtypesize(const char* name, size_t sz)
 
 void mc_cli_printtypesizes()
 {
-    printtypesize(mcptrdict_t);
+    printtypesize(PtrDict);
     printtypesize(GenericDict<mcvalue_t, mcvalue_t>);
     printtypesize(PtrList);
     printtypesize(mcprintconfig_t);

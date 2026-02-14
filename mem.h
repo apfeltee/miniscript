@@ -30,13 +30,13 @@ class Memory
             return ret;
         }
 
-        template<typename ClassT>
-        static inline void destroy(ClassT* cls)
+        template<typename ClassT, typename... ArgsT>
+        static inline void destroy(ClassT* cls, ArgsT&&... args)
         {
             if constexpr (MemoryClassHasDestroyFunc<ClassT>)
             {
                 //std::cerr << "Memory::destroy: using destroy" << std::endl;
-                ClassT::destroy(cls);
+                ClassT::destroy(cls, args...);
             }
             else
             {
