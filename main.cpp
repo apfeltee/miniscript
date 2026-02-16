@@ -108,7 +108,6 @@ THE SOFTWARE.
     #define mc_util_unlikely(x) (x)
 #endif
 
-#define mc_value_gettype(v) (v).valtype
 
 #if 1
     #define MC_UTIL_INCCAPACITY(capacity) (((capacity) < 8) ? 8 : ((capacity) * 2))
@@ -117,7 +116,6 @@ THE SOFTWARE.
 #endif
 
 
-#define mc_value_getallocateddata(object) (object).uval.odata
 
 typedef double mcfloat_t;
 typedef uint16_t mcinternopcode_t;
@@ -403,10 +401,7 @@ typedef enum mcastsymtype_t mcastsymtype_t;
 typedef enum mcastprecedence_t mcastprecedence_t;
 
 typedef struct mcstoddiyfp_t mcstoddiyfp_t;
-typedef struct mcprintconfig_t mcprintconfig_t;
 typedef struct mcastprinter_t mcastprinter_t;
-typedef struct mcerror_t mcerror_t;
-typedef struct mctraceback_t mctraceback_t;
 typedef struct mcastcompiledfile_t mcastcompiledfile_t;
 typedef struct mcastexpression_t mcastexpression_t;
 typedef struct mccompiledprogram_t mccompiledprogram_t;
@@ -415,10 +410,8 @@ typedef struct mcexecstate_t mcexecstate_t;
 typedef struct mcgcmemory_t mcgcmemory_t;
 typedef struct mcglobalstore_t mcglobalstore_t;
 typedef struct mcobjdata_t mcobjdata_t;
-typedef struct mcerrlist_t mcerrlist_t;
 typedef struct mcastparser_t mcastparser_t;
 typedef struct mcconfig_t mcconfig_t;
-typedef struct mcastsymtable_t mcastsymtable_t;
 typedef struct mcastcompiler_t mcastcompiler_t;
 typedef struct mcastsymbol_t mcastsymbol_t;
 typedef struct mcvalue_t mcvalue_t;
@@ -466,11 +459,7 @@ typedef struct mcgcobjdatapool_t mcgcobjdatapool_t;
 
 
 typedef struct mcvmframe_t mcvmframe_t;
-typedef struct mctraceitem_t mctraceitem_t;
-typedef struct mcmodule_t mcmodule_t;
 
-typedef union mcvalunion_t mcvalunion_t;
-typedef union mcobjunion_t mcobjunion_t;
 typedef union mcexprunion_t mcexprunion_t;
 typedef struct /**/mcclass_t mcclass_t;
 typedef struct /**/mcfield_t mcfield_t;
@@ -482,6 +471,11 @@ class Printer;
 class PtrDict;
 class AstLexer;
 class AstLexInfo;
+class mcastsymtable_t;
+class mcerror_t;
+class mcerrlist_t;
+class mctraceback_t;
+class mcmodule_t;
 
 typedef mcvalue_t (*mcnativefn_t)(mcstate_t*, void*, mcvalue_t, size_t, mcvalue_t*);
 typedef size_t (*mcitemhashfn_t)(void*);
@@ -494,7 +488,6 @@ typedef mcastexpression_t* (*mcleftassocparsefn_t)(mcastparser_t*, mcastexpressi
 
 
 
-MC_FORCEINLINE mcvalue_t mc_value_makenull();
 
 void optprs_fprintmaybearg(FILE *out, const char *begin, const char *flagname, size_t flaglen, bool needval, bool maybeval, const char *delim);
 void optprs_fprintusage(FILE *out, optlongflags_t *flags);
@@ -512,21 +505,21 @@ int stod_diyfp_sgnd_size(int order);
 double stod_strtod(const unsigned char **start, const unsigned char *end, int literal);
 char *mc_util_readhandle(FILE *hnd, size_t *dlen);
 char *mc_util_readfile(const char *filename, size_t *dlen);
-char *mc_fsutil_fileread(mcstate_t *state, const char *filename, size_t *flen);
-size_t mc_fsutil_filewrite(mcstate_t *state, const char *path, const char *string, size_t stringsize);
+char *mc_fsutil_fileread(const char *filename, size_t *flen);
+size_t mc_fsutil_filewrite(const char *path, const char *string, size_t stringsize);
 size_t mc_util_strlen(const char *str);
 char *mc_util_strndup(const char *string, size_t n);
 char *mc_util_strdup(const char *string);
 bool mc_util_strequal(const char *a, const char *b);
 bool mc_util_strnequal(const char *a, const char *b, size_t len);
-char *mc_util_canonpath(mcstate_t *state, const char *path);
+char *mc_util_canonpath(const char *path);
 bool mc_util_pathisabsolute(const char *path);
 size_t mc_util_hashdata(const void *ptr, size_t len);
 size_t mc_util_hashdouble(mcfloat_t val);
 size_t mc_util_upperpowoftwo(size_t v);
 mcfloat_t mc_util_strtod(const char *str, size_t slen, char **endptr);
 PtrList *mc_util_splitstring(const char *str, const char *delimiter);
-char *mc_util_joinstringarray(mcstate_t *state, PtrList *items, const char *joinee, size_t jlen);
+char *mc_util_joinstringarray(PtrList *items, const char *joinee, size_t jlen);
 uint64_t mc_util_doubletouint64(mcfloat_t val);
 mcfloat_t mc_util_uint64todouble(uint64_t val);
 const char *mc_valtype_getname(mcvaltype_t type);
@@ -601,14 +594,7 @@ const char *mc_consolecolor_get(mcconsolecolor_t *mcc, char code);
 void mc_printer_printvalue(Printer *pr, mcvalue_t obj, bool accurate);
 mcastlocation_t mc_astlocation_make(mcastcompiledfile_t *file, int line, int column);
 mcgcmemory_t *mc_value_getmem(mcvalue_t obj);
-char *mc_valtype_getunionname(mcstate_t *state, mcvaltype_t type);
-
-mcmodule_t *mc_module_make(mcstate_t *state, const char *name);
-void mc_module_destroy(mcmodule_t *module);
-bool mc_module_addsymbol(mcmodule_t *module, mcastsymbol_t *symbol);
-const char *mc_util_getmodulename(const char *path);
-const char *mc_module_findfile(mcstate_t *state, const char *filename);
-mcmodule_t *mc_module_copy(mcmodule_t *src);
+char *mc_valtype_getunionname(mcvaltype_t type);
 
 
 mcastexpression_t *mc_astexpr_makedefineexpr(mcstate_t *state, mcastexprident_t *name, mcastexpression_t *value, bool assignable);;
@@ -741,15 +727,11 @@ mccompiledprogram_t *mc_compiler_compilesource(mcastcompiler_t *comp, const char
 mcastsymtable_t *mc_compiler_getsymtable(mcastcompiler_t *comp);
 void mc_compiler_setsymtable(mcastcompiler_t *comp, mcastsymtable_t *table);
 mcclass_t *mc_class_make(mcstate_t *state, const char *name, bool istop);
-void mc_class_destroy(mcstate_t *state, mcclass_t *cl);
-void mc_class_addfunction(mcstate_t *state, mcclass_t *cl, const char *name, bool ispseudo, mcnativefn_t fn);
-void mc_class_addmember(mcstate_t *state, mcclass_t *cl, const char *name, mcnativefn_t fn);
-void mc_class_addpseudo(mcstate_t *state, mcclass_t *cl, const char *name, mcnativefn_t fn);
-mcstate_t *mc_state_make(void);
-void mc_state_deinit(mcstate_t *state);
-void mc_state_reset(mcstate_t *state);
-void mc_state_setdefaultconfig(mcstate_t *state);
-void mc_state_destroy(mcstate_t *state);
+void mc_class_destroy(mcclass_t *cl);
+void mc_class_addfunction(mcclass_t *cl, const char *name, bool ispseudo, mcnativefn_t fn);
+void mc_class_addmember(mcclass_t *cl, const char *name, mcnativefn_t fn);
+void mc_class_addpseudo(mcclass_t *cl, const char *name, mcnativefn_t fn);
+
 void mc_state_printerrors(mcstate_t *state);
 mccompiledprogram_t *mc_state_compilesource(mcstate_t *state, const char *code, const char *filename);
 mcvalue_t mc_program_execute(mcstate_t *state, mccompiledprogram_t *program);
@@ -763,15 +745,9 @@ mcerror_t *mc_state_geterror(mcstate_t *state, int index);
 bool mc_state_setnativefunction(mcstate_t *state, const char *name, mcnativefn_t fn, void *data);
 bool mc_state_setglobalconstant(mcstate_t *state, const char *name, mcvalue_t obj);
 mcvalue_t mc_state_getglobalobjectbyname(mcstate_t *state, const char *name);
-bool mc_error_printtraceback(Printer *pr, mctraceback_t *traceback, mcconsolecolor_t *mcc);
 bool mc_error_printusererror(Printer *pr, mcvalue_t obj);
-bool mc_error_printerror(mcstate_t *state, Printer *pr, mcerror_t *err);
-int mc_traceback_getdepth(mctraceback_t *traceback);
-const char *mc_traceback_getsourcefilepath(mctraceback_t *traceback, int depth);
-const char *mc_traceback_getsourcelinecode(mctraceback_t *traceback, int depth);
-int mc_traceback_getsourcelinenumber(mctraceback_t *traceback, int depth);
-int mc_traceback_getsourcecolumn(mctraceback_t *traceback, int depth);
-const char *mc_traceback_getfunctionname(mctraceback_t *traceback, int depth);
+
+
 void mc_astprinter_printast(mcstate_t *state, PtrList *statements);
 void mc_astprint_stmtlist(mcastprinter_t *apr, PtrList *statements);
 void mc_astprint_printfuncliteral(mcastprinter_t *apr, mcastexpression_t *astexpr);
@@ -808,7 +784,7 @@ void mc_state_gcsweep(mcstate_t *state);
 int mc_state_gcshouldsweep(mcstate_t *state);
 bool mc_state_gcdisablefor(mcvalue_t obj);
 void mc_state_gcenablefor(mcvalue_t obj);
-mcgcobjdatapool_t *mc_state_gcgetpoolfortype(mcstate_t *state, mcvaltype_t type);
+
 bool mc_state_gccandatabeputinpool(mcstate_t *state, mcobjdata_t *data);
 mcglobalstore_t *mc_globalstore_make(mcstate_t *state);
 void mc_globalstore_destroy(mcglobalstore_t *store);
@@ -818,21 +794,14 @@ mcvalue_t mc_globalstore_getatindex(mcglobalstore_t *store, int ix, bool *outok)
 mcvalue_t *mc_globalstore_getdata(mcglobalstore_t *store);
 int mc_globalstore_getcount(mcglobalstore_t *store);
 
-mcastscopeblock_t *mc_astblockscope_make(mcstate_t *state, int offset);
+mcastscopeblock_t *mc_astblockscope_make(int offset);
 void mc_astblockscope_destroy(mcastscopeblock_t *scope);
 mcastscopeblock_t *mc_astblockscope_copy(mcastscopeblock_t *scope);
-bool mc_symtable_setsymbol(mcastsymtable_t *table, mcastsymbol_t *symbol);
-int mc_symtable_nextsymindex(mcastsymtable_t *table);
-int mc_symtable_getnumdefs(mcastsymtable_t *table);
+
 void mc_asttoken_init(mcasttoken_t *tok, mcasttoktype_t type, const char *literal, int len);
 char *mc_asttoken_dupliteralstring(mcasttoken_t *tok);
 const char *mc_asttoken_typename(mcasttoktype_t type);
-mctraceback_t *mc_traceback_make(mcstate_t *state);
-void mc_traceback_destroy(mctraceback_t *traceback);
-bool mc_traceback_push(mctraceback_t *traceback, const char *fname, mcastlocation_t pos);
 bool mc_traceback_vmpush(mctraceback_t *traceback, mcstate_t *state);
-const char *mc_traceitem_getsourceline(mctraceitem_t *item);
-const char *mc_traceitem_getsourcefilepath(mctraceitem_t *item);
 bool mc_vm_init(mcstate_t *state);
 void mc_vm_reset(mcstate_t *state);
 mcvalue_t mc_vm_getglobalbyindex(mcstate_t *state, size_t ix);
@@ -1019,9 +988,6 @@ MC_INLINE void mc_util_assert(bool x, const char* exprstr, const char* file, int
     }
 }
 
-
-
-
 struct mcconsolecolor_t
 {
     int targetfds[5];
@@ -1029,22 +995,288 @@ struct mcconsolecolor_t
     bool ispiped;
 };
 
-/**
- * \brief The execution environment for an instance of the script engine.
- */
 
-union mcvalunion_t
-{
-    mcobjdata_t* odata;
-    mcfloat_t valnumber;
-    int valbool;
-};
 
-struct mcvalue_t
+
+class Printer
 {
-    mcvaltype_t valtype;
-    bool isallocated;
-    mcvalunion_t uval;
+    public:
+        struct Config
+        {
+            bool verbosefunc;
+            bool quotstring;
+            bool shouldflush;
+        };
+
+    public:
+        static void destroy(Printer* pr)
+        {
+            releaseFromPtr(pr, true);
+            if(!pr->m_prisstack)
+            {
+                mc_memory_free(pr);
+            }
+        }
+
+        static bool initFromStack(Printer* pr, FILE* ofh, bool onstack)
+        {
+            return initFromStack(pr, ofh, onstack, false);
+        }
+
+        static bool initFromStack(Printer* pr, FILE* ofh, bool onstack, bool isnullctor)
+        {
+            pr->m_prfailed = false;
+            pr->m_prdestrfile = ofh;
+            pr->m_prisstack = onstack;
+            pr->m_prdestbuf = nullptr;
+            pr->m_prconfig.verbosefunc = true;
+            pr->m_prconfig.quotstring = false;
+            pr->m_prconfig.shouldflush = false;
+            if(!isnullctor)
+            {
+                if(pr->m_prdestrfile == nullptr)
+                {
+                    pr->m_prdestbuf = Memory::make<StringBuffer>(0);
+                }
+            }
+            return true;
+        }
+
+        static void releaseFromPtr(Printer* pr, bool took)
+        {
+            if(pr != nullptr)
+            {
+                if(pr->m_prdestbuf != nullptr)
+                {
+                    if(!took)
+                    {
+                        StringBuffer::destroy(pr->m_prdestbuf);
+                    }
+                }
+            }
+        }
+
+
+    public:
+        Config m_prconfig;
+        bool m_prfailed;
+        bool m_prisstack;
+        FILE* m_prdestrfile;
+        StringBuffer* m_prdestbuf;
+
+    public:
+        Printer()
+        {
+            assert(Printer::initFromStack(this, nullptr, false, true));
+        }
+
+        Printer(FILE* ofh)
+        {
+            assert(Printer::initFromStack(this, ofh, false));
+        }
+
+        inline bool put(const char* str, size_t len)
+        {
+            if(m_prfailed)
+            {
+                return false;
+            }
+            if(len == 0)
+            {
+                return true;
+            }
+            if(m_prdestrfile == nullptr)
+            {
+                m_prdestbuf->append(str, len);
+            }
+            else
+            {
+                fwrite(str, sizeof(char), len, m_prdestrfile);
+                if(m_prconfig.shouldflush)
+                {
+                    fflush(m_prdestrfile);
+                }
+            }
+            return true;
+        }
+
+        inline bool put(const char* str)
+        {
+            return this->put(str, mc_util_strlen(str));
+        }
+
+        inline bool putChar(int b)
+        {
+            char ch;
+            ch = b;
+            return this->put(&ch, 1);
+        }
+
+        template<typename... ArgsT>
+        inline bool format(const char* fmt, ArgsT&&... args)
+        {
+            static auto tmprintf = fprintf;
+            if(m_prfailed)
+            {
+                return false;
+            }
+            if(m_prdestrfile == nullptr)
+            {
+                m_prdestbuf->appendFormat(fmt, args...);
+            }
+            else
+            {
+                tmprintf(m_prdestrfile, fmt, args...);
+                if(m_prconfig.shouldflush)
+                {
+                    fflush(m_prdestrfile);
+                }
+            }
+            return true;
+        }
+
+        inline void printEscapedChar(int ch)
+        {
+            switch(ch)
+            {
+                case '\'':
+                    {
+                        this->put("\\\'");
+                    }
+                    break;
+                case '\"':
+                    {
+                        this->put("\\\"");
+                    }
+                    break;
+                case '\\':
+                    {
+                        this->put("\\\\");
+                    }
+                    break;
+                case '\b':
+                    {
+                        this->put("\\b");
+                    }
+                    break;
+                case '\f':
+                    {
+                        this->put("\\f");
+                    }
+                    break;
+                case '\n':
+                    {
+                        this->put("\\n");
+                    }
+                    break;
+                case '\r':
+                    {
+                        this->put("\\r");
+                    }
+                    break;
+                case '\t':
+                    {
+                        this->put("\\t");
+                    }
+                    break;
+                case 0:
+                    {
+                        this->put("\\0");
+                    }
+                    break;
+                default:
+                    {
+                        this->format("\\x%02x", (unsigned char)ch);
+                    }
+                    break;
+            }
+        }
+
+        inline void printEscapedString(const char* str, size_t len)
+        {
+            int ch;
+            size_t i;
+            this->put("\"");
+            for(i=0; i<len; i++)
+            {
+                ch = str[i];
+                if((ch < 32) || (ch > 127) || (ch == '\"') || (ch == '\\'))
+                {
+                    this->printEscapedChar(ch);
+                }
+                else
+                {
+                    this->putChar(ch);
+                }
+            }
+            this->put("\"");
+        }
+
+        inline const char* getString()
+        {
+            if(m_prfailed)
+            {
+                return nullptr;
+            }
+            if(m_prdestrfile != nullptr)
+            {
+                return nullptr;
+            }
+            return m_prdestbuf->data();
+        }
+
+        inline size_t getLength()
+        {
+            if(m_prfailed)
+            {
+                return 0;
+            }
+            if(m_prdestrfile != nullptr)
+            {
+                return 0;
+            }
+            return m_prdestbuf->length();
+        }
+
+        inline char* getStringAndDestroy(size_t* lendest)
+        {
+            char* res;
+            if(m_prfailed)
+            {
+                Printer::destroy(this);
+                return nullptr;
+            }
+            if(m_prdestrfile != nullptr)
+            {
+                return nullptr;
+            }
+            res = m_prdestbuf->data();
+            if(lendest != nullptr)
+            {
+                *lendest = m_prdestbuf->length();
+            }
+            m_prdestbuf = nullptr;
+            Printer::destroy(this);
+            return res;
+        }
+
+        inline void printNumFloat(mcfloat_t flt)
+        {
+            int64_t inum;
+            inum = (int64_t)flt;
+            if(flt == inum)
+            {
+                #if 1
+                    this->format("%" PRIiFAST64 "", inum);
+                #else
+                    this->format("%ld", inum);
+                #endif
+            }
+            else
+            {
+                this->format("%g", flt);
+            }
+        }
 };
 
 
@@ -2334,6 +2566,263 @@ class PtrDict
         }
 };
 
+struct mcvalue_t
+{
+    public:
+        template<typename ValTypeT, typename ObjDataT>
+        static inline mcvalue_t makeDataFrom(ValTypeT type, ObjDataT* data)
+        {
+            mcvalue_t object;
+            memset(&object, 0, sizeof(mcvalue_t));
+            object.valtype = type;
+            data->odtype = type;
+            object.isallocated = true;
+            object.uval.odata = data;
+            return object;
+        }
+
+        static inline mcvalue_t makeEmpty(mcvaltype_t t)
+        {
+            mcvalue_t o = {};
+            o.valtype = t;
+            o.isallocated = false;
+            return o;
+        }
+
+        static inline mcvalue_t makeNumber(mcfloat_t val)
+        {
+            mcvalue_t o;
+            o = makeEmpty(MC_VAL_NUMBER);
+            o.uval.valnumber = val;
+            return o;
+        }
+
+        static inline mcvalue_t makeBool(bool val)
+        {
+            mcvalue_t o;
+            o = makeEmpty(MC_VAL_BOOL);
+            o.uval.valbool = val;
+            return o;
+        }
+
+        static inline mcvalue_t makeNull()
+        {
+            mcvalue_t o;
+            o = makeEmpty(MC_VAL_NULL);
+            return o;
+        }
+
+    public:
+        mcvaltype_t valtype;
+        bool isallocated;        
+        union
+        {
+            mcobjdata_t* odata;
+            mcfloat_t valnumber;
+            int valbool;
+        } uval;
+
+    public:
+        inline mcvaltype_t getType()
+        {
+            return this->valtype;
+        }
+
+        mcobjdata_t* getAllocatedData()
+        {
+            return this->uval.odata;
+        }
+
+        inline bool isAllocated()
+        {
+            return this->isallocated;
+        }
+
+        inline bool isNumeric()
+        {
+            mcvaltype_t type;
+            type = this->getType();
+            return type == MC_VAL_NUMBER || type == MC_VAL_BOOL;
+        }
+
+        inline bool isNumber()
+        {
+            return (this->getType() == MC_VAL_NUMBER || this->getType() == MC_VAL_BOOL);
+        }
+
+        inline bool isNull()
+        {
+            return this->getType() == MC_VAL_NULL;
+        }
+
+        inline bool isFuncNative()
+        {
+            mcvaltype_t type;
+            type = this->getType();
+            return (type == MC_VAL_FUNCNATIVE);
+        }
+
+        inline bool isFuncScript()
+        {
+            mcvaltype_t type;
+            type = this->getType();
+            return (type == MC_VAL_FUNCSCRIPT);
+        }
+
+        inline bool isCallable()
+        {
+            return (this->isFuncNative() || this->isFuncScript());
+        }
+
+        inline bool isString()
+        {
+            mcvaltype_t type;
+            type = this->getType();
+            return (type == MC_VAL_STRING);
+        }
+
+        inline bool isMap()
+        {
+            mcvaltype_t type;
+            type = this->getType();
+            return (type == MC_VAL_MAP);
+        }
+
+        inline bool isArray()
+        {
+            mcvaltype_t type;
+            type = this->getType();
+            return (type == MC_VAL_ARRAY);
+        }
+
+};
+
+
+struct mcobjuserdata_t
+{
+    void* data;
+    mcitemdestroyfn_t datadestroyfn;
+    mcitemcopyfn_t datacopyfn;
+};
+
+struct mcobjerror_t
+{
+    char* message;
+    mctraceback_t* traceback;
+};
+
+struct mcobjstring_t
+{
+    unsigned long hash;
+    StringBuffer* strbuf;
+};
+
+struct mcobjmap_t
+{
+    GenericDict<mcvalue_t, mcvalue_t>* actualmap;
+};
+
+struct mcobjarray_t
+{
+    GenericList<mcvalue_t>* actualarray;
+};
+
+struct mcobjfunction_t
+{
+    public:
+        union
+        {
+            struct
+            {
+                union
+                {
+                    mcvalue_t* freevalsallocated;
+                    mcvalue_t freevalsstack[2];
+                } ufv;
+                
+                union
+                {
+                    char* fallocname;
+                    const char* fconstname;
+                } unamev;
+                mccompiledprogram_t* compiledprogcode;
+                int numlocals;
+                int numargs;
+                int freevalscount;
+                bool ownsdata;
+            } valscriptfunc;
+
+            struct
+            {
+                char* natfnname;
+                mcnativefn_t natptrfn;
+                void* userpointer;
+            } valnativefunc;
+        } funcdata;
+
+    public:
+        bool freeValuesAreAllocated()
+        {
+            return this->funcdata.valscriptfunc.freevalscount >= MC_UTIL_STATICARRAYSIZE(this->funcdata.valscriptfunc.ufv.freevalsstack);
+        }
+
+};
+
+
+struct mcobjdata_t
+{
+    mcstate_t* pstate;
+    mcgcmemory_t* mem;
+    mcvaltype_t odtype;
+    bool gcmark;    
+    union
+    {
+        mcobjstring_t valstring;
+        mcobjerror_t valerror;
+        mcobjarray_t* valarray;
+        mcobjmap_t* valmap;
+        mcobjfunction_t valfunc;
+        mcobjuserdata_t valuserobject;
+    } uvobj;
+};
+
+
+struct mcgcobjdatapool_t
+{
+    public:
+        template<typename StateT>
+        static mcgcobjdatapool_t* getPoolForType(StateT* state, mcvaltype_t type)
+        {
+            switch(type)
+            {
+                case MC_VAL_ARRAY:
+                    return &state->mem->mempools[0];
+                case MC_VAL_MAP:
+                    return &state->mem->mempools[1];
+                case MC_VAL_STRING:
+                    return &state->mem->mempools[2];
+                default:
+                    break;
+            }
+            return nullptr;
+        }
+
+    public:
+        mcobjdata_t* data[MC_CONF_GCMEMPOOLSIZE];
+        int count;
+};
+
+struct mcgcmemory_t
+{
+    mcstate_t* pstate;
+    int allocssincesweep;
+    PtrList* gcobjlist;
+    PtrList* gcobjlistback;
+    PtrList* gcobjlistremains;
+    mcgcobjdatapool_t onlydatapool;
+    mcgcobjdatapool_t mempools[MC_CONF_GCMEMPOOLCOUNT];
+};
+
 
 struct mcfield_t
 {
@@ -2348,6 +2837,481 @@ struct mcclass_t
     mcclass_t* parentclass;
     mcvalue_t constructor;
     PtrList* members;
+};
+
+struct mcopdefinition_t
+{
+    const char* name;
+    int numoperands;
+    int operandwidths[2];
+};
+
+struct mcastsymbol_t
+{
+    public:
+        static void destroy(mcastsymbol_t* symbol)
+        {
+            if(symbol != nullptr)
+            {
+                mc_memory_free(symbol->name);
+                symbol->name = nullptr;
+                mc_memory_free(symbol);
+                symbol = nullptr;
+            }
+        }
+
+        static mcastsymbol_t* copy(mcastsymbol_t* symbol)
+        {
+            return Memory::make<mcastsymbol_t>(symbol->name, symbol->symtype, symbol->index, symbol->assignable);
+        }
+
+    public:
+        mcastsymtype_t symtype;
+        char* name;
+        int index;
+        bool assignable;
+
+    public:
+        mcastsymbol_t(const char* syname, mcastsymtype_t sytype, int syindex, bool syassignable)
+        {
+            this->name = mc_util_strdup(syname);
+            assert(this->name);
+            this->symtype = sytype;
+            this->index = syindex;
+            this->assignable = syassignable;
+        }
+};
+
+struct mcastscopeblock_t
+{
+
+    PtrDict* scopestore;
+    int offset;
+    int numdefinitions;
+};
+
+class mcastsymtable_t
+{
+    public:
+        static void destroy(mcastsymtable_t* table)
+        {
+            if(table != nullptr)
+            {
+                while(table->blockscopes->count() > 0)
+                {
+                    table->scopeBlockPop();
+                }
+                PtrList::destroy(table->blockscopes, nullptr);
+                PtrList::destroy(table->modglobalsymbols, (mcitemdestroyfn_t)mcastsymbol_t::destroy);
+                PtrList::destroy(table->freesymbols, (mcitemdestroyfn_t)mcastsymbol_t::destroy);
+                mc_memory_free(table);
+                table = nullptr;
+            }
+        }
+
+    public:
+        mcastsymtable_t* outer;
+        mcglobalstore_t* symglobalstore;
+        PtrList* blockscopes;
+        PtrList* freesymbols;
+        PtrList* modglobalsymbols;
+        int maxnumdefinitions;
+        int modglobaloffset;
+
+    public:
+        mcastsymtable_t(mcastsymtable_t* syouter, mcglobalstore_t* sygstore, PtrList* syblockscopes, PtrList* syfreesyms, PtrList* symodglobalsymbols, int mgo)
+        {
+            this->maxnumdefinitions = 0;
+            this->outer = syouter;
+            this->symglobalstore = sygstore;
+            this->modglobaloffset = mgo;
+            if(syblockscopes)
+            {
+                this->blockscopes = syblockscopes;
+            }
+            else
+            {
+                this->blockscopes = Memory::make<PtrList>(sizeof(void*), true);
+                assert(this->blockscopes);
+            }
+            if(syfreesyms)
+            {
+                this->freesymbols = syfreesyms;
+            }
+            else
+            {
+                this->freesymbols = Memory::make<PtrList>(sizeof(void*), true);
+                assert(this->freesymbols);
+            }
+            if(symodglobalsymbols)
+            {
+                this->modglobalsymbols = symodglobalsymbols;
+            }
+            else
+            {
+                this->modglobalsymbols = Memory::make<PtrList>(sizeof(void*), true);
+                assert(this->modglobalsymbols);
+            }
+            assert(this->scopeBlockPush());
+        }
+
+        mcastsymtable_t* copy()
+        {
+            mcastsymtable_t* copy;
+            auto cblocks = this->blockscopes->copy((mcitemcopyfn_t)mc_astblockscope_copy, (mcitemdestroyfn_t)mc_astblockscope_destroy);
+            auto cfrees = this->freesymbols->copy((mcitemcopyfn_t)mcastsymbol_t::copy, (mcitemdestroyfn_t)mcastsymbol_t::destroy);
+            auto cmods = this->modglobalsymbols->copy((mcitemcopyfn_t)mcastsymbol_t::copy, (mcitemdestroyfn_t)mcastsymbol_t::destroy);
+            copy = Memory::make<mcastsymtable_t>(this->outer, this->symglobalstore, cblocks, cfrees, cmods, this->modglobaloffset);
+            if(!copy)
+            {
+                return nullptr;
+            }
+            copy->maxnumdefinitions = this->maxnumdefinitions;
+            copy->modglobaloffset = this->modglobaloffset;
+            return copy;
+        }
+
+        bool setSymbol(mcastsymbol_t* symbol)
+        {
+            mcastscopeblock_t* topscope;
+            mcastsymbol_t* existing;
+            topscope = (mcastscopeblock_t*)this->blockscopes->top();
+            existing = (mcastsymbol_t*)topscope->scopestore->get(symbol->name);
+            if(existing)
+            {
+                mcastsymbol_t::destroy(existing);
+            }
+            return topscope->scopestore->set(symbol->name, symbol);
+        }
+
+        int nextSymbolIndex()
+        {
+            int ix;
+            mcastscopeblock_t* topscope;
+            topscope = (mcastscopeblock_t*)this->blockscopes->top();
+            ix = topscope->offset + topscope->numdefinitions;
+            return ix;
+        }
+
+        int getNumDefinitions()
+        {
+            int i;
+            int count;
+            mcastscopeblock_t* scope;
+            count = 0;
+            for(i = this->blockscopes->count() - 1; i >= 0; i--)
+            {
+                scope = (mcastscopeblock_t*)this->blockscopes->get(i);
+                count += scope->numdefinitions;
+            }
+            return count;
+        }
+
+
+        bool addModuleSymbol(mcastsymbol_t* symbol)
+        {
+            bool ok;
+            mcastsymbol_t* copy;
+            if(symbol->symtype != MC_SYM_MODULEGLOBAL)
+            {
+                MC_ASSERT(false);
+                return false;
+            }
+            if(this->isDefined(symbol->name))
+            {
+                /* todo: make sure it should be true in this case */
+                return true;
+            }
+            copy = mcastsymbol_t::copy(symbol);
+            if(!copy)
+            {
+                return false;
+            }
+            ok = this->setSymbol(copy);
+            if(!ok)
+            {
+                mcastsymbol_t::destroy(copy);
+                return false;
+            }
+            return true;
+        }
+
+        mcastsymbol_t* defineSymbol(const char* name, bool assignable)
+        {
+            bool ok;
+            bool globalsymboladded;
+            int ix;
+            int definitionscount;
+            mcastsymtype_t symboltype;
+            mcastsymbol_t* symbol;
+            mcastscopeblock_t* topscope;
+            mcastsymbol_t* globalsymbol;
+            mcastsymbol_t* globalsymbolcopy;
+            globalsymbol = mc_globalstore_getsymbol(this->symglobalstore, name);
+            if(globalsymbol)
+            {
+                return nullptr;
+            }
+            /* module symbol */
+            if(strchr(name, ':'))
+            {
+                return nullptr;
+            }
+            /* "this" is reserved */
+            #if 1
+            if(mc_util_strequal(name, "this"))
+            {
+                return this->defineThis();
+            }
+            #endif
+            symboltype = this->outer == nullptr ? MC_SYM_MODULEGLOBAL : MC_SYM_LOCAL;
+            ix = this->nextSymbolIndex();
+            symbol = Memory::make<mcastsymbol_t>(name, symboltype, ix, assignable);
+            if(!symbol)
+            {
+                return nullptr;
+            }
+            globalsymboladded = false;
+            ok = false;
+            if(symboltype == MC_SYM_MODULEGLOBAL && this->blockscopes->count() == 1)
+            {
+                globalsymbolcopy = mcastsymbol_t::copy(symbol);
+                if(!globalsymbolcopy)
+                {
+                    mcastsymbol_t::destroy(symbol);
+                    return nullptr;
+                }
+                ok = this->modglobalsymbols->push(globalsymbolcopy);
+                if(!ok)
+                {
+                    mcastsymbol_t::destroy(globalsymbolcopy);
+                    mcastsymbol_t::destroy(symbol);
+                    return nullptr;
+                }
+                globalsymboladded = true;
+            }
+            ok = this->setSymbol(symbol);
+            if(!ok)
+            {
+                if(globalsymboladded)
+                {
+                    globalsymbolcopy = (mcastsymbol_t*)this->modglobalsymbols->popReturn();
+                    mcastsymbol_t::destroy(globalsymbolcopy);
+                }
+                mcastsymbol_t::destroy(symbol);
+                return nullptr;
+            }
+            topscope = (mcastscopeblock_t*)this->blockscopes->top();
+            topscope->numdefinitions++;
+            definitionscount = this->getNumDefinitions();
+            if(definitionscount > this->maxnumdefinitions)
+            {
+                this->maxnumdefinitions = definitionscount;
+            }
+            return symbol;
+        }
+
+        mcastsymbol_t* defineAndDestroyOld(mcastsymbol_t* original)
+        {
+            bool ok;
+            mcastsymbol_t* copy;
+            mcastsymbol_t* symbol;
+            copy = Memory::make<mcastsymbol_t>(original->name, original->symtype, original->index, original->assignable);
+            if(!copy)
+            {
+                return nullptr;
+            }
+            ok = this->freesymbols->push(copy);
+            if(!ok)
+            {
+                mcastsymbol_t::destroy(copy);
+                return nullptr;
+            }
+            symbol = Memory::make<mcastsymbol_t>(original->name, MC_SYM_FREE, this->freesymbols->count() - 1, original->assignable);
+            if(!symbol)
+            {
+                return nullptr;
+            }
+            ok = this->setSymbol(symbol);
+            if(!ok)
+            {
+                mcastsymbol_t::destroy(symbol);
+                return nullptr;
+            }
+            return symbol;
+        }
+
+        mcastsymbol_t* defineFunctionName(const char* name, bool assignable)
+        {
+            bool ok;
+            mcastsymbol_t* symbol;
+            /* module symbol */
+            if(strchr(name, ':'))
+            {
+                return nullptr;
+            }
+            symbol = Memory::make<mcastsymbol_t>(name, MC_SYM_FUNCTION, 0, assignable);
+            if(!symbol)
+            {
+                return nullptr;
+            }
+            ok = this->setSymbol(symbol);
+            if(!ok)
+            {
+                mcastsymbol_t::destroy(symbol);
+                return nullptr;
+            }
+            return symbol;
+        }
+
+        mcastsymbol_t* defineThis()
+        {
+            bool ok;
+            mcastsymbol_t* symbol;
+            symbol = Memory::make<mcastsymbol_t>("this", MC_SYM_THIS, 0, false);
+            if(!symbol)
+            {
+                return nullptr;
+            }
+            ok = this->setSymbol(symbol);
+            if(!ok)
+            {
+                mcastsymbol_t::destroy(symbol);
+                return nullptr;
+            }
+            return symbol;
+        }
+
+        mcastsymbol_t* resolve(const char* name)
+        {
+            int i;
+            mcastsymbol_t* symbol;
+            mcastscopeblock_t* scope;
+            symbol = nullptr;
+            scope = nullptr;
+            symbol = mc_globalstore_getsymbol(this->symglobalstore, name);
+            if(symbol)
+            {
+                return symbol;
+            }
+
+            for(i = this->blockscopes->count() - 1; i >= 0; i--)
+            {
+                scope = (mcastscopeblock_t*)this->blockscopes->get(i);
+                symbol = (mcastsymbol_t*)scope->scopestore->get(name);
+                if(symbol)
+                {
+                    break;
+                }
+            }
+            if(symbol && symbol->symtype == MC_SYM_THIS)
+            {
+                symbol = this->defineAndDestroyOld(symbol);
+            }
+            if(!symbol && this->outer)
+            {
+                symbol = this->outer->resolve(name);
+                if(!symbol)
+                {
+                    return nullptr;
+                }
+                if(symbol->symtype == MC_SYM_MODULEGLOBAL || symbol->symtype == MC_SYM_GLOBALBUILTIN)
+                {
+                    return symbol;
+                }
+                symbol = this->defineAndDestroyOld(symbol);
+            }
+            return symbol;
+        }
+
+        bool isDefined(const char* name)
+        {
+            /* todo: rename to something more obvious */
+            mcastsymbol_t* symbol;
+            mcastscopeblock_t* topscope;
+            symbol = mc_globalstore_getsymbol(this->symglobalstore, name);
+            if(symbol)
+            {
+                return true;
+            }
+            topscope = (mcastscopeblock_t*)this->blockscopes->top();
+            symbol = (mcastsymbol_t*)topscope->scopestore->get(name);
+            if(symbol)
+            {
+                return true;
+            }
+            return false;
+        }
+
+        bool scopeBlockPush()
+        {
+            bool ok;
+            int blockscopeoffset;
+            mcastscopeblock_t* newscope;
+            mcastscopeblock_t* prevblockscope;
+            blockscopeoffset = 0;
+            prevblockscope = (mcastscopeblock_t*)this->blockscopes->top();
+            if(prevblockscope)
+            {
+                blockscopeoffset = this->modglobaloffset + prevblockscope->offset + prevblockscope->numdefinitions;
+            }
+            else
+            {
+                blockscopeoffset = this->modglobaloffset;
+            }
+            newscope = mc_astblockscope_make(blockscopeoffset);
+            if(!newscope)
+            {
+                return false;
+            }
+            ok = this->blockscopes->push(newscope);
+            if(!ok)
+            {
+                mc_astblockscope_destroy(newscope);
+                return false;
+            }
+            return true;
+        }
+
+        void scopeBlockPop()
+        {
+            mcastscopeblock_t* topscope;
+            topscope = (mcastscopeblock_t*)this->blockscopes->top();
+            this->blockscopes->pop(nullptr);
+            mc_astblockscope_destroy(topscope);
+        }
+
+        mcastscopeblock_t* scopeBlockGet()
+        {
+            mcastscopeblock_t* topscope;
+            topscope = (mcastscopeblock_t*)this->blockscopes->top();
+            return topscope;
+        }
+
+        bool isModuleGlobalScope()
+        {
+            return this->outer == nullptr;
+        }
+
+        bool isTopBlockScope()
+        {
+            return this->blockscopes->count() == 1;
+        }
+
+        bool isTopGlobalScope()
+        {
+            return this->isModuleGlobalScope() && this->isTopBlockScope();
+        }
+
+        size_t getModuleGlobalSymCount()
+        {
+            return this->modglobalsymbols->count();
+        }
+
+        mcastsymbol_t* getModuleGlobalSymAt(int ix)
+        {
+            return (mcastsymbol_t*)this->modglobalsymbols->get(ix);
+        }
 };
 
 
@@ -3211,588 +4175,6 @@ struct mcastexpression_t
 
 };
 
-struct mcobjuserdata_t
-{
-    void* data;
-    mcitemdestroyfn_t datadestroyfn;
-    mcitemcopyfn_t datacopyfn;
-};
-
-struct mcobjerror_t
-{
-    char* message;
-    mctraceback_t* traceback;
-};
-
-struct mcobjstring_t
-{
-    unsigned long hash;
-    StringBuffer* strbuf;
-};
-
-struct mcobjmap_t
-{
-    GenericDict<mcvalue_t, mcvalue_t>* actualmap;
-};
-
-struct mcobjarray_t
-{
-    GenericList<mcvalue_t>* actualarray;
-};
-
-struct mcobjfunction_t
-{
-    public:
-        union
-        {
-            struct
-            {
-                union
-                {
-                    mcvalue_t* freevalsallocated;
-                    mcvalue_t freevalsstack[2];
-                } ufv;
-                
-                union
-                {
-                    char* fallocname;
-                    const char* fconstname;
-                } unamev;
-                mccompiledprogram_t* compiledprogcode;
-                int numlocals;
-                int numargs;
-                int freevalscount;
-                bool ownsdata;
-            } valscriptfunc;
-
-            struct
-            {
-                char* natfnname;
-                mcnativefn_t natptrfn;
-                void* userpointer;
-            } valnativefunc;
-        } funcdata;
-
-    public:
-        bool freeValuesAreAllocated()
-        {
-            return this->funcdata.valscriptfunc.freevalscount >= MC_UTIL_STATICARRAYSIZE(this->funcdata.valscriptfunc.ufv.freevalsstack);
-        }
-
-};
-
-union mcobjunion_t
-{
-    mcobjstring_t valstring;
-    mcobjerror_t valerror;
-    mcobjarray_t* valarray;
-    mcobjmap_t* valmap;
-    mcobjfunction_t valfunc;
-    mcobjuserdata_t valuserobject;
-};
-
-struct mcobjdata_t
-{
-    mcstate_t* pstate;
-    mcgcmemory_t* mem;
-    mcvaltype_t odtype;
-    bool gcmark;
-    mcobjunion_t uvobj;
-};
-
-struct mcopdefinition_t
-{
-    const char* name;
-    int numoperands;
-    int operandwidths[2];
-};
-
-struct mcastsymbol_t
-{
-    public:
-        mcstate_t* pstate;
-        mcastsymtype_t symtype;
-        char* name;
-        int index;
-        bool assignable;
-
-    public:
-        static mcastsymbol_t* make(mcstate_t* state, const char* name, mcastsymtype_t type, int index, bool assignable)
-        {
-            mcastsymbol_t* symbol;
-            symbol = Memory::make<mcastsymbol_t>();
-            if(!symbol)
-            {
-                return nullptr;
-            }
-            memset(symbol, 0, sizeof(mcastsymbol_t));
-            symbol->pstate = state;
-            symbol->name = mc_util_strdup(name);
-            if(!symbol->name)
-            {
-                Memory::destroy(symbol);
-                symbol = nullptr;
-                return nullptr;
-            }
-            symbol->symtype = type;
-            symbol->index = index;
-            symbol->assignable = assignable;
-            return symbol;
-        }
-
-        static void destroy(mcastsymbol_t* symbol)
-        {
-            if(symbol != nullptr)
-            {
-                mc_memory_free(symbol->name);
-                symbol->name = nullptr;
-                mc_memory_free(symbol);
-                symbol = nullptr;
-            }
-        }
-
-        static mcastsymbol_t* copy(mcastsymbol_t* symbol)
-        {
-            return mcastsymbol_t::make(symbol->pstate, symbol->name, symbol->symtype, symbol->index, symbol->assignable);
-        }
-};
-
-struct mcastscopeblock_t
-{
-    mcstate_t* pstate;
-    PtrDict* scopestore;
-    int offset;
-    int numdefinitions;
-};
-
-struct mcastsymtable_t
-{
-    public:
-        mcstate_t* pstate;
-        mcastsymtable_t* outer;
-        mcglobalstore_t* symglobalstore;
-        PtrList* blockscopes;
-        PtrList* freesymbols;
-        PtrList* modglobalsymbols;
-        int maxnumdefinitions;
-        int modglobaloffset;
-
-    public:
-        static mcastsymtable_t* make(mcstate_t* state, mcastsymtable_t* outer, mcglobalstore_t* gstore, int mgo)
-        {
-            bool ok;
-            mcastsymtable_t* table;
-            table = Memory::make<mcastsymtable_t>();
-            if(!table)
-            {
-                return nullptr;
-            }
-            memset(table, 0, sizeof(mcastsymtable_t));
-            table->pstate = state;
-            table->maxnumdefinitions = 0;
-            table->outer = outer;
-            table->symglobalstore = gstore;
-            table->modglobaloffset = mgo;
-            table->blockscopes = Memory::make<PtrList>(sizeof(void*), true);
-            if(!table->blockscopes)
-            {
-                goto err;
-            }
-            table->freesymbols = Memory::make<PtrList>(sizeof(void*), true);
-            if(!table->freesymbols)
-            {
-                goto err;
-            }
-            table->modglobalsymbols = Memory::make<PtrList>(sizeof(void*), true);
-            if(!table->modglobalsymbols)
-            {
-                goto err;
-            }
-            ok = table->scopeBlockPush();
-            if(!ok)
-            {
-                goto err;
-            }
-            return table;
-        err:
-            mcastsymtable_t::destroy(table);
-            return nullptr;
-        }
-
-        static void destroy(mcastsymtable_t* table)
-        {
-            if(table != nullptr)
-            {
-                while(table->blockscopes->count() > 0)
-                {
-                    table->scopeBlockPop();
-                }
-                PtrList::destroy(table->blockscopes, nullptr);
-                PtrList::destroy(table->modglobalsymbols, (mcitemdestroyfn_t)mcastsymbol_t::destroy);
-                PtrList::destroy(table->freesymbols, (mcitemdestroyfn_t)mcastsymbol_t::destroy);
-                memset(table, 0, sizeof(mcastsymtable_t));
-                mc_memory_free(table);
-                table = nullptr;
-            }
-        }
-
-        mcastsymtable_t* copy()
-        {
-            mcastsymtable_t* copy;
-            copy = Memory::make<mcastsymtable_t>();
-            if(!copy)
-            {
-                return nullptr;
-            }
-            memset(copy, 0, sizeof(mcastsymtable_t));
-            copy->pstate = this->pstate;
-            copy->outer = this->outer;
-            copy->symglobalstore = this->symglobalstore;
-            copy->blockscopes = this->blockscopes->copy((mcitemcopyfn_t)mc_astblockscope_copy, (mcitemdestroyfn_t)mc_astblockscope_destroy);
-            if(!copy->blockscopes)
-            {
-                goto err;
-            }
-            copy->freesymbols = this->freesymbols->copy((mcitemcopyfn_t)mcastsymbol_t::copy, (mcitemdestroyfn_t)mcastsymbol_t::destroy);
-            if(!copy->freesymbols)
-            {
-                goto err;
-            }
-            copy->modglobalsymbols = this->modglobalsymbols->copy((mcitemcopyfn_t)mcastsymbol_t::copy, (mcitemdestroyfn_t)mcastsymbol_t::destroy);
-            if(!copy->modglobalsymbols)
-            {
-                goto err;
-            }
-            copy->maxnumdefinitions = this->maxnumdefinitions;
-            copy->modglobaloffset = this->modglobaloffset;
-            return copy;
-        err:
-            mcastsymtable_t::destroy(copy);
-            return nullptr;
-        }
-
-        bool addModuleSymbol(mcastsymbol_t* symbol)
-        {
-            bool ok;
-            mcastsymbol_t* copy;
-            if(symbol->symtype != MC_SYM_MODULEGLOBAL)
-            {
-                MC_ASSERT(false);
-                return false;
-            }
-            if(this->isDefined(symbol->name))
-            {
-                /* todo: make sure it should be true in this case */
-                return true;
-            }
-            copy = mcastsymbol_t::copy(symbol);
-            if(!copy)
-            {
-                return false;
-            }
-            ok = mc_symtable_setsymbol(this, copy);
-            if(!ok)
-            {
-                mcastsymbol_t::destroy(copy);
-                return false;
-            }
-            return true;
-        }
-
-        mcastsymbol_t* defineSymbol(const char* name, bool assignable)
-        {
-            bool ok;
-            bool globalsymboladded;
-            int ix;
-            int definitionscount;
-            mcastsymtype_t symboltype;
-            mcastsymbol_t* symbol;
-            mcastscopeblock_t* topscope;
-            mcastsymbol_t* globalsymbol;
-            mcastsymbol_t* globalsymbolcopy;
-            globalsymbol = mc_globalstore_getsymbol(this->symglobalstore, name);
-            if(globalsymbol)
-            {
-                return nullptr;
-            }
-            /* module symbol */
-            if(strchr(name, ':'))
-            {
-                return nullptr;
-            }
-            /* "this" is reserved */
-            #if 1
-            if(mc_util_strequal(name, "this"))
-            {
-                return this->defineThis();
-            }
-            #endif
-            symboltype = this->outer == nullptr ? MC_SYM_MODULEGLOBAL : MC_SYM_LOCAL;
-            ix = mc_symtable_nextsymindex(this);
-            symbol = mcastsymbol_t::make(this->pstate, name, symboltype, ix, assignable);
-            if(!symbol)
-            {
-                return nullptr;
-            }
-            globalsymboladded = false;
-            ok = false;
-            if(symboltype == MC_SYM_MODULEGLOBAL && this->blockscopes->count() == 1)
-            {
-                globalsymbolcopy = mcastsymbol_t::copy(symbol);
-                if(!globalsymbolcopy)
-                {
-                    mcastsymbol_t::destroy(symbol);
-                    return nullptr;
-                }
-                ok = this->modglobalsymbols->push(globalsymbolcopy);
-                if(!ok)
-                {
-                    mcastsymbol_t::destroy(globalsymbolcopy);
-                    mcastsymbol_t::destroy(symbol);
-                    return nullptr;
-                }
-                globalsymboladded = true;
-            }
-            ok = mc_symtable_setsymbol(this, symbol);
-            if(!ok)
-            {
-                if(globalsymboladded)
-                {
-                    globalsymbolcopy = (mcastsymbol_t*)this->modglobalsymbols->popReturn();
-                    mcastsymbol_t::destroy(globalsymbolcopy);
-                }
-                mcastsymbol_t::destroy(symbol);
-                return nullptr;
-            }
-            topscope = (mcastscopeblock_t*)this->blockscopes->top();
-            topscope->numdefinitions++;
-            definitionscount = mc_symtable_getnumdefs(this);
-            if(definitionscount > this->maxnumdefinitions)
-            {
-                this->maxnumdefinitions = definitionscount;
-            }
-            return symbol;
-        }
-
-        mcastsymbol_t* defineAndDestroyOld(mcastsymbol_t* original)
-        {
-            bool ok;
-            mcastsymbol_t* copy;
-            mcastsymbol_t* symbol;
-            copy = mcastsymbol_t::make(this->pstate, original->name, original->symtype, original->index, original->assignable);
-            if(!copy)
-            {
-                return nullptr;
-            }
-            ok = this->freesymbols->push(copy);
-            if(!ok)
-            {
-                mcastsymbol_t::destroy(copy);
-                return nullptr;
-            }
-            symbol = mcastsymbol_t::make(this->pstate, original->name, MC_SYM_FREE, this->freesymbols->count() - 1, original->assignable);
-            if(!symbol)
-            {
-                return nullptr;
-            }
-            ok = mc_symtable_setsymbol(this, symbol);
-            if(!ok)
-            {
-                mcastsymbol_t::destroy(symbol);
-                return nullptr;
-            }
-            return symbol;
-        }
-
-        mcastsymbol_t* defineFunctionName(const char* name, bool assignable)
-        {
-            bool ok;
-            mcastsymbol_t* symbol;
-            /* module symbol */
-            if(strchr(name, ':'))
-            {
-                return nullptr;
-            }
-            symbol = mcastsymbol_t::make(this->pstate, name, MC_SYM_FUNCTION, 0, assignable);
-            if(!symbol)
-            {
-                return nullptr;
-            }
-            ok = mc_symtable_setsymbol(this, symbol);
-            if(!ok)
-            {
-                mcastsymbol_t::destroy(symbol);
-                return nullptr;
-            }
-            return symbol;
-        }
-
-        mcastsymbol_t* defineThis()
-        {
-            bool ok;
-            mcastsymbol_t* symbol;
-            symbol = mcastsymbol_t::make(this->pstate, "this", MC_SYM_THIS, 0, false);
-            if(!symbol)
-            {
-                return nullptr;
-            }
-            ok = mc_symtable_setsymbol(this, symbol);
-            if(!ok)
-            {
-                mcastsymbol_t::destroy(symbol);
-                return nullptr;
-            }
-            return symbol;
-        }
-
-        mcastsymbol_t* resolve(const char* name)
-        {
-            int i;
-            mcastsymbol_t* symbol;
-            mcastscopeblock_t* scope;
-            symbol = nullptr;
-            scope = nullptr;
-            symbol = mc_globalstore_getsymbol(this->symglobalstore, name);
-            if(symbol)
-            {
-                return symbol;
-            }
-
-            for(i = this->blockscopes->count() - 1; i >= 0; i--)
-            {
-                scope = (mcastscopeblock_t*)this->blockscopes->get(i);
-                symbol = (mcastsymbol_t*)scope->scopestore->get(name);
-                if(symbol)
-                {
-                    break;
-                }
-            }
-            if(symbol && symbol->symtype == MC_SYM_THIS)
-            {
-                symbol = this->defineAndDestroyOld(symbol);
-            }
-            if(!symbol && this->outer)
-            {
-                symbol = this->outer->resolve(name);
-                if(!symbol)
-                {
-                    return nullptr;
-                }
-                if(symbol->symtype == MC_SYM_MODULEGLOBAL || symbol->symtype == MC_SYM_GLOBALBUILTIN)
-                {
-                    return symbol;
-                }
-                symbol = this->defineAndDestroyOld(symbol);
-            }
-            return symbol;
-        }
-
-        bool isDefined(const char* name)
-        {
-            /* todo: rename to something more obvious */
-            mcastsymbol_t* symbol;
-            mcastscopeblock_t* topscope;
-            symbol = mc_globalstore_getsymbol(this->symglobalstore, name);
-            if(symbol)
-            {
-                return true;
-            }
-            topscope = (mcastscopeblock_t*)this->blockscopes->top();
-            symbol = (mcastsymbol_t*)topscope->scopestore->get(name);
-            if(symbol)
-            {
-                return true;
-            }
-            return false;
-        }
-
-        bool scopeBlockPush()
-        {
-            bool ok;
-            int blockscopeoffset;
-            mcastscopeblock_t* newscope;
-            mcastscopeblock_t* prevblockscope;
-            blockscopeoffset = 0;
-            prevblockscope = (mcastscopeblock_t*)this->blockscopes->top();
-            if(prevblockscope)
-            {
-                blockscopeoffset = this->modglobaloffset + prevblockscope->offset + prevblockscope->numdefinitions;
-            }
-            else
-            {
-                blockscopeoffset = this->modglobaloffset;
-            }
-            newscope = mc_astblockscope_make(this->pstate, blockscopeoffset);
-            if(!newscope)
-            {
-                return false;
-            }
-            ok = this->blockscopes->push(newscope);
-            if(!ok)
-            {
-                mc_astblockscope_destroy(newscope);
-                return false;
-            }
-            return true;
-        }
-
-        void scopeBlockPop()
-        {
-            mcastscopeblock_t* topscope;
-            topscope = (mcastscopeblock_t*)this->blockscopes->top();
-            this->blockscopes->pop(nullptr);
-            mc_astblockscope_destroy(topscope);
-        }
-
-        mcastscopeblock_t* scopeBlockGet()
-        {
-            mcastscopeblock_t* topscope;
-            topscope = (mcastscopeblock_t*)this->blockscopes->top();
-            return topscope;
-        }
-
-        bool isModuleGlobalScope()
-        {
-            return this->outer == nullptr;
-        }
-
-        bool isTopBlockScope()
-        {
-            return this->blockscopes->count() == 1;
-        }
-
-        bool isTopGlobalScope()
-        {
-            return this->isModuleGlobalScope() && this->isTopBlockScope();
-        }
-
-        size_t getModuleGlobalSymCount()
-        {
-            return this->modglobalsymbols->count();
-        }
-
-        mcastsymbol_t* getModuleGlobalSymAt(int ix)
-        {
-            return (mcastsymbol_t*)this->modglobalsymbols->get(ix);
-        }
-};
-
-struct mcgcobjdatapool_t
-{
-    mcobjdata_t* data[MC_CONF_GCMEMPOOLSIZE];
-    int count;
-};
-
-struct mcgcmemory_t
-{
-    mcstate_t* pstate;
-    int allocssincesweep;
-    PtrList* gcobjlist;
-    PtrList* gcobjlistback;
-    PtrList* gcobjlistremains;
-    mcgcobjdatapool_t onlydatapool;
-    mcgcobjdatapool_t mempools[MC_CONF_GCMEMPOOLCOUNT];
-};
 
 struct mccompiledprogram_t
 {
@@ -3821,7 +4203,184 @@ struct mcastcompiledfile_t
     PtrList* lines;
 };
 
-struct mcerror_t
+class mctraceback_t
+{
+    public:
+        class Item
+        {
+            public:
+                char* trfuncname;
+                mcastlocation_t pos;
+
+            public:
+                const char* getSourceLine()
+                {
+                    const char* line;
+                    PtrList* lines;
+                    if(!this->pos.file)
+                    {
+                        return nullptr;
+                    }
+                    lines = this->pos.file->lines;
+                    if((size_t)this->pos.line >= (size_t)lines->count())
+                    {
+                        return nullptr;
+                    }
+                    line = (const char*)lines->get(this->pos.line);
+                    return line;
+                }
+
+                const char* getSourceFilename()
+                {
+                    if(!this->pos.file)
+                    {
+                        return nullptr;
+                    }
+                    return this->pos.file->path;
+                }
+        };
+
+    public:
+        PtrList* tbitems;
+
+    public:
+        mctraceback_t()
+        {
+            this->tbitems = Memory::make<PtrList>(sizeof(Item), false);
+            assert(this->tbitems);
+        }
+
+        static void destroy(mctraceback_t* traceback)
+        {
+            size_t i;
+            Item* item;
+            if(traceback != nullptr)
+            {
+                for(i = 0; i < traceback->tbitems->count(); i++)
+                {
+                    item = (Item*)traceback->tbitems->get(i);
+                    mc_memory_free(item->trfuncname);
+                    item->trfuncname = nullptr;
+                }
+                PtrList::destroy(traceback->tbitems, nullptr);
+                mc_memory_free(traceback);
+                traceback = nullptr;
+            }
+        }
+
+        bool push(const char* fname, mcastlocation_t pos)
+        {
+            bool ok;
+            Item item;
+            item.trfuncname = mc_util_strdup(fname);
+            if(!item.trfuncname)
+            {
+                return false;
+            }
+            item.pos = pos;
+            ok = this->tbitems->push(&item);
+            if(!ok)
+            {
+                mc_memory_free(item.trfuncname);
+                item.trfuncname = nullptr;
+                return false;
+            }
+            return true;
+        }
+
+        int mc_traceback_getdepth()
+        {
+            return this->tbitems->count();
+        }
+
+        const char* mc_traceback_getsourcefilepath(int depth)
+        {
+            Item* item;
+            item = (Item*)this->tbitems->get(depth);
+            if(!item)
+            {
+                return nullptr;
+            }
+            return item->getSourceFilename();
+        }
+
+        const char* mc_traceback_getsourcelinecode(int depth)
+        {
+            Item* item;
+            item = (Item*)this->tbitems->get(depth);
+            if(!item)
+            {
+                return nullptr;
+            }
+            return item->getSourceLine();
+        }
+
+        int mc_traceback_getsourcelinenumber(int depth)
+        {
+            Item* item;
+            item = (Item*)this->tbitems->get(depth);
+            if(!item)
+            {
+                return -1;
+            }
+            return item->pos.line;
+        }
+
+        int mc_traceback_getsourcecolumn(int depth)
+        {
+            Item* item;
+            item = (Item*)this->tbitems->get(depth);
+            if(!item)
+            {
+                return -1;
+            }
+            return item->pos.column;
+        }
+
+        const char* mc_traceback_getfunctionname(int depth)
+        {
+            Item* item;
+            item = (Item*)this->tbitems->get(depth);
+            if(!item)
+            {
+                return "";
+            }
+            return item->trfuncname;
+        }
+
+        bool printTo(Printer* pr, mcconsolecolor_t* mcc)
+        {
+            int i;
+            int depth;
+            const char* cblue;
+            const char* cyell;
+            const char* creset;
+            const char* filename;
+            Item* item;
+            cblue = mc_consolecolor_get(mcc, 'b');
+            cyell = mc_consolecolor_get(mcc, 'y');
+            creset = mc_consolecolor_get(mcc, '0');
+            depth = this->tbitems->count();
+            for(i = 0; i < depth; i++)
+            {
+                item = (Item*)this->tbitems->get(i);
+                filename = item->getSourceFilename();
+                pr->format("  function %s%s%s", cblue, item->trfuncname, creset);
+                if(item->pos.line >= 0 && item->pos.column >= 0)
+                {
+                    pr->format(" in %s%s:%d:%d%s", cyell, filename, item->pos.line, item->pos.column, creset);
+                }
+                else
+                {
+                }
+                pr->format("\n");
+            }
+            return !pr->m_prfailed;
+        }
+
+};
+
+class mcerror_t
 {
     public:
         static const char* mc_util_errortypename(mcerrtype_t type)
@@ -3935,28 +4494,93 @@ struct mcerror_t
             return mc_util_errortypename(this->getType());
         }
 
-        mctraceback_t*getTraceback()
+        mctraceback_t* getTraceback()
         {
-            return (mctraceback_t*)this->m_traceback;
+            return this->m_traceback;
+        }
+
+        bool printErrorTo(Printer* pr)
+        {
+            int j;
+            int colnum;
+            int linenum;
+            const char* line;
+            const char* typestr;
+            const char* filename;
+            const char* cred;
+            const char* cblue;
+            const char* creset;
+            mctraceback_t* traceback;
+            mcconsolecolor_t mcc;
+            mc_consolecolor_init(&mcc, fileno(stdout));
+            cred = mc_consolecolor_get(&mcc, 'r');
+            cblue = mc_consolecolor_get(&mcc, 'b');
+            creset = mc_consolecolor_get(&mcc, '0');
+            typestr = this->getTypeString();
+            filename = this->getFile();
+            line = this->getSourceLineCode();
+            linenum = this->getSourceLineNumber();
+            colnum = this->getSourceColumn();
+            if(line)
+            {
+                pr->put(line);
+                pr->put("\n");
+                if(colnum >= 0)
+                {
+                    for(j = 0; j < (colnum - 1); j++)
+                    {
+                        pr->put(" ");
+                    }
+                    pr->put("^\n");
+                }
+            }
+            pr->format("%s%s ERROR%s in \"%s\" on %s%d:%d:%s %s\n", cred, typestr, creset, filename, cblue, linenum, colnum, creset, this->getMessage());
+            traceback = this->getTraceback();
+            if(traceback)
+            {
+                pr->format("traceback:\n");
+                this->getTraceback()->printTo(pr, &mcc);
+            }
+            return true;
         }
 
 };
 
-struct mcerrlist_t
+class mcerrlist_t
 {
     public:
         mcerror_t m_erroritems[MC_CONF_MAXERRORCOUNT];
-        int count;
+        int m_count;
 
     public:
-        static void init(mcerrlist_t* tgt)
+        mcerrlist_t()
         {
-            tgt->count = 0;
+            this->m_count = 0;
         }
 
-        static void deinit(mcerrlist_t* tgt)
+        void destroy()
         {
-            tgt->clear();
+            this->clear();
+        }
+
+        size_t count() const
+        {
+            return m_count;
+        }
+
+        void clear()
+        {
+            int i;
+            mcerror_t* error;
+            for(i = 0; i < this->m_count; i++)
+            {
+                error = this->get(i);
+                if(error->m_traceback)
+                {
+                    Memory::destroy(error->m_traceback);
+                }
+            }
+            this->m_count = 0;
         }
 
         void pushMessage(mcerrtype_t type, mcastlocation_t pos, const char* message)
@@ -3964,7 +4588,7 @@ struct mcerrlist_t
             int len;
             int tocopy;
             mcerror_t err;
-            if(this->count >= MC_CONF_MAXERRORCOUNT)
+            if(this->m_count >= MC_CONF_MAXERRORCOUNT)
             {
             }
             else
@@ -3980,8 +4604,8 @@ struct mcerrlist_t
                 err.m_message[tocopy] = '\0';
                 err.m_pos = pos;
                 err.m_traceback = nullptr;
-                this->m_erroritems[this->count] = err;
-                this->count++;
+                this->m_erroritems[this->m_count] = err;
+                this->m_count++;
             }
         }
 
@@ -4000,25 +4624,9 @@ struct mcerrlist_t
             this->pushMessage(type, pos, res);
         }
 
-
-        void clear()
-        {
-            int i;
-            mcerror_t* error;
-            for(i = 0; i < this->count; i++)
-            {
-                error = this->get(i);
-                if(error->m_traceback)
-                {
-                    mc_traceback_destroy(error->m_traceback);
-                }
-            }
-            this->count = 0;
-        }
-
         mcerror_t* get(int ix)
         {
-            if(ix >= this->count)
+            if(ix >= this->m_count)
             {
                 return nullptr;
             }
@@ -4027,11 +4635,11 @@ struct mcerrlist_t
 
         mcerror_t* getLast()
         {
-            if(this->count <= 0)
+            if(this->m_count <= 0)
             {
                 return nullptr;
             }
-            return &this->m_erroritems[this->count - 1];
+            return &this->m_erroritems[this->m_count - 1];
         }
 };
 
@@ -4832,17 +5440,6 @@ struct mcvmframe_t
     bool isrecovering;
 };
 
-struct mctraceitem_t
-{
-    char* trfuncname;
-    mcastlocation_t pos;
-};
-
-struct mctraceback_t
-{
-    mcstate_t* pstate;
-    PtrList* tbitems;
-};
 
 struct mcconfig_t
 {
@@ -4871,26 +5468,120 @@ struct mcexecstate_t
 
 struct mcstate_t
 {
-    mcconfig_t config;
-    mcerrlist_t errors;
-    mcgcmemory_t* mem;
-    mcglobalstore_t* vmglobalstore;
-    GenericList<mcvalue_t>* globalvalstack;
-    size_t globalvalcount;
-    bool hadrecovered;
-    bool running;
-    mcvalue_t operoverloadkeys[MC_CONF_MAXOPEROVERLOADS];
-    PtrList* files;
-    mcastcompiler_t* compiler;
-    mcexecstate_t execstate;
-    Printer* stdoutprinter;
-    Printer* stderrprinter;
-    mcclass_t* stdobjobject;
-    mcclass_t* stdobjnumber;
-    mcclass_t* stdobjstring;
-    mcclass_t* stdobjarray;
-    mcclass_t* stdobjmap;
-    mcclass_t* stdobjfunction;
+    public:
+
+        static void destroy(mcstate_t* state)
+        {
+            if(state != nullptr)
+            {
+                state->deinit();
+                mc_memory_free(state);
+            }
+        }
+
+
+    public:
+        mcconfig_t config;
+        mcerrlist_t errors;
+        mcgcmemory_t* mem;
+        mcglobalstore_t* vmglobalstore;
+        GenericList<mcvalue_t>* globalvalstack;
+        size_t globalvalcount;
+        bool hadrecovered;
+        bool running;
+        mcvalue_t operoverloadkeys[MC_CONF_MAXOPEROVERLOADS];
+        PtrList* files;
+        mcastcompiler_t* compiler;
+        mcexecstate_t execstate;
+        Printer* stdoutprinter;
+        Printer* stderrprinter;
+        mcclass_t* stdobjobject;
+        mcclass_t* stdobjnumber;
+        mcclass_t* stdobjstring;
+        mcclass_t* stdobjarray;
+        mcclass_t* stdobjmap;
+        mcclass_t* stdobjfunction;
+
+    public:
+        mcstate_t()
+        {
+            this->setDefaultConfig();
+            this->execstate.valuestack = Memory::make<GenericList<mcvalue_t>>(MC_CONF_MINVMVALSTACKSIZE, mcvalue_t::makeNull());
+            this->execstate.valthisstack = Memory::make<GenericList<mcvalue_t>>(MC_CONF_MINVMTHISSTACKSIZE, mcvalue_t::makeNull());
+            this->execstate.nativethisstack = Memory::make<GenericList<mcvalue_t>>(MC_CONF_MINNATIVETHISSTACKSIZE, mcvalue_t::makeNull());
+            this->globalvalstack = Memory::make<GenericList<mcvalue_t>>(MC_CONF_MAXVMGLOBALS, mcvalue_t::makeNull());
+            this->execstate.framestack = Memory::make<GenericList<mcvmframe_t>>(MC_CONF_MINVMFRAMES, mcvmframe_t{});
+            this->mem = mc_gcmemory_make(this);
+            if(!this->mem)
+            {
+                goto err;
+            }
+            this->files = Memory::make<PtrList>(sizeof(void*), true);
+            if(!this->files)
+            {
+                goto err;
+            }
+            mc_vm_init(this);
+            this->vmglobalstore = mc_globalstore_make(this);
+            if(!this->vmglobalstore)
+            {
+                goto err;
+            }
+            this->compiler = mc_compiler_make(this, &this->config, this->mem, &this->errors, this->files, this->vmglobalstore);
+            if(!this->compiler)
+            {
+                goto err;
+            }
+            this->stdoutprinter = Memory::make<Printer>(stdout);
+            this->stderrprinter = Memory::make<Printer>(stderr);
+            mc_state_makestdclasses(this);
+            return;
+        err:
+            this->deinit();
+            assert(false);
+        }
+
+
+        void deinit()
+        {
+            mc_compiler_destroy(this->compiler);
+            mc_globalstore_destroy(this->vmglobalstore);
+            mc_gcmemory_destroy(this->mem);
+            PtrList::destroy(this->files, (mcitemdestroyfn_t)mc_compiledfile_destroy);
+            this->errors.destroy();
+            Printer::destroy(this->stdoutprinter);
+            Printer::destroy(this->stderrprinter);
+            Memory::destroy(this->execstate.valuestack);
+            Memory::destroy(this->globalvalstack);
+            Memory::destroy(this->execstate.framestack);
+            Memory::destroy(this->execstate.valthisstack);
+            Memory::destroy(this->execstate.nativethisstack);
+            mc_class_destroy(this->stdobjobject);
+            mc_class_destroy(this->stdobjnumber);
+            mc_class_destroy(this->stdobjstring);
+            mc_class_destroy(this->stdobjarray);
+            mc_class_destroy(this->stdobjmap);
+            mc_class_destroy(this->stdobjfunction);
+        }
+
+        void reset()
+        {
+            mc_state_clearerrors(this);
+            mc_vm_reset(this);
+        }
+
+        void setDefaultConfig()
+        {
+            memset(&this->config, 0, sizeof(mcconfig_t));
+            this->config.replmode = false;
+            this->config.dumpast = false;
+            this->config.dumpbytecode = false;
+            this->config.fatalcomplaints = false;
+            this->config.exitaftercompiling = false;
+            this->config.printinstructions = false;
+            this->config.strictmode = false;
+        }
+
 };
 
 struct mcglobalstore_t
@@ -4900,286 +5591,6 @@ struct mcglobalstore_t
     GenericList<mcvalue_t>* storedobjects;
 };
 
-struct mcprintconfig_t
-{
-    bool verbosefunc;
-    bool quotstring;
-    bool shouldflush;
-};
-
-class Printer
-{
-    public:
-        static Printer* make(mcstate_t* state, FILE* ofh)
-        {
-            Printer* pr;
-            pr = Memory::make<Printer>();
-            if(pr == nullptr)
-            {
-                return nullptr;
-            }
-            if(!Printer::initFromStack(pr, state, ofh, false))
-            {
-                return nullptr;
-            }
-            return pr;
-        }
-
-        static void destroy(Printer* pr)
-        {
-            releaseFromPtr(pr, true);
-            if(!pr->m_prisstack)
-            {
-                mc_memory_free(pr);
-            }
-        }
-
-        static bool initFromStack(Printer* pr, mcstate_t* state, FILE* ofh, bool onstack)
-        {
-            memset(pr, 0, sizeof(Printer));
-            pr->m_prpstate = state;
-            pr->m_prfailed = false;
-            pr->m_prdestrfile = ofh;
-            pr->m_prisstack = onstack;
-            pr->m_prdestbuf = nullptr;
-            pr->m_prconfig.verbosefunc = true;
-            pr->m_prconfig.quotstring = false;
-            pr->m_prconfig.shouldflush = false;
-            if(pr->m_prdestrfile == nullptr)
-            {
-                pr->m_prdestbuf = Memory::make<StringBuffer>(0);
-            }
-            return true;
-        }
-
-        static void releaseFromPtr(Printer* pr, bool took)
-        {
-            if(pr != nullptr)
-            {
-                if(pr->m_prdestbuf != nullptr)
-                {
-                    if(!took)
-                    {
-                        StringBuffer::destroy(pr->m_prdestbuf);
-                    }
-                }
-            }
-        }
-
-
-    public:
-        mcstate_t* m_prpstate;
-        mcprintconfig_t m_prconfig;
-        bool m_prfailed;
-        bool m_prisstack;
-        FILE* m_prdestrfile;
-        StringBuffer* m_prdestbuf;
-
-    public:
-        inline bool put(const char* str, size_t len)
-        {
-            if(m_prfailed)
-            {
-                return false;
-            }
-            if(len == 0)
-            {
-                return true;
-            }
-            if(m_prdestrfile == nullptr)
-            {
-                m_prdestbuf->append(str, len);
-            }
-            else
-            {
-                fwrite(str, sizeof(char), len, m_prdestrfile);
-                if(m_prconfig.shouldflush)
-                {
-                    fflush(m_prdestrfile);
-                }
-            }
-            return true;
-        }
-
-        inline bool put(const char* str)
-        {
-            return this->put(str, mc_util_strlen(str));
-        }
-
-        inline bool putChar(int b)
-        {
-            char ch;
-            ch = b;
-            return this->put(&ch, 1);
-        }
-
-        template<typename... ArgsT>
-        inline bool format(const char* fmt, ArgsT&&... args)
-        {
-            static auto tmprintf = fprintf;
-            if(m_prfailed)
-            {
-                return false;
-            }
-            if(m_prdestrfile == nullptr)
-            {
-                m_prdestbuf->appendFormat(fmt, args...);
-            }
-            else
-            {
-                tmprintf(m_prdestrfile, fmt, args...);
-                if(m_prconfig.shouldflush)
-                {
-                    fflush(m_prdestrfile);
-                }
-            }
-            return true;
-        }
-
-        inline void printEscapedChar(int ch)
-        {
-            switch(ch)
-            {
-                case '\'':
-                    {
-                        this->put("\\\'");
-                    }
-                    break;
-                case '\"':
-                    {
-                        this->put("\\\"");
-                    }
-                    break;
-                case '\\':
-                    {
-                        this->put("\\\\");
-                    }
-                    break;
-                case '\b':
-                    {
-                        this->put("\\b");
-                    }
-                    break;
-                case '\f':
-                    {
-                        this->put("\\f");
-                    }
-                    break;
-                case '\n':
-                    {
-                        this->put("\\n");
-                    }
-                    break;
-                case '\r':
-                    {
-                        this->put("\\r");
-                    }
-                    break;
-                case '\t':
-                    {
-                        this->put("\\t");
-                    }
-                    break;
-                case 0:
-                    {
-                        this->put("\\0");
-                    }
-                    break;
-                default:
-                    {
-                        this->format("\\x%02x", (unsigned char)ch);
-                    }
-                    break;
-            }
-        }
-
-        inline void printEscapedString(const char* str, size_t len)
-        {
-            int ch;
-            size_t i;
-            this->put("\"");
-            for(i=0; i<len; i++)
-            {
-                ch = str[i];
-                if((ch < 32) || (ch > 127) || (ch == '\"') || (ch == '\\'))
-                {
-                    this->printEscapedChar(ch);
-                }
-                else
-                {
-                    this->putChar(ch);
-                }
-            }
-            this->put("\"");
-        }
-
-        inline const char* getString()
-        {
-            if(m_prfailed)
-            {
-                return nullptr;
-            }
-            if(m_prdestrfile != nullptr)
-            {
-                return nullptr;
-            }
-            return m_prdestbuf->data();
-        }
-
-        inline size_t getLength()
-        {
-            if(m_prfailed)
-            {
-                return 0;
-            }
-            if(m_prdestrfile != nullptr)
-            {
-                return 0;
-            }
-            return m_prdestbuf->length();
-        }
-
-        inline char* getStringAndDestroy(size_t* lendest)
-        {
-            char* res;
-            if(m_prfailed)
-            {
-                Printer::destroy(this);
-                return nullptr;
-            }
-            if(m_prdestrfile != nullptr)
-            {
-                return nullptr;
-            }
-            res = m_prdestbuf->data();
-            if(lendest != nullptr)
-            {
-                *lendest = m_prdestbuf->length();
-            }
-            m_prdestbuf = nullptr;
-            Printer::destroy(this);
-            return res;
-        }
-
-        inline void printNumFloat(mcfloat_t flt)
-        {
-            int64_t inum;
-            inum = (int64_t)flt;
-            if(flt == inum)
-            {
-                #if 1
-                    this->format("%" PRIiFAST64 "", inum);
-                #else
-                    this->format("%ld", inum);
-                #endif
-            }
-            else
-            {
-                this->format("%g", flt);
-            }
-        }
-};
-
 struct mcastprinter_t
 {
     mcstate_t* pstate;
@@ -5187,11 +5598,98 @@ struct mcastprinter_t
     bool pseudolisp;
 };
 
-struct mcmodule_t
+class mcmodule_t
 {
-    mcstate_t* pstate;
-    char* name;
-    PtrList* modsymbols;
+    public:
+        static const char* getModuleName(const char* path)
+        {
+            const char* lastslashpos;
+            lastslashpos = strrchr(path, '/');
+            if(lastslashpos)
+            {
+                return lastslashpos + 1;
+            }
+            return path;
+        }
+
+        static const char* findFile(const char* filename)
+        {
+            return filename;
+        }
+
+        static void destroy(mcmodule_t* module)
+        {
+            if(module != nullptr)
+            {
+                mc_memory_free(module->name);
+                PtrList::destroy(module->modsymbols, (mcitemdestroyfn_t)mcastsymbol_t::destroy);
+                mc_memory_free(module);
+            }
+        }
+
+        static mcmodule_t* copy(mcmodule_t* src)
+        {
+            auto modsyms = src->modsymbols->copy((mcitemcopyfn_t)mcastsymbol_t::copy, (mcitemdestroyfn_t)mcastsymbol_t::destroy);
+            return Memory::make<mcmodule_t>(src->pstate, src->name, modsyms);
+        }
+
+
+    public:
+        mcstate_t* pstate;
+        char* name;
+        PtrList* modsymbols;
+
+    public:
+        mcmodule_t(mcstate_t* state, const char* nm): mcmodule_t(state, nm, nullptr)
+        {
+        }
+
+        mcmodule_t(mcstate_t* state, const char* nm, PtrList* ms)
+        {
+            this->pstate = state;
+            this->name = mc_util_strdup(nm);
+            assert(this->name);
+            if(ms != nullptr)
+            {
+                this->modsymbols = ms;
+            }
+            else
+            {
+                this->modsymbols = Memory::make<PtrList>(sizeof(void*), true);
+            }
+            assert(this->modsymbols);
+        }
+
+        bool addSymbol(mcastsymbol_t* symbol)
+        {
+            bool ok;
+            mcastsymbol_t* modulesymbol;
+            Printer* namebuf;
+            namebuf = Memory::make<Printer>(nullptr);
+            if(!namebuf)
+            {
+                return false;
+            }
+            ok = namebuf->format("%s::%s", this->name, symbol->name);
+            if(!ok)
+            {
+                Printer::destroy(namebuf);
+                return false;
+            }
+            modulesymbol = Memory::make<mcastsymbol_t>(namebuf->getString(), MC_SYM_MODULEGLOBAL, symbol->index, false);
+            Printer::destroy(namebuf);
+            if(!modulesymbol)
+            {
+                return false;
+            }
+            ok = this->modsymbols->push(modulesymbol);
+            if(!ok)
+            {
+                mcastsymbol_t::destroy(modulesymbol);
+                return false;
+            }
+            return true;
+        }
 };
 
 struct mcastscopefile_t
@@ -5286,17 +5784,15 @@ char* mc_util_readfile(const char* filename, size_t* dlen)
 }
 
 
-char* mc_fsutil_fileread(mcstate_t* state, const char* filename, size_t* flen)
+char* mc_fsutil_fileread(const char* filename, size_t* flen)
 {
-    (void)state;
     return mc_util_readfile(filename, flen);
 }
 
-size_t mc_fsutil_filewrite(mcstate_t* state, const char* path, const char* string, size_t stringsize)
+size_t mc_fsutil_filewrite(const char* path, const char* string, size_t stringsize)
 {
     size_t printedsz;
     FILE* fp;
-    (void)state;
     fp = fopen(path, "w");
     if(!fp)
     {
@@ -5354,7 +5850,7 @@ bool mc_util_strnequal(const char* a, const char* b, size_t len)
 }
 
 
-char* mc_util_canonpath(mcstate_t* state, const char* path)
+char* mc_util_canonpath(const char* path)
 {
     size_t i;
     char* joined;
@@ -5393,7 +5889,7 @@ char* mc_util_canonpath(mcstate_t* state, const char* path)
         }
     }
     tmpstr = "/";
-    joined = mc_util_joinstringarray(state, split, tmpstr, strlen(tmpstr));
+    joined = mc_util_joinstringarray(split, tmpstr, strlen(tmpstr));
     for(i = 0; i < split->count(); i++)
     {
         item = split->get(i);
@@ -5527,12 +6023,12 @@ err:
     return nullptr;
 }
 
-char* mc_util_joinstringarray(mcstate_t* state, PtrList* items, const char* joinee, size_t jlen)
+char* mc_util_joinstringarray(PtrList* items, const char* joinee, size_t jlen)
 {
     size_t i;
     char* item;
     Printer* res;
-    res = Printer::make(state, nullptr);
+    res = Memory::make<Printer>(nullptr);
     if(!res)
     {
         return nullptr;
@@ -5761,113 +6257,11 @@ const char* mc_value_objtypename(mcvaltype_t type)
     return "NONE";
 }
 
-MC_FORCEINLINE mcvalue_t mc_object_makedatafrom(mcvaltype_t type, mcobjdata_t* data)
-{
-    mcvalue_t object;
-    memset(&object, 0, sizeof(mcvalue_t));
-    object.valtype = type;
-    data->odtype = type;
-    object.isallocated = true;
-    object.uval.odata = data;
-    return object;
-}
 
-MC_FORCEINLINE mcvalue_t mc_value_makeempty(mcvaltype_t t)
-{
-    mcvalue_t o = {};
-    o.valtype = t;
-    o.isallocated = false;
-    return o;
-}
-
-MC_FORCEINLINE mcvalue_t mc_value_makenumber(mcfloat_t val)
-{
-    mcvalue_t o;
-    o = mc_value_makeempty(MC_VAL_NUMBER);
-    o.uval.valnumber = val;
-    return o;
-}
-
-MC_FORCEINLINE mcvalue_t mc_value_makebool(bool val)
-{
-    mcvalue_t o;
-    o = mc_value_makeempty(MC_VAL_BOOL);
-    o.uval.valbool = val;
-    return o;
-}
-
-MC_FORCEINLINE mcvalue_t mc_value_makenull()
-{
-    mcvalue_t o;
-    o = mc_value_makeempty(MC_VAL_NULL);
-    return o;
-}
-
-MC_FORCEINLINE bool mc_value_isallocated(mcvalue_t object)
-{
-    return object.isallocated;
-}
-
-MC_FORCEINLINE bool mc_value_isnumeric(mcvalue_t obj)
-{
-    mcvaltype_t type;
-    type = mc_value_gettype(obj);
-    return type == MC_VAL_NUMBER || type == MC_VAL_BOOL;
-}
-
-MC_FORCEINLINE bool mc_value_isnumber(mcvalue_t o)
-{
-    return (mc_value_gettype(o) == MC_VAL_NUMBER || mc_value_gettype(o) == MC_VAL_BOOL);
-}
-
-MC_FORCEINLINE bool mc_value_isnull(mcvalue_t obj)
-{
-    return mc_value_gettype(obj) == MC_VAL_NULL;
-}
-
-MC_FORCEINLINE bool mc_value_isfuncnative(mcvalue_t obj)
-{
-    mcvaltype_t type;
-    type = mc_value_gettype(obj);
-    return (type == MC_VAL_FUNCNATIVE);
-}
-
-MC_FORCEINLINE bool mc_value_isfuncscript(mcvalue_t obj)
-{
-    mcvaltype_t type;
-    type = mc_value_gettype(obj);
-    return (type == MC_VAL_FUNCSCRIPT);
-}
-
-MC_FORCEINLINE bool mc_value_iscallable(mcvalue_t obj)
-{
-    return (mc_value_isfuncnative(obj) || mc_value_isfuncscript(obj));
-}
-
-MC_FORCEINLINE bool mc_value_isstring(mcvalue_t obj)
-{
-    mcvaltype_t type;
-    type = mc_value_gettype(obj);
-    return (type == MC_VAL_STRING);
-}
-
-MC_FORCEINLINE bool mc_value_ismap(mcvalue_t obj)
-{
-    mcvaltype_t type;
-    type = mc_value_gettype(obj);
-    return (type == MC_VAL_MAP);
-}
-
-MC_FORCEINLINE bool mc_value_isarray(mcvalue_t obj)
-{
-    mcvaltype_t type;
-    type = mc_value_gettype(obj);
-    return (type == MC_VAL_ARRAY);
-}
 
 MC_FORCEINLINE bool mc_value_ishashable(mcvalue_t obj)
 {
-    mcvaltype_t type = mc_value_gettype(obj);
+    mcvaltype_t type = obj.getType();
     switch(type)
     {
         case MC_VAL_STRING:
@@ -5895,12 +6289,12 @@ mcvalue_t mc_value_makestrcapacity(mcstate_t* state, int capacity)
         data = mc_gcmemory_allocobjectdata(state);
         if(!data)
         {
-            return mc_value_makenull();
+            return mcvalue_t::makeNull();
         }
     }
     data->uvobj.valstring.hash = 0;
     data->uvobj.valstring.strbuf = Memory::make<StringBuffer>(capacity);
-    return mc_object_makedatafrom(MC_VAL_STRING, data);
+    return mcvalue_t::makeDataFrom(MC_VAL_STRING, data);
 }
 
 template<typename... ArgsT>
@@ -5910,9 +6304,9 @@ mcvalue_t mc_value_makestrformat(mcstate_t* state, const char* fmt, ArgsT&&... a
     mcobjdata_t* data;
     data = mc_gcmemory_getdatafrompool(state, MC_VAL_STRING);
     res = mc_value_makestrcapacity(state, 0);
-    if(mc_value_isnull(res))
+    if(res.isNull())
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     data->uvobj.valstring.strbuf->appendFormat(fmt, args...);
     return res;
@@ -5923,14 +6317,14 @@ mcvalue_t mc_value_makestringlen(mcstate_t* state, const char* string, size_t le
     bool ok;
     mcvalue_t res;
     res = mc_value_makestrcapacity(state, len);
-    if(mc_value_isnull(res))
+    if(res.isNull())
     {
         return res;
     }
     ok = mc_value_stringappendlen(res, string, len);
     if(!ok)
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     return res;
 }
@@ -5946,19 +6340,19 @@ mcvalue_t mc_value_makefuncnative(mcstate_t* state, const char* name, mcnativefn
     obj = mc_gcmemory_allocobjectdata(state);
     if(!obj)
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     obj->uvobj.valfunc.funcdata.valnativefunc.natfnname = mc_util_strdup(name);
     if(!obj->uvobj.valfunc.funcdata.valnativefunc.natfnname)
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     obj->uvobj.valfunc.funcdata.valnativefunc.natptrfn = fn;
     if(data)
     {
         obj->uvobj.valfunc.funcdata.valnativefunc.userpointer = data;
     }
-    return mc_object_makedatafrom(MC_VAL_FUNCNATIVE, obj);
+    return mcvalue_t::makeDataFrom(MC_VAL_FUNCNATIVE, obj);
 }
 
 mcvalue_t mc_value_makearray(mcstate_t* state)
@@ -5973,20 +6367,20 @@ mcvalue_t mc_value_makearraycapacity(mcstate_t* state, size_t capacity)
     if(data)
     {
         data->uvobj.valarray->actualarray->setEmpty();
-        return mc_object_makedatafrom(MC_VAL_ARRAY, data);
+        return mcvalue_t::makeDataFrom(MC_VAL_ARRAY, data);
     }
     data = mc_gcmemory_allocobjectdata(state);
     if(!data)
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     data->uvobj.valarray = Memory::make<mcobjarray_t>();
-    data->uvobj.valarray->actualarray = Memory::make<GenericList<mcvalue_t>>(capacity, mc_value_makenull());
+    data->uvobj.valarray->actualarray = Memory::make<GenericList<mcvalue_t>>(capacity, mcvalue_t::makeNull());
     if(!data->uvobj.valarray->actualarray)
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
-    return mc_object_makedatafrom(MC_VAL_ARRAY, data);
+    return mcvalue_t::makeDataFrom(MC_VAL_ARRAY, data);
 }
 
 mcvalue_t mc_value_makemap(mcstate_t* state)
@@ -6001,22 +6395,22 @@ mcvalue_t mc_value_makemapcapacity(mcstate_t* state, size_t capacity)
     if(data)
     {
         data->uvobj.valmap->actualmap->clear();
-        return mc_object_makedatafrom(MC_VAL_MAP, data);
+        return mcvalue_t::makeDataFrom(MC_VAL_MAP, data);
     }
     data = mc_gcmemory_allocobjectdata(state);
     if(!data)
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     data->uvobj.valmap = Memory::make<mcobjmap_t>();
     data->uvobj.valmap->actualmap = Memory::make<GenericDict<mcvalue_t, mcvalue_t>>(capacity);
     if(!data->uvobj.valmap->actualmap)
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     data->uvobj.valmap->actualmap->setHashFunction((mcitemhashfn_t)mc_value_callbackhash);
     data->uvobj.valmap->actualmap->setEqualsFunction((mcitemcomparefn_t)mc_value_callbackequals);
-    return mc_object_makedatafrom(MC_VAL_MAP, data);
+    return mcvalue_t::makeDataFrom(MC_VAL_MAP, data);
 }
 
 mcvalue_t mc_value_makeerror(mcstate_t* state, const char* error)
@@ -6026,13 +6420,13 @@ mcvalue_t mc_value_makeerror(mcstate_t* state, const char* error)
     errorstr = mc_util_strdup(error);
     if(!errorstr)
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     res = mc_value_makeerrornocopy(state, errorstr);
-    if(mc_value_isnull(res))
+    if(res.isNull())
     {
         mc_memory_free(errorstr);
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     return res;
 }
@@ -6043,11 +6437,11 @@ mcvalue_t mc_value_makeerrornocopy(mcstate_t* state, char* error)
     data = mc_gcmemory_allocobjectdata(state);
     if(!data)
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     data->uvobj.valerror.message = error;
     data->uvobj.valerror.traceback = nullptr;
-    return mc_object_makedatafrom(MC_VAL_ERROR, data);
+    return mcvalue_t::makeDataFrom(MC_VAL_ERROR, data);
 }
 
 mcvalue_t mc_value_makefuncscript(mcstate_t* state, const char* name, mccompiledprogram_t* cres, bool ownsdt, int nlocals, int nargs, int fvc)
@@ -6056,14 +6450,14 @@ mcvalue_t mc_value_makefuncscript(mcstate_t* state, const char* name, mccompiled
     data = mc_gcmemory_allocobjectdata(state);
     if(!data)
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     if(ownsdt)
     {
         data->uvobj.valfunc.funcdata.valscriptfunc.unamev.fallocname = name ? mc_util_strdup(name) : mc_util_strdup("anonymous");
         if(!data->uvobj.valfunc.funcdata.valscriptfunc.unamev.fallocname)
         {
-            return mc_value_makenull();
+            return mcvalue_t::makeNull();
         }
     }
     else
@@ -6079,11 +6473,11 @@ mcvalue_t mc_value_makefuncscript(mcstate_t* state, const char* name, mccompiled
         data->uvobj.valfunc.funcdata.valscriptfunc.ufv.freevalsallocated = (mcvalue_t*)mc_memory_malloc(sizeof(mcvalue_t) * fvc);
         if(!data->uvobj.valfunc.funcdata.valscriptfunc.ufv.freevalsallocated)
         {
-            return mc_value_makenull();
+            return mcvalue_t::makeNull();
         }
     }
     data->uvobj.valfunc.funcdata.valscriptfunc.freevalscount = fvc;
-    return mc_object_makedatafrom(MC_VAL_FUNCSCRIPT, data);
+    return mcvalue_t::makeDataFrom(MC_VAL_FUNCSCRIPT, data);
 }
 
 mcvalue_t mc_value_makeuserobject(mcstate_t* state, void* data)
@@ -6092,26 +6486,26 @@ mcvalue_t mc_value_makeuserobject(mcstate_t* state, void* data)
     obj = mc_gcmemory_allocobjectdata(state);
     if(!obj)
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     obj->uvobj.valuserobject.data = data;
     obj->uvobj.valuserobject.datadestroyfn = nullptr;
     obj->uvobj.valuserobject.datacopyfn = nullptr;
-    return mc_object_makedatafrom(MC_VAL_EXTERNAL, obj);
+    return mcvalue_t::makeDataFrom(MC_VAL_EXTERNAL, obj);
 }
 
 GenericList<mcvalue_t>* mc_value_arraygetactualarray(mcvalue_t object)
 {
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_ARRAY);
-    data = mc_value_getallocateddata(object);
+    MC_ASSERT(object.getType() == MC_VAL_ARRAY);
+    data = object.getAllocatedData();
     return data->uvobj.valarray->actualarray;
 }
 
 MC_INLINE char* mc_value_stringgetdataintern(mcvalue_t object)
 {
     mcobjdata_t* data;
-    data = mc_value_getallocateddata(object);
+    data = object.getAllocatedData();
     MC_ASSERT(data->odtype == MC_VAL_STRING);
     return data->uvobj.valstring.strbuf->data();
 }
@@ -6119,15 +6513,15 @@ MC_INLINE char* mc_value_stringgetdataintern(mcvalue_t object)
 mcobjuserdata_t* mc_value_userdatagetdata(mcvalue_t object)
 {
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_EXTERNAL);
-    data = mc_value_getallocateddata(object);
+    MC_ASSERT(object.getType() == MC_VAL_EXTERNAL);
+    data = object.getAllocatedData();
     return &data->uvobj.valuserobject;
 }
 
 bool mc_value_userdatasetdata(mcvalue_t object, void* extdata)
 {
     mcobjuserdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_EXTERNAL);
+    MC_ASSERT(object.getType() == MC_VAL_EXTERNAL);
     data = mc_value_userdatagetdata(object);
     if(!data)
     {
@@ -6140,7 +6534,7 @@ bool mc_value_userdatasetdata(mcvalue_t object, void* extdata)
 bool mc_value_userdatasetdestroyfunction(mcvalue_t object, mcitemdestroyfn_t dfn)
 {
     mcobjuserdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_EXTERNAL);
+    MC_ASSERT(object.getType() == MC_VAL_EXTERNAL);
     data = mc_value_userdatagetdata(object);
     if(!data)
     {
@@ -6153,7 +6547,7 @@ bool mc_value_userdatasetdestroyfunction(mcvalue_t object, mcitemdestroyfn_t dfn
 bool mc_value_userdatasetcopyfunction(mcvalue_t object, mcitemcopyfn_t copyfn)
 {
     mcobjuserdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_EXTERNAL);
+    MC_ASSERT(object.getType() == MC_VAL_EXTERNAL);
     data = mc_value_userdatagetdata(object);
     if(!data)
     {
@@ -6165,7 +6559,7 @@ bool mc_value_userdatasetcopyfunction(mcvalue_t object, mcitemcopyfn_t copyfn)
 
 bool mc_value_asbool(mcvalue_t obj)
 {
-    if(mc_value_isnumber(obj))
+    if(obj.isNumber())
     {
         return obj.uval.valnumber;
     }
@@ -6174,9 +6568,9 @@ bool mc_value_asbool(mcvalue_t obj)
 
 mcfloat_t mc_value_asnumber(mcvalue_t obj)
 {
-    if(mc_value_isnumber(obj))
+    if(obj.isNumber())
     {
-        if(mc_value_gettype(obj) == MC_VAL_BOOL)
+        if(obj.getType() == MC_VAL_BOOL)
         {
             return obj.uval.valbool;
         }
@@ -6187,23 +6581,23 @@ mcfloat_t mc_value_asnumber(mcvalue_t obj)
 
 MC_INLINE const char* mc_value_stringgetdata(mcvalue_t object)
 {
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_STRING);
+    MC_ASSERT(object.getType() == MC_VAL_STRING);
     return mc_value_stringgetdataintern(object);
 }
 
 int mc_value_stringgetlength(mcvalue_t object)
 {
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_STRING);
-    data = mc_value_getallocateddata(object);
+    MC_ASSERT(object.getType() == MC_VAL_STRING);
+    data = object.getAllocatedData();
     return data->uvobj.valstring.strbuf->length();
 }
 
 void mc_value_stringsetlength(mcvalue_t object, int len)
 {
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_STRING);
-    data = mc_value_getallocateddata(object);
+    MC_ASSERT(object.getType() == MC_VAL_STRING);
+    data = object.getAllocatedData();
     data->uvobj.valstring.strbuf->setLength(len);
     mc_value_stringrehash(object);
 }
@@ -6211,7 +6605,7 @@ void mc_value_stringsetlength(mcvalue_t object, int len)
 
 MC_INLINE char* mc_value_stringgetmutabledata(mcvalue_t object)
 {
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_STRING);
+    MC_ASSERT(object.getType() == MC_VAL_STRING);
     return mc_value_stringgetdataintern(object);
 }
 
@@ -6219,8 +6613,8 @@ bool mc_value_stringappendlen(mcvalue_t obj, const char* src, size_t len)
 {
     mcobjdata_t* data;
     mcobjstring_t* string;
-    MC_ASSERT(mc_value_gettype(obj) == MC_VAL_STRING);
-    data = mc_value_getallocateddata(obj);
+    MC_ASSERT(obj.getType() == MC_VAL_STRING);
+    data = obj.getAllocatedData();
     string = &data->uvobj.valstring;
     string->strbuf->append(src, len);
     mc_value_stringrehash(obj);
@@ -6237,8 +6631,8 @@ bool mc_value_stringappendformat(mcvalue_t obj, const char* fmt, ArgsT&&... args
 {
     mcobjdata_t* data;
     mcobjstring_t* string;
-    MC_ASSERT(mc_value_gettype(obj) == MC_VAL_STRING);
-    data = mc_value_getallocateddata(obj);
+    MC_ASSERT(obj.getType() == MC_VAL_STRING);
+    data = obj.getAllocatedData();
     string = &data->uvobj.valstring;
     string->strbuf->appendFormat(fmt, args...);
     mc_value_stringrehash(obj);
@@ -6251,12 +6645,12 @@ bool mc_value_stringappendvalue(mcvalue_t destval, mcvalue_t val)
     bool ok;
     int vlen;
     const char* vstr;
-    if(mc_value_gettype(val) == MC_VAL_NUMBER)
+    if(val.getType() == MC_VAL_NUMBER)
     {
         mc_value_stringappendformat(destval, "%g", mc_value_asnumber(val));
         goto finished;
     }
-    if(mc_value_gettype(val) == MC_VAL_STRING)
+    if(val.getType() == MC_VAL_STRING)
     {
         vlen = mc_value_stringgetlength(val);
         vstr = mc_value_stringgetdata(val);
@@ -6278,8 +6672,8 @@ size_t mc_value_stringgethash(mcvalue_t obj)
     size_t len;
     const char* str;
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(obj) == MC_VAL_STRING);
-    data = mc_value_getallocateddata(obj);
+    MC_ASSERT(obj.getType() == MC_VAL_STRING);
+    data = obj.getAllocatedData();
     if(data->uvobj.valstring.hash == 0)
     {
         len = mc_value_stringgetlength(obj);
@@ -6294,8 +6688,8 @@ bool mc_value_stringrehash(mcvalue_t obj)
     size_t len;
     const char* str;
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(obj) == MC_VAL_STRING);
-    data = mc_value_getallocateddata(obj);
+    MC_ASSERT(obj.getType() == MC_VAL_STRING);
+    data = obj.getAllocatedData();
     len = mc_value_stringgetlength(obj);
     str = mc_value_stringgetdata(obj);
     data->uvobj.valstring.hash = mc_util_hashdata(str, len);
@@ -6305,22 +6699,22 @@ bool mc_value_stringrehash(mcvalue_t obj)
 mcobjfunction_t* mc_value_asscriptfunction(mcvalue_t object)
 {
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_FUNCSCRIPT);
-    data = mc_value_getallocateddata(object);
+    MC_ASSERT(object.getType() == MC_VAL_FUNCSCRIPT);
+    data = object.getAllocatedData();
     return &data->uvobj.valfunc;
 }
 
 MC_INLINE mcobjfunction_t* mc_value_asnativefunction(mcvalue_t obj)
 {
-    mcobjdata_t* data = mc_value_getallocateddata(obj);
+    mcobjdata_t* data = obj.getAllocatedData();
     return &data->uvobj.valfunc;
 }
 
 const char* mc_value_functiongetname(mcvalue_t obj)
 {
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(obj) == MC_VAL_FUNCSCRIPT);
-    data = mc_value_getallocateddata(obj);
+    MC_ASSERT(obj.getType() == MC_VAL_FUNCSCRIPT);
+    data = obj.getAllocatedData();
     MC_ASSERT(data);
     if(!data)
     {
@@ -6337,18 +6731,18 @@ mcvalue_t mc_value_functiongetfreevalat(mcvalue_t obj, int ix)
 {
     mcobjdata_t* data;
     mcobjfunction_t* fun;
-    MC_ASSERT(mc_value_gettype(obj) == MC_VAL_FUNCSCRIPT);
-    data = mc_value_getallocateddata(obj);
+    MC_ASSERT(obj.getType() == MC_VAL_FUNCSCRIPT);
+    data = obj.getAllocatedData();
     MC_ASSERT(data);
     if(!data)
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     fun = &data->uvobj.valfunc;
     MC_ASSERT(ix >= 0 && ix < fun->funcdata.valscriptfunc.freevalscount);
     if(ix < 0 || ix >= fun->funcdata.valscriptfunc.freevalscount)
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     if(fun->freeValuesAreAllocated())
     {
@@ -6361,8 +6755,8 @@ void mc_value_functionsetfreevalat(mcvalue_t obj, int ix, mcvalue_t val)
 {
     mcobjdata_t* data;
     mcobjfunction_t* fun;
-    MC_ASSERT(mc_value_gettype(obj) == MC_VAL_FUNCSCRIPT);
-    data = mc_value_getallocateddata(obj);
+    MC_ASSERT(obj.getType() == MC_VAL_FUNCSCRIPT);
+    data = obj.getAllocatedData();
     MC_ASSERT(data);
     if(data != nullptr)
     {
@@ -6389,8 +6783,8 @@ mcvalue_t* mc_value_functiongetfreevals(mcvalue_t obj)
 {
     mcobjdata_t* data;
     mcobjfunction_t* fun;
-    MC_ASSERT(mc_value_gettype(obj) == MC_VAL_FUNCSCRIPT);
-    data = mc_value_getallocateddata(obj);
+    MC_ASSERT(obj.getType() == MC_VAL_FUNCSCRIPT);
+    data = obj.getAllocatedData();
     MC_ASSERT(data);
     if(!data)
     {
@@ -6407,18 +6801,18 @@ mcvalue_t* mc_value_functiongetfreevals(mcvalue_t obj)
 const char* mc_value_errorgetmessage(mcvalue_t object)
 {
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_ERROR);
-    data = mc_value_getallocateddata(object);
+    MC_ASSERT(object.getType() == MC_VAL_ERROR);
+    data = object.getAllocatedData();
     return data->uvobj.valerror.message;
 }
 
 void mc_value_errorsettraceback(mcvalue_t object, mctraceback_t* traceback)
 {
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_ERROR);
-    if(mc_value_gettype(object) == MC_VAL_ERROR)
+    MC_ASSERT(object.getType() == MC_VAL_ERROR);
+    if(object.getType() == MC_VAL_ERROR)
     {
-        data = mc_value_getallocateddata(object);
+        data = object.getAllocatedData();
         MC_ASSERT(data->uvobj.valerror.traceback == nullptr);
         data->uvobj.valerror.traceback = traceback;
     }
@@ -6427,8 +6821,8 @@ void mc_value_errorsettraceback(mcvalue_t object, mctraceback_t* traceback)
 mctraceback_t* mc_value_errorgettraceback(mcvalue_t object)
 {
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_ERROR);
-    data = mc_value_getallocateddata(object);
+    MC_ASSERT(object.getType() == MC_VAL_ERROR);
+    data = object.getAllocatedData();
     return data->uvobj.valerror.traceback;
 }
 
@@ -6436,16 +6830,16 @@ mcvalue_t mc_value_arraygetvalue(mcvalue_t object, size_t ix)
 {
     mcvalue_t* res;
     GenericList<mcvalue_t>* array;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_ARRAY);
+    MC_ASSERT(object.getType() == MC_VAL_ARRAY);
     array = mc_value_arraygetactualarray(object);
     if(ix >= array->count())
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     res = (mcvalue_t*)array->getp(ix);
     if(!res)
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     return *res;
 }
@@ -6455,7 +6849,7 @@ bool mc_value_arraysetvalue(mcvalue_t object, size_t ix, mcvalue_t val)
     size_t len;
     size_t toadd;
     GenericList<mcvalue_t>* array;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_ARRAY);
+    MC_ASSERT(object.getType() == MC_VAL_ARRAY);
     array = mc_value_arraygetactualarray(object);
     len = array->count();
     if((ix >= len) || (len == 0))
@@ -6466,7 +6860,7 @@ bool mc_value_arraysetvalue(mcvalue_t object, size_t ix, mcvalue_t val)
         #endif
         while(toadd != (ix+2))
         {
-            mc_value_arraypush(object, mc_value_makenull());
+            mc_value_arraypush(object, mcvalue_t::makeNull());
             toadd++;
         }
     }
@@ -6476,7 +6870,7 @@ bool mc_value_arraysetvalue(mcvalue_t object, size_t ix, mcvalue_t val)
 bool mc_value_arraypush(mcvalue_t object, mcvalue_t val)
 {
     GenericList<mcvalue_t>* array;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_ARRAY);
+    MC_ASSERT(object.getType() == MC_VAL_ARRAY);
     array = mc_value_arraygetactualarray(object);
     return array->push(val);
 }
@@ -6484,7 +6878,7 @@ bool mc_value_arraypush(mcvalue_t object, mcvalue_t val)
 int mc_value_arraygetlength(mcvalue_t object)
 {
     GenericList<mcvalue_t>* array;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_ARRAY);
+    MC_ASSERT(object.getType() == MC_VAL_ARRAY);
     array = mc_value_arraygetactualarray(object);
     return array->count();
 }
@@ -6493,13 +6887,13 @@ mcvalue_t mc_valarray_pop(mcvalue_t object)
 {
     mcvalue_t dest;
     GenericList<mcvalue_t>* array;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_ARRAY);
+    MC_ASSERT(object.getType() == MC_VAL_ARRAY);
     array = mc_value_arraygetactualarray(object);
     if(array->pop(&dest))
     {
         return dest;
     }
-    return mc_value_makenull();
+    return mcvalue_t::makeNull();
 }
 
 bool mc_value_arrayremoveat(mcvalue_t object, int ix)
@@ -6512,8 +6906,8 @@ bool mc_value_arrayremoveat(mcvalue_t object, int ix)
 int mc_value_mapgetlength(mcvalue_t object)
 {
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
-    data = mc_value_getallocateddata(object);
+    MC_ASSERT(object.getType() == MC_VAL_MAP);
+    data = object.getAllocatedData();
     return data->uvobj.valmap->actualmap->count();
 }
 
@@ -6521,12 +6915,12 @@ mcvalue_t mc_value_mapgetkeyat(mcvalue_t object, int ix)
 {
     mcvalue_t* res;
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
-    data = mc_value_getallocateddata(object);
+    MC_ASSERT(object.getType() == MC_VAL_MAP);
+    data = object.getAllocatedData();
     res = (mcvalue_t*)data->uvobj.valmap->actualmap->getKeyAt(ix);
     if(!res)
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     return *res;
 }
@@ -6535,12 +6929,12 @@ mcvalue_t mc_value_mapgetvalueat(mcvalue_t object, int ix)
 {
     mcvalue_t* res;
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
-    data = mc_value_getallocateddata(object);
+    MC_ASSERT(object.getType() == MC_VAL_MAP);
+    data = object.getAllocatedData();
     res = (mcvalue_t*)data->uvobj.valmap->actualmap->getValueAt(ix);
     if(!res)
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     return *res;
 }
@@ -6548,12 +6942,12 @@ mcvalue_t mc_value_mapgetvalueat(mcvalue_t object, int ix)
 bool mc_value_mapsetvalueat(mcvalue_t object, int ix, mcvalue_t val)
 {
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
+    MC_ASSERT(object.getType() == MC_VAL_MAP);
     if(ix >= mc_value_mapgetlength(object))
     {
         return false;
     }
-    data = mc_value_getallocateddata(object);
+    data = object.getAllocatedData();
     return data->uvobj.valmap->actualmap->setValueAt(ix, &val);
 }
 
@@ -6565,29 +6959,29 @@ mcvalue_t mc_value_mapgetkvpairat(mcstate_t* state, mcvalue_t object, int ix)
     mcvalue_t valobj;
     mcvalue_t keyobj;
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
-    data = mc_value_getallocateddata(object);
+    MC_ASSERT(object.getType() == MC_VAL_MAP);
+    data = object.getAllocatedData();
     if(ix >= data->uvobj.valmap->actualmap->count())
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     key = mc_value_mapgetkeyat(object, ix);
     val = mc_value_mapgetvalueat(object, ix);
     res = mc_value_makemap(state);
-    if(mc_value_isnull(res))
+    if(res.isNull())
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     keyobj = mc_value_makestring(state, "key");
-    if(mc_value_isnull(keyobj))
+    if(keyobj.isNull())
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     mc_value_mapsetvalue(res, keyobj, key);
     valobj = mc_value_makestring(state, "value");
-    if(mc_value_isnull(valobj))
+    if(valobj.isNull())
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     mc_value_mapsetvalue(res, valobj, val);
     return res;
@@ -6596,8 +6990,8 @@ mcvalue_t mc_value_mapgetkvpairat(mcstate_t* state, mcvalue_t object, int ix)
 bool mc_value_mapsetvalue(mcvalue_t object, mcvalue_t key, mcvalue_t val)
 {
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
-    data = mc_value_getallocateddata(object);
+    MC_ASSERT(object.getType() == MC_VAL_MAP);
+    data = object.getAllocatedData();
     return data->uvobj.valmap->actualmap->setKV(&key, &val);
 }
 
@@ -6605,7 +6999,7 @@ bool mc_value_mapsetvaluestring(mcvalue_t object, const char* strkey, mcvalue_t 
 {
     mcstate_t* state;
     mcvalue_t vkey;
-    state = mc_value_getallocateddata(object)->pstate;
+    state = object.getAllocatedData()->pstate;
     vkey = mc_value_makestring(state, strkey);
     return mc_value_mapsetvalue(object, vkey, val);
 }
@@ -6614,12 +7008,12 @@ mcvalue_t mc_value_mapgetvalue(mcvalue_t object, mcvalue_t key)
 {
     mcvalue_t* res;
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
-    data = mc_value_getallocateddata(object);
+    MC_ASSERT(object.getType() == MC_VAL_MAP);
+    data = object.getAllocatedData();
     res = (mcvalue_t*)data->uvobj.valmap->actualmap->get(&key);
     if(!res)
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     return *res;
 }
@@ -6628,12 +7022,12 @@ bool mc_value_mapgetvaluechecked(mcvalue_t object, mcvalue_t key, mcvalue_t* des
 {
     mcvalue_t* res;
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
-    data = mc_value_getallocateddata(object);
+    MC_ASSERT(object.getType() == MC_VAL_MAP);
+    data = object.getAllocatedData();
     res = (mcvalue_t*)data->uvobj.valmap->actualmap->get(&key);
     if(!res)
     {
-        *dest = mc_value_makenull();
+        *dest = mcvalue_t::makeNull();
         return false;
     }
     *dest = *res;
@@ -6644,8 +7038,8 @@ bool mc_value_maphaskey(mcvalue_t object, mcvalue_t key)
 {
     mcvalue_t* res;
     mcobjdata_t* data;
-    MC_ASSERT(mc_value_gettype(object) == MC_VAL_MAP);
-    data = mc_value_getallocateddata(object);
+    MC_ASSERT(object.getType() == MC_VAL_MAP);
+    data = object.getAllocatedData();
     res = (mcvalue_t*)data->uvobj.valmap->actualmap->get(&key);
     return res != nullptr;
 }
@@ -6705,7 +7099,7 @@ void mc_objectdata_deinit(mcobjdata_t* data)
         case MC_VAL_ERROR:
             {
                 mc_memory_free(data->uvobj.valerror.message);
-                mc_traceback_destroy(data->uvobj.valerror.traceback);
+                Memory::destroy(data->uvobj.valerror.traceback);
             }
             break;
         default:
@@ -6738,8 +7132,8 @@ MC_FORCEINLINE bool mc_value_compare(mcvalue_t a, mcvalue_t b, mcvalcmpresult_t*
     }
     */
     cres->result = 1;
-    atype = mc_value_gettype(a);
-    btype = mc_value_gettype(b);
+    atype = a.getType();
+    btype = b.getType();
     if((atype == MC_VAL_NUMBER || atype == MC_VAL_BOOL || atype == MC_VAL_NULL) && (btype == MC_VAL_NUMBER || btype == MC_VAL_BOOL || btype == MC_VAL_NULL))
     {
         dnleft = mc_value_asnumber(a);
@@ -6779,10 +7173,10 @@ MC_FORCEINLINE bool mc_value_compare(mcvalue_t a, mcvalue_t b, mcvalcmpresult_t*
         }
         return true;
     }
-    if((mc_value_isallocated(a) || mc_value_isnull(a)) && (mc_value_isallocated(b) || mc_value_isnull(b)))
+    if((a.isAllocated() || a.isNull()) && (b.isAllocated() || b.isNull()))
     {
-        adataval = (intptr_t)mc_value_getallocateddata(a);
-        bdataval = (intptr_t)mc_value_getallocateddata(b);
+        adataval = (intptr_t)a.getAllocatedData();
+        bdataval = (intptr_t)b.getAllocatedData();
         cres->result = (mcfloat_t)(adataval - bdataval);
         return true;
     }
@@ -6796,8 +7190,8 @@ MC_FORCEINLINE bool mc_value_equals(mcvalue_t a, mcvalue_t b)
     mcvaltype_t atype;
     mcvaltype_t btype;
     (void)ok;
-    atype = mc_value_gettype(a);
-    btype = mc_value_gettype(b);
+    atype = a.getType();
+    btype = b.getType();
     if(atype != btype)
     {
         return false;
@@ -6823,7 +7217,7 @@ size_t mc_value_callbackhash(mcvalue_t* objptr)
     mcvalue_t obj;
     mcvaltype_t type;
     obj = *objptr;
-    type = mc_value_gettype(obj);
+    type = obj.getType();
     switch(type)
     {
         case MC_VAL_NUMBER:
@@ -6871,14 +7265,14 @@ mcvalue_t mc_value_copydeepfuncscript(mcstate_t* state, mcvalue_t obj, GenericDi
     bytecodecopy = (uint16_t*)mc_memory_malloc(sizeof(uint16_t) * function->funcdata.valscriptfunc.compiledprogcode->count);
     if(!bytecodecopy)
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     memcpy(bytecodecopy, function->funcdata.valscriptfunc.compiledprogcode->bytecode, sizeof(uint16_t) * function->funcdata.valscriptfunc.compiledprogcode->count);
     srcpositionscopy = (mcastlocation_t*)mc_memory_malloc(sizeof(mcastlocation_t) * function->funcdata.valscriptfunc.compiledprogcode->count);
     if(!srcpositionscopy)
     {
         mc_memory_free(bytecodecopy);
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     memcpy(srcpositionscopy, function->funcdata.valscriptfunc.compiledprogcode->progsrcposlist, sizeof(mcastlocation_t) * function->funcdata.valscriptfunc.compiledprogcode->count);
     comprescopy = mc_astcompresult_make(state, bytecodecopy, srcpositionscopy, function->funcdata.valscriptfunc.compiledprogcode->count);
@@ -6889,18 +7283,18 @@ mcvalue_t mc_value_copydeepfuncscript(mcstate_t* state, mcvalue_t obj, GenericDi
     {
         mc_memory_free(srcpositionscopy);
         mc_memory_free(bytecodecopy);
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     copy = mc_value_makefuncscript(state, mc_value_functiongetname(obj), comprescopy, true, function->funcdata.valscriptfunc.numlocals, function->funcdata.valscriptfunc.numargs, 0);
-    if(mc_value_isnull(copy))
+    if(copy.isNull())
     {
         mc_astcompresult_destroy(comprescopy);
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     ok = targetdict->setKV(&obj, &copy);
     if(!ok)
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     functioncopy = mc_value_asscriptfunction(copy);
     if(function->freeValuesAreAllocated())
@@ -6908,7 +7302,7 @@ mcvalue_t mc_value_copydeepfuncscript(mcstate_t* state, mcvalue_t obj, GenericDi
         functioncopy->funcdata.valscriptfunc.ufv.freevalsallocated = (mcvalue_t*)mc_memory_malloc(sizeof(mcvalue_t) * function->funcdata.valscriptfunc.freevalscount);
         if(!functioncopy->funcdata.valscriptfunc.ufv.freevalsallocated)
         {
-            return mc_value_makenull();
+            return mcvalue_t::makeNull();
         }
     }
     functioncopy->funcdata.valscriptfunc.freevalscount = function->funcdata.valscriptfunc.freevalscount;
@@ -6916,9 +7310,9 @@ mcvalue_t mc_value_copydeepfuncscript(mcstate_t* state, mcvalue_t obj, GenericDi
     {
         freeval = mc_value_functiongetfreevalat(obj, i);
         freevalcopy = mc_value_copydeepintern(state, freeval, targetdict);
-        if(!mc_value_isnull(freeval) && mc_value_isnull(freevalcopy))
+        if(!freeval.isNull() && freevalcopy.isNull())
         {
-            return mc_value_makenull();
+            return mcvalue_t::makeNull();
         }
         mc_value_functionsetfreevalat(copy, i, freevalcopy);
     }
@@ -6936,27 +7330,27 @@ mcvalue_t mc_value_copydeeparray(mcstate_t* state, mcvalue_t obj, GenericDict<Ty
     mcvalue_t itemcopy;
     len = mc_value_arraygetlength(obj);
     copy = mc_value_makearraycapacity(state, len);
-    if(mc_value_isnull(copy))
+    if(copy.isNull())
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     ok = targetdict->setKV(&obj, &copy);
     if(!ok)
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     for(i = 0; i < len; i++)
     {
         item = mc_value_arraygetvalue(obj, i);
         itemcopy = mc_value_copydeepintern(state, item, targetdict);
-        if(!mc_value_isnull(item) && mc_value_isnull(itemcopy))
+        if(!item.isNull() && itemcopy.isNull())
         {
-            return mc_value_makenull();
+            return mcvalue_t::makeNull();
         }
         ok = mc_value_arraypush(copy, itemcopy);
         if(!ok)
         {
-            return mc_value_makenull();
+            return mcvalue_t::makeNull();
         }
     }
     return copy;
@@ -6973,33 +7367,33 @@ mcvalue_t mc_value_copydeepmap(mcstate_t* state, mcvalue_t obj, GenericDict<Type
     mcvalue_t keycopy;
     mcvalue_t valcopy;
     copy = mc_value_makemap(state);
-    if(mc_value_isnull(copy))
+    if(copy.isNull())
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     ok = targetdict->setKV(&obj, &copy);
     if(!ok)
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     for(i = 0; i < mc_value_mapgetlength(obj); i++)
     {
         key = mc_value_mapgetkeyat(obj, i);
         val = mc_value_mapgetvalueat(obj, i);
         keycopy = mc_value_copydeepintern(state, key, targetdict);
-        if(!mc_value_isnull(key) && mc_value_isnull(keycopy))
+        if(!key.isNull() && keycopy.isNull())
         {
-            return mc_value_makenull();
+            return mcvalue_t::makeNull();
         }
         valcopy = mc_value_copydeepintern(state, val, targetdict);
-        if(!mc_value_isnull(val) && mc_value_isnull(valcopy))
+        if(!val.isNull() && valcopy.isNull())
         {
-            return mc_value_makenull();
+            return mcvalue_t::makeNull();
         }
         ok = mc_value_mapsetvalue(copy, keycopy, valcopy);
         if(!ok)
         {
-            return mc_value_makenull();
+            return mcvalue_t::makeNull();
         }
     }
     return copy;
@@ -7016,8 +7410,8 @@ mcvalue_t mc_value_copydeepintern(mcstate_t* state, mcvalue_t obj, GenericDict<T
     {
         return *copyptr;
     }
-    copy = mc_value_makenull();
-    type = mc_value_gettype(obj);
+    copy = mcvalue_t::makeNull();
+    type = obj.getType();
     switch(type)
     {
         case MC_VAL_FREED:
@@ -7025,7 +7419,7 @@ mcvalue_t mc_value_copydeepintern(mcstate_t* state, mcvalue_t obj, GenericDict<T
         case MC_VAL_NONE:
             {
                 MC_ASSERT(false);
-                copy = mc_value_makenull();
+                copy = mcvalue_t::makeNull();
             }
             break;
         case MC_VAL_NUMBER:
@@ -7047,7 +7441,7 @@ mcvalue_t mc_value_copydeepintern(mcstate_t* state, mcvalue_t obj, GenericDict<T
                 ok = targetdict->setKV(&obj, &copy);
                 if(!ok)
                 {
-                    return mc_value_makenull();
+                    return mcvalue_t::makeNull();
                 }
                 return copy;
             }
@@ -7087,7 +7481,7 @@ mcvalue_t mc_value_copydeep(mcstate_t* state, mcvalue_t obj)
     auto targetdict = Memory::make<GenericDict<mcvalue_t, mcvalue_t>>();
     if(!targetdict)
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     res = mc_value_copydeepintern(state, obj, targetdict);
     Memory::destroy(targetdict);
@@ -7099,8 +7493,8 @@ mcvalue_t mc_value_copyflat(mcstate_t* state, mcvalue_t obj)
     bool ok;
     mcvalue_t copy;
     mcvaltype_t type;
-    copy = mc_value_makenull();
-    type = mc_value_gettype(obj);
+    copy = mcvalue_t::makeNull();
+    type = obj.getType();
     switch(type)
     {
         case MC_VAL_ANY:
@@ -7108,7 +7502,7 @@ mcvalue_t mc_value_copyflat(mcstate_t* state, mcvalue_t obj)
         case MC_VAL_NONE:
             {
                 MC_ASSERT(false);
-                copy = mc_value_makenull();
+                copy = mcvalue_t::makeNull();
             }
             break;
         case MC_VAL_NUMBER:
@@ -7137,9 +7531,9 @@ mcvalue_t mc_value_copyflat(mcstate_t* state, mcvalue_t obj)
                 mcvalue_t item;
                 len = mc_value_arraygetlength(obj);
                 copy = mc_value_makearraycapacity(state, len);
-                if(mc_value_isnull(copy))
+                if(copy.isNull())
                 {
-                    return mc_value_makenull();
+                    return mcvalue_t::makeNull();
                 }
                 for(i = 0; i < len; i++)
                 {
@@ -7147,7 +7541,7 @@ mcvalue_t mc_value_copyflat(mcstate_t* state, mcvalue_t obj)
                     ok = mc_value_arraypush(copy, item);
                     if(!ok)
                     {
-                        return mc_value_makenull();
+                        return mcvalue_t::makeNull();
                     }
                 }
             }
@@ -7165,7 +7559,7 @@ mcvalue_t mc_value_copyflat(mcstate_t* state, mcvalue_t obj)
                     ok = mc_value_mapsetvalue(copy, key, val);
                     if(!ok)
                     {
-                        return mc_value_makenull();
+                        return mcvalue_t::makeNull();
                     }
                 }
             }
@@ -7175,9 +7569,9 @@ mcvalue_t mc_value_copyflat(mcstate_t* state, mcvalue_t obj)
                 void* datacopy;
                 mcobjuserdata_t* objext;
                 copy = mc_value_makeuserobject(state, nullptr);
-                if(mc_value_isnull(copy))
+                if(copy.isNull())
                 {
-                    return mc_value_makenull();
+                    return mcvalue_t::makeNull();
                 }
                 objext = mc_value_userdatagetdata(obj);
                 datacopy = nullptr;
@@ -7383,7 +7777,7 @@ void mc_printer_printobjarray(Printer* pr, mcvalue_t obj)
     {
         recursion = false;
         iobj = mc_value_arraygetvalue(obj, i);
-        if(mc_value_gettype(iobj) == MC_VAL_ARRAY)
+        if(iobj.getType() == MC_VAL_ARRAY)
         {
             otherary = mc_value_arraygetactualarray(iobj);
             if(otherary == actualary)
@@ -7505,7 +7899,7 @@ void mc_printer_printvalue(Printer* pr, mcvalue_t obj, bool accurate)
 {
     mcvaltype_t type;
     (void)accurate;
-    type = mc_value_gettype(obj);
+    type = obj.getType();
     switch(type)
     {
         case MC_VAL_FREED:
@@ -7591,11 +7985,11 @@ mcastlocation_t mc_astlocation_make(mcastcompiledfile_t* file, int line, int col
 mcgcmemory_t* mc_value_getmem(mcvalue_t obj)
 {
     mcobjdata_t* data;
-    data = mc_value_getallocateddata(obj);
+    data = obj.getAllocatedData();
     return data->mem;
 }
 
-char* mc_valtype_getunionname(mcstate_t* state, mcvaltype_t type)
+char* mc_valtype_getunionname(mcvaltype_t type)
 {
     bool inbetween;
     Printer* res;
@@ -7603,7 +7997,7 @@ char* mc_valtype_getunionname(mcstate_t* state, mcvaltype_t type)
     {
         return mc_util_strdup(mc_valtype_getname(type));
     }
-    res = Printer::make(state, nullptr);
+    res = Memory::make<Printer>(nullptr);
     if(!res)
     {
         return nullptr;
@@ -7637,114 +8031,7 @@ char* mc_valtype_getunionname(mcstate_t* state, mcvaltype_t type)
 }
 
 
-mcmodule_t* mc_module_make(mcstate_t* state, const char* name)
-{
-    mcmodule_t* module;
-    module = Memory::make<mcmodule_t>();
-    if(!module)
-    {
-        return nullptr;
-    }
-    memset(module, 0, sizeof(mcmodule_t));
-    module->pstate = state;
-    module->name = mc_util_strdup(name);
-    if(!module->name)
-    {
-        mc_module_destroy(module);
-        return nullptr;
-    }
-    module->modsymbols = Memory::make<PtrList>(sizeof(void*), true);
-    if(!module->modsymbols)
-    {
-        mc_module_destroy(module);
-        return nullptr;
-    }
-    return module;
-}
 
-void mc_module_destroy(mcmodule_t* module)
-{
-    if(module != nullptr)
-    {
-        mc_memory_free(module->name);
-        PtrList::destroy(module->modsymbols, (mcitemdestroyfn_t)mcastsymbol_t::destroy);
-        mc_memory_free(module);
-    }
-}
-
-bool mc_module_addsymbol(mcmodule_t* module, mcastsymbol_t* symbol)
-{
-    bool ok;
-    mcastsymbol_t* modulesymbol;
-    Printer* namebuf;
-    namebuf = Printer::make(module->pstate, nullptr);
-    if(!namebuf)
-    {
-        return false;
-    }
-    ok = namebuf->format("%s::%s", module->name, symbol->name);
-    if(!ok)
-    {
-        Printer::destroy(namebuf);
-        return false;
-    }
-    modulesymbol = mcastsymbol_t::make(module->pstate, namebuf->getString(), MC_SYM_MODULEGLOBAL, symbol->index, false);
-    Printer::destroy(namebuf);
-    if(!modulesymbol)
-    {
-        return false;
-    }
-    ok = module->modsymbols->push(modulesymbol);
-    if(!ok)
-    {
-        mcastsymbol_t::destroy(modulesymbol);
-        return false;
-    }
-    return true;
-}
-
-
-const char* mc_util_getmodulename(const char* path)
-{
-    const char* lastslashpos;
-    lastslashpos = strrchr(path, '/');
-    if(lastslashpos)
-    {
-        return lastslashpos + 1;
-    }
-    return path;
-}
-
-const char* mc_module_findfile(mcstate_t* state, const char* filename)
-{
-    (void)state;
-    return filename;
-}
-
-mcmodule_t* mc_module_copy(mcmodule_t* src)
-{
-    mcmodule_t* copy;
-    copy = Memory::make<mcmodule_t>();
-    if(!copy)
-    {
-        return nullptr;
-    }
-    memset(copy, 0, sizeof(mcmodule_t));
-    copy->pstate = src->pstate;
-    copy->name = mc_util_strdup(src->name);
-    if(!copy->name)
-    {
-        mc_module_destroy(copy);
-        return nullptr;
-    }
-    copy->modsymbols = src->modsymbols->copy((mcitemcopyfn_t)mcastsymbol_t::copy, (mcitemdestroyfn_t)mcastsymbol_t::destroy);
-    if(!copy->modsymbols)
-    {
-        mc_module_destroy(copy);
-        return nullptr;
-    }
-    return copy;
-}
 
 
 mcastexpression_t* mc_astexpr_makeident(mcstate_t* state, mcastexprident_t* ident)
@@ -8688,7 +8975,7 @@ PtrList* mc_astparser_parseall(mcastparser_t* parser, const char* input, mcastco
             goto err;
         }
     }
-    if(parser->errors->count > 0)
+    if(parser->errors->count() > 0)
     {
         goto err;
     }
@@ -10542,7 +10829,7 @@ bool mc_compiler_init(mcastcompiler_t* comp, mcstate_t* state, mcconfig_t* cfg, 
     {
         goto compilerinitfailed;
     }
-    comp->constants = Memory::make<GenericList<mcvalue_t>>(0, mc_value_makenull());
+    comp->constants = Memory::make<GenericList<mcvalue_t>>(0, mcvalue_t::makeNull());
     if(!comp->constants)
     {
         goto compilerinitfailed;
@@ -10552,7 +10839,7 @@ bool mc_compiler_init(mcastcompiler_t* comp, mcstate_t* state, mcconfig_t* cfg, 
     {
         goto compilerinitfailed;
     }
-    comp->modules = Memory::make<PtrDict>((mcitemcopyfn_t)mc_module_copy, (mcitemdestroyfn_t)mc_module_destroy);
+    comp->modules = Memory::make<PtrDict>((mcitemcopyfn_t)mcmodule_t::copy, (mcitemdestroyfn_t)mcmodule_t::destroy);
     if(!comp->modules)
     {
         goto compilerinitfailed;
@@ -10953,7 +11240,7 @@ bool mc_compiler_pushsymtable(mcastcompiler_t* comp, int globaloffset)
         return false;
     }
     currenttable = filescope->filesymtab;
-    filescope->filesymtab = mcastsymtable_t::make(comp->pstate, currenttable, comp->compglobalstore, globaloffset);
+    filescope->filesymtab = Memory::make<mcastsymtable_t>(currenttable, comp->compglobalstore, nullptr, nullptr, nullptr, globaloffset);
     if(!filescope->filesymtab)
     {
         filescope->filesymtab = currenttable;
@@ -11062,7 +11349,7 @@ bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_t* imports
     code = nullptr;
     filescope = (mcastscopefile_t*)comp->filescopelist->top();
     modpath = importstmt->uexpr.exprimportstmt.path;
-    modname = mc_util_getmodulename(modpath);
+    modname = mcmodule_t::getModuleName(modpath);
     for(i = 0; i < filescope->loadedmodnames->count(); i++)
     {
         loadedname = (const char*)filescope->loadedmodnames->get(i);
@@ -11081,7 +11368,7 @@ bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_t* imports
             goto end;
         }
     }
-    filepathbuf = Printer::make(comp->pstate, nullptr);
+    filepathbuf = Memory::make<Printer>(nullptr);
     if(!filepathbuf)
     {
         result = false;
@@ -11103,7 +11390,7 @@ bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_t* imports
         goto end;
     }
     filepathnoncanonicalised = filepathbuf->getString();
-    filepath = mc_util_canonpath(comp->pstate, filepathnoncanonicalised);
+    filepath = mc_util_canonpath(filepathnoncanonicalised);
     Printer::destroy(filepathbuf);
     if(!filepath)
     {
@@ -11131,15 +11418,15 @@ bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_t* imports
     if(!module)
     {
         /* todo: create new module function */
-        searchedpath = mc_module_findfile(comp->pstate, filepath);
-        code = mc_fsutil_fileread(comp->pstate, searchedpath, &flen);
+        searchedpath = mcmodule_t::findFile(filepath);
+        code = mc_fsutil_fileread(searchedpath, &flen);
         if(!code)
         {
             comp->errors->pushFormat(MC_ERROR_COMPILING, importstmt->pos, "reading module file \"%s\" failed", filepath);
             result = false;
             goto end;
         }
-        module = mc_module_make(comp->pstate, modname);
+        module = Memory::make<mcmodule_t>(comp->pstate, modname);
         if(!module)
         {
             result = false;
@@ -11148,14 +11435,14 @@ bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_t* imports
         ok = mc_compiler_filescopepush(comp, searchedpath);
         if(!ok)
         {
-            mc_module_destroy(module);
+            mcmodule_t::destroy(module);
             result = false;
             goto end;
         }
         ok = mc_compiler_docompilesource(comp, code);
         if(!ok)
         {
-            mc_module_destroy(module);
+            mcmodule_t::destroy(module);
             result = false;
             goto end;
         }
@@ -11163,13 +11450,13 @@ bool mc_compiler_compileimport(mcastcompiler_t* comp, mcastexpression_t* imports
         for(i = 0; i < st->getModuleGlobalSymCount(); i++)
         {
             symbol = st->getModuleGlobalSymAt(i);
-            mc_module_addsymbol(module, symbol);
+            module->addSymbol(symbol);
         }
         mc_compiler_filescopepop(comp);
         ok = comp->modules->set(filepath, module);
         if(!ok)
         {
-            mc_module_destroy(module);
+            mcmodule_t::destroy(module);
             result = false;
             goto end;
         }
@@ -11616,7 +11903,7 @@ bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexpression_t* exp
                 else
                 {
                     obj = mc_value_makestringlen(comp->pstate, expr->uexpr.exprlitstring.data, expr->uexpr.exprlitstring.length);
-                    if(mc_value_isnull(obj))
+                    if(obj.isNull())
                     {
                         goto error;
                     }
@@ -11889,7 +12176,7 @@ bool mc_compiler_compileexpression(mcastcompiler_t* comp, mcastexpression_t* exp
                 compscope = mc_compiler_getcompilationscope(comp);
                 symtab = mc_compiler_getsymtable(comp);
                 obj = mc_value_makefuncscript(comp->pstate, fn->name, comp_res, true, nlocals, fn->funcparamlist->count(), 0);
-                if(mc_value_isnull(obj))
+                if(obj.isNull())
                 {
                     PtrList::destroy(freesyms, (mcitemdestroyfn_t)mcastsymbol_t::destroy);
                     mc_astcompresult_destroy(comp_res);
@@ -13143,7 +13430,7 @@ mcclass_t* mc_class_make(mcstate_t* state, const char* name, bool istop)
     cl = Memory::make<mcclass_t>();
     cl->parentclass = nullptr;
     cl->classname = name;
-    cl->constructor = mc_value_makenull();
+    cl->constructor = mcvalue_t::makeNull();
     cl->members = Memory::make<PtrList>(sizeof(void*), true);
     if(!istop)
     {
@@ -13152,11 +13439,10 @@ mcclass_t* mc_class_make(mcstate_t* state, const char* name, bool istop)
     return cl;
 }
 
-void mc_class_destroy(mcstate_t* state, mcclass_t* cl)
+void mc_class_destroy(mcclass_t* cl)
 {
     size_t i;
     mcfield_t* memb;
-    (void)state;
     for(i=0; i<cl->members->count(); i++)
     {
         memb = (mcfield_t*)cl->members->get(i);
@@ -13166,10 +13452,9 @@ void mc_class_destroy(mcstate_t* state, mcclass_t* cl)
     mc_memory_free(cl);
 }
 
-void mc_class_addfunction(mcstate_t* state, mcclass_t* cl, const char* name, bool ispseudo, mcnativefn_t fn)
+void mc_class_addfunction(mcclass_t* cl, const char* name, bool ispseudo, mcnativefn_t fn)
 {
     mcfield_t* bt;
-    (void)state;
     bt = Memory::make<mcfield_t>();
     bt->name = name;
     bt->ispseudo = ispseudo;
@@ -13177,112 +13462,15 @@ void mc_class_addfunction(mcstate_t* state, mcclass_t* cl, const char* name, boo
     cl->members->push(bt);
 }
 
-void mc_class_addmember(mcstate_t* state, mcclass_t* cl, const char* name, mcnativefn_t fn)
+void mc_class_addmember(mcclass_t* cl, const char* name, mcnativefn_t fn)
 {
-    return mc_class_addfunction(state, cl, name, false, fn);
+    return mc_class_addfunction(cl, name, false, fn);
 }
 
-void mc_class_addpseudo(mcstate_t* state, mcclass_t* cl, const char* name, mcnativefn_t fn)
+void mc_class_addpseudo(mcclass_t* cl, const char* name, mcnativefn_t fn)
 {
-    return mc_class_addfunction(state, cl, name, true, fn);
+    return mc_class_addfunction(cl, name, true, fn);
 }
-
-mcstate_t* mc_state_make()
-{
-    mcstate_t* state;
-    state = Memory::make<mcstate_t>();
-    if(!state)
-    {
-        return nullptr;
-    }
-    //memset(state, 0, sizeof(mcstate_t));
-    mc_state_setdefaultconfig(state);
-    state->execstate.valuestack = Memory::make<GenericList<mcvalue_t>>(MC_CONF_MINVMVALSTACKSIZE, mc_value_makenull());
-    state->execstate.valthisstack = Memory::make<GenericList<mcvalue_t>>(MC_CONF_MINVMTHISSTACKSIZE, mc_value_makenull());
-    state->execstate.nativethisstack = Memory::make<GenericList<mcvalue_t>>(MC_CONF_MINNATIVETHISSTACKSIZE, mc_value_makenull());
-    state->globalvalstack = Memory::make<GenericList<mcvalue_t>>(MC_CONF_MAXVMGLOBALS, mc_value_makenull());
-    state->execstate.framestack = Memory::make<GenericList<mcvmframe_t>>(MC_CONF_MINVMFRAMES, mcvmframe_t{});
-    mcerrlist_t::init(&state->errors);
-    state->mem = mc_gcmemory_make(state);
-    if(!state->mem)
-    {
-        goto err;
-    }
-    state->files = Memory::make<PtrList>(sizeof(void*), true);
-    if(!state->files)
-    {
-        goto err;
-    }
-    mc_vm_init(state);
-    state->vmglobalstore = mc_globalstore_make(state);
-    if(!state->vmglobalstore)
-    {
-        goto err;
-    }
-    state->compiler = mc_compiler_make(state, &state->config, state->mem, &state->errors, state->files, state->vmglobalstore);
-    if(!state->compiler)
-    {
-        goto err;
-    }
-    state->stdoutprinter = Printer::make(state, stdout);
-    state->stderrprinter = Printer::make(state, stderr);
-    mc_state_makestdclasses(state);
-    return state;
-err:
-    mc_state_deinit(state);
-    free(state);
-    return nullptr;
-}
-
-void mc_state_deinit(mcstate_t* state)
-{
-    mc_compiler_destroy(state->compiler);
-    mc_globalstore_destroy(state->vmglobalstore);
-    mc_gcmemory_destroy(state->mem);
-    PtrList::destroy(state->files, (mcitemdestroyfn_t)mc_compiledfile_destroy);
-    mcerrlist_t::deinit(&state->errors);
-    Printer::destroy(state->stdoutprinter);
-    Printer::destroy(state->stderrprinter);
-    Memory::destroy(state->execstate.valuestack);
-    Memory::destroy(state->globalvalstack);
-    Memory::destroy(state->execstate.framestack);
-    Memory::destroy(state->execstate.valthisstack);
-    Memory::destroy(state->execstate.nativethisstack);
-    mc_class_destroy(state, state->stdobjobject);
-    mc_class_destroy(state, state->stdobjnumber);
-    mc_class_destroy(state, state->stdobjstring);
-    mc_class_destroy(state, state->stdobjarray);
-    mc_class_destroy(state, state->stdobjmap);
-    mc_class_destroy(state, state->stdobjfunction);
-}
-
-void mc_state_reset(mcstate_t* state)
-{
-    mc_state_clearerrors(state);
-    mc_vm_reset(state);
-}
-
-void mc_state_setdefaultconfig(mcstate_t* state)
-{
-    memset(&state->config, 0, sizeof(mcconfig_t));
-    state->config.replmode = false;
-    state->config.dumpast = false;
-    state->config.dumpbytecode = false;
-    state->config.fatalcomplaints = false;
-    state->config.exitaftercompiling = false;
-    state->config.printinstructions = false;
-    state->config.strictmode = false;
-}
-
-void mc_state_destroy(mcstate_t* state)
-{
-    if(state != nullptr)
-    {
-        mc_state_deinit(state);
-        mc_memory_free(state);
-    }
-}
-
 
 template<typename... ArgsT>
 void mc_state_pusherrorf(mcstate_t* state, mcerrtype_t type, mcastlocation_t pos, const char* fmt, ArgsT&&... args)
@@ -13290,45 +13478,12 @@ void mc_state_pusherrorf(mcstate_t* state, mcerrtype_t type, mcastlocation_t pos
     state->errors.pushFormat(type, pos, fmt, args...);
 }
 
-
-
 template<typename... ArgsT>
 void mc_state_setruntimeerrorf(mcstate_t* state, const char* fmt, ArgsT&&... args)
 {
     mc_state_pusherrorf(state, MC_ERROR_RUNTIME, srcposinvalid, fmt, args...);
 }
 
-
-
-bool mc_error_printtraceback(Printer* pr, mctraceback_t* traceback, mcconsolecolor_t* mcc)
-{
-    int i;
-    int depth;
-    const char* cblue;
-    const char* cyell;
-    const char* creset;
-    const char* filename;
-    mctraceitem_t* item;
-    cblue = mc_consolecolor_get(mcc, 'b');
-    cyell = mc_consolecolor_get(mcc, 'y');
-    creset = mc_consolecolor_get(mcc, '0');
-    depth = traceback->tbitems->count();
-    for(i = 0; i < depth; i++)
-    {
-        item = (mctraceitem_t*)traceback->tbitems->get(i);
-        filename = mc_traceitem_getsourcefilepath(item);
-        pr->format("  function %s%s%s", cblue, item->trfuncname, creset);
-        if(item->pos.line >= 0 && item->pos.column >= 0)
-        {
-            pr->format(" in %s%s:%d:%d%s", cyell, filename, item->pos.line, item->pos.column, creset);
-        }
-        else
-        {
-        }
-        pr->format("\n");
-    }
-    return !pr->m_prfailed;
-}
 
 bool mc_error_printusererror(Printer* pr, mcvalue_t obj)
 {
@@ -13345,118 +13500,11 @@ bool mc_error_printusererror(Printer* pr, mcvalue_t obj)
     if(traceback)
     {
         pr->format("%sTraceback:%s\n", cred, creset);
-        mc_error_printtraceback(pr, traceback, &mcc);
+        traceback->printTo(pr, &mcc);
     }
     return true;
 }
 
-bool mc_error_printerror(mcstate_t* state, Printer* pr, mcerror_t* err)
-{
-    int j;
-    int colnum;
-    int linenum;
-    const char* line;
-    const char* typestr;
-    const char* filename;
-    const char* cred;
-    const char* cblue;
-    const char* creset;
-    mctraceback_t* traceback;
-    mcconsolecolor_t mcc;
-    (void)state;
-    mc_consolecolor_init(&mcc, fileno(stdout));
-    cred = mc_consolecolor_get(&mcc, 'r');
-    cblue = mc_consolecolor_get(&mcc, 'b');
-    creset = mc_consolecolor_get(&mcc, '0');
-    typestr = err->getTypeString();
-    filename = err->getFile();
-    line = err->getSourceLineCode();
-    linenum = err->getSourceLineNumber();
-    colnum = err->getSourceColumn();
-    if(line)
-    {
-        pr->put(line);
-        pr->put("\n");
-        if(colnum >= 0)
-        {
-            for(j = 0; j < (colnum - 1); j++)
-            {
-                pr->put(" ");
-            }
-            pr->put("^\n");
-        }
-    }
-    pr->format("%s%s ERROR%s in \"%s\" on %s%d:%d:%s %s\n", cred, typestr, creset, filename, cblue, linenum, colnum, creset, err->getMessage());
-    traceback = err->getTraceback();
-    if(traceback)
-    {
-        pr->format("traceback:\n");
-        mc_error_printtraceback(pr, (mctraceback_t*)err->getTraceback(), &mcc);
-    }
-    return true;
-}
-
-
-
-int mc_traceback_getdepth(mctraceback_t* traceback)
-{
-    return traceback->tbitems->count();
-}
-
-const char* mc_traceback_getsourcefilepath(mctraceback_t* traceback, int depth)
-{
-    mctraceitem_t* item;
-    item = (mctraceitem_t*)traceback->tbitems->get(depth);
-    if(!item)
-    {
-        return nullptr;
-    }
-    return mc_traceitem_getsourcefilepath(item);
-}
-
-const char* mc_traceback_getsourcelinecode(mctraceback_t* traceback, int depth)
-{
-    mctraceitem_t* item;
-    item = (mctraceitem_t*)traceback->tbitems->get(depth);
-    if(!item)
-    {
-        return nullptr;
-    }
-    return mc_traceitem_getsourceline(item);
-}
-
-int mc_traceback_getsourcelinenumber(mctraceback_t* traceback, int depth)
-{
-    mctraceitem_t* item;
-    item = (mctraceitem_t*)traceback->tbitems->get(depth);
-    if(!item)
-    {
-        return -1;
-    }
-    return item->pos.line;
-}
-
-int mc_traceback_getsourcecolumn(mctraceback_t* traceback, int depth)
-{
-    mctraceitem_t* item;
-    item = (mctraceitem_t*)traceback->tbitems->get(depth);
-    if(!item)
-    {
-        return -1;
-    }
-    return item->pos.column;
-}
-
-const char* mc_traceback_getfunctionname(mctraceback_t* traceback, int depth)
-{
-    mctraceitem_t* item;
-    item = (mctraceitem_t*)traceback->tbitems->get(depth);
-    if(!item)
-    {
-        return "";
-    }
-    return item->trfuncname;
-}
 
 void mc_state_printerrors(mcstate_t* state)
 {
@@ -13467,7 +13515,7 @@ void mc_state_printerrors(mcstate_t* state)
     for(i = 0; i < ecnt; i++)
     {
         err = mc_state_geterror(state, i);
-        mc_error_printerror(state, state->stderrprinter, err);
+        err->printErrorTo(state->stderrprinter);
     }
 }
 
@@ -13476,7 +13524,7 @@ mccompiledprogram_t* mc_state_compilesource(mcstate_t* state, const char* code, 
     mccompiledprogram_t* compres;
     mc_state_clearerrors(state);
     compres = mc_compiler_compilesource(state->compiler, code, filename);
-    if(state->errors.count > 0)
+    if(state->errors.count() > 0)
     {
         goto err;
     }
@@ -13496,24 +13544,24 @@ mcvalue_t mc_program_execute(mcstate_t* state, mccompiledprogram_t* program)
     if(program == nullptr)
     {
         state->errors.pushFormat(MC_ERROR_USER, srcposinvalid, "program passed to execute was null.");
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
-    mc_state_reset(state);
+    state->reset();
     if(state != program->pstate)
     {
         state->errors.pushFormat(MC_ERROR_USER, srcposinvalid, "program was compiled with an incompatible instance");
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     ok = mc_vm_runexecfunc(state, program, mc_compiler_getconstants(state->compiler));
-    if(!ok || state->errors.count > 0)
+    if(!ok || state->errors.count() > 0)
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     //MC_ASSERT(state->execstate.vsposition == 0);
     res = state->execstate.lastpopped;
-    if(mc_value_gettype(res) == MC_VAL_NONE)
+    if(res.getType() == MC_VAL_NONE)
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     return res;
 }
@@ -13531,20 +13579,20 @@ mcvalue_t mc_state_execcode(mcstate_t* state, const char* code, const char* file
     bool ok;
     mcvalue_t res;
     mccompiledprogram_t* compres;
-    mc_state_reset(state);
+    state->reset();
     compres = mc_compiler_compilesource(state->compiler, code, filename);
-    if(!compres || state->errors.count > 0)
+    if(!compres || state->errors.count() > 0)
     {
         goto err;
     }
     ok = mc_vm_runexecfunc(state, compres, mc_compiler_getconstants(state->compiler));
-    if(!ok || state->errors.count > 0)
+    if(!ok || state->errors.count() > 0)
     {
         goto err;
     }
     MC_ASSERT(state->execstate.vsposition == 0);
     res = state->execstate.lastpopped;
-    if(mc_value_gettype(res) == MC_VAL_NONE)
+    if(res.getType() == MC_VAL_NONE)
     {
         goto err;
     }
@@ -13552,7 +13600,7 @@ mcvalue_t mc_state_execcode(mcstate_t* state, const char* code, const char* file
     return res;
 err:
     mc_astcompresult_destroy(compres);
-    return mc_value_makenull();
+    return mcvalue_t::makeNull();
 }
 
 mcvalue_t mc_vm_callvalue(mcstate_t* state, GenericList<mcvalue_t>* constants, mcvalue_t callee, mcvalue_t thisval, size_t argc, mcvalue_t* args);
@@ -13562,16 +13610,16 @@ mcvalue_t mc_state_callfunctionbyname(mcstate_t* state, const char* fname, mcval
 {
     mcvalue_t res;
     mcvalue_t callee;
-    mc_state_reset(state);
+    state->reset();
     callee = mc_state_getglobalobjectbyname(state, fname);
-    if(mc_value_gettype(callee) == MC_VAL_NULL)
+    if(callee.getType() == MC_VAL_NULL)
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     res = mc_vm_callvalue(state, mc_compiler_getconstants(state->compiler), callee, thisval, argc, (mcvalue_t*)args);
-    if(state->errors.count > 0)
+    if(state->errors.count() > 0)
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     return res;
 }
@@ -13583,7 +13631,7 @@ bool mc_state_haserrors(mcstate_t* state)
 
 int mc_state_errorcount(mcstate_t* state)
 {
-    return state->errors.count;
+    return state->errors.count();
 }
 
 void mc_state_clearerrors(mcstate_t* state)
@@ -13600,7 +13648,7 @@ bool mc_state_setnativefunction(mcstate_t* state, const char* name, mcnativefn_t
 {
     mcvalue_t obj;
     obj = mc_value_makefuncnative(state, name, fn, data);
-    if(mc_value_isnull(obj))
+    if(obj.isNull())
     {
         return false;
     }
@@ -13623,9 +13671,9 @@ mcvalue_t mc_state_getglobalobjectbyname(mcstate_t* state, const char* name)
     if(!symbol)
     {
         mc_state_pusherrorf(state, MC_ERROR_USER, srcposinvalid, "symbol \"%s\" is not defined", name);
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
-    res = mc_value_makenull();
+    res = mcvalue_t::makeNull();
     if(symbol->symtype == MC_SYM_MODULEGLOBAL)
     {
         res = mc_vm_getglobalbyindex(state, symbol->index);
@@ -13637,13 +13685,13 @@ mcvalue_t mc_state_getglobalobjectbyname(mcstate_t* state, const char* name)
         if(!ok)
         {
             mc_state_pusherrorf(state, MC_ERROR_USER, srcposinvalid, "failed to get global object at %d", symbol->index);
-            return mc_value_makenull();
+            return mcvalue_t::makeNull();
         }
     }
     else
     {
         mc_state_pusherrorf(state, MC_ERROR_USER, srcposinvalid, "value associated with symbol \"%s\" could not be loaded", name);
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     return res;
 }
@@ -14260,14 +14308,14 @@ bool mc_argcheck_checkactual(mcstate_t* state, bool generateerror, size_t argc, 
     for(i = 0; i < argc; i++)
     {
         arg = args[i];
-        type = mc_value_gettype(arg);
+        type = arg.getType();
         expectedtype = expectedtypes[i];
         if(!(type & expectedtype))
         {
             if(generateerror)
             {
                 typestr = mc_valtype_getname(type);
-                expectedtypestr = mc_valtype_getunionname(state, expectedtype);
+                expectedtypestr = mc_valtype_getunionname(expectedtype);
                 if(!expectedtypestr)
                 {
                     return false;
@@ -14285,7 +14333,7 @@ bool mc_argcheck_checkactual(mcstate_t* state, bool generateerror, size_t argc, 
 MC_FORCEINLINE bool mc_callframe_init(mcvmframe_t* frame, mcvalue_t functionobj, int64_t baseptr)
 {
     mcobjfunction_t* function;
-    if(mc_value_gettype(functionobj) != MC_VAL_FUNCSCRIPT)
+    if(functionobj.getType() != MC_VAL_FUNCSCRIPT)
     {
         return false;
     }
@@ -14478,7 +14526,7 @@ mcobjdata_t* mc_gcmemory_getdatafrompool(mcstate_t* state, mcvaltype_t type)
     bool ok;
     mcobjdata_t* data;
     mcgcobjdatapool_t* pool;
-    pool = mc_state_gcgetpoolfortype(state, type);
+    pool = mcgcobjdatapool_t::getPoolForType(state, type);
     if(!pool || pool->count <= 0)
     {
         return nullptr;
@@ -14537,13 +14585,13 @@ void mc_state_gcmarkobject(mcvalue_t obj)
     mcobjdata_t* keydata;
     mcobjdata_t* freevaldata;
     mcobjfunction_t* function;
-    if(mc_value_isallocated(obj))
+    if(obj.isAllocated())
     {
-        data = mc_value_getallocateddata(obj);
+        data = obj.getAllocatedData();
         if(!data->gcmark)
         {
             data->gcmark = true;
-            switch(mc_value_gettype(obj))
+            switch(obj.getType())
             {
                 case MC_VAL_MAP:
                     {
@@ -14551,18 +14599,18 @@ void mc_state_gcmarkobject(mcvalue_t obj)
                         for(i = 0; i < len; i++)
                         {
                             key = mc_value_mapgetkeyat(obj, i);
-                            if(mc_value_isallocated(key))
+                            if(key.isAllocated())
                             {
-                                keydata = mc_value_getallocateddata(key);
+                                keydata = key.getAllocatedData();
                                 if(!keydata->gcmark)
                                 {
                                     mc_state_gcmarkobject(key);
                                 }
                             }
                             val = mc_value_mapgetvalueat(obj, i);
-                            if(mc_value_isallocated(val))
+                            if(val.isAllocated())
                             {
-                                valdata = mc_value_getallocateddata(val);
+                                valdata = val.getAllocatedData();
                                 if(!valdata->gcmark)
                                 {
                                     mc_state_gcmarkobject(val);
@@ -14577,9 +14625,9 @@ void mc_state_gcmarkobject(mcvalue_t obj)
                         for(i = 0; i < len; i++)
                         {
                             val = mc_value_arraygetvalue(obj, i);
-                            if(mc_value_isallocated(val))
+                            if(val.isAllocated())
                             {
-                                valdata = mc_value_getallocateddata(val);
+                                valdata = val.getAllocatedData();
                                 if(!valdata->gcmark)
                                 {
                                     mc_state_gcmarkobject(val);
@@ -14596,9 +14644,9 @@ void mc_state_gcmarkobject(mcvalue_t obj)
                         {
                             freeval = mc_value_functiongetfreevalat(obj, i);
                             mc_state_gcmarkobject(freeval);
-                            if(mc_value_isallocated(freeval))
+                            if(freeval.isAllocated())
                             {
-                                freevaldata = mc_value_getallocateddata(freeval);
+                                freevaldata = freeval.getAllocatedData();
                                 if(!freevaldata->gcmark)
                                 {
                                     mc_state_gcmarkobject(freeval);
@@ -14642,7 +14690,7 @@ void mc_state_gcsweep(mcstate_t* state)
         {
             if(mc_state_gccandatabeputinpool(state, data))
             {
-                pool = mc_state_gcgetpoolfortype(state, data->odtype);
+                pool = mcgcobjdatapool_t::getPoolForType(state, data->odtype);
                 pool->data[pool->count] = data;
                 pool->count++;
             }
@@ -14678,11 +14726,11 @@ bool mc_state_gcdisablefor(mcvalue_t obj)
 {
     bool ok;
     mcobjdata_t* data;
-    if(!mc_value_isallocated(obj))
+    if(!obj.isAllocated())
     {
         return false;
     }
-    data = mc_value_getallocateddata(obj);
+    data = obj.getAllocatedData();
     if(data->mem->gcobjlistremains->contains(&obj))
     {
         return false;
@@ -14694,34 +14742,19 @@ bool mc_state_gcdisablefor(mcvalue_t obj)
 void mc_state_gcenablefor(mcvalue_t obj)
 {
     mcobjdata_t* data;
-    if(mc_value_isallocated(obj))
+    if(obj.isAllocated())
     {
-        data = mc_value_getallocateddata(obj);
+        data = obj.getAllocatedData();
         data->mem->gcobjlistremains->removeItem(&obj);
     }
 }
 
-mcgcobjdatapool_t* mc_state_gcgetpoolfortype(mcstate_t* state, mcvaltype_t type)
-{
-    switch(type)
-    {
-        case MC_VAL_ARRAY:
-            return &state->mem->mempools[0];
-        case MC_VAL_MAP:
-            return &state->mem->mempools[1];
-        case MC_VAL_STRING:
-            return &state->mem->mempools[2];
-        default:
-            break;
-    }
-    return nullptr;
-}
 
 bool mc_state_gccandatabeputinpool(mcstate_t* state, mcobjdata_t* data)
 {
     mcvalue_t obj;
     mcgcobjdatapool_t* pool;
-    obj = mc_object_makedatafrom(data->odtype, data);
+    obj = mcvalue_t::makeDataFrom(data->odtype, data);
     /*
     * this is to ensure that large objects won't be kept in pool indefinitely
     */
@@ -14758,7 +14791,7 @@ bool mc_state_gccandatabeputinpool(mcstate_t* state, mcobjdata_t* data)
             }
             break;
     }
-    pool= mc_state_gcgetpoolfortype(state, data->odtype);
+    pool= mcgcobjdatapool_t::getPoolForType(state, data->odtype);
     if(!pool || pool->count >= MC_CONF_GCMEMPOOLSIZE)
     {
         return false;
@@ -14781,7 +14814,7 @@ mcglobalstore_t* mc_globalstore_make(mcstate_t* state)
     {
         goto err;
     }
-    store->storedobjects = Memory::make<GenericList<mcvalue_t>>(0, mc_value_makenull());
+    store->storedobjects = Memory::make<GenericList<mcvalue_t>>(0, mcvalue_t::makeNull());
     if(!store->storedobjects)
     {
         goto err;
@@ -14826,7 +14859,7 @@ bool mc_globalstore_setnamed(mcglobalstore_t* store, const char* name, mcvalue_t
     {
         return false;
     }
-    symbol = mcastsymbol_t::make(store->pstate, name, MC_SYM_GLOBALBUILTIN, ix, false);
+    symbol = Memory::make<mcastsymbol_t>(name, MC_SYM_GLOBALBUILTIN, ix, false);
     if(!symbol)
     {
         goto err;
@@ -14850,7 +14883,7 @@ mcvalue_t mc_globalstore_getatindex(mcglobalstore_t* store, int ix, bool* outok)
     if(!res)
     {
         *outok = false;
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     *outok = true;
     return *res;
@@ -14869,7 +14902,7 @@ int mc_globalstore_getcount(mcglobalstore_t* store)
 
 
 
-mcastscopeblock_t* mc_astblockscope_make(mcstate_t* state, int offset)
+mcastscopeblock_t* mc_astblockscope_make(int offset)
 {
     mcastscopeblock_t* newscope;
     newscope = Memory::make<mcastscopeblock_t>();
@@ -14878,7 +14911,7 @@ mcastscopeblock_t* mc_astblockscope_make(mcstate_t* state, int offset)
         return nullptr;
     }
     memset(newscope, 0, sizeof(mcastscopeblock_t));
-    newscope->pstate = state;
+
     newscope->scopestore = Memory::make<PtrDict>((mcitemcopyfn_t)mcastsymbol_t::copy, (mcitemdestroyfn_t)mcastsymbol_t::destroy);
     if(!newscope->scopestore)
     {
@@ -14906,7 +14939,6 @@ mcastscopeblock_t* mc_astblockscope_copy(mcastscopeblock_t* scope)
         return nullptr;
     }
     memset(copy, 0, sizeof(mcastscopeblock_t));
-    copy->pstate = scope->pstate;
     copy->numdefinitions = scope->numdefinitions;
     copy->offset = scope->offset;
     copy->scopestore = scope->scopestore->copy();
@@ -14918,41 +14950,6 @@ mcastscopeblock_t* mc_astblockscope_copy(mcastscopeblock_t* scope)
     return copy;
 }
 
-bool mc_symtable_setsymbol(mcastsymtable_t* table, mcastsymbol_t* symbol)
-{
-    mcastscopeblock_t* topscope;
-    mcastsymbol_t* existing;
-    topscope = (mcastscopeblock_t*)table->blockscopes->top();
-    existing = (mcastsymbol_t*)topscope->scopestore->get(symbol->name);
-    if(existing)
-    {
-        mcastsymbol_t::destroy(existing);
-    }
-    return topscope->scopestore->set(symbol->name, symbol);
-}
-
-int mc_symtable_nextsymindex(mcastsymtable_t* table)
-{
-    int ix;
-    mcastscopeblock_t* topscope;
-    topscope = (mcastscopeblock_t*)table->blockscopes->top();
-    ix = topscope->offset + topscope->numdefinitions;
-    return ix;
-}
-
-int mc_symtable_getnumdefs(mcastsymtable_t* table)
-{
-    int i;
-    int count;
-    mcastscopeblock_t* scope;
-    count = 0;
-    for(i = table->blockscopes->count() - 1; i >= 0; i--)
-    {
-        scope = (mcastscopeblock_t*)table->blockscopes->get(i);
-        count += scope->numdefinitions;
-    }
-    return count;
-}
 
 void mc_asttoken_init(mcasttoken_t* tok, mcasttoktype_t type, const char* literal, int len)
 {
@@ -15104,62 +15101,6 @@ const char* mc_asttoken_typename(mcasttoktype_t type)
     return "ILLEGAL";
 }
 
-mctraceback_t* mc_traceback_make(mcstate_t* state)
-{
-    mctraceback_t* traceback;
-    traceback = Memory::make<mctraceback_t>();
-    if(!traceback)
-    {
-        return nullptr;
-    }
-    memset(traceback, 0, sizeof(mctraceback_t));
-    traceback->pstate = state;
-    traceback->tbitems = Memory::make<PtrList>(sizeof(mctraceitem_t), false);
-    if(!traceback->tbitems)
-    {
-        mc_traceback_destroy(traceback);
-        return nullptr;
-    }
-    return traceback;
-}
-
-void mc_traceback_destroy(mctraceback_t* traceback)
-{
-    size_t i;
-    mctraceitem_t* item;
-    if(traceback != nullptr)
-    {
-        for(i = 0; i < traceback->tbitems->count(); i++)
-        {
-            item = (mctraceitem_t*)traceback->tbitems->get(i);
-            mc_memory_free(item->trfuncname);
-            item->trfuncname = nullptr;
-        }
-        PtrList::destroy(traceback->tbitems, nullptr);
-        mc_memory_free(traceback);
-        traceback = nullptr;
-    }
-}
-
-bool mc_traceback_push(mctraceback_t* traceback, const char* fname, mcastlocation_t pos)
-{
-    bool ok;
-    mctraceitem_t item;
-    item.trfuncname = mc_util_strdup(fname);
-    if(!item.trfuncname)
-    {
-        return false;
-    }
-    item.pos = pos;
-    ok = traceback->tbitems->push(&item);
-    if(!ok)
-    {
-        mc_memory_free(item.trfuncname);
-        item.trfuncname = nullptr;
-        return false;
-    }
-    return true;
-}
 
 bool mc_traceback_vmpush(mctraceback_t* traceback, mcstate_t* state)
 {
@@ -15169,7 +15110,7 @@ bool mc_traceback_vmpush(mctraceback_t* traceback, mcstate_t* state)
     for(i = state->execstate.framestack->count() - 1; i >= 0; i--)
     {
         frame = state->execstate.framestack->getp(i);
-        ok = mc_traceback_push(traceback, mc_value_functiongetname(frame->function), mc_callframe_getpos(frame));
+        ok = traceback->push(mc_value_functiongetname(frame->function), mc_callframe_getpos(frame));
         if(!ok)
         {
             return false;
@@ -15178,31 +15119,7 @@ bool mc_traceback_vmpush(mctraceback_t* traceback, mcstate_t* state)
     return true;
 }
 
-const char* mc_traceitem_getsourceline(mctraceitem_t* item)
-{
-    const char* line;
-    PtrList* lines;
-    if(!item->pos.file)
-    {
-        return nullptr;
-    }
-    lines = item->pos.file->lines;
-    if((size_t)item->pos.line >= (size_t)lines->count())
-    {
-        return nullptr;
-    }
-    line = (const char*)lines->get(item->pos.line);
-    return line;
-}
 
-const char* mc_traceitem_getsourcefilepath(mctraceitem_t* item)
-{
-    if(!item->pos.file)
-    {
-        return nullptr;
-    }
-    return item->pos.file->path;
-}
 
 bool mc_vm_init(mcstate_t* state)
 {
@@ -15212,17 +15129,17 @@ bool mc_vm_init(mcstate_t* state)
     state->globalvalcount = 0;
     state->execstate.vsposition = 0;
     state->execstate.thisstpos = 0;
-    state->execstate.lastpopped = mc_value_makenull();
+    state->execstate.lastpopped = mcvalue_t::makeNull();
     state->running = false;
     for(i = 0; i < MC_CONF_MAXOPEROVERLOADS; i++)
     {
-        state->operoverloadkeys[i] = mc_value_makenull();
+        state->operoverloadkeys[i] = mcvalue_t::makeNull();
     }
 #define SET_OPERATOR_OVERLOAD_KEY(op, key)\
     do\
     {\
         keyobj = mc_value_makestring(state, key);\
-        if(mc_value_isnull(keyobj))\
+        if(keyobj.isNull())\
         {\
             goto err;\
         }\
@@ -15272,7 +15189,7 @@ bool mc_vm_runexecfunc(mcstate_t* state, mccompiledprogram_t* comp_res, GenericL
     oldthissp = state->execstate.thisstpos;
     oldframescount = state->execstate.framestack->count();
     mainfn = mc_value_makefuncscript(state, "__main__", comp_res, false, 0, 0, 0);
-    if(mc_value_isnull(mainfn))
+    if(mainfn.isNull())
     {
         return false;
     }
@@ -15290,7 +15207,7 @@ bool mc_vm_runexecfunc(mcstate_t* state, mccompiledprogram_t* comp_res, GenericL
 
 MC_FORCEINLINE bool mc_vm_haserrors(mcstate_t* state)
 {
-    return state->errors.count > 0;
+    return state->errors.count() > 0;
 }
 
 MC_FORCEINLINE bool mc_vm_setglobalbyindex(mcstate_t* state, size_t ix, mcvalue_t val)
@@ -15378,7 +15295,7 @@ MC_FORCEINLINE mcvalue_t mc_vm_stackpop(mcstate_t* state)
     {
         state->errors.pushFormat(MC_ERROR_RUNTIME, mc_callframe_getpos(state->execstate.currframe), "stack underflow");
         MC_ASSERT(false);
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     if(state->execstate.currframe)
     {
@@ -15414,7 +15331,7 @@ MC_FORCEINLINE mcvalue_t mc_vm_thisstackpop(mcstate_t* state)
     {
         state->errorspushFormat(MC_ERROR_RUNTIME, mc_callframe_getpos(state->execstate.currframe), "'this' stack underflow");
         MC_ASSERT(false);
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
 #endif
     state->execstate.thisstpos--;
@@ -15434,7 +15351,7 @@ MC_FORCEINLINE mcvalue_t mc_vm_thisstackget(mcstate_t* state, size_t nthitem)
         //val = mc_value_makemap(state);
         //state->execstate.valthisstack->set(ix, val);
         //return mc_value_makemap(state);
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
         //return val;
     }
     return state->execstate.valthisstack->get(ix);
@@ -15509,27 +15426,27 @@ MC_FORCEINLINE mcvalue_t mc_vm_callnativefunction(mcstate_t* state, mcvalue_t ca
     mcobjfunction_t* nativefun;
     nativefun = mc_value_asnativefunction(callee);
     res = nativefun->funcdata.valnativefunc.natptrfn(state, nativefun->funcdata.valnativefunc.userpointer, selfval, argc, args);
-    if(mc_util_unlikely(state->errors.count > 0))
+    if(mc_util_unlikely(state->errors.count() > 0))
     {
         err = state->errors.getLast();
         err->m_pos = srcpos;
-        err->m_traceback = mc_traceback_make(state);
+        err->m_traceback = Memory::make<mctraceback_t>();
         if(err->m_traceback)
         {
-            mc_traceback_push(err->m_traceback, nativefun->funcdata.valnativefunc.natfnname, srcposinvalid);
+            err->m_traceback->push(nativefun->funcdata.valnativefunc.natfnname, srcposinvalid);
         }
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
-    restype = mc_value_gettype(res);
+    restype = res.getType();
     if(mc_util_unlikely(restype == MC_VAL_ERROR))
     {
-        traceback = mc_traceback_make(state);
+        traceback = Memory::make<mctraceback_t>();
         if(traceback)
         {
             /* error builtin is treated in a special way */
             if(!mc_util_strequal(nativefun->funcdata.valnativefunc.natfnname, "error"))
             {
-                mc_traceback_push(traceback, nativefun->funcdata.valnativefunc.natfnname, srcposinvalid);
+                traceback->push(nativefun->funcdata.valnativefunc.natfnname, srcposinvalid);
             }
             mc_traceback_vmpush(traceback, state);
             mc_value_errorsettraceback(res, traceback);
@@ -15549,9 +15466,9 @@ MC_FORCEINLINE bool mc_vmdo_callobject(mcstate_t* state, mcvalue_t callee, int n
     mcvalue_t selfval;
     mcvalue_t* stackpos;
     mcobjfunction_t* calleefunction;
-    calleetype = mc_value_gettype(callee);
-    selfval = mc_value_makenull();
-    if(mc_value_isfuncnative(callee))
+    calleetype = callee.getType();
+    selfval = mcvalue_t::makeNull();
+    if(callee.isFuncNative())
     {
         if(!state->execstate.nativethisstack->pop(&tmpval))
         {
@@ -15600,7 +15517,7 @@ MC_FORCEINLINE bool mc_vmdo_callobject(mcstate_t* state, mcvalue_t callee, int n
     else if(calleetype == MC_VAL_FUNCNATIVE)
     {
         #if 0
-        if(!mc_value_isnull(selfval))
+        if(!selfval.isNull())
         {
             mc_vm_stackpop(state);
         }
@@ -15631,8 +15548,8 @@ MC_FORCEINLINE bool mc_vmdo_tryoverloadoperator(mcstate_t* state, mcvalue_t left
     mcvaltype_t lefttype;
     mcvaltype_t righttype;
     *outoverloadfound = false;
-    lefttype = mc_value_gettype(left);
-    righttype = mc_value_gettype(right);
+    lefttype = left.getType();
+    righttype = right.getType();
     if(lefttype != MC_VAL_MAP && righttype != MC_VAL_MAP)
     {
         *outoverloadfound = false;
@@ -15644,19 +15561,19 @@ MC_FORCEINLINE bool mc_vmdo_tryoverloadoperator(mcstate_t* state, mcvalue_t left
         numoper = 1;
     }
     key = state->operoverloadkeys[op];
-    callee = mc_value_makenull();
+    callee = mcvalue_t::makeNull();
     if(lefttype == MC_VAL_MAP)
     {
         callee = mc_value_mapgetvalue(left, key);
     }
-    if(!mc_value_iscallable(callee))
+    if(!callee.isCallable())
     {
         if(righttype == MC_VAL_MAP)
         {
             callee = mc_value_mapgetvalue(right, key);
         }
 
-        if(!mc_value_iscallable(callee))
+        if(!callee.isCallable())
         {
             *outoverloadfound = false;
             return true;
@@ -15679,8 +15596,8 @@ MC_FORCEINLINE bool mc_vm_checkassign(mcstate_t* state, mcvalue_t oldvalue, mcva
     mcvaltype_t nvaluetype;
     mcvaltype_t oldvaluetype;
     (void)state;
-    oldvaluetype = mc_value_gettype(oldvalue);
-    nvaluetype = mc_value_gettype(nvalue);
+    oldvaluetype = oldvalue.getType();
+    nvaluetype = nvalue.getType();
     if(oldvaluetype == MC_VAL_NULL || nvaluetype == MC_VAL_NULL)
     {
         return true;
@@ -15733,8 +15650,8 @@ MC_FORCEINLINE bool mc_vmdo_math(mcstate_t* state, mcopcode_t opcode)
     mcvaltype_t righttype;
     valright = mc_vm_stackpop(state);
     valleft = mc_vm_stackpop(state);
-    lefttype = mc_value_gettype(valleft);
-    righttype = mc_value_gettype(valright);
+    lefttype = valleft.getType();
+    righttype = valright.getType();
     if(lefttype == MC_VAL_STRING && opcode == MC_OPCODE_ADD)
     {
         if(mc_vmdo_opaddstring(state, valleft, valright, righttype, opcode))
@@ -15742,7 +15659,7 @@ MC_FORCEINLINE bool mc_vmdo_math(mcstate_t* state, mcopcode_t opcode)
             return true;
         }
     }
-    else if((mc_value_isnumeric(valleft) || mc_value_isnull(valleft)) && (mc_value_isnumeric(valright) || mc_value_isnull(valright)))
+    else if((valleft.isNumeric() || valleft.isNull()) && (valright.isNumeric() || valright.isNull()))
     {
         dnright = mc_value_asnumber(valright);
         dnleft = mc_value_asnumber(valleft);
@@ -15827,7 +15744,7 @@ MC_FORCEINLINE bool mc_vmdo_math(mcstate_t* state, mcopcode_t opcode)
                 }
                 break;
         }
-        mc_vmintern_stackpush(state, mc_value_makenumber(res));
+        mc_vmintern_stackpush(state, mcvalue_t::makeNumber(res));
         return true;
     }
     overloadfound = false;
@@ -15930,7 +15847,7 @@ MC_FORCEINLINE bool mc_vmdo_findclassmembervalue(mcstate_t* state, mcvalue_t lef
     (void)index;
     (void)setval;
     mcclass_t* cl;
-    cl = mc_vmdo_findclassfor(state, mc_value_gettype(left));
+    cl = mc_vmdo_findclassfor(state, left.getType());
     if(cl != nullptr)
     {
         idxname = mc_value_stringgetdata(index);
@@ -15977,12 +15894,12 @@ MC_FORCEINLINE bool mc_vmdo_getindexpartial(mcstate_t* state, mcvalue_t left, mc
             goto finished;
         }
     }
-    if(mc_value_isstring(index))
+    if(index.isString())
     {
-        if(mc_vmdo_findclassmembervalue(state, left, index, mc_value_makenull()))
+        if(mc_vmdo_findclassmembervalue(state, left, index, mcvalue_t::makeNull()))
         {
             #if 0
-            if(mc_value_isfuncnative(callee))
+            if(callee.isFuncNative())
             #endif
             {
                 state->execstate.nativethisstack->push(left);
@@ -15996,9 +15913,9 @@ MC_FORCEINLINE bool mc_vmdo_getindexpartial(mcstate_t* state, mcvalue_t left, mc
         }
         else
         {
-            if(!mc_value_ismap(left))
+            if(!left.isMap())
             {
-                res = mc_value_makenull();
+                res = mcvalue_t::makeNull();
                 lefttypename = mc_valtype_getname(lefttype);
                 mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->execstate.currframe), "object type '%s' has no field '%s'", lefttypename, mc_value_stringgetdata(index));
                 mc_vmintern_stackpush(state, res);
@@ -16012,7 +15929,7 @@ MC_FORCEINLINE bool mc_vmdo_getindexpartial(mcstate_t* state, mcvalue_t left, mc
 
         return false;
     }
-    res = mc_value_makenull();
+    res = mcvalue_t::makeNull();
     if(lefttype == MC_VAL_ARRAY)
     {
         if(indextype != MC_VAL_NUMBER)
@@ -16063,8 +15980,8 @@ MC_FORCEINLINE bool mc_vmdo_getindexfull(mcstate_t* state)
     mcvalue_t index;
     index = mc_vm_stackpop(state);
     left = mc_vm_stackpop(state);
-    lefttype = mc_value_gettype(left);
-    indextype = mc_value_gettype(index);
+    lefttype = left.getType();
+    indextype = index.getType();
     return mc_vmdo_getindexpartial(state, left, lefttype, index, indextype, false);
 }
 
@@ -16076,8 +15993,8 @@ MC_FORCEINLINE bool mc_vmdo_getdotindex(mcstate_t* state)
     mcvalue_t index;
     index = mc_vm_stackpop(state);
     left = mc_vm_stackpop(state);
-    lefttype = mc_value_gettype(left);
-    indextype = mc_value_gettype(index);
+    lefttype = left.getType();
+    indextype = index.getType();
     return mc_vmdo_getindexpartial(state, left, lefttype, index, indextype, true);
 }
 
@@ -16146,8 +16063,8 @@ MC_FORCEINLINE bool mc_vmdo_setindexfull(mcstate_t* state)
     index = mc_vm_stackpop(state);
     left = mc_vm_stackpop(state);
     nvalue = mc_vm_stackpop(state);
-    lefttype = mc_value_gettype(left);
-    indextype = mc_value_gettype(index);
+    lefttype = left.getType();
+    indextype = index.getType();
     return mc_vmdo_setindexpartial(state, left, lefttype, index, indextype, nvalue);
 }
 
@@ -16166,15 +16083,15 @@ MC_FORCEINLINE bool mc_vmdo_getvalueatfull(mcstate_t* state)
     mcvalue_t res;
     index = mc_vm_stackpop(state);
     left = mc_vm_stackpop(state);
-    lefttype = mc_value_gettype(left);
-    indextype= mc_value_gettype(index);
+    lefttype = left.getType();
+    indextype= index.getType();
     if(lefttype != MC_VAL_ARRAY && lefttype != MC_VAL_MAP && lefttype != MC_VAL_STRING)
     {
         lefttypename = mc_valtype_getname(lefttype);
         mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->execstate.currframe), "getvalueatfull: type %s is not indexable", lefttypename);
         return false;
     }
-    res = mc_value_makenull();
+    res = mcvalue_t::makeNull();
     if(indextype != MC_VAL_NUMBER)
     {
         lefttypename = mc_valtype_getname(lefttype);
@@ -16226,7 +16143,7 @@ MC_FORCEINLINE bool mc_vmdo_makefunction(mcstate_t* state, GenericList<mcvalue_t
         mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->execstate.currframe), "constant %d not found", constantix);
         return false;
     }
-    constanttype = mc_value_gettype(*constant);
+    constanttype = (*constant).getType();
     if(constanttype != MC_VAL_FUNCSCRIPT)
     {
         tname = mc_valtype_getname(constanttype);
@@ -16236,7 +16153,7 @@ MC_FORCEINLINE bool mc_vmdo_makefunction(mcstate_t* state, GenericList<mcvalue_t
     constfun = mc_value_asscriptfunction(*constant);
     fname = mc_value_functiongetname(*constant);
     functionobj = mc_value_makefuncscript(state, fname, constfun->funcdata.valscriptfunc.compiledprogcode, false, constfun->funcdata.valscriptfunc.numlocals, constfun->funcdata.valscriptfunc.numargs, numfree);
-    if(mc_value_isnull(functionobj))
+    if(functionobj.isNull())
     {
         return false;
     }
@@ -16276,13 +16193,13 @@ MC_FORCEINLINE bool mc_vmdo_docmpvalue(mcstate_t* state, mcopcode_t opcode)
         #endif
         if((ok == true) || (opcode == MC_OPCODE_COMPAREEQ))
         {
-            res = mc_value_makenumber(cres.result);
+            res = mcvalue_t::makeNumber(cres.result);
             mc_vmintern_stackpush(state, res);
         }
         else
         {
-            righttname = mc_valtype_getname(mc_value_gettype(right));
-            lefttname = mc_valtype_getname(mc_value_gettype(left));
+            righttname = mc_valtype_getname(right.getType());
+            lefttname = mc_valtype_getname(left.getType());
             mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->execstate.currframe), "cannot compare %s and %s", lefttname, righttname);
             return false;
         }
@@ -16327,7 +16244,7 @@ MC_FORCEINLINE bool mc_vmdo_docmpvalgreater(mcstate_t* state, mcopcode_t opcode)
             }
             break;
     }
-    res = mc_value_makebool(resval);
+    res = mcvalue_t::makeBool(resval);
     mc_vmintern_stackpush(state, res);
     return true;
 }
@@ -16342,7 +16259,7 @@ MC_FORCEINLINE bool mc_vmdo_makearray(mcstate_t* state)
     mcvalue_t* items;
     count = mc_callframe_readuint16(state->execstate.currframe);
     arrayobj = mc_value_makearraycapacity(state, count);
-    if(mc_value_isnull(arrayobj))
+    if(arrayobj.isNull())
     {
         return false;
     }
@@ -16367,7 +16284,7 @@ MC_FORCEINLINE bool mc_vmdo_makemapstart(mcstate_t* state)
     mcvalue_t mapobj;
     count = mc_callframe_readuint16(state->execstate.currframe);
     mapobj = mc_value_makemapcapacity(state, count);
-    if(mc_value_isnull(mapobj))
+    if(mapobj.isNull())
     {
         return false;
     }
@@ -16396,7 +16313,7 @@ MC_FORCEINLINE bool mc_vmdo_makemapend(mcstate_t* state)
         key = kvpairs[i];
         if(!mc_value_ishashable(key))
         {
-            keytype = mc_value_gettype(key);
+            keytype = key.getType();
             keytypename = mc_valtype_getname(keytype);
             mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->execstate.currframe), "key of type %s is not hashable", keytypename);
             return false;
@@ -16553,7 +16470,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, GenericList<
         fprintf(stderr, "**executing function '%s'**\n", funcname);
     }
     state->running = true;
-    state->execstate.lastpopped = mc_value_makenull();
+    state->execstate.lastpopped = mcvalue_t::makeNull();
     //while(state->execstate.currframe->bcposition < state->execstate.currframe->bcsize)
     while(true)
     {
@@ -16611,7 +16528,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, GenericList<
             mcvm_case(MC_OPCODE_RETURN):
                 {
                     ok = mc_vmintern_popframe(state);
-                    mc_vmintern_stackpush(state, mc_value_makenull());
+                    mc_vmintern_stackpush(state, mcvalue_t::makeNull());
                     if(!ok)
                     {
                         mc_vm_stackpop(state);
@@ -16657,12 +16574,12 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, GenericList<
                 mc_vmmac_break();
             mcvm_case(MC_OPCODE_TRUE):
                 {
-                    mc_vmintern_stackpush(state, mc_value_makebool(true));
+                    mc_vmintern_stackpush(state, mcvalue_t::makeBool(true));
                 }
                 mc_vmmac_break();
             mcvm_case(MC_OPCODE_FALSE):
                 {
-                    mc_vmintern_stackpush(state, mc_value_makebool(false));
+                    mc_vmintern_stackpush(state, mcvalue_t::makeBool(false));
                 }
                 mc_vmmac_break();
             mcvm_case(MC_OPCODE_COMPARE):
@@ -16694,17 +16611,17 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, GenericList<
                     mcvaltype_t opertype;
                     mcvalue_t operand;
                     operand = mc_vm_stackpop(state);
-                    opertype = mc_value_gettype(operand);
+                    opertype = operand.getType();
                     if(mc_util_likely(opertype == MC_VAL_NUMBER))
                     {
                         val = mc_value_asnumber(operand);
-                        res = mc_value_makenumber(-val);
+                        res = mcvalue_t::makeNumber(-val);
                         mc_vmintern_stackpush(state, res);
                     }
                     else
                     {
                         overloadfound = false;
-                        ok = mc_vmdo_tryoverloadoperator(state, operand, mc_value_makenull(), MC_OPCODE_MINUS, &overloadfound);
+                        ok = mc_vmdo_tryoverloadoperator(state, operand, mcvalue_t::makeNull(), MC_OPCODE_MINUS, &overloadfound);
                         if(!ok)
                         {
                             goto onexecerror;
@@ -16727,17 +16644,17 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, GenericList<
                     mcvaltype_t opertype;
                     mcvalue_t operand;
                     operand = mc_vm_stackpop(state);
-                    opertype = mc_value_gettype(operand);
+                    opertype = operand.getType();
                     if(opertype == MC_VAL_NUMBER)
                     {
                         val = mc_value_asnumber(operand);
-                        res = mc_value_makenumber(~val);
+                        res = mcvalue_t::makeNumber(~val);
                         mc_vmintern_stackpush(state, res);
                     }
                     else
                     {
                         overloadfound = false;
-                        ok = mc_vmdo_tryoverloadoperator(state, operand, mc_value_makenull(), MC_OPCODE_BINNOT, &overloadfound);
+                        ok = mc_vmdo_tryoverloadoperator(state, operand, mcvalue_t::makeNull(), MC_OPCODE_BINNOT, &overloadfound);
                         if(!ok)
                         {
                             goto onexecerror;
@@ -16758,28 +16675,28 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, GenericList<
                     mcvalue_t operand;
                     mcvaltype_t type;
                     operand = mc_vm_stackpop(state);
-                    type = mc_value_gettype(operand);
+                    type = operand.getType();
                     if(type == MC_VAL_BOOL)
                     {
-                        res = mc_value_makebool(!mc_value_asbool(operand));
+                        res = mcvalue_t::makeBool(!mc_value_asbool(operand));
                         mc_vmintern_stackpush(state, res);
                     }
                     else if(type == MC_VAL_NULL)
                     {
-                        res = mc_value_makebool(true);
+                        res = mcvalue_t::makeBool(true);
                         mc_vmintern_stackpush(state, res);
                     }
                     else
                     {
                         overloadfound = false;
-                        ok = mc_vmdo_tryoverloadoperator(state, operand, mc_value_makenull(), MC_OPCODE_BANG, &overloadfound);
+                        ok = mc_vmdo_tryoverloadoperator(state, operand, mcvalue_t::makeNull(), MC_OPCODE_BANG, &overloadfound);
                         if(!ok)
                         {
                             goto onexecerror;
                         }
                         if(!overloadfound)
                         {
-                            res = mc_value_makebool(false);
+                            res = mcvalue_t::makeBool(false);
                             mc_vmintern_stackpush(state, res);
                         }
                     }
@@ -16818,7 +16735,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, GenericList<
                 mc_vmmac_break();
             mcvm_case(MC_OPCODE_NULL):
                 {
-                    mc_vmintern_stackpush(state, mc_value_makenull());
+                    mc_vmintern_stackpush(state, mcvalue_t::makeNull());
                 }
                 mc_vmmac_break();
             mcvm_case(MC_OPCODE_DEFINEMODULEGLOBAL):
@@ -17035,7 +16952,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, GenericList<
                     mcvaltype_t type;
                     val = mc_vm_stackpop(state);
                     len = 0;
-                    type = mc_value_gettype(val);
+                    type = val.getType();
                     if(type == MC_VAL_ARRAY)
                     {
                         len = mc_value_arraygetlength(val);
@@ -17054,7 +16971,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, GenericList<
                         mc_state_pusherrorf(state, MC_ERROR_RUNTIME, mc_callframe_getpos(state->execstate.currframe), "cannot get length of %s", tname);
                         goto onexecerror;
                     }
-                    mc_vmintern_stackpush(state, mc_value_makenumber(len));
+                    mc_vmintern_stackpush(state, mcvalue_t::makeNumber(len));
                 }
                 mc_vmmac_break();
             mcvm_case(MC_OPCODE_NUMBER):
@@ -17064,7 +16981,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, GenericList<
                     mcvalue_t obj;
                     val = mc_callframe_readuint64(state->execstate.currframe);
                     dval = mc_util_uint64todouble(val);
-                    obj = mc_value_makenumber(dval);
+                    obj = mcvalue_t::makeNumber(dval);
                     mc_vmintern_stackpush(state, obj);
                 }
                 mc_vmmac_break();
@@ -17078,10 +16995,10 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, GenericList<
         }
     onexecerror:
         state->hadrecovered = false;
-        if(state->errors.count > 0)
+        if(state->errors.count() > 0)
         {
             err = state->errors.getLast();
-            if(err->m_errtype == MC_ERROR_RUNTIME && state->errors.count >= 1)
+            if(err->m_errtype == MC_ERROR_RUNTIME && state->errors.count() >= 1)
             {
                 recoverframeix = -1;
                 for(fri = state->execstate.framestack->count() - 1; fri >= 0; fri--)
@@ -17099,7 +17016,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, GenericList<
                 }
                 if(!err->m_traceback)
                 {
-                    err->m_traceback = mc_traceback_make(state);
+                    err->m_traceback = Memory::make<mctraceback_t>();
                 }
                 if(err->m_traceback)
                 {
@@ -17110,7 +17027,7 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, GenericList<
                     mc_vmintern_popframe(state);
                 }
                 errobj = mc_value_makeerror(state, err->m_message);
-                if(!mc_value_isnull(errobj))
+                if(!errobj.isNull())
                 {
                     mc_value_errorsettraceback(errobj, err->m_traceback);
                     err->m_traceback = nullptr;
@@ -17133,12 +17050,12 @@ bool mc_function_execfunction(mcstate_t* state, mcvalue_t function, GenericList<
     }
 
 onexecfinish:
-    if(state->errors.count > 0)
+    if(state->errors.count() > 0)
     {
         err = state->errors.getLast();
         if(!err->m_traceback)
         {
-            err->m_traceback = mc_traceback_make(state);
+            err->m_traceback = Memory::make<mctraceback_t>();
         }
         if(err->m_traceback)
         {
@@ -17147,7 +17064,7 @@ onexecfinish:
     }
     mc_vm_rungc(state, constants);
     state->running = false;
-    return state->errors.count == 0;
+    return state->errors.count() == 0;
 }
 
 
@@ -17165,10 +17082,10 @@ mcvalue_t mc_scriptfn_typeof(mcstate_t* state, void* data, mcvalue_t thisval, si
     (void)argc;
     if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     arg = args[0];
-    type = mc_value_gettype(arg);
+    type = arg.getType();
     ts = mc_valtype_getname(type);
     return mc_value_makestring(state, ts);
 }
@@ -17182,7 +17099,7 @@ mcvalue_t mc_scriptfn_arrayfirst(mcstate_t* state, void* data, mcvalue_t thisval
     (void)argc;
     if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY))
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     arg = args[0];
     return mc_value_arraygetvalue(arg, 0);
@@ -17198,7 +17115,7 @@ mcvalue_t mc_scriptfn_arraylast(mcstate_t* state, void* data, mcvalue_t thisval,
     (void)data;
     if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY))
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     arg = args[0];
     len = mc_value_arraygetlength(arg);
@@ -17219,18 +17136,18 @@ mcvalue_t mc_scriptfn_arrayrest(mcstate_t* state, void* data, mcvalue_t thisval,
     (void)data;
     if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY))
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     arg = args[0];
     len = mc_value_arraygetlength(arg);
     if(len == 0)
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     res = mc_value_makearray(state);
-    if(mc_value_isnull(res))
+    if(res.isNull())
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     for(i = 1; i < len; i++)
     {
@@ -17238,7 +17155,7 @@ mcvalue_t mc_scriptfn_arrayrest(mcstate_t* state, void* data, mcvalue_t thisval,
         ok = mc_value_arraypush(res, item);
         if(!ok)
         {
-            return mc_value_makenull();
+            return mcvalue_t::makeNull();
         }
     }
     return res;
@@ -17261,17 +17178,17 @@ mcvalue_t mc_scriptfn_reverse(mcstate_t* state, void* data, mcvalue_t thisval, s
     (void)data;
     if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY | MC_VAL_STRING))
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     arg = args[0];
-    type = mc_value_gettype(arg);
+    type = arg.getType();
     if(type == MC_VAL_ARRAY)
     {
         inplen = mc_value_arraygetlength(arg);
         res = mc_value_makearraycapacity(state, inplen);
-        if(mc_value_isnull(res))
+        if(res.isNull())
         {
-            return mc_value_makenull();
+            return mcvalue_t::makeNull();
         }
         for(i = 0; i < inplen; i++)
         {
@@ -17279,7 +17196,7 @@ mcvalue_t mc_scriptfn_reverse(mcstate_t* state, void* data, mcvalue_t thisval, s
             ok = mc_value_arraysetvalue(res, inplen - i - 1, obj);
             if(!ok)
             {
-                return mc_value_makenull();
+                return mcvalue_t::makeNull();
             }
         }
         return res;
@@ -17289,9 +17206,9 @@ mcvalue_t mc_scriptfn_reverse(mcstate_t* state, void* data, mcvalue_t thisval, s
         inpstr = mc_value_stringgetdata(arg);
         inplen = mc_value_stringgetlength(arg);
         res = mc_value_makestrcapacity(state, inplen);
-        if(mc_value_isnull(res))
+        if(res.isNull())
         {
-            return mc_value_makenull();
+            return mcvalue_t::makeNull();
         }
         resbuf = mc_value_stringgetmutabledata(res);
         for(i = 0; i < inplen; i++)
@@ -17302,7 +17219,7 @@ mcvalue_t mc_scriptfn_reverse(mcstate_t* state, void* data, mcvalue_t thisval, s
         mc_value_stringsetlength(res, inplen);
         return res;
     }
-    return mc_value_makenull();
+    return mcvalue_t::makeNull();
 }
 
 mcvalue_t mc_scriptfn_makearray(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
@@ -17320,21 +17237,21 @@ mcvalue_t mc_scriptfn_makearray(mcstate_t* state, void* data, mcvalue_t thisval,
     {
         if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
         {
-            return mc_value_makenull();
+            return mcvalue_t::makeNull();
         }
         capacity = (int)mc_value_asnumber(args[0]);
         res = mc_value_makearraycapacity(state, capacity);
-        if(mc_value_isnull(res))
+        if(res.isNull())
         {
-            return mc_value_makenull();
+            return mcvalue_t::makeNull();
         }
-        objnull = mc_value_makenull();
+        objnull = mcvalue_t::makeNull();
         for(i = 0; i < capacity; i++)
         {
             ok = mc_value_arraypush(res, objnull);
             if(!ok)
             {
-                return mc_value_makenull();
+                return mcvalue_t::makeNull();
             }
         }
         return res;
@@ -17343,26 +17260,26 @@ mcvalue_t mc_scriptfn_makearray(mcstate_t* state, void* data, mcvalue_t thisval,
     {
         if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER, MC_VAL_ANY))
         {
-            return mc_value_makenull();
+            return mcvalue_t::makeNull();
         }
         capacity = (int)mc_value_asnumber(args[0]);
         res = mc_value_makearraycapacity(state, capacity);
-        if(mc_value_isnull(res))
+        if(res.isNull())
         {
-            return mc_value_makenull();
+            return mcvalue_t::makeNull();
         }
         for(i = 0; i < capacity; i++)
         {
             ok = mc_value_arraypush(res, args[1]);
             if(!ok)
             {
-                return mc_value_makenull();
+                return mcvalue_t::makeNull();
             }
         }
         return res;
     }
     mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER);
-    return mc_value_makenull();
+    return mcvalue_t::makeNull();
 }
 
 mcvalue_t mc_scriptfn_externalfn(mcstate_t* state, void *data, mcvalue_t thisval, size_t argc, mcvalue_t *args)
@@ -17374,7 +17291,7 @@ mcvalue_t mc_scriptfn_externalfn(mcstate_t* state, void *data, mcvalue_t thisval
     (void)args;
     test = (int*)data;
     *test = 42;
-    return mc_value_makenull();
+    return mcvalue_t::makeNull();
 }
 
 mcvalue_t mc_scriptfn_vec2add(mcstate_t *state, void *data, mcvalue_t thisval, size_t argc, mcvalue_t *args)
@@ -17392,7 +17309,7 @@ mcvalue_t mc_scriptfn_vec2add(mcstate_t *state, void *data, mcvalue_t thisval, s
     (void)data;
     if (!mc_argcheck_check(state, true, argc, args, MC_VAL_MAP, MC_VAL_MAP))
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     keyx = mc_value_makestring(state, "x");
     keyy = mc_value_makestring(state, "y");
@@ -17401,12 +17318,12 @@ mcvalue_t mc_scriptfn_vec2add(mcstate_t *state, void *data, mcvalue_t thisval, s
     b_x = mc_value_asnumber(mc_value_mapgetvalue(args[1], keyx));
     b_y = mc_value_asnumber(mc_value_mapgetvalue(args[1], keyy));
     res = mc_value_makemap(state);
-    if (mc_value_gettype(res) == MC_VAL_NULL)
+    if (res.getType() == MC_VAL_NULL)
     {
         return res;
     }
-    mc_value_mapsetvalue(res, keyx, mc_value_makenumber(a_x + b_x));
-    mc_value_mapsetvalue(res, keyy, mc_value_makenumber(a_y + b_y));
+    mc_value_mapsetvalue(res, keyx, mcvalue_t::makeNumber(a_x + b_x));
+    mc_value_mapsetvalue(res, keyy, mcvalue_t::makeNumber(a_y + b_y));
     return res;
 }
 
@@ -17425,7 +17342,7 @@ mcvalue_t mc_scriptfn_vec2sub(mcstate_t *state, void *data, mcvalue_t thisval, s
     (void)data;
     if (!mc_argcheck_check(state, true, argc, args, MC_VAL_MAP, MC_VAL_MAP))
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     keyx = mc_value_makestring(state, "x");
     keyy = mc_value_makestring(state, "y");
@@ -17434,8 +17351,8 @@ mcvalue_t mc_scriptfn_vec2sub(mcstate_t *state, void *data, mcvalue_t thisval, s
     b_x = mc_value_asnumber(mc_value_mapgetvalue(args[1], keyx));
     b_y = mc_value_asnumber(mc_value_mapgetvalue(args[1], keyy));
     res = mc_value_makemap(state);
-    mc_value_mapsetvalue(res, keyx, mc_value_makenumber(a_x - b_x));
-    mc_value_mapsetvalue(res, keyy, mc_value_makenumber(a_y - b_y));
+    mc_value_mapsetvalue(res, keyx, mcvalue_t::makeNumber(a_x - b_x));
+    mc_value_mapsetvalue(res, keyy, mcvalue_t::makeNumber(a_y - b_y));
     return res;
 }
 
@@ -17455,9 +17372,9 @@ mcvalue_t mc_scriptfn_testcheckargs(mcstate_t* state, void *data, mcvalue_t this
                   MC_VAL_FUNCSCRIPT | MC_VAL_FUNCNATIVE,
                   MC_VAL_ANY))
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
-    return mc_value_makenumber(42);
+    return mcvalue_t::makeNumber(42);
 }
 
 
@@ -17476,25 +17393,25 @@ mcvalue_t mc_scriptfn_maketestdict(mcstate_t *state, void *data, mcvalue_t thisv
     if (argc != 1)
     {
         mc_state_setruntimeerrorf(state, "invalid type passed to maketestdict, got %d, expected 1", argc);
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }    
-    if (mc_value_gettype(args[0]) != MC_VAL_NUMBER)
+    if (args[0].getType() != MC_VAL_NUMBER)
     {
-        tname = mc_value_objtypename(mc_value_gettype(args[0]));
+        tname = mc_value_objtypename(args[0].getType());
         mc_state_setruntimeerrorf(state, "invalid type passed to maketestdict, got %s", tname);
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     numitems = mc_value_asnumber(args[0]);
     res = mc_value_makemap(state);
-    if (mc_value_gettype(res) == MC_VAL_NULL)
+    if (res.getType() == MC_VAL_NULL)
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     for (i = 0; i < numitems; i++)
     {
         blen = sprintf(keybuf, "%d", i);
         key = mc_value_makestringlen(state, keybuf, blen);
-        val = mc_value_makenumber(i);
+        val = mcvalue_t::makeNumber(i);
         mc_value_mapsetvalue(res, key, val);
     }
     return res;
@@ -17511,13 +17428,13 @@ mcvalue_t mc_scriptfn_squarearray(mcstate_t *state, void *data, mcvalue_t thisva
     res = mc_value_makearraycapacity(state, argc);
     for(i = 0; i < argc; i++)
     {
-        if(mc_value_gettype(args[i]) != MC_VAL_NUMBER)
+        if(args[i].getType() != MC_VAL_NUMBER)
         {
             mc_state_setruntimeerrorf(state, "invalid type passed to squarearray");
-            return mc_value_makenull();
+            return mcvalue_t::makeNull();
         }
         num = mc_value_asnumber(args[i]);
-        resitem = mc_value_makenumber(num * num);
+        resitem = mcvalue_t::makeNumber(num * num);
         mc_value_arraypush(res, resitem);
     }
     return res;
@@ -17537,7 +17454,7 @@ mcvalue_t mc_scriptfn_print(mcstate_t* state, void* data, mcvalue_t thisval, siz
         arg = args[i];
         mc_printer_printvalue(pr, arg, false);
     }
-    return mc_value_makenull();
+    return mcvalue_t::makeNull();
 }
 
 mcvalue_t mc_scriptfn_println(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
@@ -17561,12 +17478,12 @@ mcvalue_t mc_scriptfn_tostring(mcstate_t* state, void* data, mcvalue_t thisval, 
     (void)data;
     (void)thisval;
     arg = args[0];
-    Printer::initFromStack(&pr, state, nullptr, true);
+    Printer::initFromStack(&pr, nullptr, true);
     mc_printer_printvalue(&pr, arg, false);
     if(pr.m_prfailed)
     {
         Printer::releaseFromPtr(&pr, true);
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     resstr = pr.getString();
     reslen = pr.getLength();
@@ -17587,14 +17504,14 @@ mcvalue_t mc_nsfnjson_stringify(mcstate_t* state, void* data, mcvalue_t thisval,
     (void)data;
     (void)thisval;
     arg = args[0];
-    Printer::initFromStack(&pr, state, nullptr, true);
+    Printer::initFromStack(&pr, nullptr, true);
     pr.m_prconfig.verbosefunc = false;
     pr.m_prconfig.quotstring = true;
     mc_printer_printvalue(&pr, arg, false);
     if(pr.m_prfailed)
     {
         Printer::releaseFromPtr(&pr, true);
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     resstr = pr.getString();
     reslen = pr.getLength();
@@ -17625,7 +17542,7 @@ mcvalue_t mc_objfnstring_length(mcstate_t* state, void* data, mcvalue_t thisval,
     (void)argc;
     (void)args;
     len = mc_value_stringgetlength(thisval);
-    return mc_value_makenumber(len);
+    return mcvalue_t::makeNumber(len);
 }
 
 /**
@@ -17654,10 +17571,10 @@ mcvalue_t mc_objfnstring_indexof(mcstate_t* state, void* data, mcvalue_t thisval
     (void)argc;
     startindex = 0;
     searchval = args[0];
-    searchtype = mc_value_gettype(searchval);
+    searchtype = searchval.getType();
     if(searchtype == MC_VAL_NULL)
     {
-        return mc_value_makenumber(-1);
+        return mcvalue_t::makeNumber(-1);
     }
     searchstr = nullptr;
     searchlen = 0;
@@ -17679,9 +17596,9 @@ mcvalue_t mc_objfnstring_indexof(mcstate_t* state, void* data, mcvalue_t thisval
     result = (char*)strstr(inpstr + startindex, searchstr);
     if(result == nullptr)
     {
-        return mc_value_makenumber(-1);
+        return mcvalue_t::makeNumber(-1);
     }
-    return mc_value_makenumber(result - inpstr);
+    return mcvalue_t::makeNumber(result - inpstr);
 }
 
 mcvalue_t mc_objfnstring_charcodefirst(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
@@ -17703,7 +17620,7 @@ mcvalue_t mc_objfnstring_charcodefirst(mcstate_t* state, void* data, mcvalue_t t
     {
         ch = str[0];
     }
-    return mc_value_makenumber(ch);
+    return mcvalue_t::makeNumber(ch);
 }
 
 
@@ -17725,10 +17642,10 @@ mcvalue_t mc_objfnstring_charcodeat(mcstate_t* state, void* data, mcvalue_t this
     idx = mc_value_asnumber(args[0]);
     if(idx >= (long)len)
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     ch = str[idx];
-    return mc_value_makenumber(ch);
+    return mcvalue_t::makeNumber(ch);
 }
 
 
@@ -17750,7 +17667,7 @@ mcvalue_t mc_objfnstring_charat(mcstate_t* state, void* data, mcvalue_t thisval,
     idx = mc_value_asnumber(args[0]);
     if(idx >= (long)len)
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     ch = str[idx];
     return mc_value_makestringlen(state, &ch, 1);
@@ -17798,10 +17715,10 @@ mcvalue_t mc_objfnstring_tonumber(mcstate_t* state, void* data, mcvalue_t thisva
     {
         goto err;
     }
-    return mc_value_makenumber(result);
+    return mcvalue_t::makeNumber(result);
 err:
     mc_state_pusherrorf(state, MC_ERROR_RUNTIME, srcposinvalid, "cannot convert \"%s\" to number", string);
-    return mc_value_makenull();
+    return mcvalue_t::makeNull();
 }
 
 /**
@@ -17822,7 +17739,7 @@ mcvalue_t mc_objfnstring_left(mcstate_t* state, void* data, mcvalue_t thisval, s
     mcvalue_t inpval;
     mcvalue_t posval;
     (void)data;
-    if(argc > 0 && mc_value_gettype(args[0]) == MC_VAL_NUMBER)
+    if(argc > 0 && args[0].getType() == MC_VAL_NUMBER)
     {
         inpval = thisval;
         posval = args[0];
@@ -17840,15 +17757,15 @@ mcvalue_t mc_objfnstring_left(mcstate_t* state, void* data, mcvalue_t thisval, s
         result = (char*)mc_memory_malloc(startpos + 1);
         if(result == nullptr)
         {
-            return mc_value_makenull();
+            return mcvalue_t::makeNull();
         }
         strncpy(result, inpstr, startpos);
         result[startpos] = '\0';
         obj = mc_value_makestringlen(state, result, startpos);
-        free(result);
+        mc_memory_free(result);
         return obj;
     }
-    return mc_value_makenull();
+    return mcvalue_t::makeNull();
 }
 
 /**
@@ -17871,7 +17788,7 @@ mcvalue_t mc_objfnstring_right(mcstate_t* state, void* data, mcvalue_t thisval, 
     mcvalue_t idxval;
     (void)data;
     (void)thisval;
-    if(argc > 0 && mc_value_gettype(args[1]) == MC_VAL_NUMBER)
+    if(argc > 0 && args[1].getType() == MC_VAL_NUMBER)
     {
         inpval = thisval;
         idxval = args[0];
@@ -17889,16 +17806,16 @@ mcvalue_t mc_objfnstring_right(mcstate_t* state, void* data, mcvalue_t thisval, 
         result = (char*)mc_memory_malloc(startpos + 1);
         if(result == nullptr)
         {
-            return mc_value_makenull();
+            return mcvalue_t::makeNull();
         }
         strlength = inplen;
         strncpy(result, inpstr + strlength - startpos, startpos);
         result[startpos] = '\0';
         obj = mc_value_makestringlen(state, result, startpos);
-        free(result);
+        mc_memory_free(result);
         return obj;
     }
-    return mc_value_makenull();
+    return mcvalue_t::makeNull();
 }
 
 /**
@@ -17929,7 +17846,7 @@ mcvalue_t mc_objfnstring_replaceall(mcstate_t* state, void* data, mcvalue_t this
     mcvalue_t repval;
     (void)data;
     (void)argc;
-    if(mc_value_gettype(args[0]) == MC_VAL_STRING && mc_value_gettype(args[1]) == MC_VAL_STRING)
+    if(args[0].getType() == MC_VAL_STRING && args[1].getType() == MC_VAL_STRING)
     {
         inpval = thisval;
         searchval = args[0];
@@ -17953,7 +17870,7 @@ mcvalue_t mc_objfnstring_replaceall(mcstate_t* state, void* data, mcvalue_t this
         result = (char*)mc_memory_malloc(newlen);
         if(result == nullptr)
         {
-            return mc_value_makenull();
+            return mcvalue_t::makeNull();
         }
         /* Replace all instances of searchstr with replacestr */
         ptr = result;
@@ -17969,10 +17886,10 @@ mcvalue_t mc_objfnstring_replaceall(mcstate_t* state, void* data, mcvalue_t this
         /* Copy remaining part of inpstr */
         strcpy(ptr, inpstr);
         obj = mc_value_makestring(state, result);
-        free(result);
+        mc_memory_free(result);
         return obj;
     }
-    return mc_value_makenull();
+    return mcvalue_t::makeNull();
 }
 
 /**
@@ -18001,7 +17918,7 @@ mcvalue_t mc_objfnstring_replacefirst(mcstate_t* state, void* data, mcvalue_t th
     mcvalue_t searchval;
     (void)data;
     (void)argc;
-    if(mc_value_gettype(args[0]) == MC_VAL_STRING && mc_value_gettype(args[1]) == MC_VAL_STRING)
+    if(args[0].getType() == MC_VAL_STRING && args[1].getType() == MC_VAL_STRING)
     {
         inpval = thisval;
         searchval = args[0];
@@ -18022,7 +17939,7 @@ mcvalue_t mc_objfnstring_replacefirst(mcstate_t* state, void* data, mcvalue_t th
         result = (char*)mc_memory_malloc(newlen + 1);
         if(result == nullptr)
         {
-            return mc_value_makenull();
+            return mcvalue_t::makeNull();
         }
         /* Replace the first instance of searchstr with replacestr */
         len = temp - inpstr;
@@ -18030,10 +17947,10 @@ mcvalue_t mc_objfnstring_replacefirst(mcstate_t* state, void* data, mcvalue_t th
         strcpy(result + len, replacestr);
         strcpy(result + len + replacelen, temp + searchlen);
         obj = mc_value_makestringlen(state, result, len);
-        free(result);
+        mc_memory_free(result);
         return obj;
     }
-    return mc_value_makenull();
+    return mcvalue_t::makeNull();
 }
 
 /**
@@ -18093,7 +18010,7 @@ mcvalue_t mc_objfnstring_trim(mcstate_t* state, void* data, mcvalue_t thisval, s
     }
     result[k] = '\0';
     obj = mc_value_makestringlen(state, result, k);
-    free(result);
+    mc_memory_free(result);
     return obj;
 }
 
@@ -18123,7 +18040,7 @@ mcvalue_t mc_objfnstring_matchhelper(mcstate_t* state, void* data, mcvalue_t thi
         flags |= STRFNM_FLAG_CASEFOLD;
     }
     r  = strfnm_match(patstr, patlen, inpstr, inplen, flags);
-    return mc_value_makebool(r);
+    return mcvalue_t::makeBool(r);
 }
 
 mcvalue_t mc_objfnstring_matchglobcase(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
@@ -18149,7 +18066,7 @@ mcvalue_t mc_objfnstring_tolower(mcstate_t* state, void* data, mcvalue_t thisval
     inpstr = mc_value_stringgetdata(inpval);
     inplen = mc_value_stringgetlength(inpval);
     resstr = mc_value_makestringlen(state, inpstr, inplen);
-    mc_value_getallocateddata(resstr)->uvobj.valstring.strbuf->toLowercase();
+    resstr.getAllocatedData()->uvobj.valstring.strbuf->toLowercase();
     return resstr;
 }
 
@@ -18167,7 +18084,7 @@ mcvalue_t mc_objfnstring_toupper(mcstate_t* state, void* data, mcvalue_t thisval
     inpstr = mc_value_stringgetdata(inpval);
     inplen = mc_value_stringgetlength(inpval);
     resstr = mc_value_makestringlen(state, inpstr, inplen);
-    mc_value_getallocateddata(resstr)->uvobj.valstring.strbuf->toUppercase();
+    resstr.getAllocatedData()->uvobj.valstring.strbuf->toUppercase();
 
     return resstr;
     
@@ -18181,7 +18098,7 @@ mcvalue_t mc_objfnarray_length(mcstate_t* state, void* data, mcvalue_t thisval, 
     (void)argc;
     (void)args;
     len = mc_value_arraygetlength(thisval);
-    return mc_value_makenumber(len);
+    return mcvalue_t::makeNumber(len);
 }
 
 void mc_vm_savestate(mcstate_t* state, mcexecstate_t* est)
@@ -18215,7 +18132,7 @@ mcvalue_t mc_vm_callvalue(mcstate_t* state, GenericList<mcvalue_t>* constants, m
     {
         constants = mc_compiler_getconstants(state->compiler);
     }
-    type = mc_value_gettype(callee);
+    type = callee.getType();
     if(type == MC_VAL_FUNCSCRIPT)
     {
         //mc_callframe_init(&tempframe, callee, 0);
@@ -18234,7 +18151,7 @@ mcvalue_t mc_vm_callvalue(mcstate_t* state, GenericList<mcvalue_t>* constants, m
         if(!ok)
         {
             mc_vm_restorestate(state, &est);
-            return mc_value_makenull();
+            return mcvalue_t::makeNull();
         }
         #if 1
         while(state->execstate.framestack->count() > oldframescount)
@@ -18252,7 +18169,7 @@ mcvalue_t mc_vm_callvalue(mcstate_t* state, GenericList<mcvalue_t>* constants, m
         return mc_vm_callnativefunction(state, callee, srcposinvalid, thisval, argc, args);
     }
     state->errors.pushFormat(MC_ERROR_USER, srcposinvalid, "object is not callable");
-    return mc_value_makenull();
+    return mcvalue_t::makeNull();
 }
 
 mcvalue_t mc_objfnarray_map(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
@@ -18278,7 +18195,7 @@ mcvalue_t mc_objfnarray_map(mcstate_t* state, void* data, mcvalue_t thisval, siz
     {
         val = ary->get(i);
         vargs[0] = val;
-        vargs[1] = mc_value_makenumber(i);
+        vargs[1] = mcvalue_t::makeNumber(i);
         res = mc_vm_callvalue(state, nullptr, callee, thisval, 1, vargs);
         nary->push(res);
     }
@@ -18296,18 +18213,18 @@ mcvalue_t mc_objfnarray_push(mcstate_t* state, void* data, mcvalue_t thisval, si
     (void)data;
     if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY, MC_VAL_ANY))
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     for(i=0; i<argc; i++)
     {
         ok = mc_value_arraypush(thisval, args[i]);
         if(!ok)
         {
-            return mc_value_makenull();
+            return mcvalue_t::makeNull();
         }
     }
     len = mc_value_arraygetlength(thisval);
-    return mc_value_makenumber(len);
+    return mcvalue_t::makeNumber(len);
 }
 
 mcvalue_t mc_objfnarray_pop(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
@@ -18319,7 +18236,7 @@ mcvalue_t mc_objfnarray_pop(mcstate_t* state, void* data, mcvalue_t thisval, siz
     (void)data;
     if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY, MC_VAL_ANY))
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     val = mc_valarray_pop(thisval);
     return val;
@@ -18344,7 +18261,7 @@ mcvalue_t mc_objfnarray_join(mcstate_t* state, void* data, mcvalue_t thisval, si
     havejoinee = false;
     if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY, MC_VAL_ANY))
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     array= thisval;
     if(argc > 0)
@@ -18353,7 +18270,7 @@ mcvalue_t mc_objfnarray_join(mcstate_t* state, void* data, mcvalue_t thisval, si
         joinee = args[0];
     }
     alen = mc_value_arraygetlength(array);
-    Printer::initFromStack(&pr, state, nullptr, true);
+    Printer::initFromStack(&pr, nullptr, true);
     for(i=0; i<alen; i++)
     {
         item = mc_value_arraygetvalue(array, i);
@@ -18381,7 +18298,7 @@ mcvalue_t mc_objfnmap_length(mcstate_t* state, void* data, mcvalue_t thisval, si
     (void)argc;
     (void)args;
     len = mc_value_mapgetlength(thisval);
-    return mc_value_makenumber(len);
+    return mcvalue_t::makeNumber(len);
 }
 
 mcvalue_t mc_objfnutil_istype(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args, mcvaltype_t vt)
@@ -18390,7 +18307,7 @@ mcvalue_t mc_objfnutil_istype(mcstate_t* state, void* data, mcvalue_t thisval, s
     (void)state;
     (void)argc;
     (void)args;
-    return mc_value_makebool(mc_value_gettype(thisval) == vt);
+    return mcvalue_t::makeBool(thisval.getType() == vt);
 }
 
 mcvalue_t mc_objfnobject_iscallable(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
@@ -18399,7 +18316,7 @@ mcvalue_t mc_objfnobject_iscallable(mcstate_t* state, void* data, mcvalue_t this
     (void)state;
     (void)argc;
     (void)args;
-    return mc_value_makebool(mc_value_iscallable(thisval));
+    return mcvalue_t::makeBool(thisval.isCallable());
 }
 
 mcvalue_t mc_objfnobject_isstring(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
@@ -18456,54 +18373,54 @@ void mc_state_makestdclasses(mcstate_t* state)
 {
     {
         state->stdobjobject = mc_class_make(state, "Object", true);
-        mc_class_addmember(state, state->stdobjobject, "isString", mc_objfnobject_isstring);
-        mc_class_addmember(state, state->stdobjobject, "isNumber", mc_objfnobject_isnumber);
-        mc_class_addmember(state, state->stdobjobject, "isArray", mc_objfnobject_isarray);
-        mc_class_addmember(state, state->stdobjobject, "isMap", mc_objfnobject_ismap);
-        mc_class_addmember(state, state->stdobjobject, "isFuncNative", mc_objfnobject_isfuncnative);
-        mc_class_addmember(state, state->stdobjobject, "isFuncScript", mc_objfnobject_isfuncscript);
-        mc_class_addmember(state, state->stdobjobject, "isExternal", mc_objfnobject_isexternal);
-        mc_class_addmember(state, state->stdobjobject, "isError", mc_objfnobject_iserror);
-        mc_class_addmember(state, state->stdobjobject, "isNull", mc_objfnobject_isnull);
-        mc_class_addmember(state, state->stdobjobject, "isBool", mc_objfnobject_isbool);
-        mc_class_addmember(state, state->stdobjobject, "isCallable", mc_objfnobject_iscallable);
+        mc_class_addmember(state->stdobjobject, "isString", mc_objfnobject_isstring);
+        mc_class_addmember(state->stdobjobject, "isNumber", mc_objfnobject_isnumber);
+        mc_class_addmember(state->stdobjobject, "isArray", mc_objfnobject_isarray);
+        mc_class_addmember(state->stdobjobject, "isMap", mc_objfnobject_ismap);
+        mc_class_addmember(state->stdobjobject, "isFuncNative", mc_objfnobject_isfuncnative);
+        mc_class_addmember(state->stdobjobject, "isFuncScript", mc_objfnobject_isfuncscript);
+        mc_class_addmember(state->stdobjobject, "isExternal", mc_objfnobject_isexternal);
+        mc_class_addmember(state->stdobjobject, "isError", mc_objfnobject_iserror);
+        mc_class_addmember(state->stdobjobject, "isNull", mc_objfnobject_isnull);
+        mc_class_addmember(state->stdobjobject, "isBool", mc_objfnobject_isbool);
+        mc_class_addmember(state->stdobjobject, "isCallable", mc_objfnobject_iscallable);
 
     }
     {
         state->stdobjnumber = mc_class_make(state, "Number", false);
-        mc_class_addmember(state, state->stdobjnumber, "chr", mc_objfnnumber_chr);
+        mc_class_addmember(state->stdobjnumber, "chr", mc_objfnnumber_chr);
         
     }
     {
         state->stdobjstring = mc_class_make(state, "String", false);
-        mc_class_addpseudo(state, state->stdobjstring, "length", mc_objfnstring_length);
-        mc_class_addmember(state, state->stdobjstring, "getself", mc_objfnstring_getself);
-        mc_class_addmember(state, state->stdobjstring, "toNumber", mc_objfnstring_tonumber);
-        mc_class_addmember(state, state->stdobjstring, "ord", mc_objfnstring_charcodefirst);
-        mc_class_addmember(state, state->stdobjstring, "charCodeAt", mc_objfnstring_charcodeat);
-        mc_class_addmember(state, state->stdobjstring, "charAt", mc_objfnstring_charat);
-        mc_class_addmember(state, state->stdobjstring, "indexOf", mc_objfnstring_indexof);
-        mc_class_addmember(state, state->stdobjstring, "left", mc_objfnstring_left);
-        mc_class_addmember(state, state->stdobjstring, "right", mc_objfnstring_right);
-        mc_class_addmember(state, state->stdobjstring, "replace", mc_objfnstring_replaceall);
-        mc_class_addmember(state, state->stdobjstring, "replacefirst", mc_objfnstring_replacefirst);
-        mc_class_addmember(state, state->stdobjstring, "match", mc_objfnstring_matchglobcase);
-        mc_class_addmember(state, state->stdobjstring, "imatch", mc_objfnstring_matchglobicase);
-        mc_class_addmember(state, state->stdobjstring, "trim", mc_objfnstring_trim);
-        mc_class_addmember(state, state->stdobjstring, "toLower", mc_objfnstring_tolower);
-        mc_class_addmember(state, state->stdobjstring, "toUpper", mc_objfnstring_toupper);
+        mc_class_addpseudo(state->stdobjstring, "length", mc_objfnstring_length);
+        mc_class_addmember(state->stdobjstring, "getself", mc_objfnstring_getself);
+        mc_class_addmember(state->stdobjstring, "toNumber", mc_objfnstring_tonumber);
+        mc_class_addmember(state->stdobjstring, "ord", mc_objfnstring_charcodefirst);
+        mc_class_addmember(state->stdobjstring, "charCodeAt", mc_objfnstring_charcodeat);
+        mc_class_addmember(state->stdobjstring, "charAt", mc_objfnstring_charat);
+        mc_class_addmember(state->stdobjstring, "indexOf", mc_objfnstring_indexof);
+        mc_class_addmember(state->stdobjstring, "left", mc_objfnstring_left);
+        mc_class_addmember(state->stdobjstring, "right", mc_objfnstring_right);
+        mc_class_addmember(state->stdobjstring, "replace", mc_objfnstring_replaceall);
+        mc_class_addmember(state->stdobjstring, "replacefirst", mc_objfnstring_replacefirst);
+        mc_class_addmember(state->stdobjstring, "match", mc_objfnstring_matchglobcase);
+        mc_class_addmember(state->stdobjstring, "imatch", mc_objfnstring_matchglobicase);
+        mc_class_addmember(state->stdobjstring, "trim", mc_objfnstring_trim);
+        mc_class_addmember(state->stdobjstring, "toLower", mc_objfnstring_tolower);
+        mc_class_addmember(state->stdobjstring, "toUpper", mc_objfnstring_toupper);
     }
     {
         state->stdobjarray = mc_class_make(state, "Array", false);
-        mc_class_addpseudo(state, state->stdobjarray, "length", mc_objfnarray_length);
-        mc_class_addmember(state, state->stdobjarray, "push", mc_objfnarray_push);
-        mc_class_addmember(state, state->stdobjarray, "pop", mc_objfnarray_pop);
-        mc_class_addmember(state, state->stdobjarray, "join", mc_objfnarray_join);
-        mc_class_addmember(state, state->stdobjarray, "map", mc_objfnarray_map);
+        mc_class_addpseudo(state->stdobjarray, "length", mc_objfnarray_length);
+        mc_class_addmember(state->stdobjarray, "push", mc_objfnarray_push);
+        mc_class_addmember(state->stdobjarray, "pop", mc_objfnarray_pop);
+        mc_class_addmember(state->stdobjarray, "join", mc_objfnarray_join);
+        mc_class_addmember(state->stdobjarray, "map", mc_objfnarray_map);
     }
     {
         state->stdobjmap = mc_class_make(state, "Map", false);
-        mc_class_addpseudo(state, state->stdobjmap, "length", mc_objfnmap_length);
+        mc_class_addpseudo(state->stdobjmap, "length", mc_objfnmap_length);
     }
     {
         state->stdobjfunction = mc_class_make(state, "Function", false);
@@ -18520,7 +18437,7 @@ mcvalue_t mc_scriptfn_isnan(mcstate_t* state, void* data, mcvalue_t thisval, siz
     (void)thisval;
     if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     val = mc_value_asnumber(args[0]);
     b = false;
@@ -18528,7 +18445,7 @@ mcvalue_t mc_scriptfn_isnan(mcstate_t* state, void* data, mcvalue_t thisval, siz
     {
         b = true;
     }
-    return mc_value_makebool(b);
+    return mcvalue_t::makeBool(b);
 }
 
 mcvalue_t mc_scriptfn_range(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
@@ -18548,13 +18465,13 @@ mcvalue_t mc_scriptfn_range(mcstate_t* state, void* data, mcvalue_t thisval, siz
     (void)thisval;
     for(ai = 0; ai < argc; ai++)
     {
-        type = mc_value_gettype(args[ai]);
+        type = args[ai].getType();
         if(type != MC_VAL_NUMBER)
         {
             typestr = mc_valtype_getname(type);
             expectedstr = mc_valtype_getname(MC_VAL_NUMBER);
             mc_state_pusherrorf(state, MC_ERROR_RUNTIME, srcposinvalid, "invalid argument %d passed to range, got %s instead of %s", ai, typestr, expectedstr);
-            return mc_value_makenull();
+            return mcvalue_t::makeNull();
         }
     }
     start = 0;
@@ -18578,25 +18495,25 @@ mcvalue_t mc_scriptfn_range(mcstate_t* state, void* data, mcvalue_t thisval, siz
     else
     {
         mc_state_pusherrorf(state, MC_ERROR_RUNTIME, srcposinvalid, "invalid number of arguments passed to range, got %d", argc);
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     if(step == 0)
     {
         state->errors.pushFormat(MC_ERROR_RUNTIME, srcposinvalid, "range step cannot be 0");
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     res = mc_value_makearray(state);
-    if(mc_value_isnull(res))
+    if(res.isNull())
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     for(i = start; i < end; i += step)
     {
-        item = mc_value_makenumber(i);
+        item = mcvalue_t::makeNumber(i);
         ok = mc_value_arraypush(res, item);
         if(!ok)
         {
-            return mc_value_makenull();
+            return mcvalue_t::makeNull();
         }
     }
     return res;
@@ -18616,13 +18533,13 @@ mcvalue_t mc_scriptfn_keys(mcstate_t* state, void* data, mcvalue_t thisval, size
     (void)thisval;
     if(!mc_argcheck_check(state, true, argc, args, MC_VAL_MAP))
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     arg = args[0];
     res = mc_value_makearray(state);
-    if(mc_value_isnull(res))
+    if(res.isNull())
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     len = mc_value_mapgetlength(arg);
     for(i = 0; i < len; i++)
@@ -18631,7 +18548,7 @@ mcvalue_t mc_scriptfn_keys(mcstate_t* state, void* data, mcvalue_t thisval, size
         ok = mc_value_arraypush(res, key);
         if(!ok)
         {
-            return mc_value_makenull();
+            return mcvalue_t::makeNull();
         }
     }
     return res;
@@ -18651,13 +18568,13 @@ mcvalue_t mc_scriptfn_values(mcstate_t* state, void* data, mcvalue_t thisval, si
     (void)thisval;
     if(!mc_argcheck_check(state, true, argc, args, MC_VAL_MAP))
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     arg = args[0];
     res = mc_value_makearray(state);
-    if(mc_value_isnull(res))
+    if(res.isNull())
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     len = mc_value_mapgetlength(arg);
     for(i = 0; i < len; i++)
@@ -18666,7 +18583,7 @@ mcvalue_t mc_scriptfn_values(mcstate_t* state, void* data, mcvalue_t thisval, si
         ok = mc_value_arraypush(res, key);
         if(!ok)
         {
-            return mc_value_makenull();
+            return mcvalue_t::makeNull();
         }
     }
     return res;
@@ -18680,7 +18597,7 @@ mcvalue_t mc_scriptfn_copy(mcstate_t* state, void* data, mcvalue_t thisval, size
     (void)thisval;
     if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     return mc_value_copyflat(state, args[0]);
 }
@@ -18693,7 +18610,7 @@ mcvalue_t mc_scriptfn_copydeep(mcstate_t* state, void* data, mcvalue_t thisval, 
     (void)thisval;
     if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ANY))
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     return mc_value_copydeep(state, args[0]);
 }
@@ -18710,7 +18627,7 @@ mcvalue_t mc_scriptfn_remove(mcstate_t* state, void* data, mcvalue_t thisval, si
     (void)thisval;
     if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY, MC_VAL_ANY))
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     ix = -1;
     for(i = 0; i < mc_value_arraygetlength(args[0]); i++)
@@ -18724,10 +18641,10 @@ mcvalue_t mc_scriptfn_remove(mcstate_t* state, void* data, mcvalue_t thisval, si
     }
     if(ix == -1)
     {
-        return mc_value_makebool(false);
+        return mcvalue_t::makeBool(false);
     }
     res = mc_value_arrayremoveat(args[0], ix);
-    return mc_value_makebool(res);
+    return mcvalue_t::makeBool(res);
 }
 
 mcvalue_t mc_scriptfn_removeat(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
@@ -18741,16 +18658,16 @@ mcvalue_t mc_scriptfn_removeat(mcstate_t* state, void* data, mcvalue_t thisval, 
     (void)thisval;
     if(!mc_argcheck_check(state, true, argc, args, MC_VAL_ARRAY, MC_VAL_NUMBER))
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
-    type= mc_value_gettype(args[0]);
+    type= args[0].getType();
     ix = (int)mc_value_asnumber(args[1]);
     switch(type)
     {
         case MC_VAL_ARRAY:
             {
                 res = mc_value_arrayremoveat(args[0], ix);
-                return mc_value_makebool(res);
+                return mcvalue_t::makeBool(res);
             }
             break;
         default:
@@ -18758,14 +18675,14 @@ mcvalue_t mc_scriptfn_removeat(mcstate_t* state, void* data, mcvalue_t thisval, 
             }
             break;
     }
-    return mc_value_makebool(true);
+    return mcvalue_t::makeBool(true);
 }
 
 mcvalue_t mc_scriptfn_error(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
 {
     (void)data;
     (void)thisval;
-    if(argc == 1 && mc_value_gettype(args[0]) == MC_VAL_STRING)
+    if(argc == 1 && args[0].getType() == MC_VAL_STRING)
     {
         return mc_value_makeerror(state, mc_value_stringgetdata(args[0]));
     }
@@ -18776,7 +18693,7 @@ mcvalue_t mc_scriptfn_crash(mcstate_t* state, void* data, mcvalue_t thisval, siz
 {
     (void)data;
     (void)thisval;
-    if(argc == 1 && mc_value_gettype(args[0]) == MC_VAL_STRING)
+    if(argc == 1 && args[0].getType() == MC_VAL_STRING)
     {
         state->errors.pushMessage(MC_ERROR_RUNTIME, mc_callframe_getpos(state->execstate.currframe), mc_value_stringgetdata(args[0]));
     }
@@ -18784,7 +18701,7 @@ mcvalue_t mc_scriptfn_crash(mcstate_t* state, void* data, mcvalue_t thisval, siz
     {
         state->errors.pushMessage(MC_ERROR_RUNTIME, mc_callframe_getpos(state->execstate.currframe), "");
     }
-    return mc_value_makenull();
+    return mcvalue_t::makeNull();
 }
 
 mcvalue_t mc_scriptfn_assert(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
@@ -18795,14 +18712,14 @@ mcvalue_t mc_scriptfn_assert(mcstate_t* state, void* data, mcvalue_t thisval, si
     (void)thisval;
     if(!mc_argcheck_check(state, true, argc, args, MC_VAL_BOOL))
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     if(!mc_value_asbool(args[0]))
     {
         state->errors.pushFormat(MC_ERROR_RUNTIME, srcposinvalid, "assertion failed");
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
-    return mc_value_makebool(true);
+    return mcvalue_t::makeBool(true);
 }
 
 mcvalue_t mc_scriptfn_randseed(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
@@ -18814,11 +18731,11 @@ mcvalue_t mc_scriptfn_randseed(mcstate_t* state, void* data, mcvalue_t thisval, 
     (void)thisval;
     if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     seed = (int)mc_value_asnumber(args[0]);
     srand(seed);
-    return mc_value_makebool(true);
+    return mcvalue_t::makeBool(true);
 }
 
 mcvalue_t mc_scriptfn_random(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
@@ -18834,27 +18751,27 @@ mcvalue_t mc_scriptfn_random(mcstate_t* state, void* data, mcvalue_t thisval, si
     res = (mcfloat_t)rand() / RAND_MAX;
     if(argc == 0)
     {
-        return mc_value_makenumber(res);
+        return mcvalue_t::makeNumber(res);
     }
     if(argc == 2)
     {
         if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER, MC_VAL_NUMBER))
         {
-            return mc_value_makenull();
+            return mcvalue_t::makeNull();
         }
         min = mc_value_asnumber(args[0]);
         max = mc_value_asnumber(args[1]);
         if(min >= max)
         {
             state->errors.pushFormat(MC_ERROR_RUNTIME, srcposinvalid, "max is bigger than min");
-            return mc_value_makenull();
+            return mcvalue_t::makeNull();
         }
         range = max - min;
         res = min + (res * range);
-        return mc_value_makenumber(res);
+        return mcvalue_t::makeNumber(res);
     }
     state->errors.pushFormat(MC_ERROR_RUNTIME, srcposinvalid, "invalid number or arguments");
-    return mc_value_makenull();
+    return mcvalue_t::makeNull();
 }
 
 mcvalue_t mc_scriptutil_slicearray(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
@@ -18879,9 +18796,9 @@ mcvalue_t mc_scriptutil_slicearray(mcstate_t* state, void* data, mcvalue_t thisv
         }
     }
     res = mc_value_makearraycapacity(state, len - index);
-    if(mc_value_isnull(res))
+    if(res.isNull())
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     for(i = index; i < len; i++)
     {
@@ -18889,7 +18806,7 @@ mcvalue_t mc_scriptutil_slicearray(mcstate_t* state, void* data, mcvalue_t thisv
         ok = mc_value_arraypush(res, item);
         if(!ok)
         {
-            return mc_value_makenull();
+            return mcvalue_t::makeNull();
         }
     }
     return res;
@@ -18922,9 +18839,9 @@ mcvalue_t mc_scriptutil_slicestring(mcstate_t* state, void* data, mcvalue_t this
         return mc_value_makestringlen(state, "", 0);
     }
     res = mc_value_makestrcapacity(state, 10);
-    if(mc_value_isnull(res))
+    if(res.isNull())
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     for(i = index; i < len; i++)
     {
@@ -18944,9 +18861,9 @@ mcvalue_t mc_scriptfn_slice(mcstate_t* state, void* data, mcvalue_t thisval, siz
     (void)thisval;
     if(!mc_argcheck_check(state, true, argc, args, MC_VAL_STRING | MC_VAL_ARRAY, MC_VAL_NUMBER))
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
-    argtype = mc_value_gettype(args[0]);
+    argtype = args[0].getType();
     if(argtype == MC_VAL_ARRAY)
     {
         return mc_scriptutil_slicearray(state, data, thisval, argc, args);
@@ -18957,7 +18874,7 @@ mcvalue_t mc_scriptfn_slice(mcstate_t* state, void* data, mcvalue_t thisval, siz
     }
     typestr = mc_valtype_getname(argtype);
     mc_state_pusherrorf(state, MC_ERROR_RUNTIME, srcposinvalid, "invalid argument 0 passed to slice, got %s instead", typestr);
-    return mc_value_makenull();
+    return mcvalue_t::makeNull();
 }
 
 mcvalue_t mc_nsfnmath_sqrt(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
@@ -18970,11 +18887,11 @@ mcvalue_t mc_nsfnmath_sqrt(mcstate_t* state, void* data, mcvalue_t thisval, size
     (void)thisval;
     if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     arg = mc_value_asnumber(args[0]);
     res = sqrt(arg);
-    return mc_value_makenumber(res);
+    return mcvalue_t::makeNumber(res);
 }
 
 mcvalue_t mc_nsfnmath_pow(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
@@ -18988,12 +18905,12 @@ mcvalue_t mc_nsfnmath_pow(mcstate_t* state, void* data, mcvalue_t thisval, size_
     (void)thisval;
     if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER, MC_VAL_NUMBER))
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     arg1 = mc_value_asnumber(args[0]);
     arg2 = mc_value_asnumber(args[1]);
     res = pow(arg1, arg2);
-    return mc_value_makenumber(res);
+    return mcvalue_t::makeNumber(res);
 }
 
 mcvalue_t mc_nsfnmath_sin(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
@@ -19006,11 +18923,11 @@ mcvalue_t mc_nsfnmath_sin(mcstate_t* state, void* data, mcvalue_t thisval, size_
     (void)thisval;
     if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     arg = mc_value_asnumber(args[0]);
     res = sin(arg);
-    return mc_value_makenumber(res);
+    return mcvalue_t::makeNumber(res);
 }
 
 mcvalue_t mc_nsfnmath_cos(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
@@ -19023,11 +18940,11 @@ mcvalue_t mc_nsfnmath_cos(mcstate_t* state, void* data, mcvalue_t thisval, size_
     (void)thisval;
     if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     arg = mc_value_asnumber(args[0]);
     res = cos(arg);
-    return mc_value_makenumber(res);
+    return mcvalue_t::makeNumber(res);
 }
 
 mcvalue_t mc_nsfnmath_tan(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
@@ -19040,11 +18957,11 @@ mcvalue_t mc_nsfnmath_tan(mcstate_t* state, void* data, mcvalue_t thisval, size_
     (void)thisval;
     if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     arg = mc_value_asnumber(args[0]);
     res = tan(arg);
-    return mc_value_makenumber(res);
+    return mcvalue_t::makeNumber(res);
 }
 
 mcvalue_t mc_nsfnmath_log(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
@@ -19057,11 +18974,11 @@ mcvalue_t mc_nsfnmath_log(mcstate_t* state, void* data, mcvalue_t thisval, size_
     (void)thisval;
     if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     arg = mc_value_asnumber(args[0]);
     res = log(arg);
-    return mc_value_makenumber(res);
+    return mcvalue_t::makeNumber(res);
 }
 
 mcvalue_t mc_nsfnmath_ceil(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
@@ -19074,11 +18991,11 @@ mcvalue_t mc_nsfnmath_ceil(mcstate_t* state, void* data, mcvalue_t thisval, size
     (void)thisval;
     if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     arg = mc_value_asnumber(args[0]);
     res = ceil(arg);
-    return mc_value_makenumber(res);
+    return mcvalue_t::makeNumber(res);
 }
 
 mcvalue_t mc_nsfnmath_floor(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
@@ -19091,11 +19008,11 @@ mcvalue_t mc_nsfnmath_floor(mcstate_t* state, void* data, mcvalue_t thisval, siz
     (void)thisval;
     if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     arg = mc_value_asnumber(args[0]);
     res = floor(arg);
-    return mc_value_makenumber(res);
+    return mcvalue_t::makeNumber(res);
 }
 
 mcvalue_t mc_nsfnmath_abs(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
@@ -19108,11 +19025,11 @@ mcvalue_t mc_nsfnmath_abs(mcstate_t* state, void* data, mcvalue_t thisval, size_
     (void)thisval;
     if(!mc_argcheck_check(state, true, argc, args, MC_VAL_NUMBER))
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     arg = mc_value_asnumber(args[0]);
     res = MC_UTIL_FABS(arg);
-    return mc_value_makenumber(res);
+    return mcvalue_t::makeNumber(res);
 }
 
 mcvalue_t mc_nsfnfile_writefile(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
@@ -19127,13 +19044,13 @@ mcvalue_t mc_nsfnfile_writefile(mcstate_t* state, void* data, mcvalue_t thisval,
     (void)thisval;
     if(!mc_argcheck_check(state, true, argc, args, MC_VAL_STRING, MC_VAL_STRING))
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     path = mc_value_stringgetdata(args[0]);
     string = mc_value_stringgetdata(args[1]);
     slen = mc_value_stringgetlength(args[1]);
-    printedsz = mc_fsutil_filewrite(state, path, string, slen);
-    return mc_value_makenumber(printedsz);
+    printedsz = mc_fsutil_filewrite(path, string, slen);
+    return mcvalue_t::makeNumber(printedsz);
 }
 
 mcvalue_t mc_nsfnfile_readfile(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
@@ -19148,13 +19065,13 @@ mcvalue_t mc_nsfnfile_readfile(mcstate_t* state, void* data, mcvalue_t thisval, 
     (void)thisval;
     if(!mc_argcheck_check(state, true, argc, args, MC_VAL_STRING))
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     path = mc_value_stringgetdata(args[0]);
-    contents = mc_fsutil_fileread(state, path, &flen);
+    contents = mc_fsutil_fileread(path, &flen);
     if(!contents)
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     res = mc_value_makestringlen(state, contents, flen);
     mc_memory_free(contents);
@@ -19191,10 +19108,10 @@ mcvalue_t mc_nsfnfile_isdirectory(mcstate_t* state, void* data, mcvalue_t thisva
     (void)thisval;
     if(!mc_argcheck_check(state, true, argc, args, MC_VAL_STRING))
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     path = mc_value_stringgetdata(args[0]);
-    return mc_value_makebool(osfn_pathisdirectory(path));
+    return mcvalue_t::makeBool(osfn_pathisdirectory(path));
 }
 
 mcvalue_t mc_nsfnfile_isfile(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
@@ -19206,10 +19123,10 @@ mcvalue_t mc_nsfnfile_isfile(mcstate_t* state, void* data, mcvalue_t thisval, si
     (void)thisval;
     if(!mc_argcheck_check(state, true, argc, args, MC_VAL_STRING))
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     path = mc_value_stringgetdata(args[0]);
-    return mc_value_makebool(osfn_pathisfile(path));
+    return mcvalue_t::makeBool(osfn_pathisfile(path));
 }
 
 mcvalue_t mc_nsfnfile_stat(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
@@ -19225,24 +19142,24 @@ mcvalue_t mc_nsfnfile_stat(mcstate_t* state, void* data, mcvalue_t thisval, size
     char fpbuffer[1024];
     if(!mc_argcheck_check(state, true, argc, args, MC_VAL_STRING))
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     path = mc_value_stringgetdata(args[0]);
     if(stat(path, &st) == 0)
     {
         resmap = mc_value_makemap(state);
         fullpath = osfn_realpath(path, fpbuffer);
-        mc_value_mapsetvaluestring(resmap, "dev", mc_value_makenumber(st.st_dev));
-        mc_value_mapsetvaluestring(resmap, "ino", mc_value_makenumber(st.st_ino));
-        mc_value_mapsetvaluestring(resmap, "mode", mc_value_makenumber(st.st_mode));
-        mc_value_mapsetvaluestring(resmap, "nlink", mc_value_makenumber(st.st_nlink));
-        mc_value_mapsetvaluestring(resmap, "uid", mc_value_makenumber(st.st_uid));
-        mc_value_mapsetvaluestring(resmap, "gid", mc_value_makenumber(st.st_gid));
-        mc_value_mapsetvaluestring(resmap, "size", mc_value_makenumber(st.st_size));
+        mc_value_mapsetvaluestring(resmap, "dev", mcvalue_t::makeNumber(st.st_dev));
+        mc_value_mapsetvaluestring(resmap, "ino", mcvalue_t::makeNumber(st.st_ino));
+        mc_value_mapsetvaluestring(resmap, "mode", mcvalue_t::makeNumber(st.st_mode));
+        mc_value_mapsetvaluestring(resmap, "nlink", mcvalue_t::makeNumber(st.st_nlink));
+        mc_value_mapsetvaluestring(resmap, "uid", mcvalue_t::makeNumber(st.st_uid));
+        mc_value_mapsetvaluestring(resmap, "gid", mcvalue_t::makeNumber(st.st_gid));
+        mc_value_mapsetvaluestring(resmap, "size", mcvalue_t::makeNumber(st.st_size));
         mc_value_mapsetvaluestring(resmap, "path", mc_value_makestring(state, fullpath));
         return resmap;
     }
-    return mc_value_makenull();
+    return mcvalue_t::makeNull();
 }
 
 mcvalue_t mc_nsfndir_readdir(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
@@ -19264,7 +19181,7 @@ mcvalue_t mc_nsfndir_readdir(mcstate_t* state, void* data, mcvalue_t thisval, si
     joinpaths = false;
     if(!mc_argcheck_check(state, true, argc, args, MC_VAL_STRING, MC_VAL_BOOL))
     {
-        return mc_value_makenull();
+        return mcvalue_t::makeNull();
     }
     vpath = args[0];
     path = mc_value_stringgetdata(vpath);
@@ -19298,7 +19215,7 @@ mcvalue_t mc_nsfndir_readdir(mcstate_t* state, void* data, mcvalue_t thisval, si
         return res;
     }
     state->errors.pushMessage(MC_ERROR_RUNTIME, mc_callframe_getpos(state->execstate.currframe), strerror(errno));
-    return mc_value_makenull();
+    return mcvalue_t::makeNull();
 }
 
 mcvalue_t mc_nsfnvm_hadrecovered(mcstate_t* state, void* data, mcvalue_t thisval, size_t argc, mcvalue_t* args)
@@ -19307,7 +19224,7 @@ mcvalue_t mc_nsfnvm_hadrecovered(mcstate_t* state, void* data, mcvalue_t thisval
     (void)thisval;
     (void)argc;
     (void)args;
-    return mc_value_makebool(state->hadrecovered);
+    return mcvalue_t::makeBool(state->hadrecovered);
 }
 
 void mc_cli_installbuiltins(mcstate_t* state)
@@ -19439,7 +19356,7 @@ static int g_extfnvar;
 
 void mc_cli_installotherstuff(mcstate_t* state)
 {
-    mc_state_setglobalconstant(state, "test", mc_value_makenumber(42));
+    mc_state_setglobalconstant(state, "test", mcvalue_t::makeNumber(42));
     mc_state_setnativefunction(state, "external_fn_test", mc_scriptfn_externalfn, &g_extfnvar);
     mc_state_setnativefunction(state, "test_check_args", mc_scriptfn_testcheckargs, nullptr);
     mc_state_setnativefunction(state, "vec2_add", mc_scriptfn_vec2add, nullptr);
@@ -19490,7 +19407,7 @@ bool mc_cli_compileandrunfile(mcstate_t* state, const char* filename)
         return false;
     }
     ok = mc_cli_compileandrunsource(state, nullptr, code, filename);
-    free(code);
+    mc_memory_free(code);
     return ok;
 }
 
@@ -19521,7 +19438,7 @@ void mc_cli_printtypesizes()
     printtypesize(PtrDict);
     printtypesize(GenericDict<mcvalue_t, mcvalue_t>);
     printtypesize(PtrList);
-    printtypesize(mcprintconfig_t);
+    printtypesize(Printer::Config);
     printtypesize(Printer);
     printtypesize(mcerror_t);
     printtypesize(mctraceback_t);
@@ -19576,11 +19493,9 @@ void mc_cli_printtypesizes()
     printtypesize(AstLexer);
     printtypesize(AstLexInfo);
     printtypesize(mcvmframe_t);
-    printtypesize(mctraceitem_t);
+    printtypesize(mctraceback_t::Item);
     printtypesize(mcmodule_t);
     printtypesize(mcstoddiyfpconv_t);
-    printtypesize(mcvalunion_t);
-    printtypesize(mcobjunion_t);
     printtypesize(mcexprunion_t);
     printtypesize(int);
     printtypesize(uint16_t);
@@ -19617,7 +19532,7 @@ int main(int argc, char* argv[])
     evalcode = nullptr;
     ok = true;
     nargc = 0;
-    state = mc_state_make();
+    state = Memory::make<mcstate_t>();
     nargc = 0;
     optprs_init(&options, argc, argv);
     options.permute = 0;
@@ -19716,7 +19631,7 @@ int main(int argc, char* argv[])
         }
     }
     finished:
-    mc_state_destroy(state);
+    Memory::destroy(state);
     fprintf(stderr, "ok=%d\n", ok);
     if(ok)
     {
