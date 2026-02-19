@@ -1,4 +1,8 @@
 # don't actually include run, run.exe, run.elf*, etc
+CLAUDE.md
+.claude
+.claude/
+.claude/*
 jeopardy.json
 run
 run.*
