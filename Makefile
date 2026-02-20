@@ -28,7 +28,7 @@ allunflags = $(unflags)
 WFLAGS = -Wall -Wextra -Wshadow -Wpointer-arith -Wuninitialized -Winit-self  $(allunflags)
 #WFLAGS += -Wmaybe-uninitialized -Wjump-misses-init
 #WFLAGS += -ansi -pedantic
-WFLAGS += -Weffc++
+#WFLAGS += -Weffc++
 
 #WFLAGS = -w
 
@@ -53,8 +53,8 @@ EXTRAFLAGS =
 ### WARNING: can be quite verbose! prints unused sections, giving a better clue which functions can be removed.
 #EXTRAFLAGS += -fdata-sections -ffunction-sections -Wl,--gc-sections -Wl,--print-gc-sections
 
-#CXX = g++ -std=c++20 $(WFLAGS) $(EXTRAFLAGS)
-CXX = clang -gdwarf-4 -std=c++2c $(WFLAGS) $(EXTRAFLAGS)
+CXX = g++ -std=c++20 $(WFLAGS) $(EXTRAFLAGS)
+#CXX = clang++ -gdwarf-4 -std=c++2c $(WFLAGS) $(EXTRAFLAGS)
 CC = gcc $(WFLAGS) $(EXTRAFLAGS)
 #CC = tcc $(WFLAGS) $(EXTRAFLAGS)
 DEPCC = gcc

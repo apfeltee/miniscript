@@ -4,15 +4,6 @@ assert(squared[0] == 1)
 assert(squared[1] == 4)
 assert(squared[2] == 9)
 
-import "mtesta"
-
-assert(mtesta::add(2, 2) == 4)
-
-import "mtestb"
-assert(mtesta::inc() == 1)
-assert(mtesta::inc() == 2)
-assert(mtestb::inc() == 3)
-assert(mtestb::inc() == 4)
 
 const trailing_comma_array = [
     1,

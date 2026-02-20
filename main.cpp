@@ -60,9 +60,8 @@ THE SOFTWARE.
 #define MC_CONF_DEBUG 0
 #define MC_CONF_MINVMVALSTACKSIZE (4)
 #define MC_CONF_MINVMFRAMES (4)
-
-#define MC_CONF_MAXVMGLOBALS (4)
-#define MC_CONF_MINNATIVETHISSTACKSIZE (1024)
+#define MC_CONF_MINVMGLOBALS (4)
+#define MC_CONF_MINNATIVETHISSTACKSIZE (32)
 #define MC_CONF_MINVMTHISSTACKSIZE (MC_CONF_MINVMVALSTACKSIZE)
 #define MC_CONF_GCMEMPOOLSIZE (2048/16)
 #define MC_CONF_GCMEMPOOLCOUNT (3)
@@ -72,8 +71,9 @@ THE SOFTWARE.
 #define MC_CONF_GENERICDICTINVALIDIX (UINT_MAX)
 #define MC_CONF_VALDICTINVALIDIX (UINT_MAX)
 #define MC_CONF_GENERICDICTINITSIZE (32)
-
 #define MC_CONF_MAXOPEROVERLOADS (25)
+#define MC_CONF_FREEVALSCOUNT (4)
+
 
 #if !defined(__GNUC__)
     #define __attribute__(x)
@@ -114,7 +114,6 @@ THE SOFTWARE.
 #else
     #define MC_UTIL_INCCAPACITY(capacity) ((capacity) + 15) / 16 * 16;
 #endif
-
 
 
 typedef double mcfloat_t;
@@ -249,8 +248,6 @@ typedef struct mcobjdata_t mcobjdata_t;
 
 typedef struct mcconfig_t mcconfig_t;
 
-typedef struct mcvalcmpresult_t mcvalcmpresult_t;
-
 
 typedef struct mcobjuserdata_t mcobjuserdata_t;
 typedef struct mcobjerror_t mcobjerror_t;
@@ -290,6 +287,7 @@ class AstExpression;
 class Token;
 class SymStore;
 class ObjClass;
+template<typename> class GenericList;
 
 typedef Value (*mcnativefn_t)(State*, void*, Value, size_t, Value*);
 typedef size_t (*mcitemhashfn_t)(void*);
@@ -366,6 +364,8 @@ mcfloat_t mc_util_uint64todouble(uint64_t val)
 
 
 /* protos */
+MC_INLINE const char* mc_value_stringgetdata(Value object);
+
 void optprs_fprintmaybearg(FILE *out, const char *begin, const char *flagname, size_t flaglen, bool needval, bool maybeval, const char *delim);
 void optprs_fprintusage(FILE *out, optlongflags_t *flags);
 void optprs_printusage(char *argv[], optlongflags_t *flags, bool fail);
@@ -395,8 +395,6 @@ size_t mc_util_hashdata(const void *ptr, size_t len);
 size_t mc_util_hashdouble(mcfloat_t val);
 size_t mc_util_upperpowoftwo(size_t v);
 mcfloat_t mc_util_strtod(const char *str, size_t slen, char **endptr);
-PtrList *mc_util_splitstring(const char *str, const char *delimiter);
-char *mc_util_joinstringarray(PtrList *items, const char *joinee, size_t jlen);
 uint64_t mc_util_doubletouint64(mcfloat_t val);
 mcfloat_t mc_util_uint64todouble(uint64_t val);
 
@@ -416,8 +414,8 @@ mcobjuserdata_t *mc_value_userdatagetdata(Value object);
 bool mc_value_userdatasetdata(Value object, void *extdata);
 bool mc_value_userdatasetdestroyfunction(Value object, mcitemdestroyfn_t dfn);
 bool mc_value_userdatasetcopyfunction(Value object, mcitemcopyfn_t copyfn);
-bool mc_value_asbool(Value obj);
-mcfloat_t mc_value_asnumber(Value obj);
+
+
 int mc_value_stringgetlength(Value object);
 void mc_value_stringsetlength(Value object, int len);
 bool mc_value_stringappendlen(Value obj, const char *src, size_t len);
@@ -425,7 +423,7 @@ bool mc_value_stringappend(Value obj, const char *src);
 bool mc_value_stringappendvalue(Value destval, Value val);
 size_t mc_value_stringgethash(Value obj);
 bool mc_value_stringrehash(Value obj);
-mcobjfunction_t *mc_value_asscriptfunction(Value object);
+
 const char *mc_value_functiongetname(Value obj);
 Value mc_value_functiongetfreevalat(Value obj, int ix);
 void mc_value_functionsetfreevalat(Value obj, int ix, Value val);
@@ -450,10 +448,8 @@ Value mc_value_mapgetvalue(Value object, Value key);
 bool mc_value_mapgetvaluechecked(Value object, Value key, Value *dest);
 bool mc_value_maphaskey(Value object, Value key);
 void mc_objectdata_deinit(mcobjdata_t *data);
-bool mc_value_callbackequals(Value *aptr, Value *bptr);
-size_t mc_value_callbackhash(Value *objptr);
-Value mc_value_copydeep(State *state, Value obj);
-Value mc_value_copyflat(State *state, Value obj);
+
+
 bool mc_printutil_bcreadoperands(mcopdefinition_t *def, const uint16_t *instr, uint64_t outoperands[2]);
 void mc_printer_printoneinstruc(Printer *pr, uint16_t *code, uint16_t op, size_t *pos, AstLocation *sposlist, bool simple);
 void mc_printer_printbytecode(Printer *pr, uint16_t *code, AstLocation *sposlist, size_t codesize, bool simple);
@@ -465,8 +461,6 @@ void mc_printer_printobjerror(Printer *pr, Value obj);
 void mc_consolecolor_init(mcconsolecolor_t *mcc, int fd);
 const char *mc_consolecolor_get(mcconsolecolor_t *mcc, char code);
 void mc_printer_printvalue(Printer *pr, Value obj, bool accurate);
-
-GCMemory *mc_value_getmem(Value obj);
 
 MC_FORCEINLINE mcshiftint_t mc_mathutil_binshiftleft(mcfloat_t dnleft, mcfloat_t dnright);
 MC_FORCEINLINE mcshiftint_t mc_mathutil_binshiftright(mcfloat_t dnleft, mcfloat_t dnright);
@@ -480,15 +474,10 @@ MC_FORCEINLINE mcfloat_t mc_mathutil_div(mcfloat_t dnleft, mcfloat_t dnright);
 MC_FORCEINLINE mcfloat_t mc_mathutil_mod(mcfloat_t dnleft, mcfloat_t dnright);
 
 
-void mc_state_printerrors(State *state);
-CompiledProgram *mc_state_compilesource(State *state, const char *code, const char *filename);
+
 Value mc_program_execute(State *state, CompiledProgram *program);
 Value mc_state_execcode(State *state, const char *code, const char *filename);
-Value mc_state_callfunctionbyname(State *state, const char *fname, Value thisval, size_t argc, Value *args);
-bool mc_state_haserrors(State *state);
-int mc_state_errorcount(State *state);
-void mc_state_clearerrors(State *state);
-Error *mc_state_geterror(State *state, int index);
+
 bool mc_error_printusererror(Printer *pr, Value obj);
 
 const char *mc_util_mathopstring(mcastmathoptype_t op);
@@ -503,13 +492,11 @@ int mc_state_gcshouldsweep(State *state);
 bool mc_state_gcdisablefor(Value obj);
 void mc_state_gcenablefor(Value obj);
 bool mc_state_gccandatabeputinpool(State *state, mcobjdata_t *data);
+bool mc_vm_execvm(State* state, Value function, GenericList<Value>* constants, bool nested);
 
 bool mc_traceback_vmpush(Traceback *traceback, State *state);
 bool mc_vm_init(State *state);
 void mc_vm_reset(State *state);
-Value mc_vm_getglobalbyindex(State *state, size_t ix);
-void mc_vm_stackpush(State *state, Value obj);
-bool mc_vm_popframe(State *state);
 void mc_vmutil_getopinfo(mcopcode_t opc, const char **oname);
 Value mc_scriptfn_typeof(State *state, void *data, Value thisval, size_t argc, Value *args);
 Value mc_scriptfn_arrayfirst(State *state, void *data, Value thisval, size_t argc, Value *args);
@@ -1141,10 +1128,10 @@ class PtrList
 {
     public:
         enum {
-            InitialSize = 32,
+            InitialSize = 8,
         };
 
-    public:
+    private:
         static inline bool initCapacity(PtrList* list, unsigned int capacity, size_t tsz, bool isp)
         {
             if(isp)
@@ -1178,6 +1165,7 @@ class PtrList
             mc_memory_free(list->m_ptrlistallocdata);
         }
 
+    public:
         static inline void destroy(PtrList* list, mcitemdestroyfn_t dfn)
         {
             if(list != nullptr)
@@ -1218,15 +1206,11 @@ class PtrList
         bool m_ptrlistisptr;
 
     public:
-        inline PtrList(size_t tsz, bool isp): PtrList(PtrList::InitialSize, tsz, isp)
-        {
-        }
-
-        inline PtrList(unsigned int capacity, size_t tsz, bool isp)
+        inline PtrList(size_t tsz, bool isp)
         {
             bool ok;
             (void)ok;
-            ok = initCapacity(this, capacity, tsz, isp);
+            ok = initCapacity(this, InitialSize, tsz, isp);
             MC_ASSERT(ok);
         }
 
@@ -2193,10 +2177,6 @@ class PtrDict
                 return nullptr;
             }
             dictcopy = Memory::make<PtrDict>(this->funccopyfn, this->funcdestroyfn);
-            if(!dictcopy)
-            {
-                return nullptr;
-            }
             for(i = 0; i < this->count(); i++)
             {
                 key = this->getKeyAt(i);
@@ -2248,8 +2228,26 @@ class Value
             VALTYP_ANY
         };
 
+        struct CompareResult
+        {
+            mcfloat_t result;
+        };
 
     public:
+        static inline bool isHashable(Value obj)
+        {
+            Value::Type type = obj.getType();
+            switch(type)
+            {
+                case Value::VALTYP_STRING:
+                case Value::VALTYP_NUMBER:
+                case Value::VALTYP_BOOL:
+                    return true;
+                default:
+                    break;
+            }
+            return false;
+        }
 
         static const char* getTypename(Type type)
         {
@@ -2286,6 +2284,19 @@ class Value
             return "none";
         }
 
+        static void unionNameCheckType(Printer* res, Type type, Type t, bool* inbetween)
+        {
+            if((type & t) == t)
+            {
+                if(*inbetween)
+                {
+                    res->put("|");
+                }
+                res->put(Value::getTypename(t));
+                *inbetween = true;
+            }
+        }
+
         static char* getUnionName(Type type)
         {
             bool inbetween;
@@ -2295,38 +2306,241 @@ class Value
                 return mc_util_strdup(Value::getTypename(type));
             }
             res = Memory::make<Printer>(nullptr);
-            if(!res)
-            {
-                return nullptr;
-            }
             inbetween = false;
-        #define CHECK_TYPE(t)                                    \
-            do                                                   \
-            {                                                    \
-                if((type & t) == t)                              \
-                {                                                \
-                    if(inbetween)                               \
-                    {                                            \
-                        res->put("|");                 \
-                    }                                            \
-                    res->put(Value::getTypename(t)); \
-                    inbetween = true;                           \
-                }                                                \
-            } while(0)
-
-            CHECK_TYPE(Value::VALTYP_NUMBER);
-            CHECK_TYPE(Value::VALTYP_BOOL);
-            CHECK_TYPE(Value::VALTYP_STRING);
-            CHECK_TYPE(Value::VALTYP_NULL);
-            CHECK_TYPE(Value::VALTYP_FUNCNATIVE);
-            CHECK_TYPE(Value::VALTYP_ARRAY);
-            CHECK_TYPE(Value::VALTYP_MAP);
-            CHECK_TYPE(Value::VALTYP_FUNCSCRIPT);
-            CHECK_TYPE(Value::VALTYP_EXTERNAL);
-            CHECK_TYPE(Value::VALTYP_ERROR);
+            unionNameCheckType(res, type, Value::VALTYP_NUMBER, &inbetween);
+            unionNameCheckType(res, type, Value::VALTYP_BOOL, &inbetween);
+            unionNameCheckType(res, type, Value::VALTYP_STRING, &inbetween);
+            unionNameCheckType(res, type, Value::VALTYP_NULL, &inbetween);
+            unionNameCheckType(res, type, Value::VALTYP_FUNCNATIVE, &inbetween);
+            unionNameCheckType(res, type, Value::VALTYP_ARRAY, &inbetween);
+            unionNameCheckType(res, type, Value::VALTYP_MAP, &inbetween);
+            unionNameCheckType(res, type, Value::VALTYP_FUNCSCRIPT, &inbetween);
+            unionNameCheckType(res, type, Value::VALTYP_EXTERNAL, &inbetween);
+            unionNameCheckType(res, type, Value::VALTYP_ERROR, &inbetween);
             return res->getStringAndDestroy(nullptr);
         }
 
+        static inline bool compare(Value a, Value b, CompareResult* cres)
+        {
+            const char* astring;
+            const char* bstring;
+            int alen;
+            int blen;
+            intptr_t adataval;
+            intptr_t bdataval;
+            mcfloat_t dnleft;
+            mcfloat_t dnright;
+            size_t ahash;
+            size_t bhash;
+            Value::Type atype;
+            Value::Type btype;
+            /*
+            if(a.odata == b.odata)
+            {
+                return 0;
+            }
+            */
+            cres->result = 1;
+            atype = a.getType();
+            btype = b.getType();
+            if((atype == Value::VALTYP_NUMBER || atype == Value::VALTYP_BOOL || atype == Value::VALTYP_NULL) && (btype == Value::VALTYP_NUMBER || btype == Value::VALTYP_BOOL || btype == Value::VALTYP_NULL))
+            {
+                dnleft = Value::asNumber(a);
+                dnright = Value::asNumber(b);
+                cres->result = (dnleft - dnright);
+                return true;
+            }
+            if(atype == btype && atype == Value::VALTYP_STRING)
+            {
+                alen = mc_value_stringgetlength(a);
+                blen = mc_value_stringgetlength(b);
+                #if 0
+                fprintf(stderr, "compare: alen=%d, blen=%d\n", alen, blen);
+                #endif
+                if(alen != blen)
+                {
+                    cres->result = alen - blen;
+                    return false;
+                }
+                ahash = mc_value_stringgethash(a);
+                bhash = mc_value_stringgethash(b);
+                if(ahash != bhash)
+                {
+                    cres->result = ahash - bhash;
+                    return false;
+                }
+                astring = mc_value_stringgetdata(a);
+                bstring = mc_value_stringgetdata(b);
+                if(strncmp(astring, bstring, alen) == 0)
+                {
+                    cres->result = 0;
+                    return true;
+                }
+                else
+                {
+                    cres->result = 1;
+                }
+                return true;
+            }
+            if((a.isAllocated() || a.isNull()) && (b.isAllocated() || b.isNull()))
+            {
+                adataval = (intptr_t)a.getAllocatedData();
+                bdataval = (intptr_t)b.getAllocatedData();
+                cres->result = (mcfloat_t)(adataval - bdataval);
+                return true;
+            }
+            return false;
+        }
+
+        static inline bool equalsTo(Value a, Value b)
+        {
+            bool ok;
+            CompareResult cres;
+            Value::Type atype;
+            Value::Type btype;
+            (void)ok;
+            atype = a.getType();
+            btype = b.getType();
+            if(atype != btype)
+            {
+                return false;
+            }
+            ok = Value::compare(a, b, &cres);
+            return MC_UTIL_CMPFLOAT(cres.result, 0);
+        }
+
+        static bool callbackEqualsTo(Value* aptr, Value* bptr)
+        {
+            Value a;
+            Value b;
+            a = *aptr;
+            b = *bptr;
+            return equalsTo(a, b);
+        }
+
+        static size_t callbackHash(Value* objptr)
+        {
+            bool bval;
+            mcfloat_t dval;
+            Value obj;
+            Value::Type type;
+            obj = *objptr;
+            type = obj.getType();
+            switch(type)
+            {
+                case Value::VALTYP_NUMBER:
+                    {
+                        dval = Value::asNumber(obj);
+                        return mc_util_hashdouble(dval);
+                    }
+                    break;
+                case Value::VALTYP_BOOL:
+                    {
+                        bval = Value::asBool(obj);
+                        return bval;
+                    }
+                    break;
+                case Value::VALTYP_STRING:
+                    {
+                        return mc_value_stringgethash(obj);
+                    }
+                    break;
+                default:
+                    {
+                    }
+                    break;
+            }
+            return 0;
+        }
+
+
+        template<typename TypeKeyT, typename TypeValueT>
+        static Value copyDeepIntern(State* state, Value obj, GenericDict<TypeKeyT, TypeValueT>* targetdict)
+        {
+            Value::Type type;
+            Value copy;
+            Value* copyptr;
+            copyptr = (Value*)targetdict->get(&obj);
+            if(copyptr)
+            {
+                return *copyptr;
+            }
+            copy = Value::makeNull();
+            type = obj.getType();
+            switch(type)
+            {
+                case Value::VALTYP_FREED:
+                case Value::VALTYP_ANY:
+                case Value::VALTYP_NONE:
+                    {
+                        MC_ASSERT(false);
+                        copy = Value::makeNull();
+                    }
+                    break;
+                case Value::VALTYP_NUMBER:
+                case Value::VALTYP_BOOL:
+                case Value::VALTYP_NULL:
+                case Value::VALTYP_FUNCNATIVE:
+                    {
+                        copy = obj;
+                    }
+                    break;
+                case Value::VALTYP_STRING:
+                    {
+                        bool ok;
+                        int len;
+                        const char* str;
+                        (void)ok;
+                        str = mc_value_stringgetdata(obj);
+                        len = mc_value_stringgetlength(obj);
+                        copy = mc_value_makestringlen(state, str, len);
+                        ok = targetdict->setKV(&obj, &copy);
+                        if(!ok)
+                        {
+                            return Value::makeNull();
+                        }
+                        return copy;
+                    }
+                    break;
+                case Value::VALTYP_FUNCSCRIPT:
+                    {
+                        return mc_value_copydeepfuncscript(state, obj, targetdict);
+                    }
+                    break;
+                case Value::VALTYP_ARRAY:
+                    {
+                        return mc_value_copydeeparray(state, obj, targetdict);
+                    }
+                    break;
+                case Value::VALTYP_MAP:
+                    {
+                        return mc_value_copydeepmap(state, obj, targetdict);
+                    }
+                    break;
+                case Value::VALTYP_EXTERNAL:
+                    {
+                        copy = Value::copyFlat(state, obj);
+                    }
+                    break;
+                case Value::VALTYP_ERROR:
+                    {
+                        copy = obj;
+                    }
+                    break;
+            }
+            return copy;
+        }
+
+        static Value copyDeep(State* state, Value obj)
+        {
+            Value res;
+            auto targetdict = Memory::make<GenericDict<Value, Value>>();
+            res = copyDeepIntern(state, obj, targetdict);
+            Memory::destroy(targetdict);
+            return res;
+        }
+
+        static Value copyFlat(State* state, Value obj);
 
         template<typename ValTypeT, typename ObjDataT>
         static inline Value makeDataFrom(ValTypeT type, ObjDataT* data)
@@ -2370,6 +2584,31 @@ class Value
             o = makeEmpty(Value::VALTYP_NULL);
             return o;
         }
+
+
+        static inline bool asBool(Value obj)
+        {
+            if(obj.isNumber())
+            {
+                return obj.uval.valnumber;
+            }
+            return obj.uval.valbool;
+        }
+
+        static inline mcfloat_t asNumber(Value obj)
+        {
+            if(obj.isNumber())
+            {
+                if(obj.getType() == Value::VALTYP_BOOL)
+                {
+                    return obj.uval.valbool;
+                }
+                return obj.uval.valnumber;
+            }
+            return obj.uval.valnumber;
+        }
+
+        static inline mcobjfunction_t* asFunction(Value object);
 
     public:
         Type valtype;
@@ -2496,7 +2735,7 @@ struct mcobjfunction_t
                 union
                 {
                     Value* freevalsallocated;
-                    Value freevalsstack[2];
+                    Value freevalsstack[MC_CONF_FREEVALSCOUNT];
                 } ufv;
                 
                 union
@@ -2522,11 +2761,10 @@ struct mcobjfunction_t
     public:
         bool freeValuesAreAllocated()
         {
-            return this->funcdata.valscriptfunc.freevalscount >= MC_UTIL_STATICARRAYSIZE(this->funcdata.valscriptfunc.ufv.freevalsstack);
+            return this->funcdata.valscriptfunc.freevalscount >= MC_CONF_FREEVALSCOUNT;
         }
 
 };
-
 
 struct mcobjdata_t
 {
@@ -2632,11 +2870,8 @@ class GCMemory
         {
             int i;
             this->gcobjlist = Memory::make<PtrList>(sizeof(void*), true);
-            MC_ASSERT(this->gcobjlist);
             this->gcobjlistback = Memory::make<PtrList>(sizeof(void*), true);
-            MC_ASSERT(this->gcobjlistback);
             this->gcobjlistremains = Memory::make<PtrList>(sizeof(Value), false);
-            MC_ASSERT(this->gcobjlistremains);
             this->allocssincesweep = 0;
             this->onlydatapool.count = 0;
             for(i = 0; i < MC_CONF_GCMEMPOOLCOUNT; i++)
@@ -2818,7 +3053,6 @@ class mcastscopeblock_t
             else
             {
                 this->scopestore = Memory::make<PtrDict>((mcitemcopyfn_t)AstSymbol::copy, (mcitemdestroyfn_t)AstSymbol::destroy);
-                MC_ASSERT(this->scopestore);
             }
             this->numdefinitions = 0;
             this->offset = ofs;
@@ -2851,13 +3085,9 @@ class AstScopeComp
         {
             this->outer = ou;
             this->compiledscopebytecode = Memory::make<PtrList>(sizeof(uint16_t), false);
-            MC_ASSERT(this->compiledscopebytecode);
             this->scopesrcposlist = Memory::make<PtrList>(sizeof(AstLocation), false);
-            MC_ASSERT(this->scopesrcposlist);
             this->ipstackbreak = Memory::make<PtrList>(sizeof(int), false);
-            MC_ASSERT(this->ipstackbreak);
             this->ipstackcontinue = Memory::make<PtrList>(sizeof(int), false);
-            MC_ASSERT(this->ipstackcontinue);
         }
 
         CompiledProgram* orphanResult()
@@ -2868,10 +3098,6 @@ class AstScopeComp
             bcdata = (uint16_t*)this->compiledscopebytecode->data();
             astlocdata = (AstLocation*)this->scopesrcposlist->data();
             res = Memory::make<CompiledProgram>(bcdata, astlocdata, this->compiledscopebytecode->count());
-            if(!res)
-            {
-                return nullptr;
-            }
             PtrList::orphanData(this->compiledscopebytecode);
             PtrList::orphanData(this->scopesrcposlist);
             return res;
@@ -2905,11 +3131,9 @@ class AstScopeFile
         AstScopeFile(mcconfig_t* cfg, ErrList* errlist, AstSourceFile* file)
         {
             this->parser = Memory::make<AstParser>(cfg, errlist);
-            MC_ASSERT(this->parser);
             this->filesymtab = nullptr;
             m_ccfile = file;
             this->loadedmodnames = Memory::make<PtrList>(sizeof(void*), true);
-            MC_ASSERT(this->loadedmodnames);
         }
 };
 
@@ -2935,9 +3159,7 @@ class SymStore
         SymStore()
         {
             this->storedsymbols = Memory::make<PtrDict>((mcitemcopyfn_t)AstSymbol::copy, (mcitemdestroyfn_t)AstSymbol::destroy);
-            MC_ASSERT(this->storedsymbols);
             this->storedobjects = Memory::make<GenericList<Value>>(0, Value::makeNull());
-            MC_ASSERT(this->storedobjects);
         }
 
         AstSymbol* getSymbol(const char* name)
@@ -3033,7 +3255,6 @@ class AstSymTable
             else
             {
                 this->blockscopes = Memory::make<PtrList>(sizeof(void*), true);
-                MC_ASSERT(this->blockscopes);
             }
             if(syfreesyms)
             {
@@ -3042,7 +3263,6 @@ class AstSymTable
             else
             {
                 this->freesymbols = Memory::make<PtrList>(sizeof(void*), true);
-                MC_ASSERT(this->freesymbols);
             }
             if(symodglobalsymbols)
             {
@@ -3051,7 +3271,6 @@ class AstSymTable
             else
             {
                 this->modglobalsymbols = Memory::make<PtrList>(sizeof(void*), true);
-                MC_ASSERT(this->modglobalsymbols);
             }
             MC_ASSERT(this->scopeBlockPush());
         }
@@ -3063,10 +3282,6 @@ class AstSymTable
             auto cfrees = this->freesymbols->copy((mcitemcopyfn_t)AstSymbol::copy, (mcitemdestroyfn_t)AstSymbol::destroy);
             auto cmods = this->modglobalsymbols->copy((mcitemcopyfn_t)AstSymbol::copy, (mcitemdestroyfn_t)AstSymbol::destroy);
             copy = Memory::make<AstSymTable>(this->outer, this->symglobalstore, cblocks, cfrees, cmods, this->modglobaloffset);
-            if(!copy)
-            {
-                return nullptr;
-            }
             copy->maxnumdefinitions = this->maxnumdefinitions;
             copy->modglobaloffset = this->modglobaloffset;
             return copy;
@@ -3145,6 +3360,7 @@ class AstSymTable
             AstSymbol* globalsymbol;
             AstSymbol* globalsymbolcopy;
             (void)ok;
+            (void)globalsymboladded;
             globalsymbol = this->symglobalstore->getSymbol(name);
             if(globalsymbol)
             {
@@ -3165,10 +3381,6 @@ class AstSymTable
             symboltype = this->outer == nullptr ? MC_SYM_MODULEGLOBAL : MC_SYM_LOCAL;
             ix = this->nextSymbolIndex();
             symbol = Memory::make<AstSymbol>(name, symboltype, ix, assignable);
-            if(!symbol)
-            {
-                return nullptr;
-            }
             globalsymboladded = false;
             ok = false;
             if(symboltype == MC_SYM_MODULEGLOBAL && this->blockscopes->count() == 1)
@@ -3200,16 +3412,8 @@ class AstSymTable
             AstSymbol* symbol;
             (void)ok;
             copy = Memory::make<AstSymbol>(original->name, original->symtype, original->index, original->assignable);
-            if(!copy)
-            {
-                return nullptr;
-            }
             ok = this->freesymbols->push(copy);
             symbol = Memory::make<AstSymbol>(original->name, MC_SYM_FREE, this->freesymbols->count() - 1, original->assignable);
-            if(!symbol)
-            {
-                return nullptr;
-            }
             ok = this->setSymbol(symbol);
             return symbol;
         }
@@ -3225,10 +3429,6 @@ class AstSymTable
                 return nullptr;
             }
             symbol = Memory::make<AstSymbol>(name, MC_SYM_FUNCTION, 0, assignable);
-            if(!symbol)
-            {
-                return nullptr;
-            }
             ok = this->setSymbol(symbol);
             return symbol;
         }
@@ -3239,10 +3439,6 @@ class AstSymTable
             AstSymbol* symbol;
             (void)ok;
             symbol = Memory::make<AstSymbol>("this", MC_SYM_THIS, 0, false);
-            if(!symbol)
-            {
-                return nullptr;
-            }
             ok = this->setSymbol(symbol);
             return symbol;
         }
@@ -3326,10 +3522,6 @@ class AstSymTable
                 blockscopeoffset = this->modglobaloffset;
             }
             newscope = Memory::make<mcastscopeblock_t>(blockscopeoffset);
-            if(!newscope)
-            {
-                return false;
-            }
             ok = this->blockscopes->push(newscope);
             return true;
         }
@@ -3373,12 +3565,6 @@ class AstSymTable
         {
             return (AstSymbol*)this->modglobalsymbols->get(ix);
         }
-};
-
-
-struct mcvalcmpresult_t
-{
-    mcfloat_t result;
 };
 
 class Token
@@ -3679,27 +3865,19 @@ class AstExpression
 
                 static ExprCodeBlock* copy(ExprCodeBlock* block)
                 {
-                    ExprCodeBlock* res;
-                    PtrList* statementscopy;
                     if(!block)
                     {
                         return nullptr;
                     }
-                    statementscopy = block->statements->copy((mcitemcopyfn_t)copyExpression, (mcitemdestroyfn_t)destroyExpression);
+                    auto statementscopy = block->statements->copy((mcitemcopyfn_t)copyExpression, (mcitemdestroyfn_t)destroyExpression);
                     if(!statementscopy)
                     {
                         return nullptr;
                     }
-                    res = Memory::make<ExprCodeBlock>(statementscopy);
-                    if(!res)
-                    {
-                        PtrList::destroy(statementscopy, (mcitemdestroyfn_t)destroyExpression);
-                        return nullptr;
-                    }
+                    auto res = Memory::make<ExprCodeBlock>(statementscopy);
                     return res;
                 }
         };
-
 
         class ExprIfCase
         {
@@ -3737,10 +3915,6 @@ class AstExpression
                         goto err;
                     }
                     ifcasecopy = Memory::make<ExprIfCase>(testcopy, consequencecopy);
-                    if(!ifcasecopy)
-                    {
-                        goto err;
-                    }
                     return ifcasecopy;
                 err:
                     destroyExpression(testcopy);
@@ -3857,16 +4031,7 @@ class AstExpression
                 static ExprIdent* copy(ExprIdent* ident)
                 {
                     ExprIdent* res = Memory::make<ExprIdent>();
-                    if(!res)
-                    {
-                        return nullptr;
-                    }
                     res->value = mc_util_strdup(ident->value);
-                    if(!res->value)
-                    {
-                        mc_memory_free(res);
-                        return nullptr;
-                    }
                     res->pos = ident->pos;
                     return res;
                 }
@@ -3961,7 +4126,6 @@ class AstExpression
         static AstExpression* makeExpression(mcastexprtype_t type)
         {
             AstExpression* res = Memory::make<AstExpression>();
-            MC_ASSERT(res);
             res->exprtype = type;
             res->pos = AstLocation::Invalid();
             return res;
@@ -4964,7 +5128,6 @@ class AstSourceFile
             m_path = mc_util_strdup(strpath);
             MC_ASSERT(m_path);
             this->lines = Memory::make<PtrList>(sizeof(void*), true);
-            MC_ASSERT(this->lines);
         }
 
         const char* getDirectory() const
@@ -5022,7 +5185,6 @@ class Traceback
         Traceback()
         {
             this->tbitems = Memory::make<PtrList>(sizeof(Item), false);
-            MC_ASSERT(this->tbitems);
         }
 
         static void destroy(Traceback* traceback)
@@ -6443,10 +6605,6 @@ class AstParser
                 goto err;
             }
             nameident = Memory::make<AstExpression::ExprIdent>(p->lexer.m_currtoken);
-            if(!nameident)
-            {
-                goto err;
-            }
             p->lexer.nextToken();
             #if 0
                 if(!p->lexer.expectCurrent(Token::TOK_ASSIGN))
@@ -6496,10 +6654,6 @@ class AstParser
             cases = nullptr;
             alternative = nullptr;
             cases = Memory::make<PtrList>(sizeof(void*), true);
-            if(!cases)
-            {
-                goto err;
-            }
             p->lexer.nextToken();
             if(!p->lexer.expectCurrent(Token::TOK_LPAREN))
             {
@@ -6507,10 +6661,6 @@ class AstParser
             }
             p->lexer.nextToken();
             cond = Memory::make<AstExpression::ExprIfCase>(nullptr, nullptr);
-            if(!cond)
-            {
-                goto err;
-            }
             ok = cases->push(cond);
             cond->ifcond = do_parseexpression(p, MC_ASTPREC_LOWEST);
             if(!cond->ifcond)
@@ -6539,10 +6689,6 @@ class AstParser
                     }
                     p->lexer.nextToken();
                     elif = Memory::make<AstExpression::ExprIfCase>(nullptr, nullptr);
-                    if(!elif)
-                    {
-                        goto err;
-                    }
                     ok = cases->push(elif);
                     elif->ifcond = do_parseexpression(p, MC_ASTPREC_LOWEST);
                     if(!elif->ifcond)
@@ -6747,10 +6893,6 @@ class AstParser
                 return nullptr;
             }
             eid = Memory::make<AstExpression::ExprIdent>(p->lexer.m_currtoken);
-            if(!eid)
-            {
-                return nullptr;
-            }
             p->lexer.nextToken();
             if(!p->lexer.expectCurrent(Token::TOK_RPAREN))
             {
@@ -6799,10 +6941,6 @@ class AstParser
             body = nullptr;
             iteratorident = nullptr;
             iteratorident = Memory::make<AstExpression::ExprIdent>(p->lexer.m_currtoken);
-            if(!iteratorident)
-            {
-                goto err;
-            }
             p->lexer.nextToken();
             if(!p->lexer.expectCurrent(Token::TOK_IN))
             {
@@ -6925,10 +7063,6 @@ class AstParser
             p->lexer.nextToken();
             p->depth++;
             statements = Memory::make<PtrList>(sizeof(void*), true);
-            if(!statements)
-            {
-                goto err;
-            }
             while(!p->lexer.currentTokenIs(Token::TOK_RBRACE))
             {
                 if(p->lexer.currentTokenIs(Token::TOK_EOF))
@@ -6951,10 +7085,6 @@ class AstParser
             p->lexer.nextToken();
             p->depth--;
             res = Memory::make<AstExpression::ExprCodeBlock>(statements);
-            if(!res)
-            {
-                goto err;
-            }
             return res;
         err:
             p->depth--;
@@ -7015,10 +7145,6 @@ class AstParser
             AstExpression::ExprIdent* ident;
             AstExpression* res;
             ident = Memory::make<AstExpression::ExprIdent>(p->lexer.m_currtoken);
-            if(!ident)
-            {
-                return nullptr;
-            }
             res = AstExpression::makeident(ident);
             if(!res)
             {
@@ -7374,10 +7500,6 @@ class AstParser
                 return false;
             }
             ident = Memory::make<AstExpression::ExprIdent>(p->lexer.m_currtoken);
-            if(!ident)
-            {
-                return false;
-            }
             param = Memory::make<AstExpression::ExprFuncParam>(ident);
             ok = outparams->push(param);
             p->lexer.nextToken();
@@ -7389,10 +7511,6 @@ class AstParser
                     return false;
                 }
                 ident = Memory::make<AstExpression::ExprIdent>(p->lexer.m_currtoken);
-                if(!ident)
-                {
-                    return false;
-                }
                 param = Memory::make<AstExpression::ExprFuncParam>(ident);
                 ok = outparams->push(param);
                 p->lexer.nextToken();
@@ -7459,10 +7577,6 @@ class AstParser
                 goto err;
             }
             nameident = Memory::make<AstExpression::ExprIdent>(p->lexer.m_currtoken);
-            if(!nameident)
-            {
-                goto err;
-            }
             p->lexer.nextToken();
             value = do_parseliteralfunction(p);
             if(!value)
@@ -8031,10 +8145,6 @@ class AstParser
             this->lexer.nextToken();
             this->lexer.nextToken();
             statements = Memory::make<PtrList>(sizeof(void*), true);
-            if(!statements)
-            {
-                return nullptr;
-            }
             while(!this->lexer.currentTokenIs(Token::TOK_EOF))
             {
                 if(this->lexer.currentTokenIs(Token::TOK_SEMICOLON))
@@ -8662,10 +8772,6 @@ class Module
             Printer* namebuf;
             (void)ok;
             namebuf = Memory::make<Printer>(nullptr);
-            if(!namebuf)
-            {
-                return false;
-            }
             ok = namebuf->format("%s::%s", this->name, symbol->name);
             modulesymbol = Memory::make<AstSymbol>(namebuf->getString(), MC_SYM_MODULEGLOBAL, symbol->index, false);
             Printer::destroy(namebuf);
@@ -9104,25 +9210,9 @@ class AstCompiler
             m_compglobalstore = gstor;
             m_filestderr = fstderr;
             m_filescopelist = Memory::make<PtrList>(sizeof(void*), true);
-            if(!m_filescopelist)
-            {
-                goto compilerinitfailed;
-            }
             m_constants = Memory::make<GenericList<Value>>(0, Value::makeNull());
-            if(!m_constants)
-            {
-                goto compilerinitfailed;
-            }
             m_srcposstack = Memory::make<PtrList>(sizeof(AstLocation), false);
-            if(!m_srcposstack)
-            {
-                goto compilerinitfailed;
-            }
             m_modules = Memory::make<PtrDict>((mcitemcopyfn_t)Module::copy, (mcitemdestroyfn_t)Module::destroy);
-            if(!m_modules)
-            {
-                goto compilerinitfailed;
-            }
             ok = this->pushCompilationScope();
             filename = "<none>";
             if(files->count() > 0)
@@ -9133,15 +9223,7 @@ class AstCompiler
             ok = this->filescopepush(filename);
             #endif
             m_stringconstposdict = Memory::make<PtrDict>(nullptr, nullptr);
-            if(!m_stringconstposdict)
-            {
-                goto compilerinitfailed;
-            }
-
             return true;
-        compilerinitfailed:
-            this->deinit();
-            return false;
         }
 
         void deinit()
@@ -9284,10 +9366,6 @@ class AstCompiler
             AstScopeComp* currentscope;
             currentscope = this->getCompilationScope();
             nscope = Memory::make<AstScopeComp>(currentscope);
-            if(!nscope)
-            {
-                return false;
-            }
             this->setcompilationscope(nscope);
             return true;
         }
@@ -9313,11 +9391,6 @@ class AstCompiler
             }
             currenttable = filescope->filesymtab;
             filescope->filesymtab = Memory::make<AstSymTable>(currenttable, this->m_compglobalstore, nullptr, nullptr, nullptr, globaloffset);
-            if(!filescope->filesymtab)
-            {
-                filescope->filesymtab = currenttable;
-                return false;
-            }
             return true;
         }
 
@@ -9568,10 +9641,6 @@ class AstCompiler
             (void)ok;
             ifstmt = &expr->uexpr.exprifstmt;
             jumptoendips = Memory::make<PtrList>(sizeof(int), false);
-            if(!jumptoendips)
-            {
-                goto statementiferror;
-            }
             for(i = 0; i < ifstmt->cases->count(); i++)
             {
                 ifcase = (AstExpression::ExprIfCase*)ifstmt->cases->get(i);
@@ -11061,10 +11130,6 @@ class AstCompiler
                 prevst = this->getsymtable();
             }
             file = Memory::make<AstSourceFile>(filepath);
-            if(!file)
-            {
-                return false;
-            }
             ok = this->m_files->push(file);
             filescope = Memory::make<AstScopeFile>(this->m_config, this->m_ccerrlist, file);
             ok = this->m_filescopelist->push(filescope);
@@ -11192,14 +11257,14 @@ class VMFrame
 {
     public:
         Value function;
-        int64_t bcposition;
-        int64_t basepointer;
-        AstLocation* framesrcposlist;
-        uint16_t* bytecode;
-        int64_t sourcebcpos;
-        int64_t bcsize;
-        int64_t recoverip;
-        bool isrecovering;
+        int64_t bcposition = 0;
+        int64_t basepointer = 0;
+        AstLocation* framesrcposlist = nullptr;
+        uint16_t* bytecode = nullptr;
+        int64_t sourcebcpos = 0;
+        int64_t bcsize = 0;
+        int64_t recoverip = 0;
+        bool isrecovering = false;
 
     public:
         static inline bool init(VMFrame* frame, Value functionobj, int64_t baseptr)
@@ -11209,7 +11274,7 @@ class VMFrame
             {
                 return false;
             }
-            function = mc_value_asscriptfunction(functionobj);
+            function = Value::asFunction(functionobj);
             frame->function = functionobj;
             frame->bcposition = 0;
             frame->basepointer = baseptr;
@@ -11221,7 +11286,6 @@ class VMFrame
             frame->isrecovering = false;
             return true;
         }
-
 
         inline uint16_t readUint8()
         {
@@ -11256,7 +11320,6 @@ class VMFrame
             res |= (uint64_t)data[0] << 56;
             return res;
         }
-
 
         inline mcopcode_t readOpCode()
         {
@@ -11331,7 +11394,7 @@ class State
             this->execstate.valuestack = Memory::make<GenericList<Value>>(MC_CONF_MINVMVALSTACKSIZE, Value::makeNull());
             this->execstate.valthisstack = Memory::make<GenericList<Value>>(MC_CONF_MINVMTHISSTACKSIZE, Value::makeNull());
             this->execstate.nativethisstack = Memory::make<GenericList<Value>>(MC_CONF_MINNATIVETHISSTACKSIZE, Value::makeNull());
-            this->globalvalstack = Memory::make<GenericList<Value>>(MC_CONF_MAXVMGLOBALS, Value::makeNull());
+            this->globalvalstack = Memory::make<GenericList<Value>>(MC_CONF_MINVMGLOBALS, Value::makeNull());
             this->execstate.framestack = Memory::make<GenericList<VMFrame>>(MC_CONF_MINVMFRAMES, VMFrame{});
             m_stategcmem = Memory::make<GCMemory>();
             if(!m_stategcmem)
@@ -11339,21 +11402,9 @@ class State
                 goto err;
             }
             this->files = Memory::make<PtrList>(sizeof(void*), true);
-            if(!this->files)
-            {
-                goto err;
-            }
             mc_vm_init(this);
             this->vmglobalstore = Memory::make<SymStore>();
-            if(!this->vmglobalstore)
-            {
-                goto err;
-            }
             this->compiler = Memory::make<AstCompiler>(this, &m_config, m_stategcmem, &m_errorlist, this->files, this->vmglobalstore, this->stderrprinter);
-            if(!this->compiler)
-            {
-                goto err;
-            }
             this->stdoutprinter = Memory::make<Printer>(stdout);
             this->stderrprinter = Memory::make<Printer>(stderr);
             mc_state_makestdclasses(this);
@@ -11388,7 +11439,7 @@ class State
 
         void reset()
         {
-            mc_state_clearerrors(this);
+            this->errorsClear();
             mc_vm_reset(this);
         }
 
@@ -11448,7 +11499,7 @@ class State
             res = Value::makeNull();
             if(symbol->symtype == MC_SYM_MODULEGLOBAL)
             {
-                res = mc_vm_getglobalbyindex(this, symbol->index);
+                res = this->getGlobalByIndex(symbol->index);
             }
             else if(symbol->symtype == MC_SYM_GLOBALBUILTIN)
             {
@@ -11468,7 +11519,457 @@ class State
             return res;
         }
 
+        //xxxhere
+
+        inline bool setGlobalByIndex(size_t ix, Value val)
+        {
+            this->globalvalstack->set(ix, val);
+            if(ix >= this->globalvalcount)
+            {
+                this->globalvalcount = ix + 1;
+            }
+            return true;
+        }
+
+        inline Value getGlobalByIndex(size_t ix)
+        {
+            return this->globalvalstack->get(ix);
+        }
+
+        inline void setStackPos(size_t nsp)
+        {
+            #if 0
+            size_t i;
+            size_t count;
+            size_t bytescount;
+            if(nsp > this->execstate.vsposition)
+            {
+                /* to avoid gcing freed objects */
+                count = nsp - this->execstate.vsposition;
+                bytescount = (count - 0) * sizeof(Value);
+                for(i=(this->execstate.vsposition - 0); (i != bytescount) && (i < this->execstate.valuestack->m_listcapacity); i++)
+                {
+                    //memset(&this->execstate.valuestack->m_listitems[i], 0, sizeof(Value));
+                    this->execstate.valuestack->m_listitems[i].valtype = Value::VALTYP_NULL;
+                }
+            }
+            #endif
+            this->execstate.vsposition = nsp;
+        }
+
+        inline void vmStackPush(Value obj)
+        {
+            int numlocals;
+            VMFrame* frame;
+            mcobjfunction_t* currentfunction;
+            (void)numlocals;
+            (void)frame;
+            (void)currentfunction;
+        #if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
+            if(this->execstate.currframe)
+            {
+                frame = this->execstate.currframe;
+                currentfunction = Value::asFunction(frame->function);
+                numlocals = currentfunction->funcdata.valscriptfunc.numlocals;
+                MC_ASSERT((size_t)this->execstate.vsposition >= (size_t)(frame->basepointer + numlocals));
+            }
+        #endif
+            #if 1
+                this->execstate.valuestack->set(this->execstate.vsposition, obj);
+            #else
+                this->execstate.valuestack->push(obj);
+            #endif
+            this->execstate.vsposition++;
+        }
+
+        inline Value vmStackPop()
+        {
+            int numlocals;
+            Value res;
+            VMFrame* frame;
+            mcobjfunction_t* currentfunction;
+            (void)numlocals;
+            (void)frame;
+            (void)currentfunction;
+        #if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
+            if(this->execstate.vsposition == 0)
+            {
+                this->m_errorlist.pushFormat(MC_ERROR_RUNTIME, this->execstate.currframe->getPosition(), "stack underflow");
+                MC_ASSERT(false);
+                return Value::makeNull();
+            }
+            if(this->execstate.currframe)
+            {
+                frame = this->execstate.currframe;
+                currentfunction = Value::asFunction(frame->function);
+                numlocals = currentfunction->funcdata.valscriptfunc.numlocals;
+                MC_ASSERT((this->execstate.vsposition - 1) >= (frame->basepointer + numlocals));
+            }
+        #endif
+            this->execstate.vsposition--;
+            res = this->execstate.valuestack->get(this->execstate.vsposition);
+            this->execstate.lastpopped = res;
+            return res;
+        }
+
+        inline Value vmStackGet(size_t nthitem)
+        {
+            size_t ix;
+            ix = this->execstate.vsposition - 1 - nthitem;
+            return this->execstate.valuestack->get(ix);
+        }
+
+        inline void vmStackThisPush(Value obj)
+        {
+            this->execstate.valthisstack->set(this->execstate.thisstpos, obj);
+            this->execstate.thisstpos++;
+        }
+
+        inline Value vmStackThisPop()
+        {
+        #if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
+            if(this->execstate.thisstpos == 0)
+            {
+                this->errorspushFormat(MC_ERROR_RUNTIME, this->execstate.currframe->getPosition(), "'this' stack underflow");
+                MC_ASSERT(false);
+                return Value::makeNull();
+            }
+        #endif
+            this->execstate.thisstpos--;
+            return this->execstate.valthisstack->get(this->execstate.thisstpos);
+        }
+
+        inline Value vmStackThisGet(size_t nthitem)
+        {
+            size_t ix;
+            size_t cnt;
+            Value val;
+            (void)val;
+            ix = this->execstate.thisstpos - 1 - nthitem;
+            cnt = this->execstate.valthisstack->count();
+            if((cnt == 0) || (ix > cnt))
+            {
+                //val = mc_value_makemap(this);
+                //this->execstate.valthisstack->set(ix, val);
+                //return mc_value_makemap(this);
+                return Value::makeNull();
+                //return val;
+            }
+            return this->execstate.valthisstack->get(ix);
+        }
+
+
+        bool vmPushFrame(VMFrame frame)
+        {
+            int add;
+            mcobjfunction_t* framefunction;
+            add = 0;
+            this->execstate.framestack->set(this->execstate.framestack->m_listcount, frame);
+            add = 1;
+            this->execstate.currframe = this->execstate.framestack->getp(this->execstate.framestack->m_listcount);
+            this->execstate.framestack->m_listcount += add;
+            framefunction = Value::asFunction(frame.function);
+            this->setStackPos(frame.basepointer + framefunction->funcdata.valscriptfunc.numlocals);
+            return true;
+        }
+
+
+        inline bool vmPopFrame()
+        {
+            this->setStackPos(this->execstate.currframe->basepointer - 1);
+            if(this->execstate.framestack->m_listcount <= 0)
+            {
+                MC_ASSERT(false);
+                this->execstate.currframe = NULL;
+                return false;
+            }
+            this->execstate.framestack->m_listcount--;
+            if(this->execstate.framestack->m_listcount == 0)
+            {
+                this->execstate.currframe = NULL;
+                return false;
+            }
+            this->execstate.currframe = this->execstate.framestack->getp(this->execstate.framestack->m_listcount - 1);
+            return true;
+        }
+
+        inline Value vmCallNativeFunction(Value callee, AstLocation srcpos, Value selfval, size_t argc, Value* args)
+        {
+            Value::Type restype;
+            Value res;
+            Error* err; 
+            Traceback* traceback;
+            mcobjfunction_t* nativefun;
+            nativefun = Value::asFunction(callee);
+            res = nativefun->funcdata.valnativefunc.natptrfn(this, nativefun->funcdata.valnativefunc.userpointer, selfval, argc, args);
+            if(mc_util_unlikely(this->m_errorlist.count() > 0))
+            {
+                err = this->m_errorlist.getLast();
+                err->m_pos = srcpos;
+                err->m_traceback = Memory::make<Traceback>();
+                if(err->m_traceback)
+                {
+                    err->m_traceback->push(nativefun->funcdata.valnativefunc.natfnname, AstLocation::Invalid());
+                }
+                return Value::makeNull();
+            }
+            restype = res.getType();
+            if(mc_util_unlikely(restype == Value::VALTYP_ERROR))
+            {
+                traceback = Memory::make<Traceback>();
+                if(traceback)
+                {
+                    /* error builtin is treated in a special way */
+                    if(!mc_util_strequal(nativefun->funcdata.valnativefunc.natfnname, "error"))
+                    {
+                        traceback->push(nativefun->funcdata.valnativefunc.natfnname, AstLocation::Invalid());
+                    }
+                    mc_traceback_vmpush(traceback, this);
+                    mc_value_errorsettraceback(res, traceback);
+                }
+            }
+            return res;
+        }
+
+        Value vmCallValue(GenericList<Value>* constants, Value callee, Value thisval, size_t argc, Value* args)
+        {
+            bool ok;
+            size_t i;
+            size_t oldsp;
+            size_t oldthissp;
+            size_t oldframescount;
+            VMFrame tempframe;
+            Value retv;
+            mcexecstate_t est;
+            Value::Type type;
+            (void)oldsp;
+            (void)oldframescount;
+            if(constants == nullptr)
+            {
+                constants = this->compiler->getconstants();
+            }
+            type = callee.getType();
+            if(type == Value::VALTYP_FUNCSCRIPT)
+            {
+                //VMFrame::init(&tempframe, callee, 0);
+                VMFrame::init(&tempframe, callee, this->execstate.vsposition - argc);
+                mc_vm_savestate(this, &est);
+                oldsp = this->execstate.vsposition;
+                oldthissp = this->execstate.thisstpos;
+                this->vmPushFrame(tempframe);
+                oldframescount = this->execstate.framestack->count();
+                this->vmStackPush(callee);
+                for(i = 0; i < argc; i++)
+                {
+                    this->vmStackPush(args[i]);
+                }
+                ok = mc_vm_execvm(this, callee, constants, true);
+                if(!ok)
+                {
+                    mc_vm_restorestate(this, &est);
+                    return Value::makeNull();
+                }
+                #if 1
+                while(this->execstate.framestack->count() > oldframescount)
+                {
+                    this->vmPopFrame();
+                }
+                #endif
+                this->execstate.thisstpos = oldthissp;
+                retv = this->execstate.lastpopped;
+                mc_vm_restorestate(this, &est);
+                return retv;
+            }
+            if(type == Value::VALTYP_FUNCNATIVE)
+            {
+                return this->vmCallNativeFunction(callee, AstLocation::Invalid(), thisval, argc, args);
+            }
+            this->m_errorlist.pushFormat(MC_ERROR_USER, AstLocation::Invalid(), "object is not callable");
+            return Value::makeNull();
+        }
+
+        Value callFunctionByName(const char* fname, Value thisval, size_t argc, Value* args)
+        {
+            Value res;
+            Value callee;
+            this->reset();
+            callee = this->getGlobalByName(fname);
+            if(callee.getType() == Value::VALTYP_NULL)
+            {
+                return Value::makeNull();
+            }
+            res = this->vmCallValue(this->compiler->getconstants(), callee, thisval, argc, (Value*)args);
+            if(this->m_errorlist.count() > 0)
+            {
+                return Value::makeNull();
+            }
+            return res;
+        }
+
+        bool hasErrors()
+        {
+            return this->errorCount() > 0;
+        }
+
+        int errorCount()
+        {
+            return this->m_errorlist.count();
+        }
+
+        void errorsClear()
+        {
+            this->m_errorlist.clear();
+        }
+
+        Error* errorGet(int index)
+        {
+            return (Error*)this->m_errorlist.get(index);
+        }
+
+        void printErrors()
+        {
+            int i;
+            int ecnt;
+            Error* err;
+            ecnt = this->errorCount();
+            for(i = 0; i < ecnt; i++)
+            {
+                err = this->errorGet(i);
+                err->printErrorTo(this->stderrprinter);
+            }
+        }
+
+        CompiledProgram* compileSource(const char* code, const char* filename)
+        {
+            CompiledProgram* compres;
+            this->errorsClear();
+            compres = this->compiler->compilesource(code, filename);
+            if(this->m_errorlist.count() > 0)
+            {
+                goto err;
+            }
+            return compres;
+        err:
+            CompiledProgram::destroy(compres);
+            return nullptr;
+        }
+
 };
+
+// bottom
+mcobjfunction_t* Value::asFunction(Value object)
+{
+    mcobjdata_t* data;
+    data = object.getAllocatedData();
+    return &data->uvobj.valfunc;
+}
+
+Value Value::copyFlat(State* state, Value obj)
+{
+    bool ok;
+    Value copy;
+    Value::Type type;
+    (void)ok;
+    copy = Value::makeNull();
+    type = obj.getType();
+    switch(type)
+    {
+        case Value::VALTYP_ANY:
+        case Value::VALTYP_FREED:
+        case Value::VALTYP_NONE:
+            {
+                MC_ASSERT(false);
+                copy = Value::makeNull();
+            }
+            break;
+        case Value::VALTYP_NUMBER:
+        case Value::VALTYP_BOOL:
+        case Value::VALTYP_NULL:
+        case Value::VALTYP_FUNCSCRIPT:
+        case Value::VALTYP_FUNCNATIVE:
+        case Value::VALTYP_ERROR:
+            {
+                copy = obj;
+            }
+            break;
+        case Value::VALTYP_STRING:
+            {
+                size_t len;
+                const char* str;
+                str = mc_value_stringgetdata(obj);
+                len = mc_value_stringgetlength(obj);
+                copy = mc_value_makestringlen(state, str, len);
+            }
+            break;
+        case Value::VALTYP_ARRAY:
+            {
+                int i;
+                int len;
+                Value item;
+                len = mc_value_arraygetlength(obj);
+                copy = mc_value_makearraycapacity(state, len);
+                if(copy.isNull())
+                {
+                    return Value::makeNull();
+                }
+                for(i = 0; i < len; i++)
+                {
+                    item = mc_value_arraygetvalue(obj, i);
+                    ok = mc_value_arraypush(copy, item);
+                    if(!ok)
+                    {
+                        return Value::makeNull();
+                    }
+                }
+            }
+            break;
+        case Value::VALTYP_MAP:
+            {
+                int i;
+                Value key;
+                Value val;
+                copy = mc_value_makemap(state);
+                for(i = 0; i < mc_value_mapgetlength(obj); i++)
+                {
+                    key = mc_value_mapgetkeyat(obj, i);
+                    val = mc_value_mapgetvalueat(obj, i);
+                    ok = mc_value_mapsetvalue(copy, key, val);
+                    if(!ok)
+                    {
+                        return Value::makeNull();
+                    }
+                }
+            }
+            break;
+        case Value::VALTYP_EXTERNAL:
+            {
+                void* datacopy;
+                mcobjuserdata_t* objext;
+                copy = mc_value_makeuserobject(state, nullptr);
+                if(copy.isNull())
+                {
+                    return Value::makeNull();
+                }
+                objext = mc_value_userdatagetdata(obj);
+                datacopy = nullptr;
+                if(objext->datacopyfn)
+                {
+                    datacopy = objext->datacopyfn(objext->data);
+                }
+                else
+                {
+                    datacopy = objext->data;
+                }
+                mc_value_userdatasetdata(copy, datacopy);
+                mc_value_userdatasetdestroyfunction(copy, objext->datadestroyfn);
+                mc_value_userdatasetcopyfunction(copy, objext->datacopyfn);
+            }
+            break;
+    }
+    return copy;
+}
+
+
 
 char* mc_util_readhandle(FILE* hnd, size_t* dlen)
 {
@@ -11533,7 +12034,6 @@ char* mc_util_readfile(const char* filename, size_t* dlen)
     return b;
 }
 
-
 char* mc_fsutil_fileread(const char* filename, size_t* flen)
 {
     return mc_util_readfile(filename, flen);
@@ -11588,7 +12088,6 @@ char* mc_util_strdup(const char* string)
     return mc_util_strndup(string, mc_util_strlen(string));
 }
 
-
 bool mc_util_strequal(const char* a, const char* b)
 {
     return strcmp(a, b) == 0;
@@ -11599,6 +12098,75 @@ bool mc_util_strnequal(const char* a, const char* b, size_t len)
     return strncmp(a, b, len) == 0;
 }
 
+PtrList* mc_util_splitstring(const char* str, const char* delimiter)
+{
+    bool ok;
+    size_t i;
+    long len;
+    char* rest;
+    char* line;
+    const char* lineend;
+    const char* linestart;
+    PtrList* res;
+    (void)ok;
+    res = Memory::make<PtrList>(sizeof(void*), true);
+    rest = nullptr;
+    if(!str)
+    {
+        return res;
+    }
+    linestart = str;
+    lineend = strstr(linestart, delimiter);
+    while(lineend != nullptr)
+    {
+        len = lineend - linestart;
+        line = mc_util_strndup(linestart, len);
+        if(!line)
+        {
+            goto err;
+        }
+        ok = res->push(line);
+        linestart = lineend + 1;
+        lineend = strstr(linestart, delimiter);
+    }
+    rest = mc_util_strdup(linestart);
+    if(!rest)
+    {
+        goto err;
+    }
+    ok = res->push(rest);
+    return res;
+err:
+    mc_memory_free(rest);
+    if(res)
+    {
+        for(i = 0; i < res->count(); i++)
+        {
+            line = (char*)res->get(i);
+            mc_memory_free(line);
+        }
+    }
+    PtrList::destroy(res, nullptr);
+    return nullptr;
+}
+
+char* mc_util_joinstringarray(PtrList* items, const char* joinee, size_t jlen)
+{
+    size_t i;
+    char* item;
+    Printer* res;
+    res = Memory::make<Printer>(nullptr);
+    for(i = 0; i < items->count(); i++)
+    {
+        item = (char*)items->get(i);
+        res->put(item);
+        if(i < (items->count() - 1))
+        {
+            res->put(joinee, jlen);
+        }
+    }
+    return res->getStringAndDestroy(nullptr);
+}
 
 char* mc_util_canonpath(const char* strpath)
 {
@@ -11713,79 +12281,6 @@ mcfloat_t mc_util_strtod(const char* str, size_t slen, char** endptr)
     return stod_strtod(&p, end, true);
 }
 
-PtrList* mc_util_splitstring(const char* str, const char* delimiter)
-{
-    bool ok;
-    size_t i;
-    long len;
-    char* rest;
-    char* line;
-    const char* lineend;
-    const char* linestart;
-    PtrList* res;
-    (void)ok;
-    res = Memory::make<PtrList>(sizeof(void*), true);
-    rest = nullptr;
-    if(!str)
-    {
-        return res;
-    }
-    linestart = str;
-    lineend = strstr(linestart, delimiter);
-    while(lineend != nullptr)
-    {
-        len = lineend - linestart;
-        line = mc_util_strndup(linestart, len);
-        if(!line)
-        {
-            goto err;
-        }
-        ok = res->push(line);
-        linestart = lineend + 1;
-        lineend = strstr(linestart, delimiter);
-    }
-    rest = mc_util_strdup(linestart);
-    if(!rest)
-    {
-        goto err;
-    }
-    ok = res->push(rest);
-    return res;
-err:
-    mc_memory_free(rest);
-    if(res)
-    {
-        for(i = 0; i < res->count(); i++)
-        {
-            line = (char*)res->get(i);
-            mc_memory_free(line);
-        }
-    }
-    PtrList::destroy(res, nullptr);
-    return nullptr;
-}
-
-char* mc_util_joinstringarray(PtrList* items, const char* joinee, size_t jlen)
-{
-    size_t i;
-    char* item;
-    Printer* res;
-    res = Memory::make<Printer>(nullptr);
-    if(!res)
-    {
-        return nullptr;
-    }
-    for(i = 0; i < items->count(); i++)
-    {
-        item = (char*)items->get(i);
-        res->put(item);
-        if(i < (items->count() - 1))
-        {
-            res->put(joinee, jlen);
-        }
-    }
-    return res->getStringAndDestroy(nullptr);
-}
 
 
 template<typename... ArgsT>
@@ -11901,24 +12396,6 @@ MC_FORCEINLINE mcfloat_t mc_mathutil_div(mcfloat_t dnleft, mcfloat_t dnright)
 MC_FORCEINLINE mcfloat_t mc_mathutil_mod(mcfloat_t dnleft, mcfloat_t dnright)
 {
     return (fmod((dnleft), (dnright)));
-}
-
-
-
-
-MC_FORCEINLINE bool mc_value_ishashable(Value obj)
-{
-    Value::Type type = obj.getType();
-    switch(type)
-    {
-        case Value::VALTYP_STRING:
-        case Value::VALTYP_NUMBER:
-        case Value::VALTYP_BOOL:
-            return true;
-        default:
-            break;
-    }
-    return false;
 }
 
 
@@ -12074,8 +12551,8 @@ Value mc_value_makemapcapacity(State* state, size_t capacity)
     {
         return Value::makeNull();
     }
-    data->uvobj.valmap->actualmap->setHashFunction((mcitemhashfn_t)mc_value_callbackhash);
-    data->uvobj.valmap->actualmap->setEqualsFunction((mcitemcomparefn_t)mc_value_callbackequals);
+    data->uvobj.valmap->actualmap->setHashFunction((mcitemhashfn_t)Value::callbackHash);
+    data->uvobj.valmap->actualmap->setEqualsFunction((mcitemcomparefn_t)Value::callbackEqualsTo);
     return Value::makeDataFrom(Value::VALTYP_MAP, data);
 }
 
@@ -12134,7 +12611,7 @@ Value mc_value_makefuncscript(State* state, const char* name, CompiledProgram* c
     data->uvobj.valfunc.funcdata.valscriptfunc.ownsdata = ownsdt;
     data->uvobj.valfunc.funcdata.valscriptfunc.numlocals = nlocals;
     data->uvobj.valfunc.funcdata.valscriptfunc.numargs = nargs;
-    if(fvc >= MC_UTIL_STATICARRAYSIZE(data->uvobj.valfunc.funcdata.valscriptfunc.ufv.freevalsstack))
+    if(fvc >= MC_CONF_FREEVALSCOUNT)
     {
         data->uvobj.valfunc.funcdata.valscriptfunc.ufv.freevalsallocated = (Value*)mc_memory_malloc(sizeof(Value) * fvc);
         if(!data->uvobj.valfunc.funcdata.valscriptfunc.ufv.freevalsallocated)
@@ -12223,27 +12700,6 @@ bool mc_value_userdatasetcopyfunction(Value object, mcitemcopyfn_t copyfn)
     return true;
 }
 
-bool mc_value_asbool(Value obj)
-{
-    if(obj.isNumber())
-    {
-        return obj.uval.valnumber;
-    }
-    return obj.uval.valbool;
-}
-
-mcfloat_t mc_value_asnumber(Value obj)
-{
-    if(obj.isNumber())
-    {
-        if(obj.getType() == Value::VALTYP_BOOL)
-        {
-            return obj.uval.valbool;
-        }
-        return obj.uval.valnumber;
-    }
-    return obj.uval.valnumber;
-}
 
 MC_INLINE const char* mc_value_stringgetdata(Value object)
 {
@@ -12314,7 +12770,7 @@ bool mc_value_stringappendvalue(Value destval, Value val)
     (void)ok;
     if(val.getType() == Value::VALTYP_NUMBER)
     {
-        mc_value_stringappendformat(destval, "%g", mc_value_asnumber(val));
+        mc_value_stringappendformat(destval, "%g", Value::asNumber(val));
         goto finished;
     }
     if(val.getType() == Value::VALTYP_STRING)
@@ -12363,19 +12819,7 @@ bool mc_value_stringrehash(Value obj)
     return true;
 }
 
-mcobjfunction_t* mc_value_asscriptfunction(Value object)
-{
-    mcobjdata_t* data;
-    MC_ASSERT(object.getType() == Value::VALTYP_FUNCSCRIPT);
-    data = object.getAllocatedData();
-    return &data->uvobj.valfunc;
-}
 
-MC_INLINE mcobjfunction_t* mc_value_asnativefunction(Value obj)
-{
-    mcobjdata_t* data = obj.getAllocatedData();
-    return &data->uvobj.valfunc;
-}
 
 const char* mc_value_functiongetname(Value obj)
 {
@@ -12785,139 +13229,6 @@ void mc_objectdata_deinit(mcobjdata_t* data)
 }
 
 
-MC_FORCEINLINE bool mc_value_compare(Value a, Value b, mcvalcmpresult_t* cres)
-{
-    const char* astring;
-    const char* bstring;
-    int alen;
-    int blen;
-    intptr_t adataval;
-    intptr_t bdataval;
-    mcfloat_t dnleft;
-    mcfloat_t dnright;
-    size_t ahash;
-    size_t bhash;
-    Value::Type atype;
-    Value::Type btype;
-    /*
-    if(a.odata == b.odata)
-    {
-        return 0;
-    }
-    */
-    cres->result = 1;
-    atype = a.getType();
-    btype = b.getType();
-    if((atype == Value::VALTYP_NUMBER || atype == Value::VALTYP_BOOL || atype == Value::VALTYP_NULL) && (btype == Value::VALTYP_NUMBER || btype == Value::VALTYP_BOOL || btype == Value::VALTYP_NULL))
-    {
-        dnleft = mc_value_asnumber(a);
-        dnright = mc_value_asnumber(b);
-        cres->result = (dnleft - dnright);
-        return true;
-    }
-    if(atype == btype && atype == Value::VALTYP_STRING)
-    {
-        alen = mc_value_stringgetlength(a);
-        blen = mc_value_stringgetlength(b);
-        #if 0
-        fprintf(stderr, "mc_value_compare: alen=%d, blen=%d\n", alen, blen);
-        #endif
-        if(alen != blen)
-        {
-            cres->result = alen - blen;
-            return false;
-        }
-        ahash = mc_value_stringgethash(a);
-        bhash = mc_value_stringgethash(b);
-        if(ahash != bhash)
-        {
-            cres->result = ahash - bhash;
-            return false;
-        }
-        astring = mc_value_stringgetdata(a);
-        bstring = mc_value_stringgetdata(b);
-        if(strncmp(astring, bstring, alen) == 0)
-        {
-            cres->result = 0;
-            return true;
-        }
-        else
-        {
-            cres->result = 1;
-        }
-        return true;
-    }
-    if((a.isAllocated() || a.isNull()) && (b.isAllocated() || b.isNull()))
-    {
-        adataval = (intptr_t)a.getAllocatedData();
-        bdataval = (intptr_t)b.getAllocatedData();
-        cres->result = (mcfloat_t)(adataval - bdataval);
-        return true;
-    }
-    return false;
-}
-
-MC_FORCEINLINE bool mc_value_equals(Value a, Value b)
-{
-    bool ok;
-    mcvalcmpresult_t cres;
-    Value::Type atype;
-    Value::Type btype;
-    (void)ok;
-    atype = a.getType();
-    btype = b.getType();
-    if(atype != btype)
-    {
-        return false;
-    }
-    ok = mc_value_compare(a, b, &cres);
-    return MC_UTIL_CMPFLOAT(cres.result, 0);
-}
-
-
-bool mc_value_callbackequals(Value* aptr, Value* bptr)
-{
-    Value a;
-    Value b;
-    a = *aptr;
-    b = *bptr;
-    return mc_value_equals(a, b);
-}
-
-size_t mc_value_callbackhash(Value* objptr)
-{
-    bool bval;
-    mcfloat_t dval;
-    Value obj;
-    Value::Type type;
-    obj = *objptr;
-    type = obj.getType();
-    switch(type)
-    {
-        case Value::VALTYP_NUMBER:
-            {
-                dval = mc_value_asnumber(obj);
-                return mc_util_hashdouble(dval);
-            }
-            break;
-        case Value::VALTYP_BOOL:
-            {
-                bval = mc_value_asbool(obj);
-                return bval;
-            }
-            break;
-        case Value::VALTYP_STRING:
-            {
-                return mc_value_stringgethash(obj);
-            }
-            break;
-        default:
-            {
-            }
-            break;
-    }
-    return 0;
-}
 
 template<typename TypeKeyT, typename TypeValueT>
 Value mc_value_copydeepfuncscript(State* state, Value obj, GenericDict<TypeKeyT, TypeValueT>* targetdict)
@@ -12933,7 +13244,7 @@ Value mc_value_copydeepfuncscript(State* state, Value obj, GenericDict<TypeKeyT,
     AstLocation* srcpositionscopy;
     CompiledProgram* comprescopy;
     (void)ok;
-    function = mc_value_asscriptfunction(obj);
+    function = Value::asFunction(obj);
     bytecodecopy = nullptr;
     srcpositionscopy = nullptr;
     comprescopy = nullptr;
@@ -12971,7 +13282,7 @@ Value mc_value_copydeepfuncscript(State* state, Value obj, GenericDict<TypeKeyT,
     {
         return Value::makeNull();
     }
-    functioncopy = mc_value_asscriptfunction(copy);
+    functioncopy = Value::asFunction(copy);
     if(function->freeValuesAreAllocated())
     {
         functioncopy->funcdata.valscriptfunc.ufv.freevalsallocated = (Value*)mc_memory_malloc(sizeof(Value) * function->funcdata.valscriptfunc.freevalscount);
@@ -12984,7 +13295,7 @@ Value mc_value_copydeepfuncscript(State* state, Value obj, GenericDict<TypeKeyT,
     for(i = 0; i < function->funcdata.valscriptfunc.freevalscount; i++)
     {
         freeval = mc_value_functiongetfreevalat(obj, i);
-        freevalcopy = mc_value_copydeepintern(state, freeval, targetdict);
+        freevalcopy = Value::copyDeepIntern(state, freeval, targetdict);
         if(!freeval.isNull() && freevalcopy.isNull())
         {
             return Value::makeNull();
@@ -13018,7 +13329,7 @@ Value mc_value_copydeeparray(State* state, Value obj, GenericDict<TypeKeyT, Type
     for(i = 0; i < len; i++)
     {
         item = mc_value_arraygetvalue(obj, i);
-        itemcopy = mc_value_copydeepintern(state, item, targetdict);
+        itemcopy = Value::copyDeepIntern(state, item, targetdict);
         if(!item.isNull() && itemcopy.isNull())
         {
             return Value::makeNull();
@@ -13057,12 +13368,12 @@ Value mc_value_copydeepmap(State* state, Value obj, GenericDict<TypeKeyT, TypeVa
     {
         key = mc_value_mapgetkeyat(obj, i);
         val = mc_value_mapgetvalueat(obj, i);
-        keycopy = mc_value_copydeepintern(state, key, targetdict);
+        keycopy = Value::copyDeepIntern(state, key, targetdict);
         if(!key.isNull() && keycopy.isNull())
         {
             return Value::makeNull();
         }
-        valcopy = mc_value_copydeepintern(state, val, targetdict);
+        valcopy = Value::copyDeepIntern(state, val, targetdict);
         if(!val.isNull() && valcopy.isNull())
         {
             return Value::makeNull();
@@ -13072,201 +13383,6 @@ Value mc_value_copydeepmap(State* state, Value obj, GenericDict<TypeKeyT, TypeVa
         {
             return Value::makeNull();
         }
-    }
-    return copy;
-}
-
-template<typename TypeKeyT, typename TypeValueT>
-Value mc_value_copydeepintern(State* state, Value obj, GenericDict<TypeKeyT, TypeValueT>* targetdict)
-{
-    Value::Type type;
-    Value copy;
-    Value* copyptr;
-    copyptr = (Value*)targetdict->get(&obj);
-    if(copyptr)
-    {
-        return *copyptr;
-    }
-    copy = Value::makeNull();
-    type = obj.getType();
-    switch(type)
-    {
-        case Value::VALTYP_FREED:
-        case Value::VALTYP_ANY:
-        case Value::VALTYP_NONE:
-            {
-                MC_ASSERT(false);
-                copy = Value::makeNull();
-            }
-            break;
-        case Value::VALTYP_NUMBER:
-        case Value::VALTYP_BOOL:
-        case Value::VALTYP_NULL:
-        case Value::VALTYP_FUNCNATIVE:
-            {
-                copy = obj;
-            }
-            break;
-        case Value::VALTYP_STRING:
-            {
-                bool ok;
-                int len;
-                const char* str;
-                (void)ok;
-                str = mc_value_stringgetdata(obj);
-                len = mc_value_stringgetlength(obj);
-                copy = mc_value_makestringlen(state, str, len);
-                ok = targetdict->setKV(&obj, &copy);
-                if(!ok)
-                {
-                    return Value::makeNull();
-                }
-                return copy;
-            }
-            break;
-        case Value::VALTYP_FUNCSCRIPT:
-            {
-                return mc_value_copydeepfuncscript(state, obj, targetdict);
-            }
-            break;
-        case Value::VALTYP_ARRAY:
-            {
-                return mc_value_copydeeparray(state, obj, targetdict);
-            }
-            break;
-        case Value::VALTYP_MAP:
-            {
-                return mc_value_copydeepmap(state, obj, targetdict);
-            }
-            break;
-        case Value::VALTYP_EXTERNAL:
-            {
-                copy = mc_value_copyflat(state, obj);
-            }
-            break;
-        case Value::VALTYP_ERROR:
-            {
-                copy = obj;
-            }
-            break;
-    }
-    return copy;
-}
-
-Value mc_value_copydeep(State* state, Value obj)
-{
-    Value res;
-    auto targetdict = Memory::make<GenericDict<Value, Value>>();
-    if(!targetdict)
-    {
-        return Value::makeNull();
-    }
-    res = mc_value_copydeepintern(state, obj, targetdict);
-    Memory::destroy(targetdict);
-    return res;
-}
-
-Value mc_value_copyflat(State* state, Value obj)
-{
-    bool ok;
-    Value copy;
-    Value::Type type;
-    (void)ok;
-    copy = Value::makeNull();
-    type = obj.getType();
-    switch(type)
-    {
-        case Value::VALTYP_ANY:
-        case Value::VALTYP_FREED:
-        case Value::VALTYP_NONE:
-            {
-                MC_ASSERT(false);
-                copy = Value::makeNull();
-            }
-            break;
-        case Value::VALTYP_NUMBER:
-        case Value::VALTYP_BOOL:
-        case Value::VALTYP_NULL:
-        case Value::VALTYP_FUNCSCRIPT:
-        case Value::VALTYP_FUNCNATIVE:
-        case Value::VALTYP_ERROR:
-            {
-                copy = obj;
-            }
-            break;
-        case Value::VALTYP_STRING:
-            {
-                size_t len;
-                const char* str;
-                str = mc_value_stringgetdata(obj);
-                len = mc_value_stringgetlength(obj);
-                copy = mc_value_makestringlen(state, str, len);
-            }
-            break;
-        case Value::VALTYP_ARRAY:
-            {
-                int i;
-                int len;
-                Value item;
-                len = mc_value_arraygetlength(obj);
-                copy = mc_value_makearraycapacity(state, len);
-                if(copy.isNull())
-                {
-                    return Value::makeNull();
-                }
-                for(i = 0; i < len; i++)
-                {
-                    item = mc_value_arraygetvalue(obj, i);
-                    ok = mc_value_arraypush(copy, item);
-                    if(!ok)
-                    {
-                        return Value::makeNull();
-                    }
-                }
-            }
-            break;
-        case Value::VALTYP_MAP:
-            {
-                int i;
-                Value key;
-                Value val;
-                copy = mc_value_makemap(state);
-                for(i = 0; i < mc_value_mapgetlength(obj); i++)
-                {
-                    key = mc_value_mapgetkeyat(obj, i);
-                    val = mc_value_mapgetvalueat(obj, i);
-                    ok = mc_value_mapsetvalue(copy, key, val);
-                    if(!ok)
-                    {
-                        return Value::makeNull();
-                    }
-                }
-            }
-            break;
-        case Value::VALTYP_EXTERNAL:
-            {
-                void* datacopy;
-                mcobjuserdata_t* objext;
-                copy = mc_value_makeuserobject(state, nullptr);
-                if(copy.isNull())
-                {
-                    return Value::makeNull();
-                }
-                objext = mc_value_userdatagetdata(obj);
-                datacopy = nullptr;
-                if(objext->datacopyfn)
-                {
-                    datacopy = objext->datacopyfn(objext->data);
-                }
-                else
-                {
-                    datacopy = objext->data;
-                }
-                mc_value_userdatasetdata(copy, datacopy);
-                mc_value_userdatasetdestroyfunction(copy, objext->datadestroyfn);
-                mc_value_userdatasetcopyfunction(copy, objext->datacopyfn);
-            }
-            break;
     }
     return copy;
 }
@@ -13424,7 +13540,7 @@ void mc_printer_printobjfuncscript(Printer* pr, Value obj)
 {
     const char* fname;
     mcobjfunction_t* fn;
-    fn = mc_value_asscriptfunction(obj);
+    fn = Value::asFunction(obj);
     fname = mc_value_functiongetname(obj);
     pr->format("<scriptfunction '%s' locals=%d argc=%d fvc=%d", fname, fn->funcdata.valscriptfunc.numlocals, fn->funcdata.valscriptfunc.numargs, fn->funcdata.valscriptfunc.freevalscount);
     #if 0
@@ -13595,13 +13711,13 @@ void mc_printer_printvalue(Printer* pr, Value obj, bool accurate)
         case Value::VALTYP_NUMBER:
             {
                 mcfloat_t number;
-                number = mc_value_asnumber(obj);
+                number = Value::asNumber(obj);
                 pr->printNumFloat(number);
             }
             break;
         case Value::VALTYP_BOOL:
             {
-                pr->put(mc_value_asbool(obj) ? "true" : "false");
+                pr->put(Value::asBool(obj) ? "true" : "false");
             }
             break;
         case Value::VALTYP_STRING:
@@ -13653,13 +13769,6 @@ void mc_printer_printvalue(Printer* pr, Value obj, bool accurate)
 }
 
 
-GCMemory* mc_value_getmem(Value obj)
-{
-    mcobjdata_t* data;
-    data = obj.getAllocatedData();
-    return data->m_objmem;
-}
-
 
 
 
@@ -13683,34 +13792,6 @@ bool mc_error_printusererror(Printer* pr, Value obj)
     return true;
 }
 
-
-void mc_state_printerrors(State* state)
-{
-    int i;
-    int ecnt;
-    Error* err;
-    ecnt = mc_state_errorcount(state);
-    for(i = 0; i < ecnt; i++)
-    {
-        err = mc_state_geterror(state, i);
-        err->printErrorTo(state->stderrprinter);
-    }
-}
-
-CompiledProgram* mc_state_compilesource(State* state, const char* code, const char* filename)
-{
-    CompiledProgram* compres;
-    mc_state_clearerrors(state);
-    compres = state->compiler->compilesource(code, filename);
-    if(state->m_errorlist.count() > 0)
-    {
-        goto err;
-    }
-    return compres;
-err:
-    CompiledProgram::destroy(compres);
-    return nullptr;
-}
 
 
 bool mc_vm_runexecfunc(State* state, CompiledProgram* comp_res, GenericList<Value>* constants);
@@ -13772,46 +13853,8 @@ err:
     return Value::makeNull();
 }
 
-Value mc_vm_callvalue(State* state, GenericList<Value>* constants, Value callee, Value thisval, size_t argc, Value* args);
 
 
-Value mc_state_callfunctionbyname(State* state, const char* fname, Value thisval, size_t argc, Value* args)
-{
-    Value res;
-    Value callee;
-    state->reset();
-    callee = state->getGlobalByName(fname);
-    if(callee.getType() == Value::VALTYP_NULL)
-    {
-        return Value::makeNull();
-    }
-    res = mc_vm_callvalue(state, state->compiler->getconstants(), callee, thisval, argc, (Value*)args);
-    if(state->m_errorlist.count() > 0)
-    {
-        return Value::makeNull();
-    }
-    return res;
-}
-
-bool mc_state_haserrors(State* state)
-{
-    return mc_state_errorcount(state) > 0;
-}
-
-int mc_state_errorcount(State* state)
-{
-    return state->m_errorlist.count();
-}
-
-void mc_state_clearerrors(State* state)
-{
-    state->m_errorlist.clear();
-}
-
-Error* mc_state_geterror(State* state, int index)
-{
-    return (Error*)state->m_errorlist.get(index);
-}
 
 
 
@@ -13946,10 +13989,6 @@ mcobjdata_t* mc_gcmemory_allocobjectdata(State* state)
     else
     {
         data = Memory::make<mcobjdata_t>();
-        if(!data)
-        {
-            return nullptr;
-        }
     }
     memset(data, 0, sizeof(mcobjdata_t));
     data->m_pstate = state;
@@ -14063,7 +14102,7 @@ void mc_state_gcmarkobject(Value obj)
                 case Value::VALTYP_FUNCSCRIPT:
                     {
                         break;
-                        function = mc_value_asscriptfunction(obj);
+                        function = Value::asFunction(obj);
                         for(i = 0; i < function->funcdata.valscriptfunc.freevalscount; i++)
                         {
                             freeval = mc_value_functiongetfreevalat(obj, i);
@@ -14297,11 +14336,10 @@ void mc_vm_reset(State* state)
     state->execstate.thisstpos = 0;
     while(state->execstate.framestack->m_listcount > 0)
     {
-        mc_vm_popframe(state);
+        state->vmPopFrame();
     }
 }
 
-bool mc_function_execfunction(State* state, Value function, GenericList<Value>* constants, bool nested);
 
 bool mc_vm_runexecfunc(State* state, CompiledProgram* comp_res, GenericList<Value>* constants)
 {
@@ -14319,11 +14357,11 @@ bool mc_vm_runexecfunc(State* state, CompiledProgram* comp_res, GenericList<Valu
     {
         return false;
     }
-    mc_vm_stackpush(state, mainfn);
-    res = mc_function_execfunction(state, mainfn, constants, false);
+    state->vmStackPush(mainfn);
+    res = mc_vm_execvm(state, mainfn, constants, false);
     while(state->execstate.framestack->count() > oldframescount)
     {
-        mc_vm_popframe(state);
+        state->vmPopFrame();
     }
     //MC_ASSERT(state->execstate.vsposition == oldsp);
     state->execstate.thisstpos = oldthissp;
@@ -14331,197 +14369,7 @@ bool mc_vm_runexecfunc(State* state, CompiledProgram* comp_res, GenericList<Valu
 }
 
 
-MC_FORCEINLINE bool mc_vm_haserrors(State* state)
-{
-    return state->m_errorlist.count() > 0;
-}
 
-MC_FORCEINLINE bool mc_vm_setglobalbyindex(State* state, size_t ix, Value val)
-{
-    state->globalvalstack->set(ix, val);
-    if(ix >= state->globalvalcount)
-    {
-        state->globalvalcount = ix + 1;
-    }
-    return true;
-}
-
-MC_FORCEINLINE Value mc_vmintern_getglobalbyindex(State* state, size_t ix)
-{
-    return state->globalvalstack->get(ix);
-}
-
-Value mc_vm_getglobalbyindex(State* state, size_t ix)
-{
-    return mc_vmintern_getglobalbyindex(state, ix);
-}
-
-MC_FORCEINLINE void mc_vm_setstackpos(State* state, size_t nsp)
-{
-    #if 0
-    size_t i;
-    size_t count;
-    size_t bytescount;
-    if(nsp > state->execstate.vsposition)
-    {
-        /* to avoid gcing freed objects */
-        count = nsp - state->execstate.vsposition;
-        bytescount = (count - 0) * sizeof(Value);
-        for(i=(state->execstate.vsposition - 0); (i != bytescount) && (i < state->execstate.valuestack->m_listcapacity); i++)
-        {
-            //memset(&state->execstate.valuestack->m_listitems[i], 0, sizeof(Value));
-            state->execstate.valuestack->m_listitems[i].valtype = Value::VALTYP_NULL;
-        }
-    }
-    #endif
-    state->execstate.vsposition = nsp;
-}
-
-MC_FORCEINLINE void mc_vmintern_stackpush(State* state, Value obj)
-{
-    int numlocals;
-    VMFrame* frame;
-    mcobjfunction_t* currentfunction;
-    (void)numlocals;
-    (void)frame;
-    (void)currentfunction;
-#if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
-    if(state->execstate.currframe)
-    {
-        frame = state->execstate.currframe;
-        currentfunction = mc_value_asscriptfunction(frame->function);
-        numlocals = currentfunction->funcdata.valscriptfunc.numlocals;
-        MC_ASSERT((size_t)state->execstate.vsposition >= (size_t)(frame->basepointer + numlocals));
-    }
-#endif
-    #if 1
-        state->execstate.valuestack->set(state->execstate.vsposition, obj);
-    #else
-        state->execstate.valuestack->push(obj);
-    #endif
-    state->execstate.vsposition++;
-}
-
-void mc_vm_stackpush(State* state, Value obj)
-{
-    mc_vmintern_stackpush(state, obj);
-}
-
-MC_FORCEINLINE Value mc_vm_stackpop(State* state)
-{
-    int numlocals;
-    Value res;
-    VMFrame* frame;
-    mcobjfunction_t* currentfunction;
-    (void)numlocals;
-    (void)frame;
-    (void)currentfunction;
-#if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
-    if(state->execstate.vsposition == 0)
-    {
-        state->m_errorlist.pushFormat(MC_ERROR_RUNTIME, state->execstate.currframe->getPosition(), "stack underflow");
-        MC_ASSERT(false);
-        return Value::makeNull();
-    }
-    if(state->execstate.currframe)
-    {
-        frame = state->execstate.currframe;
-        currentfunction = mc_value_asscriptfunction(frame->function);
-        numlocals = currentfunction->funcdata.valscriptfunc.numlocals;
-        MC_ASSERT((state->execstate.vsposition - 1) >= (frame->basepointer + numlocals));
-    }
-#endif
-    state->execstate.vsposition--;
-    res = state->execstate.valuestack->get(state->execstate.vsposition);
-    state->execstate.lastpopped = res;
-    return res;
-}
-
-MC_FORCEINLINE Value mc_vm_stackget(State* state, size_t nthitem)
-{
-    size_t ix;
-    ix = state->execstate.vsposition - 1 - nthitem;
-    return state->execstate.valuestack->get(ix);
-}
-
-MC_FORCEINLINE void mc_vm_thisstackpush(State* state, Value obj)
-{
-    state->execstate.valthisstack->set(state->execstate.thisstpos, obj);
-    state->execstate.thisstpos++;
-}
-
-MC_FORCEINLINE Value mc_vm_thisstackpop(State* state)
-{
-#if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
-    if(state->execstate.thisstpos == 0)
-    {
-        state->errorspushFormat(MC_ERROR_RUNTIME, state->execstate.currframe->getPosition(), "'this' stack underflow");
-        MC_ASSERT(false);
-        return Value::makeNull();
-    }
-#endif
-    state->execstate.thisstpos--;
-    return state->execstate.valthisstack->get(state->execstate.thisstpos);
-}
-
-MC_FORCEINLINE Value mc_vm_thisstackget(State* state, size_t nthitem)
-{
-    size_t ix;
-    size_t cnt;
-    Value val;
-    (void)val;
-    ix = state->execstate.thisstpos - 1 - nthitem;
-    cnt = state->execstate.valthisstack->count();
-    if((cnt == 0) || (ix > cnt))
-    {
-        //val = mc_value_makemap(state);
-        //state->execstate.valthisstack->set(ix, val);
-        //return mc_value_makemap(state);
-        return Value::makeNull();
-        //return val;
-    }
-    return state->execstate.valthisstack->get(ix);
-}
-
-MC_FORCEINLINE bool mc_vm_pushframe(State* state, VMFrame frame)
-{
-    int add;
-    mcobjfunction_t* framefunction;
-    add = 0;
-    state->execstate.framestack->set(state->execstate.framestack->m_listcount, frame);
-    add = 1;
-    state->execstate.currframe = state->execstate.framestack->getp(state->execstate.framestack->m_listcount);
-    state->execstate.framestack->m_listcount += add;
-    framefunction = mc_value_asscriptfunction(frame.function);
-    mc_vm_setstackpos(state, frame.basepointer + framefunction->funcdata.valscriptfunc.numlocals);
-    return true;
-}
-
-
-MC_FORCEINLINE bool mc_vmintern_popframe(State* state)
-{
-    mc_vm_setstackpos(state, state->execstate.currframe->basepointer - 1);
-    if(state->execstate.framestack->m_listcount <= 0)
-    {
-        MC_ASSERT(false);
-        state->execstate.currframe = NULL;
-        return false;
-    }
-    state->execstate.framestack->m_listcount--;
-    if(state->execstate.framestack->m_listcount == 0)
-    {
-        state->execstate.currframe = NULL;
-        return false;
-    }
-    state->execstate.currframe = state->execstate.framestack->getp(state->execstate.framestack->m_listcount - 1);
-    return true;
-}
-
-
-bool mc_vm_popframe(State* state)
-{
-    return mc_vmintern_popframe(state);
-}
 
 MC_INLINE void mc_vm_rungc(State* state, GenericList<Value>* constants)
 {
@@ -14543,43 +14391,6 @@ MC_INLINE void mc_vm_rungc(State* state, GenericList<Value>* constants)
     mc_state_gcsweep(state);
 }
 
-MC_FORCEINLINE Value mc_vm_callnativefunction(State* state, Value callee, AstLocation srcpos, Value selfval, size_t argc, Value* args)
-{
-    Value::Type restype;
-    Value res;
-    Error* err; 
-    Traceback* traceback;
-    mcobjfunction_t* nativefun;
-    nativefun = mc_value_asnativefunction(callee);
-    res = nativefun->funcdata.valnativefunc.natptrfn(state, nativefun->funcdata.valnativefunc.userpointer, selfval, argc, args);
-    if(mc_util_unlikely(state->m_errorlist.count() > 0))
-    {
-        err = state->m_errorlist.getLast();
-        err->m_pos = srcpos;
-        err->m_traceback = Memory::make<Traceback>();
-        if(err->m_traceback)
-        {
-            err->m_traceback->push(nativefun->funcdata.valnativefunc.natfnname, AstLocation::Invalid());
-        }
-        return Value::makeNull();
-    }
-    restype = res.getType();
-    if(mc_util_unlikely(restype == Value::VALTYP_ERROR))
-    {
-        traceback = Memory::make<Traceback>();
-        if(traceback)
-        {
-            /* error builtin is treated in a special way */
-            if(!mc_util_strequal(nativefun->funcdata.valnativefunc.natfnname, "error"))
-            {
-                traceback->push(nativefun->funcdata.valnativefunc.natfnname, AstLocation::Invalid());
-            }
-            mc_traceback_vmpush(traceback, state);
-            mc_value_errorsettraceback(res, traceback);
-        }
-    }
-    return res;
-}
 
 MC_FORCEINLINE bool mc_vmdo_callobject(State* state, Value callee, int nargs)
 {
@@ -14619,7 +14430,7 @@ MC_FORCEINLINE bool mc_vmdo_callobject(State* state, Value callee, int nargs)
     #endif
     if(calleetype == Value::VALTYP_FUNCSCRIPT)
     {
-        calleefunction = mc_value_asscriptfunction(callee);
+        calleefunction = Value::asFunction(callee);
         if(nargs != calleefunction->funcdata.valscriptfunc.numargs)
         {
             #if 0
@@ -14634,7 +14445,7 @@ MC_FORCEINLINE bool mc_vmdo_callobject(State* state, Value callee, int nargs)
             state->m_errorlist.pushFormat(MC_ERROR_RUNTIME, AstLocation::Invalid(), "frame init failed in mc_vmdo_callobject");
             return false;
         }
-        ok = mc_vm_pushframe(state, calleeframe);
+        ok = state->vmPushFrame(calleeframe);
         if(!ok)
         {
             state->m_errorlist.pushFormat(MC_ERROR_RUNTIME, AstLocation::Invalid(), "pushing frame failed in mc_vmdo_callobject");
@@ -14646,17 +14457,17 @@ MC_FORCEINLINE bool mc_vmdo_callobject(State* state, Value callee, int nargs)
         #if 0
         if(!selfval.isNull())
         {
-            mc_vm_stackpop(state);
+            state->vmStackPop();
         }
         #endif
         stackpos = state->execstate.valuestack->data() + state->execstate.vsposition - nargs;
-        res = mc_vm_callnativefunction(state, callee, state->execstate.currframe->getPosition(), selfval, nargs, stackpos);
-        if(mc_vm_haserrors(state))
+        res = state->vmCallNativeFunction(callee, state->execstate.currframe->getPosition(), selfval, nargs, stackpos);
+        if(state->hasErrors())
         {
             return false;
         }
-        mc_vm_setstackpos(state, state->execstate.vsposition - nargs - 1);
-        mc_vmintern_stackpush(state, res);
+        state->setStackPos(state->execstate.vsposition - nargs - 1);
+        state->vmStackPush(res);
     }
     else
     {
@@ -14707,11 +14518,11 @@ MC_FORCEINLINE bool mc_vmdo_tryoverloadoperator(State* state, Value left, Value 
         }
     }
     *outoverloadfound = true;
-    mc_vmintern_stackpush(state, callee);
-    mc_vmintern_stackpush(state, left);
+    state->vmStackPush(callee);
+    state->vmStackPush(left);
     if(numoper == 2)
     {
-        mc_vmintern_stackpush(state, right);
+        state->vmStackPush(right);
     }
     return mc_vmdo_callobject(state, callee, numoper);
 }
@@ -14747,17 +14558,9 @@ MC_FORCEINLINE bool mc_vmdo_opaddstring(State* state, Value valleft, Value valri
     (void)opcode;
     (void)righttype;
     nstring = mc_value_makestrcapacity(state, 0);
-    mc_vmintern_stackpush(state, nstring);
-    if(!mc_value_stringappendvalue(nstring, valleft))
-    {
-        mc_vmintern_stackpush(state, valleft);
-        return false;
-    }
-    if(!mc_value_stringappendvalue(nstring, valright))
-    {
-        mc_vmintern_stackpush(state, valright);
-        return false;
-    }
+    mc_value_stringappendvalue(nstring, valleft);
+    mc_value_stringappendvalue(nstring, valright);
+    state->vmStackPush(nstring);
     return true;
 }
 
@@ -14776,8 +14579,8 @@ MC_FORCEINLINE bool mc_vmdo_math(State* state, mcopcode_t opcode)
     Value::Type lefttype;
     Value::Type righttype;
     (void)ok;
-    valright = mc_vm_stackpop(state);
-    valleft = mc_vm_stackpop(state);
+    valright = state->vmStackPop();
+    valleft = state->vmStackPop();
     lefttype = valleft.getType();
     righttype = valright.getType();
     if(lefttype == Value::VALTYP_STRING && opcode == MC_OPCODE_ADD)
@@ -14789,8 +14592,8 @@ MC_FORCEINLINE bool mc_vmdo_math(State* state, mcopcode_t opcode)
     }
     else if((valleft.isNumeric() || valleft.isNull()) && (valright.isNumeric() || valright.isNull()))
     {
-        dnright = mc_value_asnumber(valright);
-        dnleft = mc_value_asnumber(valleft);
+        dnright = Value::asNumber(valright);
+        dnleft = Value::asNumber(valleft);
         res = 0;
         switch(opcode)
         {
@@ -14872,7 +14675,7 @@ MC_FORCEINLINE bool mc_vmdo_math(State* state, mcopcode_t opcode)
                 }
                 break;
         }
-        mc_vmintern_stackpush(state, Value::makeNumber(res));
+        state->vmStackPush(Value::makeNumber(res));
         return true;
     }
     overloadfound = false;
@@ -14989,14 +14792,14 @@ MC_FORCEINLINE bool mc_vmdo_findclassmembervalue(State* state, Value left, Value
             fnval = mc_value_makefuncnative(state, vdest->name, vdest->fndest, nullptr);
             if(vdest->ispseudo)
             {
-                retv = mc_vm_callnativefunction(state, fnval, state->execstate.currframe->getPosition(), left, 0, nullptr);
-                mc_vmintern_stackpush(state, retv);
+                retv = state->vmCallNativeFunction(fnval, state->execstate.currframe->getPosition(), left, 0, nullptr);
+                state->vmStackPush(retv);
                 return true;
             }
             else
             {
                 retv = fnval;
-                mc_vmintern_stackpush(state, retv);
+                state->vmStackPush(retv);
                 return true;
             }
         }
@@ -15046,7 +14849,7 @@ MC_FORCEINLINE bool mc_vmdo_getindexpartial(State* state, Value left, Value::Typ
                 res = Value::makeNull();
                 lefttypename = Value::getTypename(lefttype);
                 state->pushError(MC_ERROR_RUNTIME, state->execstate.currframe->getPosition(), "object type '%s' has no field '%s'", lefttypename, mc_value_stringgetdata(index));
-                mc_vmintern_stackpush(state, res);
+                state->vmStackPush(res);
                 return false;
             }
         }
@@ -15067,7 +14870,7 @@ MC_FORCEINLINE bool mc_vmdo_getindexpartial(State* state, Value left, Value::Typ
             state->pushError(MC_ERROR_RUNTIME, state->execstate.currframe->getPosition(), "cannot get partial index of %s with %s", lefttypename, indextypename);
             return false;
         }
-        ix = (int)mc_value_asnumber(index);
+        ix = (int)Value::asNumber(index);
         if(ix < 0)
         {
             ix = mc_value_arraygetlength(left) + ix;
@@ -15088,7 +14891,7 @@ MC_FORCEINLINE bool mc_vmdo_getindexpartial(State* state, Value left, Value::Typ
         }
         str = mc_value_stringgetdata(left);
         leftlen = mc_value_stringgetlength(left);
-        ix = (int)mc_value_asnumber(index);
+        ix = (int)Value::asNumber(index);
         if(ix >= 0 && ix < leftlen)
         {
             resstr[0] = str[ix];
@@ -15096,7 +14899,7 @@ MC_FORCEINLINE bool mc_vmdo_getindexpartial(State* state, Value left, Value::Typ
         }
     }
     finished:
-    mc_vmintern_stackpush(state, res);
+    state->vmStackPush(res);
     return true;
 }
 
@@ -15106,8 +14909,8 @@ MC_FORCEINLINE bool mc_vmdo_getindexfull(State* state)
     Value::Type indextype;
     Value left;
     Value index;
-    index = mc_vm_stackpop(state);
-    left = mc_vm_stackpop(state);
+    index = state->vmStackPop();
+    left = state->vmStackPop();
     lefttype = left.getType();
     indextype = index.getType();
     return mc_vmdo_getindexpartial(state, left, lefttype, index, indextype, false);
@@ -15119,8 +14922,8 @@ MC_FORCEINLINE bool mc_vmdo_getdotindex(State* state)
     Value::Type indextype;
     Value left;
     Value index;
-    index = mc_vm_stackpop(state);
-    left = mc_vm_stackpop(state);
+    index = state->vmStackPop();
+    left = state->vmStackPop();
     lefttype = left.getType();
     indextype = index.getType();
     return mc_vmdo_getindexpartial(state, left, lefttype, index, indextype, true);
@@ -15157,7 +14960,7 @@ MC_FORCEINLINE bool mc_vmdo_setindexpartial(State* state, Value left, Value::Typ
             state->pushError(MC_ERROR_RUNTIME, state->execstate.currframe->getPosition(), "cannot set index of %s with %s", lefttypename, indextypename);
             return false;
         }
-        ix = (int)mc_value_asnumber(index);                        
+        ix = (int)Value::asNumber(index);                        
         ok = mc_value_arraysetvalue(left, ix, nvalue);
         alen = mc_value_arraygetlength(left);
         if(!ok)
@@ -15189,9 +14992,9 @@ MC_FORCEINLINE bool mc_vmdo_setindexfull(State* state)
     Value nvalue;
     Value::Type lefttype;
     Value::Type indextype;
-    index = mc_vm_stackpop(state);
-    left = mc_vm_stackpop(state);
-    nvalue = mc_vm_stackpop(state);
+    index = state->vmStackPop();
+    left = state->vmStackPop();
+    nvalue = state->vmStackPop();
     lefttype = left.getType();
     indextype = index.getType();
     return mc_vmdo_setindexpartial(state, left, lefttype, index, indextype, nvalue);
@@ -15210,8 +15013,8 @@ MC_FORCEINLINE bool mc_vmdo_getvalueatfull(State* state)
     Value index;
     Value left;
     Value res;
-    index = mc_vm_stackpop(state);
-    left = mc_vm_stackpop(state);
+    index = state->vmStackPop();
+    left = state->vmStackPop();
     lefttype = left.getType();
     indextype= index.getType();
     if(lefttype != Value::VALTYP_ARRAY && lefttype != Value::VALTYP_MAP && lefttype != Value::VALTYP_STRING)
@@ -15228,7 +15031,7 @@ MC_FORCEINLINE bool mc_vmdo_getvalueatfull(State* state)
         state->pushError(MC_ERROR_RUNTIME, state->execstate.currframe->getPosition(), "cannot get full index %s with %s", lefttypename, indextypename);
         return false;
     }
-    ix = (int)mc_value_asnumber(index);
+    ix = (int)Value::asNumber(index);
     if(lefttype == Value::VALTYP_ARRAY)
     {
         res = mc_value_arraygetvalue(left, ix);
@@ -15241,14 +15044,14 @@ MC_FORCEINLINE bool mc_vmdo_getvalueatfull(State* state)
     {
         str = mc_value_stringgetdata(left);
         leftlen = mc_value_stringgetlength(left);
-        ix = (int)mc_value_asnumber(index);
+        ix = (int)Value::asNumber(index);
         if(ix >= 0 && ix < leftlen)
         {
             resstr[0] = str[ix];
             res = mc_value_makestringlen(state, resstr, 1);
         }
     }
-    mc_vmintern_stackpush(state, res);
+    state->vmStackPush(res);
     return true;
 }
 
@@ -15279,7 +15082,7 @@ MC_FORCEINLINE bool mc_vmdo_makefunction(State* state, GenericList<Value>* const
         state->pushError(MC_ERROR_RUNTIME, state->execstate.currframe->getPosition(), "%s is not a function", tname);
         return false;
     }
-    constfun = mc_value_asscriptfunction(*constant);
+    constfun = Value::asFunction(*constant);
     fname = mc_value_functiongetname(*constant);
     functionobj = mc_value_makefuncscript(state, fname, constfun->funcdata.valscriptfunc.compiledprogcode, false, constfun->funcdata.valscriptfunc.numlocals, constfun->funcdata.valscriptfunc.numargs, numfree);
     if(functionobj.isNull())
@@ -15291,8 +15094,8 @@ MC_FORCEINLINE bool mc_vmdo_makefunction(State* state, GenericList<Value>* const
         freeval = state->execstate.valuestack->get(state->execstate.vsposition - numfree + i);
         mc_value_functionsetfreevalat(functionobj, i, freeval);
     }
-    mc_vm_setstackpos(state, state->execstate.vsposition - numfree);
-    mc_vmintern_stackpush(state, functionobj);
+    state->setStackPos(state->execstate.vsposition - numfree);
+    state->vmStackPush(functionobj);
     return true;
 }
 
@@ -15302,13 +15105,13 @@ MC_FORCEINLINE bool mc_vmdo_docmpvalue(State* state, mcopcode_t opcode)
     bool isoverloaded;
     const char* lefttname;
     const char* righttname;
-    mcvalcmpresult_t cres;
+    Value::CompareResult cres;
     Value res;
     Value left;
     Value right;
     (void)ok;
-    right = mc_vm_stackpop(state);
-    left = mc_vm_stackpop(state);
+    right = state->vmStackPop();
+    left = state->vmStackPop();
     isoverloaded = false;
     ok = mc_vmdo_tryoverloadoperator(state, left, right, MC_OPCODE_COMPARE, &isoverloaded);
     if(!ok)
@@ -15317,14 +15120,14 @@ MC_FORCEINLINE bool mc_vmdo_docmpvalue(State* state, mcopcode_t opcode)
     }
     if(!isoverloaded)
     {
-        ok = mc_value_compare(left, right, &cres);
+        ok = Value::compare(left, right, &cres);
         #if 0
         fprintf(stderr, "compare: ok=%d cres.result=%g\n", ok, cres.result);
         #endif
         if((ok == true) || (opcode == MC_OPCODE_COMPAREEQ))
         {
             res = Value::makeNumber(cres.result);
-            mc_vmintern_stackpush(state, res);
+            state->vmStackPush(res);
         }
         else
         {
@@ -15343,8 +15146,8 @@ MC_FORCEINLINE bool mc_vmdo_docmpvalgreater(State* state, mcopcode_t opcode)
     mcfloat_t comparisonres;
     Value res;
     Value value;
-    value = mc_vm_stackpop(state);
-    comparisonres = mc_value_asnumber(value);
+    value = state->vmStackPop();
+    comparisonres = Value::asNumber(value);
     resval = false;
     switch(opcode)
     {
@@ -15375,7 +15178,7 @@ MC_FORCEINLINE bool mc_vmdo_docmpvalgreater(State* state, mcopcode_t opcode)
             break;
     }
     res = Value::makeBool(resval);
-    mc_vmintern_stackpush(state, res);
+    state->vmStackPush(res);
     return true;
 }
 
@@ -15404,8 +15207,8 @@ MC_FORCEINLINE bool mc_vmdo_makearray(State* state)
             return false;
         }
     }
-    mc_vm_setstackpos(state, state->execstate.vsposition - count);
-    mc_vmintern_stackpush(state, arrayobj);
+    state->setStackPos(state->execstate.vsposition - count);
+    state->vmStackPush(arrayobj);
     return true;
 }
 
@@ -15419,7 +15222,7 @@ MC_FORCEINLINE bool mc_vmdo_makemapstart(State* state)
     {
         return false;
     }
-    mc_vm_thisstackpush(state, mapobj);
+    state->vmStackThisPush(mapobj);
     return true;
 }
 
@@ -15438,12 +15241,12 @@ MC_FORCEINLINE bool mc_vmdo_makemapend(State* state)
     (void)ok;
     kvpcount = state->execstate.currframe->readUint16();
     itemscount = kvpcount * 2;
-    mapobj = mc_vm_thisstackpop(state);
+    mapobj = state->vmStackThisPop();
     kvpairs = state->execstate.valuestack->data() + state->execstate.vsposition - itemscount;
     for(i = 0; i < itemscount; i += 2)
     {
         key = kvpairs[i];
-        if(!mc_value_ishashable(key))
+        if(!Value::isHashable(key))
         {
             keytype = key.getType();
             keytypename = Value::getTypename(keytype);
@@ -15453,8 +15256,8 @@ MC_FORCEINLINE bool mc_vmdo_makemapend(State* state)
         val = kvpairs[i + 1];
         ok = mc_value_mapsetvalue(mapobj, key, val);
     }
-    mc_vm_setstackpos(state, state->execstate.vsposition - itemscount);
-    mc_vmintern_stackpush(state, mapobj);
+    state->setStackPos(state->execstate.vsposition - itemscount);
+    state->vmStackPush(mapobj);
     return true;
 }
 
@@ -15464,16 +15267,18 @@ MC_FORCEINLINE bool mc_vmdo_makemapend(State* state)
     #define MC_CONF_USECOMPUTEDGOTOS 0
 #endif
 
+#define MC_CONF_USECOMPUTEDGOTOS 0
+
 #if defined(MC_CONF_USECOMPUTEDGOTOS) && (MC_CONF_USECOMPUTEDGOTOS == 1)
     #define MAKELABEL(opname) LABEL_##opname
     #define mcvm_case(opn) LABEL_##opn
-    #define mc_vmmac_break() \
-        goto readnextop
 #else
     #define mcvm_case(opn) case opn
-    #define mc_vmmac_break() \
-        break
 #endif
+
+#define mc_vmmac_break() \
+    goto readnextop
+
 
 void mc_vmutil_getopinfo(mcopcode_t opc, const char** oname)
 {
@@ -15487,7 +15292,7 @@ void mc_vmutil_getopinfo(mcopcode_t opc, const char** oname)
     }
 }
 
-bool mc_function_execfunction(State* state, Value function, GenericList<Value>* constants, bool nested)
+bool mc_vm_execvm(State* state, Value function, GenericList<Value>* constants, bool nested)
 {
     bool ok;
     int fri;
@@ -15571,7 +15376,7 @@ bool mc_function_execfunction(State* state, Value function, GenericList<Value>* 
     }
     #endif
     /* naming is hard */
-    targetfunction = mc_value_asscriptfunction(function);
+    targetfunction = Value::asFunction(function);
     ok = false;
     ok = VMFrame::init(&createdframe, function, state->execstate.vsposition - targetfunction->funcdata.valscriptfunc.numargs);
     if(!ok)
@@ -15579,7 +15384,7 @@ bool mc_function_execfunction(State* state, Value function, GenericList<Value>* 
         fprintf(stderr, "failed to init frames!\n");
         return false;
     }
-    ok = mc_vm_pushframe(state, createdframe);
+    ok = state->vmPushFrame(createdframe);
     if(!ok)
     {
         state->m_errorlist.pushFormat(MC_ERROR_USER, AstLocation::Invalid(), "pushing frame failed");
@@ -15640,13 +15445,13 @@ bool mc_function_execfunction(State* state, Value function, GenericList<Value>* 
             mcvm_case(MC_OPCODE_RETURNVALUE):
                 {
                     Value res;
-                    res = mc_vm_stackpop(state);
-                    ok = mc_vmintern_popframe(state);
+                    res = state->vmStackPop();
+                    ok = state->vmPopFrame();
                     if(!ok)
                     {
                         goto onexecfinish;
                     }
-                    mc_vmintern_stackpush(state, res);
+                    state->vmStackPush(res);
                     if(nested)
                     {
                         goto onexecfinish;
@@ -15655,11 +15460,11 @@ bool mc_function_execfunction(State* state, Value function, GenericList<Value>* 
                 mc_vmmac_break();
             mcvm_case(MC_OPCODE_RETURN):
                 {
-                    ok = mc_vmintern_popframe(state);
-                    mc_vmintern_stackpush(state, Value::makeNull());
+                    ok = state->vmPopFrame();
+                    state->vmStackPush(Value::makeNull());
                     if(!ok)
                     {
-                        mc_vm_stackpop(state);
+                        state->vmStackPop();
                         goto onexecfinish;
                     }
                 }
@@ -15675,7 +15480,7 @@ bool mc_function_execfunction(State* state, Value function, GenericList<Value>* 
                         state->pushError(MC_ERROR_RUNTIME, state->execstate.currframe->getPosition(), "constant at %d not found", constantix);
                         goto onexecerror;
                     }
-                    mc_vmintern_stackpush(state, *constant);
+                    state->vmStackPush(*constant);
                 }
                 mc_vmmac_break();
             mcvm_case(MC_OPCODE_ADD):
@@ -15697,17 +15502,17 @@ bool mc_function_execfunction(State* state, Value function, GenericList<Value>* 
                 mc_vmmac_break();
             mcvm_case(MC_OPCODE_POP):
                 {
-                    mc_vm_stackpop(state);
+                    state->vmStackPop();
                 }
                 mc_vmmac_break();
             mcvm_case(MC_OPCODE_TRUE):
                 {
-                    mc_vmintern_stackpush(state, Value::makeBool(true));
+                    state->vmStackPush(Value::makeBool(true));
                 }
                 mc_vmmac_break();
             mcvm_case(MC_OPCODE_FALSE):
                 {
-                    mc_vmintern_stackpush(state, Value::makeBool(false));
+                    state->vmStackPush(Value::makeBool(false));
                 }
                 mc_vmmac_break();
             mcvm_case(MC_OPCODE_COMPARE):
@@ -15738,13 +15543,13 @@ bool mc_function_execfunction(State* state, Value function, GenericList<Value>* 
                     Value res;
                     Value::Type opertype;
                     Value operand;
-                    operand = mc_vm_stackpop(state);
+                    operand = state->vmStackPop();
                     opertype = operand.getType();
                     if(mc_util_likely(opertype == Value::VALTYP_NUMBER))
                     {
-                        val = mc_value_asnumber(operand);
+                        val = Value::asNumber(operand);
                         res = Value::makeNumber(-val);
-                        mc_vmintern_stackpush(state, res);
+                        state->vmStackPush(res);
                     }
                     else
                     {
@@ -15771,13 +15576,13 @@ bool mc_function_execfunction(State* state, Value function, GenericList<Value>* 
                     Value res;
                     Value::Type opertype;
                     Value operand;
-                    operand = mc_vm_stackpop(state);
+                    operand = state->vmStackPop();
                     opertype = operand.getType();
                     if(opertype == Value::VALTYP_NUMBER)
                     {
-                        val = mc_value_asnumber(operand);
+                        val = Value::asNumber(operand);
                         res = Value::makeNumber(~val);
-                        mc_vmintern_stackpush(state, res);
+                        state->vmStackPush(res);
                     }
                     else
                     {
@@ -15802,17 +15607,17 @@ bool mc_function_execfunction(State* state, Value function, GenericList<Value>* 
                     Value res;
                     Value operand;
                     Value::Type type;
-                    operand = mc_vm_stackpop(state);
+                    operand = state->vmStackPop();
                     type = operand.getType();
                     if(type == Value::VALTYP_BOOL)
                     {
-                        res = Value::makeBool(!mc_value_asbool(operand));
-                        mc_vmintern_stackpush(state, res);
+                        res = Value::makeBool(!Value::asBool(operand));
+                        state->vmStackPush(res);
                     }
                     else if(type == Value::VALTYP_NULL)
                     {
                         res = Value::makeBool(true);
-                        mc_vmintern_stackpush(state, res);
+                        state->vmStackPush(res);
                     }
                     else
                     {
@@ -15825,7 +15630,7 @@ bool mc_function_execfunction(State* state, Value function, GenericList<Value>* 
                         if(!overloadfound)
                         {
                             res = Value::makeBool(false);
-                            mc_vmintern_stackpush(state, res);
+                            state->vmStackPush(res);
                         }
                     }
                 }
@@ -15842,8 +15647,8 @@ bool mc_function_execfunction(State* state, Value function, GenericList<Value>* 
                     uint16_t pos;
                     Value test;
                     pos = state->execstate.currframe->readUint16();
-                    test = mc_vm_stackpop(state);
-                    if(!mc_value_asbool(test))
+                    test = state->vmStackPop();
+                    if(!Value::asBool(test))
                     {
                         state->execstate.currframe->bcposition = pos;
                     }
@@ -15854,8 +15659,8 @@ bool mc_function_execfunction(State* state, Value function, GenericList<Value>* 
                     uint16_t pos;
                     Value test;
                     pos = state->execstate.currframe->readUint16();
-                    test = mc_vm_stackpop(state);
-                    if(mc_value_asbool(test))
+                    test = state->vmStackPop();
+                    if(Value::asBool(test))
                     {
                         state->execstate.currframe->bcposition = pos;
                     }
@@ -15863,7 +15668,7 @@ bool mc_function_execfunction(State* state, Value function, GenericList<Value>* 
                 mc_vmmac_break();
             mcvm_case(MC_OPCODE_NULL):
                 {
-                    mc_vmintern_stackpush(state, Value::makeNull());
+                    state->vmStackPush(Value::makeNull());
                 }
                 mc_vmmac_break();
             mcvm_case(MC_OPCODE_DEFINEMODULEGLOBAL):
@@ -15871,8 +15676,8 @@ bool mc_function_execfunction(State* state, Value function, GenericList<Value>* 
                     uint16_t ix;
                     Value value;
                     ix = state->execstate.currframe->readUint16();
-                    value = mc_vm_stackpop(state);
-                    mc_vm_setglobalbyindex(state, ix, value);
+                    value = state->vmStackPop();
+                    state->setGlobalByIndex(ix, value);
                 }
                 mc_vmmac_break();
             mcvm_case(MC_OPCODE_SETMODULEGLOBAL):
@@ -15881,13 +15686,13 @@ bool mc_function_execfunction(State* state, Value function, GenericList<Value>* 
                     Value nvalue;
                     Value oldvalue;
                     ix = state->execstate.currframe->readUint16();
-                    nvalue = mc_vm_stackpop(state);
-                    oldvalue= mc_vmintern_getglobalbyindex(state, ix);
+                    nvalue = state->vmStackPop();
+                    oldvalue= state->getGlobalByIndex(ix);
                     if(!mc_vm_checkassign(state, oldvalue, nvalue))
                     {
                         goto onexecerror;
                     }
-                    mc_vm_setglobalbyindex(state, ix, nvalue);
+                    state->setGlobalByIndex(ix, nvalue);
                 }
                 mc_vmmac_break();
             mcvm_case(MC_OPCODE_GETMODULEGLOBAL):
@@ -15896,7 +15701,7 @@ bool mc_function_execfunction(State* state, Value function, GenericList<Value>* 
                     Value global;
                     ix = state->execstate.currframe->readUint16();
                     global = state->globalvalstack->get(ix);
-                    mc_vmintern_stackpush(state, global);
+                    state->vmStackPush(global);
                 }
                 mc_vmmac_break();
             mcvm_case(MC_OPCODE_ARRAY):
@@ -15936,7 +15741,7 @@ bool mc_function_execfunction(State* state, Value function, GenericList<Value>* 
                     uint16_t nargs;
                     Value callee;
                     nargs = state->execstate.currframe->readUint8();
-                    callee = mc_vm_stackget(state, nargs);
+                    callee = state->vmStackGet(nargs);
                     ok = mc_vmdo_callobject(state, callee, nargs);
                     if(!ok)
                     {
@@ -15948,7 +15753,7 @@ bool mc_function_execfunction(State* state, Value function, GenericList<Value>* 
                 {
                     uint16_t pos;
                     pos = state->execstate.currframe->readUint8();
-                    state->execstate.valuestack->set(state->execstate.currframe->basepointer + pos, mc_vm_stackpop(state));
+                    state->execstate.valuestack->set(state->execstate.currframe->basepointer + pos, state->vmStackPop());
                 }
                 mc_vmmac_break();
             mcvm_case(MC_OPCODE_SETLOCAL):
@@ -15957,7 +15762,7 @@ bool mc_function_execfunction(State* state, Value function, GenericList<Value>* 
                     Value nvalue;
                     Value oldvalue;
                     pos = state->execstate.currframe->readUint8();
-                    nvalue = mc_vm_stackpop(state);
+                    nvalue = state->vmStackPop();
                     oldvalue = state->execstate.valuestack->get(state->execstate.currframe->basepointer + pos);
                     if(!mc_vm_checkassign(state, oldvalue, nvalue))
                     {
@@ -15982,7 +15787,7 @@ bool mc_function_execfunction(State* state, Value function, GenericList<Value>* 
                         pr->format(">>>\n");
                     }
                     #endif
-                    mc_vmintern_stackpush(state, val);
+                    state->vmStackPush(val);
                 }
                 mc_vmmac_break();
             mcvm_case(MC_OPCODE_GETGLOBALBUILTIN):
@@ -15997,7 +15802,7 @@ bool mc_function_execfunction(State* state, Value function, GenericList<Value>* 
                         state->pushError(MC_ERROR_RUNTIME, state->execstate.currframe->getPosition(), "global value %d not found", ix);
                         goto onexecerror;
                     }
-                    mc_vmintern_stackpush(state, val);
+                    state->vmStackPush(val);
                 }
                 mc_vmmac_break();
 
@@ -16015,7 +15820,7 @@ bool mc_function_execfunction(State* state, Value function, GenericList<Value>* 
                     Value val;
                     freeix = state->execstate.currframe->readUint8();
                     val = mc_value_functiongetfreevalat(state->execstate.currframe->function, freeix);
-                    mc_vmintern_stackpush(state, val);
+                    state->vmStackPush(val);
                 }
                 mc_vmmac_break();
             mcvm_case(MC_OPCODE_SETFREE):
@@ -16023,7 +15828,7 @@ bool mc_function_execfunction(State* state, Value function, GenericList<Value>* 
                     uint16_t freeix;
                     Value val;
                     freeix = state->execstate.currframe->readUint8();
-                    val = mc_vm_stackpop(state);
+                    val = state->vmStackPop();
                     mc_value_functionsetfreevalat(state->execstate.currframe->function, freeix, val);
                 }
                 mc_vmmac_break();
@@ -16031,14 +15836,14 @@ bool mc_function_execfunction(State* state, Value function, GenericList<Value>* 
                 {
                     Value currentfunction;
                     currentfunction = state->execstate.currframe->function;
-                    mc_vmintern_stackpush(state, currentfunction);
+                    state->vmStackPush(currentfunction);
                 }
                 mc_vmmac_break();
             mcvm_case(MC_OPCODE_GETTHIS):
                 {
                     Value obj;
-                    obj = mc_vm_thisstackget(state, 0);
-                    mc_vmintern_stackpush(state, obj);
+                    obj = state->vmStackThisGet(0);
+                    state->vmStackPush(obj);
                 }
                 mc_vmmac_break();
             mcvm_case(MC_OPCODE_GETDOTINDEX):
@@ -16068,8 +15873,8 @@ bool mc_function_execfunction(State* state, Value function, GenericList<Value>* 
             mcvm_case(MC_OPCODE_DUP):
                 {
                     Value val;
-                    val = mc_vm_stackget(state, 0);
-                    mc_vmintern_stackpush(state, val);
+                    val = state->vmStackGet(0);
+                    state->vmStackPush(val);
                 }
                 mc_vmmac_break();
             mcvm_case(MC_OPCODE_FOREACHLEN):
@@ -16078,7 +15883,7 @@ bool mc_function_execfunction(State* state, Value function, GenericList<Value>* 
                     const char* tname;
                     Value val;
                     Value::Type type;
-                    val = mc_vm_stackpop(state);
+                    val = state->vmStackPop();
                     len = 0;
                     type = val.getType();
                     if(type == Value::VALTYP_ARRAY)
@@ -16099,7 +15904,7 @@ bool mc_function_execfunction(State* state, Value function, GenericList<Value>* 
                         state->pushError(MC_ERROR_RUNTIME, state->execstate.currframe->getPosition(), "cannot get length of %s", tname);
                         goto onexecerror;
                     }
-                    mc_vmintern_stackpush(state, Value::makeNumber(len));
+                    state->vmStackPush(Value::makeNumber(len));
                 }
                 mc_vmmac_break();
             mcvm_case(MC_OPCODE_NUMBER):
@@ -16110,7 +15915,7 @@ bool mc_function_execfunction(State* state, Value function, GenericList<Value>* 
                     val = state->execstate.currframe->readUint64();
                     dval = mc_util_uint64todouble(val);
                     obj = Value::makeNumber(dval);
-                    mc_vmintern_stackpush(state, obj);
+                    state->vmStackPush(obj);
                 }
                 mc_vmmac_break();
             mcvm_case(MC_OPCODE_SETRECOVER):
@@ -16152,7 +15957,7 @@ bool mc_function_execfunction(State* state, Value function, GenericList<Value>* 
                 }
                 while(state->execstate.framestack->count() > (recoverframeix + 1))
                 {
-                    mc_vmintern_popframe(state);
+                    state->vmPopFrame();
                 }
                 errobj = mc_value_makeerror(state, err->m_message);
                 if(!errobj.isNull())
@@ -16160,7 +15965,7 @@ bool mc_function_execfunction(State* state, Value function, GenericList<Value>* 
                     mc_value_errorsettraceback(errobj, err->m_traceback);
                     err->m_traceback = nullptr;
                 }
-                mc_vmintern_stackpush(state, errobj);
+                state->vmStackPush(errobj);
                 state->execstate.currframe->bcposition = state->execstate.currframe->recoverip;
                 state->execstate.currframe->isrecovering = true;
                 state->m_errorlist.clear();
@@ -16367,7 +16172,7 @@ Value mc_scriptfn_makearray(State* state, void* data, Value thisval, size_t argc
         {
             return Value::makeNull();
         }
-        capacity = (int)mc_value_asnumber(args[0]);
+        capacity = (int)Value::asNumber(args[0]);
         res = mc_value_makearraycapacity(state, capacity);
         if(res.isNull())
         {
@@ -16390,7 +16195,7 @@ Value mc_scriptfn_makearray(State* state, void* data, Value thisval, size_t argc
         {
             return Value::makeNull();
         }
-        capacity = (int)mc_value_asnumber(args[0]);
+        capacity = (int)Value::asNumber(args[0]);
         res = mc_value_makearraycapacity(state, capacity);
         if(res.isNull())
         {
@@ -16441,10 +16246,10 @@ Value mc_scriptfn_vec2add(State *state, void *data, Value thisval, size_t argc, 
     }
     keyx = mc_value_makestring(state, "x");
     keyy = mc_value_makestring(state, "y");
-    a_x = mc_value_asnumber(mc_value_mapgetvalue(args[0], keyx));
-    a_y = mc_value_asnumber(mc_value_mapgetvalue(args[0], keyy));
-    b_x = mc_value_asnumber(mc_value_mapgetvalue(args[1], keyx));
-    b_y = mc_value_asnumber(mc_value_mapgetvalue(args[1], keyy));
+    a_x = Value::asNumber(mc_value_mapgetvalue(args[0], keyx));
+    a_y = Value::asNumber(mc_value_mapgetvalue(args[0], keyy));
+    b_x = Value::asNumber(mc_value_mapgetvalue(args[1], keyx));
+    b_y = Value::asNumber(mc_value_mapgetvalue(args[1], keyy));
     res = mc_value_makemap(state);
     if (res.getType() == Value::VALTYP_NULL)
     {
@@ -16474,10 +16279,10 @@ Value mc_scriptfn_vec2sub(State *state, void *data, Value thisval, size_t argc, 
     }
     keyx = mc_value_makestring(state, "x");
     keyy = mc_value_makestring(state, "y");
-    a_x = mc_value_asnumber(mc_value_mapgetvalue(args[0], keyx));
-    a_y = mc_value_asnumber(mc_value_mapgetvalue(args[0], keyy));
-    b_x = mc_value_asnumber(mc_value_mapgetvalue(args[1], keyx));
-    b_y = mc_value_asnumber(mc_value_mapgetvalue(args[1], keyy));
+    a_x = Value::asNumber(mc_value_mapgetvalue(args[0], keyx));
+    a_y = Value::asNumber(mc_value_mapgetvalue(args[0], keyy));
+    b_x = Value::asNumber(mc_value_mapgetvalue(args[1], keyx));
+    b_y = Value::asNumber(mc_value_mapgetvalue(args[1], keyy));
     res = mc_value_makemap(state);
     mc_value_mapsetvalue(res, keyx, Value::makeNumber(a_x - b_x));
     mc_value_mapsetvalue(res, keyy, Value::makeNumber(a_y - b_y));
@@ -16529,7 +16334,7 @@ Value mc_scriptfn_maketestdict(State *state, void *data, Value thisval, size_t a
         state->pushRuntimeError("invalid type passed to maketestdict, got %s", tname);
         return Value::makeNull();
     }
-    numitems = mc_value_asnumber(args[0]);
+    numitems = Value::asNumber(args[0]);
     res = mc_value_makemap(state);
     if (res.getType() == Value::VALTYP_NULL)
     {
@@ -16561,7 +16366,7 @@ Value mc_scriptfn_squarearray(State *state, void *data, Value thisval, size_t ar
             state->pushRuntimeError("invalid type passed to squarearray");
             return Value::makeNull();
         }
-        num = mc_value_asnumber(args[i]);
+        num = Value::asNumber(args[i]);
         resitem = Value::makeNumber(num * num);
         mc_value_arraypush(res, resitem);
     }
@@ -16657,7 +16462,7 @@ Value mc_objfnnumber_chr(State* state, void* data, Value thisval, size_t argc, V
     (void)argc;
     (void)data;
     (void)args;
-    val = mc_value_asnumber(thisval);
+    val = Value::asNumber(thisval);
     c = (char)val;
     return mc_value_makestringlen(state, &c, 1);
 }
@@ -16711,7 +16516,7 @@ Value mc_objfnstring_indexof(State* state, void* data, Value thisval, size_t arg
     MC_ASSERT((searchtype == Value::VALTYP_NUMBER) || (searchtype == Value::VALTYP_STRING));
     if(searchtype == Value::VALTYP_NUMBER)
     {
-        tmpch = mc_value_asnumber(searchval);
+        tmpch = Value::asNumber(searchval);
         inpstr = &tmpch;
         inplen = 1;
     }
@@ -16767,7 +16572,7 @@ Value mc_objfnstring_charcodeat(State* state, void* data, Value thisval, size_t 
     sval = thisval;
     str = mc_value_stringgetdata(sval);
     len = mc_value_stringgetlength(sval);
-    idx = mc_value_asnumber(args[0]);
+    idx = Value::asNumber(args[0]);
     if(idx >= (long)len)
     {
         return Value::makeNull();
@@ -16792,7 +16597,7 @@ Value mc_objfnstring_charat(State* state, void* data, Value thisval, size_t argc
     sval = thisval;
     str = mc_value_stringgetdata(sval);
     len = mc_value_stringgetlength(sval);
-    idx = mc_value_asnumber(args[0]);
+    idx = Value::asNumber(args[0]);
     if(idx >= (long)len)
     {
         return Value::makeNull();
@@ -16873,7 +16678,7 @@ Value mc_objfnstring_left(State* state, void* data, Value thisval, size_t argc, 
         posval = args[0];
         inpstr = mc_value_stringgetdata(inpval);
         inplen = mc_value_stringgetlength(inpval);
-        startpos = mc_value_asnumber(posval);
+        startpos = Value::asNumber(posval);
         /*
         * If the requested startpos is longer than the string then return a new string
         * of the full length.
@@ -16922,7 +16727,7 @@ Value mc_objfnstring_right(State* state, void* data, Value thisval, size_t argc,
         idxval = args[0];
         inpstr = mc_value_stringgetdata(inpval);
         inplen = mc_value_stringgetlength(inpval);
-        startpos = mc_value_asnumber(idxval);
+        startpos = Value::asNumber(idxval);
         /*
         * If the requested startpos is longer than the string then return a new string
         * of the full length.
@@ -17251,62 +17056,7 @@ void mc_vm_restorestate(State* state, mcexecstate_t* est)
     state->execstate.currframe = est->currframe;
 }
 
-Value mc_vm_callvalue(State* state, GenericList<Value>* constants, Value callee, Value thisval, size_t argc, Value* args)
-{
-    bool ok;
-    size_t i;
-    size_t oldsp;
-    size_t oldthissp;
-    size_t oldframescount;
-    VMFrame tempframe;
-    Value retv;
-    mcexecstate_t est;
-    Value::Type type;
-    (void)oldsp;
-    (void)oldframescount;
-    if(constants == nullptr)
-    {
-        constants = state->compiler->getconstants();
-    }
-    type = callee.getType();
-    if(type == Value::VALTYP_FUNCSCRIPT)
-    {
-        //VMFrame::init(&tempframe, callee, 0);
-        VMFrame::init(&tempframe, callee, state->execstate.vsposition - argc);
-        mc_vm_savestate(state, &est);
-        oldsp = state->execstate.vsposition;
-        oldthissp = state->execstate.thisstpos;
-        mc_vm_pushframe(state, tempframe);
-        oldframescount = state->execstate.framestack->count();
-        mc_vmintern_stackpush(state, callee);
-        for(i = 0; i < argc; i++)
-        {
-            mc_vmintern_stackpush(state, args[i]);
-        }
-        ok = mc_function_execfunction(state, callee, constants, true);
-        if(!ok)
-        {
-            mc_vm_restorestate(state, &est);
-            return Value::makeNull();
-        }
-        #if 1
-        while(state->execstate.framestack->count() > oldframescount)
-        {
-            mc_vmintern_popframe(state);
-        }
-        #endif
-        state->execstate.thisstpos = oldthissp;
-        retv = state->execstate.lastpopped;
-        mc_vm_restorestate(state, &est);
-        return retv;
-    }
-    if(type == Value::VALTYP_FUNCNATIVE)
-    {
-        return mc_vm_callnativefunction(state, callee, AstLocation::Invalid(), thisval, argc, args);
-    }
-    state->m_errorlist.pushFormat(MC_ERROR_USER, AstLocation::Invalid(), "object is not callable");
-    return Value::makeNull();
-}
+
 
 Value mc_objfnarray_map(State* state, void* data, Value thisval, size_t argc, Value* args)
 {
@@ -17332,7 +17082,7 @@ Value mc_objfnarray_map(State* state, void* data, Value thisval, size_t argc, Va
         val = ary->get(i);
         vargs[0] = val;
         vargs[1] = Value::makeNumber(i);
-        res = mc_vm_callvalue(state, nullptr, callee, thisval, 1, vargs);
+        res = state->vmCallValue(nullptr, callee, thisval, 1, vargs);
         nary->push(res);
     }
     return narr;
@@ -17599,7 +17349,7 @@ Value mc_scriptfn_isnan(State* state, void* data, Value thisval, size_t argc, Va
     {
         return Value::makeNull();
     }
-    val = mc_value_asnumber(args[0]);
+    val = Value::asNumber(args[0]);
     b = false;
     if(val != val)
     {
@@ -17639,18 +17389,18 @@ Value mc_scriptfn_range(State* state, void* data, Value thisval, size_t argc, Va
     step = 1;
     if(argc == 1)
     {
-        end = (int)mc_value_asnumber(args[0]);
+        end = (int)Value::asNumber(args[0]);
     }
     else if(argc == 2)
     {
-        start = (int)mc_value_asnumber(args[0]);
-        end = (int)mc_value_asnumber(args[1]);
+        start = (int)Value::asNumber(args[0]);
+        end = (int)Value::asNumber(args[1]);
     }
     else if(argc == 3)
     {
-        start = (int)mc_value_asnumber(args[0]);
-        end = (int)mc_value_asnumber(args[1]);
-        step = (int)mc_value_asnumber(args[2]);
+        start = (int)Value::asNumber(args[0]);
+        end = (int)Value::asNumber(args[1]);
+        step = (int)Value::asNumber(args[2]);
     }
     else
     {
@@ -17759,7 +17509,7 @@ Value mc_scriptfn_copy(State* state, void* data, Value thisval, size_t argc, Val
     {
         return Value::makeNull();
     }
-    return mc_value_copyflat(state, args[0]);
+    return Value::copyFlat(state, args[0]);
 }
 
 Value mc_scriptfn_copydeep(State* state, void* data, Value thisval, size_t argc, Value* args)
@@ -17772,7 +17522,7 @@ Value mc_scriptfn_copydeep(State* state, void* data, Value thisval, size_t argc,
     {
         return Value::makeNull();
     }
-    return mc_value_copydeep(state, args[0]);
+    return Value::copyDeep(state, args[0]);
 }
 
 Value mc_scriptfn_remove(State* state, void* data, Value thisval, size_t argc, Value* args)
@@ -17793,7 +17543,7 @@ Value mc_scriptfn_remove(State* state, void* data, Value thisval, size_t argc, V
     for(i = 0; i < mc_value_arraygetlength(args[0]); i++)
     {
         obj = mc_value_arraygetvalue(args[0], i);
-        if(mc_value_equals(obj, args[1]))
+        if(Value::equalsTo(obj, args[1]))
         {
             ix = i;
             break;
@@ -17821,7 +17571,7 @@ Value mc_scriptfn_removeat(State* state, void* data, Value thisval, size_t argc,
         return Value::makeNull();
     }
     type= args[0].getType();
-    ix = (int)mc_value_asnumber(args[1]);
+    ix = (int)Value::asNumber(args[1]);
     switch(type)
     {
         case Value::VALTYP_ARRAY:
@@ -17874,7 +17624,7 @@ Value mc_scriptfn_assert(State* state, void* data, Value thisval, size_t argc, V
     {
         return Value::makeNull();
     }
-    if(!mc_value_asbool(args[0]))
+    if(!Value::asBool(args[0]))
     {
         state->m_errorlist.pushFormat(MC_ERROR_RUNTIME, AstLocation::Invalid(), "assertion failed");
         return Value::makeNull();
@@ -17893,7 +17643,7 @@ Value mc_scriptfn_randseed(State* state, void* data, Value thisval, size_t argc,
     {
         return Value::makeNull();
     }
-    seed = (int)mc_value_asnumber(args[0]);
+    seed = (int)Value::asNumber(args[0]);
     srand(seed);
     return Value::makeBool(true);
 }
@@ -17919,8 +17669,8 @@ Value mc_scriptfn_random(State* state, void* data, Value thisval, size_t argc, V
         {
             return Value::makeNull();
         }
-        min = mc_value_asnumber(args[0]);
-        max = mc_value_asnumber(args[1]);
+        min = Value::asNumber(args[0]);
+        max = Value::asNumber(args[1]);
         if(min >= max)
         {
             state->m_errorlist.pushFormat(MC_ERROR_RUNTIME, AstLocation::Invalid(), "max is bigger than min");
@@ -17945,7 +17695,7 @@ Value mc_scriptutil_slicearray(State* state, void* data, Value thisval, size_t a
     (void)data;
     (void)argc;
     (void)thisval;
-    index = (int)mc_value_asnumber(args[1]);
+    index = (int)Value::asNumber(args[1]);
     len = mc_value_arraygetlength(args[0]);
     if(index < 0)
     {
@@ -17983,7 +17733,7 @@ Value mc_scriptutil_slicestring(State* state, void* data, Value thisval, size_t 
     (void)data;
     (void)argc;
     (void)thisval;
-    index = (int)mc_value_asnumber(args[1]);
+    index = (int)Value::asNumber(args[1]);
     str = mc_value_stringgetdata(args[0]);
     len = mc_value_stringgetlength(args[0]);
     if(index < 0)
@@ -18049,7 +17799,7 @@ Value mc_nsfnmath_sqrt(State* state, void* data, Value thisval, size_t argc, Val
     {
         return Value::makeNull();
     }
-    arg = mc_value_asnumber(args[0]);
+    arg = Value::asNumber(args[0]);
     res = sqrt(arg);
     return Value::makeNumber(res);
 }
@@ -18067,8 +17817,8 @@ Value mc_nsfnmath_pow(State* state, void* data, Value thisval, size_t argc, Valu
     {
         return Value::makeNull();
     }
-    arg1 = mc_value_asnumber(args[0]);
-    arg2 = mc_value_asnumber(args[1]);
+    arg1 = Value::asNumber(args[0]);
+    arg2 = Value::asNumber(args[1]);
     res = pow(arg1, arg2);
     return Value::makeNumber(res);
 }
@@ -18085,7 +17835,7 @@ Value mc_nsfnmath_sin(State* state, void* data, Value thisval, size_t argc, Valu
     {
         return Value::makeNull();
     }
-    arg = mc_value_asnumber(args[0]);
+    arg = Value::asNumber(args[0]);
     res = sin(arg);
     return Value::makeNumber(res);
 }
@@ -18102,7 +17852,7 @@ Value mc_nsfnmath_cos(State* state, void* data, Value thisval, size_t argc, Valu
     {
         return Value::makeNull();
     }
-    arg = mc_value_asnumber(args[0]);
+    arg = Value::asNumber(args[0]);
     res = cos(arg);
     return Value::makeNumber(res);
 }
@@ -18119,7 +17869,7 @@ Value mc_nsfnmath_tan(State* state, void* data, Value thisval, size_t argc, Valu
     {
         return Value::makeNull();
     }
-    arg = mc_value_asnumber(args[0]);
+    arg = Value::asNumber(args[0]);
     res = tan(arg);
     return Value::makeNumber(res);
 }
@@ -18136,7 +17886,7 @@ Value mc_nsfnmath_log(State* state, void* data, Value thisval, size_t argc, Valu
     {
         return Value::makeNull();
     }
-    arg = mc_value_asnumber(args[0]);
+    arg = Value::asNumber(args[0]);
     res = log(arg);
     return Value::makeNumber(res);
 }
@@ -18153,7 +17903,7 @@ Value mc_nsfnmath_ceil(State* state, void* data, Value thisval, size_t argc, Val
     {
         return Value::makeNull();
     }
-    arg = mc_value_asnumber(args[0]);
+    arg = Value::asNumber(args[0]);
     res = ceil(arg);
     return Value::makeNumber(res);
 }
@@ -18170,7 +17920,7 @@ Value mc_nsfnmath_floor(State* state, void* data, Value thisval, size_t argc, Va
     {
         return Value::makeNull();
     }
-    arg = mc_value_asnumber(args[0]);
+    arg = Value::asNumber(args[0]);
     res = floor(arg);
     return Value::makeNumber(res);
 }
@@ -18187,7 +17937,7 @@ Value mc_nsfnmath_abs(State* state, void* data, Value thisval, size_t argc, Valu
     {
         return Value::makeNull();
     }
-    arg = mc_value_asnumber(args[0]);
+    arg = Value::asNumber(args[0]);
     res = MC_UTIL_FABS(arg);
     return Value::makeNumber(res);
 }
@@ -18347,7 +18097,7 @@ Value mc_nsfndir_readdir(State* state, void* data, Value thisval, size_t argc, V
     path = mc_value_stringgetdata(vpath);
     if(argc > 1)
     {
-        joinpaths = mc_value_asbool(args[1]);
+        joinpaths = Value::asBool(args[1]);
     }
     if(fslib_diropen(&reader, path))
     {
@@ -18529,16 +18279,16 @@ bool mc_cli_compileandrunsource(State* state, Value* vdest, const char* source, 
     Value tmp;
     CompiledProgram* program;
     ok = false;
-    program = mc_state_compilesource(state, source, filename);
+    program = state->compileSource(source, filename);
     if(state->m_config.exitaftercompiling)
     {
         Memory::destroy(program);
         return true;
     }
     tmp = mc_program_execute(state, program);
-    if(mc_state_haserrors(state))
+    if(state->hasErrors())
     {
-        mc_state_printerrors(state);
+        state->printErrors();
     }
     else
     {
@@ -18612,7 +18362,7 @@ void mc_cli_printtypesizes()
     printtypesize(AstCompiler);
     printtypesize(AstSymbol);
     printtypesize(Value);
-    printtypesize(mcvalcmpresult_t);
+    printtypesize(Value::CompareResult);
     printtypesize(AstLocation);
     printtypesize(Token);
     printtypesize(AstExpression::ExprCodeBlock);
