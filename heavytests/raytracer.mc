@@ -25,9 +25,9 @@ function vec3(x, y, z)
         },
         __operator_mul__: function(a, b)
         {
-            if (isnumber(b)) {
+            if (b.isNumber()) {
                 return vec3(a.x * b, a.y * b, a.z * b)
-            } else if (isnumber(a)) {
+            } else if (a.isNumber()) {
                 return vec3(a * b.x, a * b.y, a * b.z)
             }
             assert(false)
