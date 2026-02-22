@@ -355,9 +355,7 @@ mcfloat_t mc_util_uint64todouble(uint64_t val)
 /* protos */
 MC_INLINE const char* mc_value_stringgetdata(Value object);
 
-void optprs_fprintmaybearg(FILE *out, const char *begin, const char *flagname, size_t flaglen, bool needval, bool maybeval, const char *delim);
-void optprs_fprintusage(FILE *out, optlongflags_t *flags);
-void optprs_printusage(char *argv[], optlongflags_t *flags, bool fail);
+
 uint64_t stod_leading_zeros64(uint64_t x);
 double stod_diyfp2d(mcstoddiyfp_t v);
 mcstoddiyfp_t stod_diyfp_shift_left(mcstoddiyfp_t v, unsigned shift);
@@ -982,11 +980,19 @@ class GenericList
     public:
         static void destroy(GenericList* list)
         {
+            destroy(list, false);
+        }
+
+        static void destroy(GenericList* list, bool fromstack)
+        {
             if(list != nullptr)
             {
                 mc_memory_free(list->m_listitems);
-                mc_memory_free(list);
-                list = nullptr;
+                if(!fromstack)
+                {
+                    mc_memory_free(list);
+                    list = nullptr;
+                }
             }
         }
 
@@ -1069,7 +1075,7 @@ class GenericList
 
         inline ~GenericList()
         {
-            GenericList::destroy(this);
+            GenericList::destroy(this, true);
         }
 
         inline size_t count()
@@ -1166,7 +1172,6 @@ class GenericList
             m_listcapacity = 0;
         }
 };
-
 
 class PtrList
 {
@@ -2369,6 +2374,7 @@ class Object
         int8_t m_odtype;
         int8_t m_gcmark;
         GCMemory* m_objmem;
+        State* m_pstate;
         union
         {
             ObjString valstring;
@@ -2378,6 +2384,12 @@ class Object
             ObjFunction valfunc;
             ObjUserdata valuserobject;
         } m_uvobj;
+
+    public:
+        Object(State* state)
+        {
+            m_pstate = state;
+        }
 };
 
 class Value: public ValData
@@ -2385,12 +2397,12 @@ class Value: public ValData
     public:
         static inline bool isHashable(Value obj)
         {
-            Value::Type type = obj.getType();
+            Type type = obj.getType();
             switch(type)
             {
-                case Value::VALTYP_STRING:
-                case Value::VALTYP_NUMBER:
-                case Value::VALTYP_BOOL:
+                case VALTYP_STRING:
+                case VALTYP_NUMBER:
+                case VALTYP_BOOL:
                     return true;
                 default:
                     break;
@@ -2402,30 +2414,30 @@ class Value: public ValData
         {
             switch(type)
             {
-                case Value::VALTYP_NONE:
+                case VALTYP_NONE:
                     return "none";
-                case Value::VALTYP_ERROR:
+                case VALTYP_ERROR:
                     return "error";
-                case Value::VALTYP_NUMBER:
+                case VALTYP_NUMBER:
                     return "number";
-                case Value::VALTYP_BOOL:
+                case VALTYP_BOOL:
                     return "boolean";
-                case Value::VALTYP_STRING:
+                case VALTYP_STRING:
                     return "string";
-                case Value::VALTYP_NULL:
+                case VALTYP_NULL:
                     return "null";
-                case Value::VALTYP_ARRAY:
+                case VALTYP_ARRAY:
                     return "array";
-                case Value::VALTYP_MAP:
+                case VALTYP_MAP:
                     return "object";
-                case Value::VALTYP_FUNCSCRIPT:
-                case Value::VALTYP_FUNCNATIVE:
+                case VALTYP_FUNCSCRIPT:
+                case VALTYP_FUNCNATIVE:
                     return "function";
-                case Value::VALTYP_EXTERNAL:
+                case VALTYP_EXTERNAL:
                     return "external";
-                case Value::VALTYP_FREED:
+                case VALTYP_FREED:
                     return "freed";
-                case Value::VALTYP_ANY:
+                case VALTYP_ANY:
                     return "any";
                 default:
                     break;
@@ -2441,7 +2453,7 @@ class Value: public ValData
                 {
                     res->put("|");
                 }
-                res->put(Value::getTypename(t));
+                res->put(getTypename(t));
                 *inbetween = true;
             }
         }
@@ -2450,27 +2462,28 @@ class Value: public ValData
         {
             bool inbetween;
             Printer* res;
-            if(type == Value::VALTYP_ANY || type == Value::VALTYP_NONE || type == Value::VALTYP_FREED)
+            if(type == VALTYP_ANY || type == VALTYP_NONE || type == VALTYP_FREED)
             {
-                return mc_util_strdup(Value::getTypename(type));
+                return mc_util_strdup(getTypename(type));
             }
             res = Memory::make<Printer>(nullptr);
             inbetween = false;
-            unionNameCheckType(res, type, Value::VALTYP_NUMBER, &inbetween);
-            unionNameCheckType(res, type, Value::VALTYP_BOOL, &inbetween);
-            unionNameCheckType(res, type, Value::VALTYP_STRING, &inbetween);
-            unionNameCheckType(res, type, Value::VALTYP_NULL, &inbetween);
-            unionNameCheckType(res, type, Value::VALTYP_FUNCNATIVE, &inbetween);
-            unionNameCheckType(res, type, Value::VALTYP_ARRAY, &inbetween);
-            unionNameCheckType(res, type, Value::VALTYP_MAP, &inbetween);
-            unionNameCheckType(res, type, Value::VALTYP_FUNCSCRIPT, &inbetween);
-            unionNameCheckType(res, type, Value::VALTYP_EXTERNAL, &inbetween);
-            unionNameCheckType(res, type, Value::VALTYP_ERROR, &inbetween);
+            unionNameCheckType(res, type, VALTYP_NUMBER, &inbetween);
+            unionNameCheckType(res, type, VALTYP_BOOL, &inbetween);
+            unionNameCheckType(res, type, VALTYP_STRING, &inbetween);
+            unionNameCheckType(res, type, VALTYP_NULL, &inbetween);
+            unionNameCheckType(res, type, VALTYP_FUNCNATIVE, &inbetween);
+            unionNameCheckType(res, type, VALTYP_ARRAY, &inbetween);
+            unionNameCheckType(res, type, VALTYP_MAP, &inbetween);
+            unionNameCheckType(res, type, VALTYP_FUNCSCRIPT, &inbetween);
+            unionNameCheckType(res, type, VALTYP_EXTERNAL, &inbetween);
+            unionNameCheckType(res, type, VALTYP_ERROR, &inbetween);
             return res->getStringAndDestroy(nullptr);
         }
 
         static inline bool compare(Value a, Value b, CompareResult* cres)
         {
+            bool isnumlike;
             const char* astring;
             const char* bstring;
             int alen;
@@ -2481,8 +2494,8 @@ class Value: public ValData
             mcfloat_t dnright;
             size_t ahash;
             size_t bhash;
-            Value::Type atype;
-            Value::Type btype;
+            Type atype;
+            Type btype;
             /*
             if(a.odata == b.odata)
             {
@@ -2492,14 +2505,18 @@ class Value: public ValData
             cres->result = 1;
             atype = a.getType();
             btype = b.getType();
-            if((atype == Value::VALTYP_NUMBER || atype == Value::VALTYP_BOOL || atype == Value::VALTYP_NULL) && (btype == Value::VALTYP_NUMBER || btype == Value::VALTYP_BOOL || btype == Value::VALTYP_NULL))
+            isnumlike = (
+                (atype == VALTYP_NUMBER || atype == VALTYP_BOOL || atype == VALTYP_NULL) &&
+                (btype == VALTYP_NUMBER || btype == VALTYP_BOOL || btype == VALTYP_NULL)
+            );
+            if(isnumlike)
             {
-                dnleft = Value::asNumber(a);
-                dnright = Value::asNumber(b);
+                dnleft = asNumber(a);
+                dnright = asNumber(b);
                 cres->result = (dnleft - dnright);
                 return true;
             }
-            if(atype == btype && atype == Value::VALTYP_STRING)
+            if(atype == btype && atype == VALTYP_STRING)
             {
                 alen = mc_value_stringgetlength(a);
                 blen = mc_value_stringgetlength(b);
@@ -2545,8 +2562,8 @@ class Value: public ValData
         {
             bool ok;
             CompareResult cres;
-            Value::Type atype;
-            Value::Type btype;
+            Type atype;
+            Type btype;
             (void)ok;
             atype = a.getType();
             btype = b.getType();
@@ -2554,7 +2571,7 @@ class Value: public ValData
             {
                 return false;
             }
-            ok = Value::compare(a, b, &cres);
+            ok = compare(a, b, &cres);
             return MC_UTIL_CMPFLOAT(cres.result, 0);
         }
 
@@ -2572,24 +2589,24 @@ class Value: public ValData
             bool bval;
             mcfloat_t dval;
             Value obj;
-            Value::Type type;
+            Type type;
             obj = *objptr;
             type = obj.getType();
             switch(type)
             {
-                case Value::VALTYP_NUMBER:
+                case VALTYP_NUMBER:
                     {
-                        dval = Value::asNumber(obj);
+                        dval = asNumber(obj);
                         return mc_util_hashdouble(dval);
                     }
                     break;
-                case Value::VALTYP_BOOL:
+                case VALTYP_BOOL:
                     {
-                        bval = Value::asBool(obj);
+                        bval = asBool(obj);
                         return bval;
                     }
                     break;
-                case Value::VALTYP_STRING:
+                case VALTYP_STRING:
                     {
                         return mc_value_stringgethash(obj);
                     }
@@ -2608,7 +2625,7 @@ class Value: public ValData
         template<typename TypeKeyT, typename TypeValueT>
         static Value copyDeepIntern(State* state, Value obj, GenericDict<TypeKeyT, TypeValueT>* targetdict)
         {
-            Value::Type type;
+            Type type;
             Value copy;
             Value* copyptr;
             copyptr = (Value*)targetdict->get(&obj);
@@ -2616,27 +2633,27 @@ class Value: public ValData
             {
                 return *copyptr;
             }
-            copy = Value::makeNull();
+            copy = makeNull();
             type = obj.getType();
             switch(type)
             {
-                case Value::VALTYP_FREED:
-                case Value::VALTYP_ANY:
-                case Value::VALTYP_NONE:
+                case VALTYP_FREED:
+                case VALTYP_ANY:
+                case VALTYP_NONE:
                     {
                         MC_ASSERT(false);
-                        copy = Value::makeNull();
+                        copy = makeNull();
                     }
                     break;
-                case Value::VALTYP_NUMBER:
-                case Value::VALTYP_BOOL:
-                case Value::VALTYP_NULL:
-                case Value::VALTYP_FUNCNATIVE:
+                case VALTYP_NUMBER:
+                case VALTYP_BOOL:
+                case VALTYP_NULL:
+                case VALTYP_FUNCNATIVE:
                     {
                         copy = obj;
                     }
                     break;
-                case Value::VALTYP_STRING:
+                case VALTYP_STRING:
                     {
                         bool ok;
                         int len;
@@ -2649,27 +2666,27 @@ class Value: public ValData
                         return copy;
                     }
                     break;
-                case Value::VALTYP_FUNCSCRIPT:
+                case VALTYP_FUNCSCRIPT:
                     {
                         return mc_value_copydeepfuncscript(state, obj, targetdict);
                     }
                     break;
-                case Value::VALTYP_ARRAY:
+                case VALTYP_ARRAY:
                     {
                         return mc_value_copydeeparray(state, obj, targetdict);
                     }
                     break;
-                case Value::VALTYP_MAP:
+                case VALTYP_MAP:
                     {
                         return mc_value_copydeepmap(state, obj, targetdict);
                     }
                     break;
-                case Value::VALTYP_EXTERNAL:
+                case VALTYP_EXTERNAL:
                     {
-                        copy = Value::copyFlat(state, obj);
+                        copy = copyFlat(state, obj);
                     }
                     break;
-                case Value::VALTYP_ERROR:
+                case VALTYP_ERROR:
                     {
                         copy = obj;
                     }
@@ -2691,31 +2708,31 @@ class Value: public ValData
         {
             bool ok;
             Value copy;
-            Value::Type type;
+            Type type;
             (void)ok;
-            copy = Value::makeNull();
+            copy = makeNull();
             type = obj.getType();
             switch(type)
             {
-                case Value::VALTYP_ANY:
-                case Value::VALTYP_FREED:
-                case Value::VALTYP_NONE:
+                case VALTYP_ANY:
+                case VALTYP_FREED:
+                case VALTYP_NONE:
                     {
                         MC_ASSERT(false);
-                        copy = Value::makeNull();
+                        copy = makeNull();
                     }
                     break;
-                case Value::VALTYP_NUMBER:
-                case Value::VALTYP_BOOL:
-                case Value::VALTYP_NULL:
-                case Value::VALTYP_FUNCSCRIPT:
-                case Value::VALTYP_FUNCNATIVE:
-                case Value::VALTYP_ERROR:
+                case VALTYP_NUMBER:
+                case VALTYP_BOOL:
+                case VALTYP_NULL:
+                case VALTYP_FUNCSCRIPT:
+                case VALTYP_FUNCNATIVE:
+                case VALTYP_ERROR:
                     {
                         copy = obj;
                     }
                     break;
-                case Value::VALTYP_STRING:
+                case VALTYP_STRING:
                     {
                         size_t len;
                         const char* str;
@@ -2724,7 +2741,7 @@ class Value: public ValData
                         copy = mc_value_makestringlen(state, str, len);
                     }
                     break;
-                case Value::VALTYP_ARRAY:
+                case VALTYP_ARRAY:
                     {
                         int i;
                         int len;
@@ -2733,7 +2750,7 @@ class Value: public ValData
                         copy = mc_value_makearraycapacity(state, len);
                         if(copy.isNull())
                         {
-                            return Value::makeNull();
+                            return makeNull();
                         }
                         for(i = 0; i < len; i++)
                         {
@@ -2741,12 +2758,12 @@ class Value: public ValData
                             ok = mc_value_arraypush(copy, item);
                             if(!ok)
                             {
-                                return Value::makeNull();
+                                return makeNull();
                             }
                         }
                     }
                     break;
-                case Value::VALTYP_MAP:
+                case VALTYP_MAP:
                     {
                         int i;
                         Value key;
@@ -2759,21 +2776,21 @@ class Value: public ValData
                             ok = mc_state_mapsetvalue(copy, key, val);
                             if(!ok)
                             {
-                                return Value::makeNull();
+                                return makeNull();
                             }
                         }
                     }
                     break;
-                case Value::VALTYP_EXTERNAL:
+                case VALTYP_EXTERNAL:
                     {
                         void* datacopy;
                         Object::ObjUserdata* objext;
                         copy = mc_value_makeuserobject(state, nullptr);
                         if(copy.isNull())
                         {
-                            return Value::makeNull();
+                            return makeNull();
                         }
-                        objext = Value::userdataGetData(obj);
+                        objext = userdataGetData(obj);
                         datacopy = nullptr;
                         if(objext->datacopyfn)
                         {
@@ -2814,7 +2831,7 @@ class Value: public ValData
         static inline Value makeNumber(mcfloat_t val)
         {
             Value o;
-            o = makeEmpty(Value::VALTYP_NUMBER);
+            o = makeEmpty(VALTYP_NUMBER);
             o.m_uval.valnumber = val;
             return o;
         }
@@ -2822,7 +2839,7 @@ class Value: public ValData
         static inline Value makeBool(bool val)
         {
             Value o;
-            o = makeEmpty(Value::VALTYP_BOOL);
+            o = makeEmpty(VALTYP_BOOL);
             o.m_uval.valbool = val;
             return o;
         }
@@ -2830,7 +2847,7 @@ class Value: public ValData
         static inline Value makeNull()
         {
             Value o;
-            o = makeEmpty(Value::VALTYP_NULL);
+            o = makeEmpty(VALTYP_NULL);
             return o;
         }
 
@@ -2848,7 +2865,7 @@ class Value: public ValData
         {
             if(obj.isNumber())
             {
-                if(obj.getType() == Value::VALTYP_BOOL)
+                if(obj.getType() == VALTYP_BOOL)
                 {
                     return obj.m_uval.valbool;
                 }
@@ -2867,7 +2884,7 @@ class Value: public ValData
         static Object::ObjUserdata* userdataGetData(Value object)
         {
             Object* data;
-            MC_ASSERT(object.getType() == Value::VALTYP_EXTERNAL);
+            MC_ASSERT(object.getType() == VALTYP_EXTERNAL);
             data = (Object*)object.getAllocatedData();
             return &data->m_uvobj.valuserobject;
         }
@@ -2892,31 +2909,31 @@ class Value: public ValData
         {
             Type type;
             type = getType();
-            return type == Value::VALTYP_NUMBER || type == Value::VALTYP_BOOL;
+            return type == VALTYP_NUMBER || type == VALTYP_BOOL;
         }
 
         inline bool isNumber()
         {
-            return (getType() == Value::VALTYP_NUMBER || getType() == Value::VALTYP_BOOL);
+            return (getType() == VALTYP_NUMBER || getType() == VALTYP_BOOL);
         }
 
         inline bool isNull()
         {
-            return getType() == Value::VALTYP_NULL;
+            return getType() == VALTYP_NULL;
         }
 
         inline bool isFuncNative()
         {
             Type type;
             type = getType();
-            return (type == Value::VALTYP_FUNCNATIVE);
+            return (type == VALTYP_FUNCNATIVE);
         }
 
         inline bool isFuncScript()
         {
             Type type;
             type = getType();
-            return (type == Value::VALTYP_FUNCSCRIPT);
+            return (type == VALTYP_FUNCSCRIPT);
         }
 
         inline bool isCallable()
@@ -2928,21 +2945,21 @@ class Value: public ValData
         {
             Type type;
             type = getType();
-            return (type == Value::VALTYP_STRING);
+            return (type == VALTYP_STRING);
         }
 
         inline bool isMap()
         {
             Type type;
             type = getType();
-            return (type == Value::VALTYP_MAP);
+            return (type == VALTYP_MAP);
         }
 
         inline bool isArray()
         {
             Type type;
             type = getType();
-            return (type == Value::VALTYP_ARRAY);
+            return (type == VALTYP_ARRAY);
         }
 };
 
@@ -2952,6 +2969,7 @@ class Value: public ValData
 */
 static_assert(sizeof(ValData) == sizeof(Value));
 
+/*
 class GCMemory
 {
     public:
@@ -2962,27 +2980,6 @@ class GCMemory
 
         struct DataPool
         {
-            public:
-                /*
-                * nasty lil hack: make use of metaprogramming instantiation to access a
-                * type field that hasn't been declared yet. works, but it's still a hack.
-                */
-                template<typename StateT, typename ValTypT>
-                static DataPool* getPoolForType(StateT* state, ValTypT type)
-                {
-                    switch(type)
-                    {
-                        case Value::VALTYP_ARRAY:
-                            return &state->m_stategcmem->m_poolarray;
-                        case Value::VALTYP_MAP:
-                            return &state->m_stategcmem->m_poolmap;
-                        case Value::VALTYP_STRING:
-                            return &state->m_stategcmem->m_poolstring;
-                        default:
-                            break;
-                    }
-                    return nullptr;
-                }
 
             public:
                 Object* m_pooldata[MemPoolSize];
@@ -2998,7 +2995,6 @@ class GCMemory
             {
                 data = pool->m_pooldata[j];
                 mc_objectdata_deinit(data);
-                memset(data, 0, sizeof(Object));
                 mc_memory_free(data);
             }
             memset(pool, 0, sizeof(DataPool));
@@ -3016,7 +3012,6 @@ class GCMemory
                 {
                     obj = (Object*)m->m_gcobjliststored->get(i);
                     mc_objectdata_deinit(obj);
-                    memset(obj, 0, sizeof(Object));
                     mc_memory_free(obj);
                 }
                 PtrList::destroy(m->m_gcobjliststored, nullptr);
@@ -3061,7 +3056,139 @@ class GCMemory
             initPool(&m_poolmap);
             initPool(&m_poolstring);
         }
+
+        template<typename ValTypT>
+        inline DataPool* getPoolForType(ValTypT type)
+        {
+            switch(type)
+            {
+                case Value::VALTYP_ARRAY:
+                    return &m_poolarray;
+                case Value::VALTYP_MAP:
+                    return &m_poolmap;
+                case Value::VALTYP_STRING:
+                    return &m_poolstring;
+                default:
+                    break;
+            }
+            return nullptr;
+        }
 };
+*/
+
+
+class GCMemory
+{
+    public:
+        enum
+        {
+            MemPoolSize = (16),
+        };
+
+        struct DataPool
+        {
+            public:
+                //Object* m_pooldata[MemPoolSize];
+                GenericList<Object*>* m_pooldata;
+                int m_poolitemcount;
+        };
+
+    public:
+        static void destroyPool(DataPool* pool)
+        {
+            size_t j;
+            Object* data;
+            for(j = 0; j < (size_t)pool->m_poolitemcount; j++)
+            {
+                data = pool->m_pooldata->get(j);
+                mc_objectdata_deinit(data);
+                mc_memory_free(data);
+            }
+            Memory::destroy(pool->m_pooldata);
+        }
+
+        static void destroy(GCMemory* m)
+        {
+            size_t i;
+            Object* obj;
+            if(m != nullptr)
+            {
+                PtrList::destroy(m->m_gcobjlistremains, nullptr);
+                PtrList::destroy(m->m_gcobjlistback, nullptr);
+                for(i = 0; i < m->m_gcobjliststored->count(); i++)
+                {
+                    obj = (Object*)m->m_gcobjliststored->get(i);
+                    mc_objectdata_deinit(obj);
+                    mc_memory_free(obj);
+                }
+                PtrList::destroy(m->m_gcobjliststored, nullptr);
+                destroyPool(&m->m_poolarray);
+                destroyPool(&m->m_poolmap);
+                destroyPool(&m->m_poolstring);
+
+                for(i = 0; i < (size_t)m->m_poolonlydata.m_poolitemcount; i++)
+                {
+                    auto p = m->m_poolonlydata.m_pooldata->get(i);
+                    if(p != nullptr)
+                    {
+                        mc_memory_free(p);
+                        m->m_poolonlydata.m_pooldata->set(i, nullptr);
+                    }
+                }
+                Memory::destroy(m->m_poolonlydata.m_pooldata);
+                mc_memory_free(m);
+            }
+        }
+
+    public:
+        int m_allocssincesweep;
+        PtrList* m_gcobjliststored;
+        PtrList* m_gcobjlistback;
+        PtrList* m_gcobjlistremains;
+        DataPool m_poolonlydata;
+        DataPool m_poolarray;
+        DataPool m_poolmap;
+        DataPool m_poolstring;
+
+    private:
+        void initPool(DataPool* pool)
+        {
+            pool->m_pooldata = Memory::make<GenericList<Object*>>(MemPoolSize, nullptr);
+            pool->m_poolitemcount = 0;
+        }
+
+    public:
+        GCMemory()
+        {
+            m_gcobjliststored = Memory::make<PtrList>(sizeof(void*), true);
+            m_gcobjlistback = Memory::make<PtrList>(sizeof(void*), true);
+            m_gcobjlistremains = Memory::make<PtrList>(sizeof(Value), false);
+            m_allocssincesweep = 0;
+            initPool(&m_poolonlydata);
+            initPool(&m_poolarray);
+            initPool(&m_poolmap);
+            initPool(&m_poolstring);
+        }
+
+        template<typename ValTypT>
+        inline DataPool* getPoolForType(ValTypT type)
+        {
+            switch(type)
+            {
+                case Value::VALTYP_ARRAY:
+                    return &m_poolarray;
+                case Value::VALTYP_MAP:
+                    return &m_poolmap;
+                case Value::VALTYP_STRING:
+                    return &m_poolstring;
+                default:
+                    break;
+            }
+            return nullptr;
+        }
+};
+
+
 
 class ObjClass
 {
@@ -3324,7 +3451,7 @@ class SymStore
             if(store != nullptr)
             {
                 PtrDict::destroyItemsAndDict(store->m_storedsymbols);
-                Memory::destroy(store->m_storedobjects);
+                store->m_storedobjects.destroy(&store->m_storedobjects, true);
                 mc_memory_free(store);
                 store = nullptr;
             }
@@ -3332,13 +3459,12 @@ class SymStore
 
     public:
         PtrDict* m_storedsymbols;
-        GenericList<Value>* m_storedobjects;
+        GenericList<Value> m_storedobjects = GenericList<Value>(0, Value::makeNull());
 
     public:
         SymStore()
         {
             m_storedsymbols = Memory::make<PtrDict>((mcitemcopyfn_t)AstSymbol::copy, (mcitemdestroyfn_t)AstSymbol::destroy);
-            m_storedobjects = Memory::make<GenericList<Value>>(0, Value::makeNull());
         }
 
         AstSymbol* getSymbol(const char* name)
@@ -3356,11 +3482,11 @@ class SymStore
             existingsymbol = getSymbol(name);
             if(existingsymbol)
             {
-                ok = m_storedobjects->set(existingsymbol->m_symindex, object);
+                ok = m_storedobjects.set(existingsymbol->m_symindex, object);
                 return ok;
             }
-            ix = m_storedobjects->count();
-            ok = m_storedobjects->push(object);
+            ix = m_storedobjects.count();
+            ok = m_storedobjects.push(object);
             symbol = Memory::make<AstSymbol>(name, MC_SYM_GLOBALBUILTIN, ix, false);
             ok = m_storedsymbols->set(name, symbol);
             return true;
@@ -3369,7 +3495,7 @@ class SymStore
         Value getAtIndex(int ix, bool* outok)
         {
             Value* res;
-            res = (Value*)m_storedobjects->getp(ix);
+            res = (Value*)m_storedobjects.getp(ix);
             if(!res)
             {
                 *outok = false;
@@ -3381,12 +3507,12 @@ class SymStore
 
         Value* getData()
         {
-            return (Value*)m_storedobjects->data();
+            return (Value*)m_storedobjects.data();
         }
 
         int getCount()
         {
-            return m_storedobjects->count();
+            return m_storedobjects.count();
         }
 
 };
@@ -12289,12 +12415,12 @@ Object* mc_gcmemory_getdatafrompool(State* state, Value::Type type)
     Object* data;
     GCMemory::DataPool* pool;
     (void)ok;
-    pool = GCMemory::DataPool::getPoolForType(state, type);
+    pool = state->m_stategcmem->getPoolForType(type);
     if(!pool || pool->m_poolitemcount <= 0)
     {
         return nullptr;
     }
-    data = pool->m_pooldata[pool->m_poolitemcount - 1];
+    data = pool->m_pooldata->get(pool->m_poolitemcount - 1);
     MC_ASSERT(state->m_stategcmem->m_gcobjlistback->count() >= state->m_stategcmem->m_gcobjliststored->count());
     /*
     * we want to make sure that appending to m_gcobjlistback never fails in sweep
@@ -13786,14 +13912,13 @@ Object* mc_gcmemory_allocobjectdata(State* state)
     state->m_stategcmem->m_allocssincesweep++;
     if(state->m_stategcmem->m_poolonlydata.m_poolitemcount > 0)
     {
-        data = state->m_stategcmem->m_poolonlydata.m_pooldata[state->m_stategcmem->m_poolonlydata.m_poolitemcount - 1];
+        data = state->m_stategcmem->m_poolonlydata.m_pooldata->get(state->m_stategcmem->m_poolonlydata.m_poolitemcount - 1);
         state->m_stategcmem->m_poolonlydata.m_poolitemcount--;
     }
     else
     {
-        data = Memory::make<Object>();
+        data = Memory::make<Object>(state);
     }
-    memset(data, 0, sizeof(Object));
     MC_ASSERT(state->m_stategcmem->m_gcobjlistback->count() >= state->m_stategcmem->m_gcobjliststored->count());
     /*
     * we want to make sure that appending to m_gcobjlistback never fails in sweep
@@ -13956,23 +14081,27 @@ void mc_state_gcsweep(State* state)
         {
             if(mc_state_gccandatabeputinpool(state, data))
             {
-                pool = GCMemory::DataPool::getPoolForType(state, data->m_odtype);
-                pool->m_pooldata[pool->m_poolitemcount] = data;
+                pool = state->m_stategcmem->getPoolForType(data->m_odtype);
+                pool->m_pooldata->set(pool->m_poolitemcount, data);
                 pool->m_poolitemcount++;
             }
             else
             {
                 mc_objectdata_deinit(data);
+                /*
                 if(state->m_stategcmem->m_poolonlydata.m_poolitemcount < GCMemory::MemPoolSize)
                 {
-                    state->m_stategcmem->m_poolonlydata.m_pooldata[state->m_stategcmem->m_poolonlydata.m_poolitemcount] = data;
+                */
+                    state->m_stategcmem->m_poolonlydata.m_pooldata->set(state->m_stategcmem->m_poolonlydata.m_poolitemcount, data);
                     state->m_stategcmem->m_poolonlydata.m_poolitemcount++;
+                /*
                 }
                 else
                 {
                     Memory::destroy(data);
                     data = nullptr;
                 }
+                */
             }
         }
     }
@@ -14058,8 +14187,8 @@ bool mc_state_gccandatabeputinpool(State* state, Object* data)
             break;
     }
     #endif
-    pool= GCMemory::DataPool::getPoolForType(state, data->m_odtype);
-    if(!pool || pool->m_poolitemcount >= GCMemory::MemPoolSize)
+    pool= state->m_stategcmem->getPoolForType(data->m_odtype);
+    if(!pool /*|| pool->m_poolitemcount >= GCMemory::MemPoolSize*/)
     {
         return false;
     }
@@ -18221,17 +18350,17 @@ void mc_cli_printtypesizes()
 
 }
 
-static optlongflags_t longopts[] =
+static OptParser::LongFlags longopts[] =
 {
-    {"help", 'h', OPTPARSE_NONE, "this help"},
-    {"printsizes", 't', OPTPARSE_NONE, "print type sizes"},
-    {"eval", 'e', OPTPARSE_REQUIRED, "evaluate a single line of code"},
-    {"dumpast", 'a', OPTPARSE_NONE, "dump AST after parsing"},
-    {"dumpbc", 'd', OPTPARSE_NONE, "dump bytecode after compiling"},
-    {"exitcompile", 'x', OPTPARSE_NONE, "exit after compiling (for debugging)"},
-    {"printins", 'p', OPTPARSE_NONE, "print each instruction as it is being executed"},
-    {"strict", 's', OPTPARSE_NONE, "enable strict mode"},
-    {0, 0, (optargtype_t)0, nullptr}
+    {"help", 'h', OptParser::OPTPARSE_NONE, "this help"},
+    {"printsizes", 't', OptParser::OPTPARSE_NONE, "print type sizes"},
+    {"eval", 'e', OptParser::OPTPARSE_REQUIRED, "evaluate a single line of code"},
+    {"dumpast", 'a', OptParser::OPTPARSE_NONE, "dump AST after parsing"},
+    {"dumpbc", 'd', OptParser::OPTPARSE_NONE, "dump bytecode after compiling"},
+    {"exitcompile", 'x', OptParser::OPTPARSE_NONE, "exit after compiling (for debugging)"},
+    {"printins", 'p', OptParser::OPTPARSE_NONE, "print each instruction as it is being executed"},
+    {"strict", 's', OptParser::OPTPARSE_NONE, "enable strict mode"},
+    {0, 0, (OptParser::ArgType)0, nullptr}
 };
 
 int main(int argc, char* argv[])
@@ -18246,21 +18375,20 @@ int main(int argc, char* argv[])
     const char* evalcode;
     Value tmp;
     State* state;
-    optcontext_t options;
     ok = true;
     evalcode = nullptr;
     ok = true;
     nargc = 0;
     state = Memory::make<State>();
     nargc = 0;
-    optprs_init(&options, argc, argv);
-    options.permute = 0;
-    while((opt = optprs_nextlongflag(&options, longopts, &longindex)) != -1)
+    OptParser options(argc, argv);
+    options.m_willpermute = 0;
+    while((opt = options.nextLongFlag(longopts, &longindex)) != -1)
     {
-        co = longopts[longindex].shortname;
+        co = longopts[longindex].m_shortname;
         if(opt == '?')
         {
-            printf("%s: %s\n", argv[0], options.errmsg);
+            printf("%s: %s\n", argv[0], options.m_errmsg);
         }
         else if(co == 'h')
         {
@@ -18268,7 +18396,7 @@ int main(int argc, char* argv[])
         }
         else if(co == 'e')
         {
-            evalcode = options.optarg;
+            evalcode = options.m_optarg;
         }
         else if(co == 'a')
         {
@@ -18312,7 +18440,7 @@ int main(int argc, char* argv[])
     }
     while(true)
     {
-        arg = optprs_nextpositional(&options);
+        arg = options.nextPositional();
         if(arg == nullptr)
         {
             break;

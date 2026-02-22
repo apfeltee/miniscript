@@ -18,7 +18,7 @@
  * run, over one argv with one option string. It also means subcommand
  * options cannot be processed with getopt(). Most implementations
  * provide a method to reset the parser, but it's not portable.
- * Optparse provides an optprs_nextpositional() function for stepping over
+ * Optparse provides an nextPositional() function for stepping over
  * subcommands and continuing parsing of options with another option
  * string. The Optparse struct itself can be passed around to
  * subcommand handlers for additional subcommand option parsing. A
@@ -35,11 +35,11 @@
  * same and the fields have the same names as the getopt() global
  * variables (optarg, optind, optopt).
  *
- * Optparse also supports GNU-style long options with optprs_nextlongflag().
+ * Optparse also supports GNU-style long options with nextLongFlag().
  * The interface is slightly different and simpler than getopt_long().
  *
  * By default, argv is permuted as it is parsed, moving non-option
- * arguments to the end. This can be disabled by setting the `permute`
+ * arguments to the end. This can be disabled by setting the `m_willpermute`
  * field to 0 after initialization.
  */
 
@@ -54,38 +54,454 @@
 #define optvalfalse (0)
 
 
-enum optargtype_t
+struct OptParser
 {
-    OPTPARSE_NONE,
-    OPTPARSE_REQUIRED,
-    OPTPARSE_OPTIONAL
+    public:
+        enum ArgType
+        {
+            OPTPARSE_NONE,
+            OPTPARSE_REQUIRED,
+            OPTPARSE_OPTIONAL
+        };
+
+        struct LongFlags
+        {
+            const char* m_longname;
+            int m_shortname;
+            ArgType m_argtype;
+            const char* m_helptext;
+        };
+
+    public:
+        static int isDasDash(const char* arg)
+        {
+            if(arg != NULL)
+            {
+                if((arg[0] == '-') && (arg[1] == '-') && (arg[2] == '\0'))
+                {
+                    return optvaltrue;
+                }
+            }
+            return optvalfalse;
+        }
+
+        static int isShortOpt(const char* arg)
+        {
+            if(arg != NULL)
+            {
+                if((arg[0] == '-') && (arg[1] != '-') && (arg[1] != '\0'))
+                {
+                    return optvaltrue;
+                }
+            }
+            return optvalfalse;
+        }
+
+        static int isLongOpt(const char* arg)
+        {
+            if(arg != NULL)
+            {
+                if((arg[0] == '-') && (arg[1] == '-') && (arg[2] != '\0'))
+                {
+                    return optvaltrue;
+                }
+            }
+            return optvalfalse;
+        }
+
+        static int getArgType(const char* optstring, char c)
+        {
+            int count;
+            count = OPTPARSE_NONE;
+            if(c == ':')
+            {
+                return -1;
+            }
+            for(; *optstring && c != *optstring; optstring++)
+            {
+            }
+            if(!*optstring)
+            {
+                return -1;
+            }
+            if(optstring[1] == ':')
+            {
+                count += optstring[2] == ':' ? 2 : 1;
+            }
+            return count;
+        }
+
+        static int isLongOptsEnd(const LongFlags* longopts, int i)
+        {
+            if(!longopts[i].m_longname && !longopts[i].m_shortname)
+            {
+                return optvaltrue;
+            }
+            return optvalfalse;
+        }
+
+        static void optsbitsFromLong(const LongFlags* longopts, char* optstring)
+        {
+            int i;
+            int a;
+            char* p;
+            p = optstring;
+            for(i = 0; !isLongOptsEnd(longopts, i); i++)
+            {
+                if(longopts[i].m_shortname && longopts[i].m_shortname < 127)
+                {
+                    *p++ = longopts[i].m_shortname;
+                    for(a = 0; a < (int)longopts[i].m_argtype; a++)
+                    {
+                        *p++ = ':';
+                    }
+                }
+            }
+            *p = '\0';
+        }
+
+        /* Unlike strcmp(), handles options containing "=". */
+        static int matchLongOpts(const char* longname, const char* option)
+        {
+            const char *a;
+            const char* n;
+            a = option;
+            n = longname;
+            if(longname == 0)
+            {
+                return 0;
+            }
+            for(; *a && *n && *a != '='; a++, n++)
+            {
+                if(*a != *n)
+                {
+                    return 0;
+                }
+            }
+            return *n == '\0' && (*a == '\0' || *a == '=');
+        }
+
+        /* Return the part after "=", or NULL. */
+        static char* optsbitsGetLongOptsArg(char* option)
+        {
+            for(; *option && *option != '='; option++)
+            {
+            }
+            if(*option == '=')
+            {
+                return option + 1;
+            }
+            return NULL;
+        }
+
+    public:
+        char** m_argv;
+        int m_argc;
+        int m_willpermute;
+        int m_optind;
+        int m_optopt;
+        char* m_optarg;
+        char m_errmsg[64];
+        int m_subopt;
+
+    public:
+        /**
+         * Initializes the parser state.
+         */
+        OptParser(int argc, char** argv)
+        {
+            m_argv = argv;
+            m_argc = argc;
+            m_willpermute = 1;
+            m_optind = argv[0] != 0;
+            m_subopt = 0;
+            m_optarg = 0;
+            m_errmsg[0] = '\0';
+        }
+
+        int makeError(const char* msg, const char* data)
+        {
+            unsigned p;
+            const char* sep;
+            p = 0;
+            sep = " -- '";
+            while(*msg)
+            {
+                m_errmsg[p++] = *msg++;
+            }
+            while(*sep)
+            {
+                m_errmsg[p++] = *sep++;
+            }
+            while(p < sizeof(m_errmsg) - 2 && *data)
+            {
+                m_errmsg[p++] = *data++;
+            }
+            m_errmsg[p++] = '\'';
+            m_errmsg[p++] = '\0';
+            return '?';
+        }
+
+        int longFallback(const LongFlags* longopts, int* longindex)
+        {
+            int i;
+            int result;
+            /* 96 ASCII printable characters */
+            char optstring[96 * 3 + 1];
+            optsbitsFromLong(longopts, optstring);
+            result = nextShortFlag(optstring);
+            if(longindex != 0)
+            {
+                *longindex = -1;
+                if(result != -1)
+                {
+                    for(i = 0; !isLongOptsEnd(longopts, i); i++)
+                    {
+                        if(longopts[i].m_shortname == m_optopt)
+                        {
+                            *longindex = i;
+                        }
+                    }
+                }
+            }
+            return result;
+        }
+
+        /**
+         * Read the next option in the argv array.
+         * @param optstring a getopt()-formatted option string.
+         * @return the next option character, -1 for done, or '?' for error
+         *
+         * Just like getopt(), a character followed by no colons means no
+         * argument. One colon means the option has a required argument. Two
+         * colons means the option takes an optional argument.
+         */
+        int nextShortFlag(const char* optstring)
+        {
+            int r;
+            int type;
+            int index;
+            char* next;
+            char* option;
+            char str[2] = { 0, 0 };
+            option = m_argv[m_optind];
+            m_errmsg[0] = '\0';
+            m_optopt = 0;
+            m_optarg = 0;
+            if(option == 0)
+            {
+                return -1;
+            }
+            else if(isDasDash(option))
+            {
+                /* consume "--" */
+                m_optind++;
+                return -1;
+            }
+            else if(!isShortOpt(option))
+            {
+                if(m_willpermute)
+                {
+                    index = m_optind++;
+                    r = nextShortFlag(optstring);
+                    permute(index);
+                    m_optind--;
+                    return r;
+                }
+                else
+                {
+                    return -1;
+                }
+            }
+            option += m_subopt + 1;
+            m_optopt = option[0];
+            type = getArgType(optstring, option[0]);
+            next = m_argv[m_optind + 1];
+            switch(type)
+            {
+                case -1:
+                    {
+                        str[1] = 0;
+                        str[0] = option[0];
+                        m_optind++;
+                        return makeError(OPTPARSE_MSG_INVALID, str);
+                    }
+                    break;
+                case OPTPARSE_NONE:
+                    {
+                        if(option[1])
+                        {
+                            m_subopt++;
+                        }
+                        else
+                        {
+                            m_subopt = 0;
+                            m_optind++;
+                        }
+                        return option[0];
+                    }
+                    break;
+                case OPTPARSE_REQUIRED:
+                    {
+                        m_subopt = 0;
+                        m_optind++;
+                        if(option[1])
+                        {
+                            m_optarg = option + 1;
+                        }
+                        else if(next != 0)
+                        {
+                            m_optarg = next;
+                            m_optind++;
+                        }
+                        else
+                        {
+                            str[1] = 0;
+                            str[0] = option[0];
+                            m_optarg = 0;
+                            return makeError(OPTPARSE_MSG_MISSING, str);
+                        }
+                        return option[0];
+                    }
+                    break;
+                case OPTPARSE_OPTIONAL:
+                    {
+                        m_subopt = 0;
+                        m_optind++;
+                        if(option[1])
+                        {
+                            m_optarg = option + 1;
+                        }
+                        else
+                        {
+                            m_optarg = 0;
+                        }
+                        return option[0];
+                    }
+                    break;
+            }
+            return 0;
+        }
+
+        /**
+         * Handles GNU-style long options in addition to getopt() options.
+         * This works a lot like GNU's getopt_long(). The last option in
+         * longopts must be all zeros, marking the end of the array. The
+         * longindex argument may be NULL.
+         */
+        int nextLongFlag(const LongFlags* longopts, int* longindex)
+        {
+            int i;
+            int r;
+            int index;
+            char* arg;
+            char* option;
+            const char* name;
+            option = m_argv[m_optind];
+            if(option == 0)
+            {
+                return -1;
+            }
+            else if(isDasDash(option))
+            {
+                m_optind++; /* consume "--" */
+                return -1;
+            }
+            else if(isShortOpt(option))
+            {
+                return longFallback(longopts, longindex);
+            }
+            else if(!isLongOpt(option))
+            {
+                if(m_willpermute)
+                {
+                    index = m_optind++;
+                    r = nextLongFlag(longopts, longindex);
+                    permute(index);
+                    m_optind--;
+                    return r;
+                }
+                else
+                {
+                    return -1;
+                }
+            }
+            /* Parse as long option. */
+            m_errmsg[0] = '\0';
+            m_optopt = 0;
+            m_optarg = 0;
+            option += 2; /* skip "--" */
+            m_optind++;
+            for(i = 0; !isLongOptsEnd(longopts, i); i++)
+            {
+                name = longopts[i].m_longname;
+                if(matchLongOpts(name, option))
+                {
+                    if(longindex)
+                    {
+                        *longindex = i;
+                    }
+                    m_optopt = longopts[i].m_shortname;
+                    arg = optsbitsGetLongOptsArg(option);
+                    if(longopts[i].m_argtype == OPTPARSE_NONE && arg != 0)
+                    {
+                        return makeError(OPTPARSE_MSG_TOOMANY, name);
+                    }
+                    if(arg != 0)
+                    {
+                        m_optarg = arg;
+                    }
+                    else if(longopts[i].m_argtype == OPTPARSE_REQUIRED)
+                    {
+                        m_optarg = m_argv[m_optind];
+                        if(m_optarg == 0)
+                        {
+                            return makeError(OPTPARSE_MSG_MISSING, name);
+                        }
+                        else
+                        {
+                            m_optind++;
+                        }
+                    }
+                    return m_optopt;
+                }
+            }
+            return makeError(OPTPARSE_MSG_INVALID, option);
+        }
+
+        /**
+         * Used for stepping over non-option arguments.
+         * @return the next non-option argument, or NULL for no more arguments
+         *
+         * Argument parsing can continue with optparse() after using this
+         * function. That would be used to parse the options for the
+         * subcommand returned by nextPositional(). This function allows you to
+         * ignore the value of m_optind.
+         */
+        char* nextPositional()
+        {
+            char* option;
+            option = m_argv[m_optind];
+            m_subopt = 0;
+            if(option != 0)
+            {
+                m_optind++;
+            }
+            return option;
+        }
+
+        void permute(int index)
+        {
+            int i;
+            char* nonoption;
+            nonoption = m_argv[index];
+            for(i = index; i < m_optind - 1; i++)
+            {
+                m_argv[i] = m_argv[i + 1];
+            }
+            m_argv[m_optind - 1] = nonoption;
+        }
 };
-
-typedef struct optcontext_t optcontext_t;
-typedef struct optlongflags_t optlongflags_t;
-typedef enum optargtype_t optargtype_t;
-
-struct optcontext_t
-{
-    char** argv;
-    int argc;
-    int permute;
-    int optind;
-    int optopt;
-    char* optarg;
-    char errmsg[64];
-    int subopt;
-};
-
-struct optlongflags_t
-{
-    const char* longname;
-    int shortname;
-    optargtype_t argtype;
-    const char* helptext;
-};
-
-static int optprs_nextshortflag(optcontext_t* ox, const char* optstring);
 
 
 void optprs_fprintmaybearg(FILE* out, const char* begin, const char* flagname, size_t flaglen, bool needval, bool maybeval, const char* delim)
@@ -109,28 +525,28 @@ void optprs_fprintmaybearg(FILE* out, const char* begin, const char* flagname, s
     }
 }
 
-void optprs_fprintusage(FILE* out, optlongflags_t* flags)
+void optprs_fprintusage(FILE* out, OptParser::LongFlags* flags)
 {
     size_t i;
     char ch;
     bool needval;
     bool maybeval;
     bool hadshort;
-    optlongflags_t* flag;
-    for(i=0; flags[i].longname != NULL; i++)
+    OptParser::LongFlags* flag;
+    for(i=0; flags[i].m_longname != NULL; i++)
     {
         flag = &flags[i];
         hadshort = false;
-        needval = (flag->argtype > OPTPARSE_NONE);
-        maybeval = (flag->argtype == OPTPARSE_OPTIONAL);
-        if(flag->shortname > 0)
+        needval = (flag->m_argtype > OptParser::OPTPARSE_NONE);
+        maybeval = (flag->m_argtype == OptParser::OPTPARSE_OPTIONAL);
+        if(flag->m_shortname > 0)
         {
             hadshort = true;
-            ch = flag->shortname;
+            ch = flag->m_shortname;
             fprintf(out, "    ");
             optprs_fprintmaybearg(out, "-", &ch, 1, needval, maybeval, NULL);
         }
-        if(flag->longname != NULL)
+        if(flag->m_longname != NULL)
         {
             if(hadshort)
             {
@@ -140,440 +556,20 @@ void optprs_fprintusage(FILE* out, optlongflags_t* flags)
             {
                 fprintf(out, "    ");
             }
-            optprs_fprintmaybearg(out, "--", flag->longname, strlen(flag->longname), needval, maybeval, "=");
+            optprs_fprintmaybearg(out, "--", flag->m_longname, strlen(flag->m_longname), needval, maybeval, "=");
         }
-        if(flag->helptext != NULL)
+        if(flag->m_helptext != NULL)
         {
-            fprintf(out, "  -  %s", flag->helptext);
+            fprintf(out, "  -  %s", flag->m_helptext);
         }
         fprintf(out, "\n");
     }
 }
 
-void optprs_printusage(char* argv[], optlongflags_t* flags, bool fail)
+void optprs_printusage(char* argv[], OptParser::LongFlags* flags, bool fail)
 {
     FILE* out;
     out = fail ? stderr : stdout;
     fprintf(out, "Usage: %s [<options>] [<filename> | -e <code>]\n", argv[0]);
     optprs_fprintusage(out, flags);
 }
-
-static int optprs_makeerror(optcontext_t* ox, const char* msg, const char* data)
-{
-    unsigned p;
-    const char* sep;
-    p = 0;
-    sep = " -- '";
-    while(*msg)
-    {
-        ox->errmsg[p++] = *msg++;
-    }
-    while(*sep)
-    {
-        ox->errmsg[p++] = *sep++;
-    }
-    while(p < sizeof(ox->errmsg) - 2 && *data)
-    {
-        ox->errmsg[p++] = *data++;
-    }
-    ox->errmsg[p++] = '\'';
-    ox->errmsg[p++] = '\0';
-    return '?';
-}
-
-static int optbits_isdashdash(const char* arg)
-{
-    if(arg != NULL)
-    {
-        if((arg[0] == '-') && (arg[1] == '-') && (arg[2] == '\0'))
-        {
-            return optvaltrue;
-        }
-    }
-    return optvalfalse;
-}
-
-static int optbits_isshortopt(const char* arg)
-{
-    if(arg != NULL)
-    {
-        if((arg[0] == '-') && (arg[1] != '-') && (arg[1] != '\0'))
-        {
-            return optvaltrue;
-        }
-    }
-    return optvalfalse;
-}
-
-static int optbits_islongopt(const char* arg)
-{
-    if(arg != NULL)
-    {
-        if((arg[0] == '-') && (arg[1] == '-') && (arg[2] != '\0'))
-        {
-            return optvaltrue;
-        }
-    }
-    return optvalfalse;
-}
-
-static void optbits_permute(optcontext_t* ox, int index)
-{
-    int i;
-    char* nonoption;
-    nonoption = ox->argv[index];
-    for(i = index; i < ox->optind - 1; i++)
-    {
-        ox->argv[i] = ox->argv[i + 1];
-    }
-    ox->argv[ox->optind - 1] = nonoption;
-}
-
-static int optbits_getargtype(const char* optstring, char c)
-{
-    int count;
-    count = OPTPARSE_NONE;
-    if(c == ':')
-    {
-        return -1;
-    }
-    for(; *optstring && c != *optstring; optstring++)
-    {
-    }
-    if(!*optstring)
-    {
-        return -1;
-    }
-    if(optstring[1] == ':')
-    {
-        count += optstring[2] == ':' ? 2 : 1;
-    }
-    return count;
-}
-
-static int optbits_islongoptsend(const optlongflags_t* longopts, int i)
-{
-    if(!longopts[i].longname && !longopts[i].shortname)
-    {
-        return optvaltrue;
-    }
-    return optvalfalse;
-}
-
-static void optbits_fromlong(const optlongflags_t* longopts, char* optstring)
-{
-    int i;
-    int a;
-    char* p;
-    p = optstring;
-    for(i = 0; !optbits_islongoptsend(longopts, i); i++)
-    {
-        if(longopts[i].shortname && longopts[i].shortname < 127)
-        {
-            *p++ = longopts[i].shortname;
-            for(a = 0; a < (int)longopts[i].argtype; a++)
-            {
-                *p++ = ':';
-            }
-        }
-    }
-    *p = '\0';
-}
-
-/* Unlike strcmp(), handles options containing "=". */
-static int optbits_matchlongopts(const char* longname, const char* option)
-{
-    const char *a;
-    const char* n;
-    a = option;
-    n = longname;
-    if(longname == 0)
-    {
-        return 0;
-    }
-    for(; *a && *n && *a != '='; a++, n++)
-    {
-        if(*a != *n)
-        {
-            return 0;
-        }
-    }
-    return *n == '\0' && (*a == '\0' || *a == '=');
-}
-
-/* Return the part after "=", or NULL. */
-static char* optbits_getlongoptsarg(char* option)
-{
-    for(; *option && *option != '='; option++)
-    {
-    }
-    if(*option == '=')
-    {
-        return option + 1;
-    }
-    return NULL;
-}
-
-static int optbits_longfallback(optcontext_t* ox, const optlongflags_t* longopts, int* longindex)
-{
-    int i;
-    int result;
-    /* 96 ASCII printable characters */
-    char optstring[96 * 3 + 1];
-    optbits_fromlong(longopts, optstring);
-    result = optprs_nextshortflag(ox, optstring);
-    if(longindex != 0)
-    {
-        *longindex = -1;
-        if(result != -1)
-        {
-            for(i = 0; !optbits_islongoptsend(longopts, i); i++)
-            {
-                if(longopts[i].shortname == ox->optopt)
-                {
-                    *longindex = i;
-                }
-            }
-        }
-    }
-    return result;
-}
-
-/**
- * Initializes the parser state.
- */
-static void optprs_init(optcontext_t* ox, int argc, char** argv)
-{
-    ox->argv = argv;
-    ox->argc = argc;
-    ox->permute = 1;
-    ox->optind = argv[0] != 0;
-    ox->subopt = 0;
-    ox->optarg = 0;
-    ox->errmsg[0] = '\0';
-}
-
-/**
- * Read the next option in the argv array.
- * @param optstring a getopt()-formatted option string.
- * @return the next option character, -1 for done, or '?' for error
- *
- * Just like getopt(), a character followed by no colons means no
- * argument. One colon means the option has a required argument. Two
- * colons means the option takes an optional argument.
- */
-static int optprs_nextshortflag(optcontext_t* ox, const char* optstring)
-{
-    int r;
-    int type;
-    int index;
-    char* next;
-    char* option;
-    char str[2] = { 0, 0 };
-    option = ox->argv[ox->optind];
-    ox->errmsg[0] = '\0';
-    ox->optopt = 0;
-    ox->optarg = 0;
-    if(option == 0)
-    {
-        return -1;
-    }
-    else if(optbits_isdashdash(option))
-    {
-        /* consume "--" */
-        ox->optind++;
-        return -1;
-    }
-    else if(!optbits_isshortopt(option))
-    {
-        if(ox->permute)
-        {
-            index = ox->optind++;
-            r = optprs_nextshortflag(ox, optstring);
-            optbits_permute(ox, index);
-            ox->optind--;
-            return r;
-        }
-        else
-        {
-            return -1;
-        }
-    }
-    option += ox->subopt + 1;
-    ox->optopt = option[0];
-    type = optbits_getargtype(optstring, option[0]);
-    next = ox->argv[ox->optind + 1];
-    switch(type)
-    {
-        case -1:
-            {
-                str[1] = 0;
-                str[0] = option[0];
-                ox->optind++;
-                return optprs_makeerror(ox, OPTPARSE_MSG_INVALID, str);
-            }
-            break;
-        case OPTPARSE_NONE:
-            {
-                if(option[1])
-                {
-                    ox->subopt++;
-                }
-                else
-                {
-                    ox->subopt = 0;
-                    ox->optind++;
-                }
-                return option[0];
-            }
-            break;
-        case OPTPARSE_REQUIRED:
-            {
-                ox->subopt = 0;
-                ox->optind++;
-                if(option[1])
-                {
-                    ox->optarg = option + 1;
-                }
-                else if(next != 0)
-                {
-                    ox->optarg = next;
-                    ox->optind++;
-                }
-                else
-                {
-                    str[1] = 0;
-                    str[0] = option[0];
-                    ox->optarg = 0;
-                    return optprs_makeerror(ox, OPTPARSE_MSG_MISSING, str);
-                }
-                return option[0];
-            }
-            break;
-        case OPTPARSE_OPTIONAL:
-            {
-                ox->subopt = 0;
-                ox->optind++;
-                if(option[1])
-                {
-                    ox->optarg = option + 1;
-                }
-                else
-                {
-                    ox->optarg = 0;
-                }
-                return option[0];
-            }
-            break;
-    }
-    return 0;
-}
-
-/**
- * Handles GNU-style long options in addition to getopt() options.
- * This works a lot like GNU's getopt_long(). The last option in
- * longopts must be all zeros, marking the end of the array. The
- * longindex argument may be NULL.
- */
-static int optprs_nextlongflag(optcontext_t* ox, const optlongflags_t* longopts, int* longindex)
-{
-    int i;
-    int r;
-    int index;
-    char* arg;
-    char* option;
-    const char* name;
-    option = ox->argv[ox->optind];
-    if(option == 0)
-    {
-        return -1;
-    }
-    else if(optbits_isdashdash(option))
-    {
-        ox->optind++; /* consume "--" */
-        return -1;
-    }
-    else if(optbits_isshortopt(option))
-    {
-        return optbits_longfallback(ox, longopts, longindex);
-    }
-    else if(!optbits_islongopt(option))
-    {
-        if(ox->permute)
-        {
-            index = ox->optind++;
-            r = optprs_nextlongflag(ox, longopts, longindex);
-            optbits_permute(ox, index);
-            ox->optind--;
-            return r;
-        }
-        else
-        {
-            return -1;
-        }
-    }
-    /* Parse as long option. */
-    ox->errmsg[0] = '\0';
-    ox->optopt = 0;
-    ox->optarg = 0;
-    option += 2; /* skip "--" */
-    ox->optind++;
-    for(i = 0; !optbits_islongoptsend(longopts, i); i++)
-    {
-        name = longopts[i].longname;
-        if(optbits_matchlongopts(name, option))
-        {
-            if(longindex)
-            {
-                *longindex = i;
-            }
-            ox->optopt = longopts[i].shortname;
-            arg = optbits_getlongoptsarg(option);
-            if(longopts[i].argtype == OPTPARSE_NONE && arg != 0)
-            {
-                return optprs_makeerror(ox, OPTPARSE_MSG_TOOMANY, name);
-            }
-            if(arg != 0)
-            {
-                ox->optarg = arg;
-            }
-            else if(longopts[i].argtype == OPTPARSE_REQUIRED)
-            {
-                ox->optarg = ox->argv[ox->optind];
-                if(ox->optarg == 0)
-                {
-                    return optprs_makeerror(ox, OPTPARSE_MSG_MISSING, name);
-                }
-                else
-                {
-                    ox->optind++;
-                }
-            }
-            return ox->optopt;
-        }
-    }
-    return optprs_makeerror(ox, OPTPARSE_MSG_INVALID, option);
-}
-
-/**
- * Used for stepping over non-option arguments.
- * @return the next non-option argument, or NULL for no more arguments
- *
- * Argument parsing can continue with optparse() after using this
- * function. That would be used to parse the options for the
- * subcommand returned by optprs_nextpositional(). This function allows you to
- * ignore the value of optind.
- */
-static char* optprs_nextpositional(optcontext_t* ox)
-{
-    char* option;
-    option = ox->argv[ox->optind];
-    ox->subopt = 0;
-    if(option != 0)
-    {
-        ox->optind++;
-    }
-    return option;
-}
-
-
