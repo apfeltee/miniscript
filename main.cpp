@@ -1,6 +1,6 @@
 
-#include <stdbool.h>
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
 #include <assert.h>
@@ -58,25 +58,10 @@ THE SOFTWARE.
 
 
 #define MC_CONF_DEBUG 0
-#define MC_CONF_MINVMVALSTACKSIZE (4)
-#define MC_CONF_MINVMFRAMES (4)
-#define MC_CONF_MINVMGLOBALS (4)
-#define MC_CONF_MINNATIVETHISSTACKSIZE (32)
-#define MC_CONF_MINVMTHISSTACKSIZE (MC_CONF_MINVMVALSTACKSIZE)
-
-#define MC_CONF_GCMEMSWEEPINTERVAL (128)
-#define MC_CONF_MAXERRORCOUNT (4)
-#define MC_CONF_MAXERRORMSGLENGTH (64)
-#define MC_CONF_GENERICDICTINVALIDIX (UINT_MAX)
-#define MC_CONF_VALDICTINVALIDIX (UINT_MAX)
-#define MC_CONF_GENERICDICTINITSIZE (32)
-#define MC_CONF_MAXOPEROVERLOADS (25)
-
 
 #if !defined(__GNUC__)
     #define __attribute__(x)
 #endif
-
 
 #if (defined(__GNUC__) || defined(__clang__))
     #define MC_INLINE static inline
@@ -86,12 +71,8 @@ THE SOFTWARE.
     #define MC_FORCEINLINE MC_INLINE
 #endif
 
-
-#define MC_UTIL_STATICARRAYSIZE(array) ((int)(sizeof(array) / sizeof(array[0])))
-#define MC_UTIL_FABS(n) fabs(n)
-
 #if 0
-    #define MC_UTIL_CMPFLOAT(a, b) (MC_UTIL_FABS((a) - (b)) < DBL_EPSILON)
+    #define MC_UTIL_CMPFLOAT(a, b) (fabs((a) - (b)) < DBL_EPSILON)
 #else
     #define MC_UTIL_CMPFLOAT(a, b) ((a) == (b))
 #endif
@@ -118,134 +99,9 @@ typedef double mcfloat_t;
 typedef uint16_t mcinternopcode_t;
 typedef uint32_t mcshiftint_t;
 
-enum mcerrtype_t
-{
-    MC_ERROR_NONE = 0,
-    MC_ERROR_PARSING,
-    MC_ERROR_COMPILING,
-    MC_ERROR_RUNTIME,
-    MC_ERROR_TIMEOUT,
-    MC_ERROR_MEMORY,
-    MC_ERROR_USER
-};
-
-
-enum mcastmathoptype_t
-{
-    MC_MATHOP_NONE,
-    MC_MATHOP_ASSIGN,
-    MC_MATHOP_PLUS,
-    MC_MATHOP_MINUS,
-    MC_MATHOP_BINNOT,
-    MC_MATHOP_BANG,
-    MC_MATHOP_ASTERISK,
-    MC_MATHOP_SLASH,
-    MC_MATHOP_LT,
-    MC_MATHOP_LTE,
-    MC_MATHOP_GT,
-    MC_MATHOP_GTE,
-    MC_MATHOP_EQ,
-    MC_MATHOP_NOTEQ,
-    MC_MATHOP_MODULUS,
-    MC_MATHOP_LOGICALAND,
-    MC_MATHOP_LOGICALOR,
-    MC_MATHOP_BINAND,
-    MC_MATHOP_BINOR,
-    MC_MATHOP_BINXOR,
-    MC_MATHOP_LSHIFT,
-    MC_MATHOP_RSHIFT
-};
-
-
-
-enum mcopcode_t
-{
-    MC_OPCODE_HALT = 0,
-    MC_OPCODE_CONSTANT,
-    MC_OPCODE_ADD,
-    MC_OPCODE_SUB,
-    MC_OPCODE_MUL,
-    MC_OPCODE_DIV,
-    MC_OPCODE_MOD,
-    MC_OPCODE_POP,
-    MC_OPCODE_BINOR,
-    MC_OPCODE_BINXOR,
-    MC_OPCODE_BINAND,
-    MC_OPCODE_LSHIFT,
-    MC_OPCODE_RSHIFT,
-    MC_OPCODE_BANG,
-    MC_OPCODE_COMPARE,
-    MC_OPCODE_TRUE,
-    MC_OPCODE_FALSE,
-    MC_OPCODE_COMPAREEQ,
-    MC_OPCODE_EQUAL,
-    MC_OPCODE_NOTEQUAL,
-    MC_OPCODE_GREATERTHAN,
-    MC_OPCODE_GREATERTHANEQUAL,
-    MC_OPCODE_MINUS,
-    MC_OPCODE_BINNOT,
-    MC_OPCODE_JUMP,
-    MC_OPCODE_JUMPIFFALSE,
-    MC_OPCODE_JUMPIFTRUE,
-    MC_OPCODE_NULL,
-    MC_OPCODE_GETMODULEGLOBAL,
-    MC_OPCODE_SETMODULEGLOBAL,
-    MC_OPCODE_DEFINEMODULEGLOBAL,
-    MC_OPCODE_ARRAY,
-    MC_OPCODE_MAPSTART,
-    MC_OPCODE_MAPEND,
-    MC_OPCODE_GETTHIS,
-    MC_OPCODE_GETINDEX,
-    MC_OPCODE_SETINDEX,
-    MC_OPCODE_GETDOTINDEX,
-    MC_OPCODE_GETVALUEAT,
-    MC_OPCODE_CALL,
-    MC_OPCODE_RETURNVALUE,
-    MC_OPCODE_RETURN,
-    MC_OPCODE_GETLOCAL,
-    MC_OPCODE_DEFINELOCAL,
-    MC_OPCODE_SETLOCAL,
-    MC_OPCODE_GETGLOBALBUILTIN,
-    MC_OPCODE_FUNCTION,
-    MC_OPCODE_GETFREE,
-    MC_OPCODE_SETFREE,
-    MC_OPCODE_CURRENTFUNCTION,
-    MC_OPCODE_DUP,
-    MC_OPCODE_NUMBER,
-    MC_OPCODE_FOREACHLEN,
-    MC_OPCODE_SETRECOVER,
-    MC_OPCODE_MAX
-};
-
-enum mcastsymtype_t
-{
-    MC_SYM_NONE = 0,
-    MC_SYM_MODULEGLOBAL,
-    MC_SYM_LOCAL,
-    MC_SYM_GLOBALBUILTIN,
-    MC_SYM_FREE,
-    MC_SYM_FUNCTION,
-    MC_SYM_THIS
-};
-
-
-
-typedef enum mcerrtype_t mcerrtype_t;
-
-
-typedef enum mcastmathoptype_t mcastmathoptype_t;
-
-typedef enum mcopcode_t mcopcode_t;
-typedef enum mcastsymtype_t mcastsymtype_t;
 
 typedef struct mcstoddiyfp_t mcstoddiyfp_t;
 
-typedef struct mcexecstate_t mcexecstate_t;
-
-typedef struct mcconfig_t mcconfig_t;
-
-
-typedef struct mcopdefinition_t mcopdefinition_t;
 
 
 class Object;
@@ -275,6 +131,7 @@ class AstExpression;
 class AstToken;
 class SymStore;
 class ObjClass;
+class AstScopeBlock;
 
 template<typename> class GenericList;
 
@@ -284,9 +141,6 @@ typedef bool (*mcitemcomparefn_t)(void*, void*);
 typedef void (*mcitemdestroyfn_t)(void*);
 typedef void* (*mcitemcopyfn_t)(void*);
 typedef void (*mcitemdeinitfn_t)(void*);
-typedef AstExpression* (*mcastrightassocparsefn_t)(AstParser*);
-typedef AstExpression* (*mcastleftassocparsefn_t)(AstParser*, AstExpression*);
-
 template<typename... ArgsT>
 void mc_util_complain(AstLocation pos, const char *fmt, ArgsT&&... args);
 
@@ -354,7 +208,6 @@ mcfloat_t mc_util_uint64todouble(uint64_t val)
 
 /* protos */
 MC_INLINE const char* mc_value_stringgetdata(Value object);
-
 
 uint64_t stod_leading_zeros64(uint64_t x);
 double stod_diyfp2d(mcstoddiyfp_t v);
@@ -436,7 +289,6 @@ bool mc_state_maphaskey(Value object, Value key);
 void mc_objectdata_deinit(Object *data);
 
 
-bool mc_printutil_bcreadoperands(mcopdefinition_t *def, const uint16_t *instr, uint64_t outoperands[2]);
 void mc_printer_printoneinstruc(Printer *pr, uint16_t *code, uint16_t op, size_t *pos, AstLocation *sposlist, bool simple);
 void mc_printer_printbytecode(Printer *pr, uint16_t *code, AstLocation *sposlist, size_t codesize, bool simple);
 void mc_printer_printobjstring(Printer *pr, Value obj);
@@ -458,13 +310,8 @@ MC_FORCEINLINE mcfloat_t mc_mathutil_div(mcfloat_t dnleft, mcfloat_t dnright);
 MC_FORCEINLINE mcfloat_t mc_mathutil_mod(mcfloat_t dnleft, mcfloat_t dnright);
 
 
-
 Value mc_program_execute(State *state, CompiledProgram *program);
 Value mc_state_execcode(State *state, const char *code, const char *filename);
-
-bool mc_error_printusererror(Printer *pr, Value obj);
-
-const char *mc_util_mathopstring(mcastmathoptype_t op);
 
 Object *mc_gcmemory_allocobjectdata(State *state);
 
@@ -481,7 +328,7 @@ bool mc_vm_execvm(State* state, Value function, GenericList<Value>* constants, b
 bool mc_traceback_vmpush(Traceback *traceback, State *state);
 bool mc_vm_init(State *state);
 void mc_vm_reset(State *state);
-void mc_vmutil_getopinfo(mcopcode_t opc, const char **oname);
+
 Value mc_scriptfn_typeof(State *state, void *data, Value thisval, size_t argc, Value *args);
 Value mc_scriptfn_arrayfirst(State *state, void *data, Value thisval, size_t argc, Value *args);
 Value mc_scriptfn_arraylast(State *state, void *data, Value thisval, size_t argc, Value *args);
@@ -517,8 +364,6 @@ Value mc_objfnstring_matchglobicase(State *state, void *data, Value thisval, siz
 Value mc_objfnstring_tolower(State *state, void *data, Value thisval, size_t argc, Value *args);
 Value mc_objfnstring_toupper(State *state, void *data, Value thisval, size_t argc, Value *args);
 Value mc_objfnarray_length(State *state, void *data, Value thisval, size_t argc, Value *args);
-void mc_vm_savestate(State *state, mcexecstate_t *est);
-void mc_vm_restorestate(State *state, mcexecstate_t *est);
 Value mc_objfnarray_map(State *state, void *data, Value thisval, size_t argc, Value *args);
 Value mc_objfnarray_push(State *state, void *data, Value thisval, size_t argc, Value *args);
 Value mc_objfnarray_pop(State *state, void *data, Value thisval, size_t argc, Value *args);
@@ -584,7 +429,6 @@ bool mc_cli_compileandrunfile(State *state, const char *filename);
 void mc_cli_installargv(State *state, int argc, char **argv, int beginat);
 void mc_cli_printtypesize(const char *name, size_t sz);
 void mc_cli_printtypesizes(void);
-int main(int argc, char *argv[]);
 void *mc_memory_malloc(size_t sz);
 void *mc_memory_realloc(void *p, size_t nsz);
 void *mc_memory_calloc(size_t count, size_t typsize);
@@ -1527,9 +1371,380 @@ class PtrList
         }
 };
 
+class PtrDict
+{
+    public:
+        enum
+        {
+            GDInvalidIndex = (UINT_MAX),
+            DefaultInitSize = (32),
+        };
+
+    public:
+        static bool initValues(PtrDict* dict, unsigned int initialcapacity, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
+        {
+            unsigned int i;
+            dict->m_gdcells = nullptr;
+            dict->m_gdkeys = nullptr;
+            dict->m_gdvalues = nullptr;
+            dict->m_gdcellindices = nullptr;
+            dict->m_gdhashes = nullptr;
+            dict->m_gdcount = 0;
+            dict->m_gdcellcapacity = 0;
+            dict->m_gdcellcapacity += initialcapacity;
+            dict->m_gditemcapacity = (unsigned int)(initialcapacity * 0.7f);
+            dict->m_funccopyfn = copyfn;
+            dict->m_funcdestroyfn = dfn;
+            dict->m_gdcells = (unsigned int*)mc_memory_malloc(dict->m_gdcellcapacity * sizeof(*dict->m_gdcells));
+            dict->m_gdkeys = (char**)mc_memory_malloc(dict->m_gditemcapacity * sizeof(*dict->m_gdkeys));
+            dict->m_gdvalues = (void**)mc_memory_malloc(dict->m_gditemcapacity * sizeof(*dict->m_gdvalues));
+            dict->m_gdcellindices = (unsigned int*)mc_memory_malloc(dict->m_gditemcapacity * sizeof(*dict->m_gdcellindices));
+            dict->m_gdhashes = (long unsigned int*)mc_memory_malloc(dict->m_gditemcapacity * sizeof(*dict->m_gdhashes));
+            if(dict->m_gdcells == nullptr || dict->m_gdkeys == nullptr || dict->m_gdvalues == nullptr || dict->m_gdcellindices == nullptr || dict->m_gdhashes == nullptr)
+            {
+                goto dictallocfailed;
+            }
+            for(i = 0; i < dict->m_gdcellcapacity; i++)
+            {
+                dict->m_gdcells[i] = GDInvalidIndex;
+            }
+            return true;
+        dictallocfailed:
+            mc_memory_free(dict->m_gdcells);
+            mc_memory_free(dict->m_gdkeys);
+            mc_memory_free(dict->m_gdvalues);
+            mc_memory_free(dict->m_gdcellindices);
+            mc_memory_free(dict->m_gdhashes);
+            return false;
+        }
+
+        static void deinitValues(PtrDict* dict, bool freekeys)
+        {
+            unsigned int i;
+            if(freekeys)
+            {
+                for(i = 0; i < dict->m_gdcount; i++)
+                {
+                    if(dict->m_gdkeys[i] != nullptr)
+                    {
+                        mc_memory_free(dict->m_gdkeys[i]);
+                        dict->m_gdkeys[i] = nullptr;
+                    }
+                }
+            }
+            dict->m_gdcount = 0;
+            dict->m_gditemcapacity = 0;
+            dict->m_gdcellcapacity = 0;
+            mc_memory_free(dict->m_gdcells);
+            mc_memory_free(dict->m_gdkeys);
+            mc_memory_free(dict->m_gdvalues);
+            mc_memory_free(dict->m_gdcellindices);
+            mc_memory_free(dict->m_gdhashes);
+            dict->m_gdcells = nullptr;
+            dict->m_gdkeys = nullptr;
+            dict->m_gdvalues = nullptr;
+            dict->m_gdcellindices = nullptr;
+            dict->m_gdhashes = nullptr;
+        }
+
+        static void destroy(PtrDict* dict)
+        {
+            if(dict != nullptr)
+            {
+                PtrDict::deinitValues(dict, true);
+                mc_memory_free(dict);
+            }
+        }
+
+        static void destroyItemsAndDict(PtrDict* dict)
+        {
+            unsigned int i;
+            if(dict != nullptr)
+            {    
+                if(dict->m_funcdestroyfn)
+                {
+                    for(i = 0; i < dict->m_gdcount; i++)
+                    {
+                        dict->m_funcdestroyfn(dict->m_gdvalues[i]);
+                    }
+                }
+                PtrDict::destroy(dict);
+            }
+        }
+
+    public:
+        unsigned int* m_gdcells;
+        unsigned long* m_gdhashes;
+        char** m_gdkeys;
+        void** m_gdvalues;
+        unsigned int* m_gdcellindices;
+        unsigned int m_gdcount;
+        unsigned int m_gditemcapacity;
+        unsigned int m_gdcellcapacity;
+        mcitemcopyfn_t m_funccopyfn;
+        mcitemdestroyfn_t m_funcdestroyfn;
+
+    public:
+        PtrDict(): PtrDict(nullptr, nullptr)
+        {
+        }
+
+        PtrDict(size_t cap, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
+        {
+            bool ok;
+            (void)ok;
+            ok = PtrDict::initValues(this, cap, copyfn, dfn);
+            MC_ASSERT(ok);
+        }
+
+        PtrDict(mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
+        {
+            bool ok;
+            (void)ok;
+            ok = PtrDict::initValues(this, DefaultInitSize, copyfn, dfn);
+            MC_ASSERT(ok);
+        }
+
+        bool growAndRehash()
+        {
+            bool ok;
+            unsigned int i;
+            char* key;
+            void* value;
+            size_t ncap;
+            (void)ok;
+            ncap = MC_UTIL_INCCAPACITY(m_gdcellcapacity);
+            PtrDict newdict(ncap, m_funccopyfn, m_funcdestroyfn);
+            for(i = 0; i < m_gdcount; i++)
+            {
+                key = m_gdkeys[i];
+                value = m_gdvalues[i];
+                ok = newdict.setActual(key, key, value);
+            }
+            PtrDict::deinitValues(this, false);
+            *this = newdict;
+            return true;
+        }
+
+        unsigned int getCellIndex(const char* key, unsigned long hash, bool* outfound)
+        {
+            unsigned int i;
+            unsigned int ix;
+            unsigned int cell;
+            unsigned int cellix;
+            unsigned long hashtocheck;
+            const char* keytocheck;
+            *outfound = false;
+            cellix = (unsigned int)hash & (m_gdcellcapacity - 1);
+            for(i = 0; i < m_gdcellcapacity; i++)
+            {
+                ix = (cellix + i) & (m_gdcellcapacity - 1);
+                cell = m_gdcells[ix];
+                if(cell == GDInvalidIndex)
+                {
+                    return ix;
+                }
+                hashtocheck = m_gdhashes[cell];
+                if(hash != hashtocheck)
+                {
+                    continue;
+                }
+                keytocheck = m_gdkeys[cell];
+                if(strcmp(key, keytocheck) == 0)
+                {
+                    *outfound = true;
+                    return ix;
+                }
+            }
+            return GDInvalidIndex;
+        }
+
+        bool setIntern(unsigned int cellix, unsigned long hash, const char* ckey, char* mkey, void* value)
+        {
+            bool ok;
+            bool found;
+            char* keycopy;
+            (void)ok;
+            if(m_gdcount >= m_gditemcapacity)
+            {
+                ok = growAndRehash();
+                cellix = getCellIndex(ckey, hash, &found);
+            }
+            if(mkey)
+            {
+                m_gdkeys[m_gdcount] = mkey;
+            }
+            else
+            {
+                keycopy = mc_util_strdup(ckey);
+                if(!keycopy)
+                {
+                    return false;
+                }
+                m_gdkeys[m_gdcount] = keycopy;
+            }
+            m_gdcells[cellix] = m_gdcount;
+            m_gdvalues[m_gdcount] = value;
+            m_gdcellindices[m_gdcount] = cellix;
+            m_gdhashes[m_gdcount] = hash;
+            m_gdcount++;
+            return true;
+        }
+
+        bool setActual(const char* ckey, char* mkey, void* value)
+        {
+            bool found;
+            unsigned int cellix;
+            unsigned int itemix;
+            unsigned long hash;
+            hash = mc_util_hashdata(ckey, mc_util_strlen(ckey));
+            found = false;
+            cellix = getCellIndex(ckey, hash, &found);
+            if(found)
+            {
+                itemix = m_gdcells[cellix];
+                m_gdvalues[itemix] = value;
+                return true;
+            }
+            return setIntern(cellix, hash, ckey, mkey, value);
+        }
+
+        bool set(const char* key, void* value)
+        {
+            return setActual(key, nullptr, value);
+        }
+
+        void* get(const char* key)
+        {
+            bool found;
+            unsigned int itemix;
+            unsigned long hash;
+            unsigned long cellix;
+            hash = mc_util_hashdata(key, mc_util_strlen(key));
+            found = false;
+            cellix = getCellIndex(key, hash, &found);
+            if(found == false)
+            {
+                return nullptr;
+            }
+            itemix = m_gdcells[cellix];
+            return m_gdvalues[itemix];
+        }
+
+        void* getValueAt(unsigned int ix)
+        {
+            if(ix >= m_gdcount)
+            {
+                return nullptr;
+            }
+            return m_gdvalues[ix];
+        }
+
+        const char* getKeyAt(unsigned int ix)
+        {
+            if(ix >= m_gdcount)
+            {
+                return nullptr;
+            }
+            return m_gdkeys[ix];
+        }
+
+        size_t count()
+        {
+            return m_gdcount;
+        }
+
+        bool removeByKey(const char* key)
+        {
+            bool found;
+            unsigned int x;
+            unsigned int k;
+            unsigned int i;
+            unsigned int j;
+            unsigned int cell;
+            unsigned int itemix;
+            unsigned int lastitemix;
+            unsigned long hash;
+            hash = mc_util_hashdata(key, mc_util_strlen(key));
+            found = false;
+            cell = getCellIndex(key, hash, &found);
+            if(!found)
+            {
+                return false;
+            }
+            itemix = m_gdcells[cell];
+            mc_memory_free(m_gdkeys[itemix]);
+            lastitemix = m_gdcount - 1;
+            if(itemix < lastitemix)
+            {
+                m_gdkeys[itemix] = m_gdkeys[lastitemix];
+                m_gdvalues[itemix] = m_gdvalues[lastitemix];
+                m_gdcellindices[itemix] = m_gdcellindices[lastitemix];
+                m_gdhashes[itemix] = m_gdhashes[lastitemix];
+                m_gdcells[m_gdcellindices[itemix]] = itemix;
+            }
+            m_gdcount--;
+            i = cell;
+            j = i;
+            for(x = 0; x < (m_gdcellcapacity - 1); x++)
+            {
+                j = (j + 1) & (m_gdcellcapacity - 1);
+                if(m_gdcells[j] == GDInvalidIndex)
+                {
+                    break;
+                }
+                k = (unsigned int)(m_gdhashes[m_gdcells[j]]) & (m_gdcellcapacity - 1);
+                if((j > i && (k <= i || k > j)) || (j < i && (k <= i && k > j)))
+                {
+                    m_gdcellindices[m_gdcells[j]] = i;
+                    m_gdcells[i] = m_gdcells[j];
+                    i = j;
+                }
+            }
+            m_gdcells[i] = GDInvalidIndex;
+            return true;
+        }
+
+        PtrDict* copy()
+        {
+            bool ok;
+            size_t i;
+            void* item;
+            void* itemcopy;
+            const char* key;
+            PtrDict* dictcopy;
+            (void)ok;
+            if(!m_funccopyfn || !m_funcdestroyfn)
+            {
+                return nullptr;
+            }
+            dictcopy = Memory::make<PtrDict>(m_funccopyfn, m_funcdestroyfn);
+            for(i = 0; i < count(); i++)
+            {
+                key = getKeyAt(i);
+                item = getValueAt(i);
+                itemcopy = dictcopy->m_funccopyfn(item);
+                if(item && !itemcopy)
+                {
+                    PtrDict::destroyItemsAndDict(dictcopy);
+                    return nullptr;
+                }
+                ok = dictcopy->set(key, itemcopy);
+            }
+            return dictcopy;
+        }
+};
+
+
 template<typename TypeKeyT, typename TypeValueT>
 class GenericDict
 {
+    public:
+        enum
+        {
+            VDInvalidIndex = (UINT_MAX),
+        };
+
     public:
         static inline bool initDict(GenericDict* dict, unsigned int initialcapacity)
         {
@@ -1555,7 +1770,7 @@ class GenericDict
             }
             for(i = 0; i < dict->m_vdcellcapacity; i++)
             {
-                dict->m_vdcells[i] = MC_CONF_VALDICTINVALIDIX;
+                dict->m_vdcells[i] = VDInvalidIndex;
             }
             return true;
         dictallocfailed:
@@ -1607,7 +1822,7 @@ class GenericDict
         mcitemcomparefn_t m_funckeyequalsfn;
 
     public:
-        inline GenericDict(): GenericDict(MC_CONF_GENERICDICTINITSIZE)
+        inline GenericDict(): GenericDict(PtrDict::DefaultInitSize)
         {
         }
 
@@ -1769,7 +1984,7 @@ class GenericDict
             for(x = 0; x < (m_vdcellcapacity - 1); x++)
             {
                 j = (j + 1) & (m_vdcellcapacity - 1);
-                if(m_vdcells[j] == MC_CONF_VALDICTINVALIDIX)
+                if(m_vdcells[j] == VDInvalidIndex)
                 {
                     break;
                 }
@@ -1781,7 +1996,7 @@ class GenericDict
                     i = j;
                 }
             }
-            m_vdcells[i] = MC_CONF_VALDICTINVALIDIX;
+            m_vdcells[i] = VDInvalidIndex;
             return true;
         }
 
@@ -1791,7 +2006,7 @@ class GenericDict
             m_vdcount = 0;
             for(i = 0; i < m_vdcellcapacity; i++)
             {
-                m_vdcells[i] = MC_CONF_VALDICTINVALIDIX;
+                m_vdcells[i] = VDInvalidIndex;
             }
         }
 
@@ -1810,7 +2025,7 @@ class GenericDict
             {
                 ix = (cellix + i) & (m_vdcellcapacity - 1);
                 cell = m_vdcells[ix];
-                if(cell == MC_CONF_VALDICTINVALIDIX)
+                if(cell == VDInvalidIndex)
                 {
                     return ix;
                 }
@@ -1827,7 +2042,7 @@ class GenericDict
                     return ix;
                 }
             }
-            return MC_CONF_VALDICTINVALIDIX;
+            return VDInvalidIndex;
         }
 
         inline bool growAndRehash()
@@ -1884,368 +2099,10 @@ class GenericDict
         }
 };
 
-
-class PtrDict
-{
-    public:
-        static bool initValues(PtrDict* dict, unsigned int initialcapacity, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
-        {
-            unsigned int i;
-            dict->m_gdcells = nullptr;
-            dict->m_gdkeys = nullptr;
-            dict->m_gdvalues = nullptr;
-            dict->m_gdcellindices = nullptr;
-            dict->m_gdhashes = nullptr;
-            dict->m_gdcount = 0;
-            dict->m_gdcellcapacity = 0;
-            dict->m_gdcellcapacity += initialcapacity;
-            dict->m_gditemcapacity = (unsigned int)(initialcapacity * 0.7f);
-            dict->m_funccopyfn = copyfn;
-            dict->m_funcdestroyfn = dfn;
-            dict->m_gdcells = (unsigned int*)mc_memory_malloc(dict->m_gdcellcapacity * sizeof(*dict->m_gdcells));
-            dict->m_gdkeys = (char**)mc_memory_malloc(dict->m_gditemcapacity * sizeof(*dict->m_gdkeys));
-            dict->m_gdvalues = (void**)mc_memory_malloc(dict->m_gditemcapacity * sizeof(*dict->m_gdvalues));
-            dict->m_gdcellindices = (unsigned int*)mc_memory_malloc(dict->m_gditemcapacity * sizeof(*dict->m_gdcellindices));
-            dict->m_gdhashes = (long unsigned int*)mc_memory_malloc(dict->m_gditemcapacity * sizeof(*dict->m_gdhashes));
-            if(dict->m_gdcells == nullptr || dict->m_gdkeys == nullptr || dict->m_gdvalues == nullptr || dict->m_gdcellindices == nullptr || dict->m_gdhashes == nullptr)
-            {
-                goto dictallocfailed;
-            }
-            for(i = 0; i < dict->m_gdcellcapacity; i++)
-            {
-                dict->m_gdcells[i] = MC_CONF_GENERICDICTINVALIDIX;
-            }
-            return true;
-        dictallocfailed:
-            mc_memory_free(dict->m_gdcells);
-            mc_memory_free(dict->m_gdkeys);
-            mc_memory_free(dict->m_gdvalues);
-            mc_memory_free(dict->m_gdcellindices);
-            mc_memory_free(dict->m_gdhashes);
-            return false;
-        }
-
-        static void deinitValues(PtrDict* dict, bool freekeys)
-        {
-            unsigned int i;
-            if(freekeys)
-            {
-                for(i = 0; i < dict->m_gdcount; i++)
-                {
-                    if(dict->m_gdkeys[i] != nullptr)
-                    {
-                        mc_memory_free(dict->m_gdkeys[i]);
-                        dict->m_gdkeys[i] = nullptr;
-                    }
-                }
-            }
-            dict->m_gdcount = 0;
-            dict->m_gditemcapacity = 0;
-            dict->m_gdcellcapacity = 0;
-            mc_memory_free(dict->m_gdcells);
-            mc_memory_free(dict->m_gdkeys);
-            mc_memory_free(dict->m_gdvalues);
-            mc_memory_free(dict->m_gdcellindices);
-            mc_memory_free(dict->m_gdhashes);
-            dict->m_gdcells = nullptr;
-            dict->m_gdkeys = nullptr;
-            dict->m_gdvalues = nullptr;
-            dict->m_gdcellindices = nullptr;
-            dict->m_gdhashes = nullptr;
-        }
-
-        static void destroy(PtrDict* dict)
-        {
-            if(dict != nullptr)
-            {
-                PtrDict::deinitValues(dict, true);
-                mc_memory_free(dict);
-            }
-        }
-
-        static void destroyItemsAndDict(PtrDict* dict)
-        {
-            unsigned int i;
-            if(dict != nullptr)
-            {    
-                if(dict->m_funcdestroyfn)
-                {
-                    for(i = 0; i < dict->m_gdcount; i++)
-                    {
-                        dict->m_funcdestroyfn(dict->m_gdvalues[i]);
-                    }
-                }
-                PtrDict::destroy(dict);
-            }
-        }
-
-    public:
-        unsigned int* m_gdcells;
-        unsigned long* m_gdhashes;
-        char** m_gdkeys;
-        void** m_gdvalues;
-        unsigned int* m_gdcellindices;
-        unsigned int m_gdcount;
-        unsigned int m_gditemcapacity;
-        unsigned int m_gdcellcapacity;
-        mcitemcopyfn_t m_funccopyfn;
-        mcitemdestroyfn_t m_funcdestroyfn;
-
-    public:
-        PtrDict(): PtrDict(nullptr, nullptr)
-        {
-        }
-
-        PtrDict(size_t cap, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
-        {
-            bool ok;
-            (void)ok;
-            ok = PtrDict::initValues(this, cap, copyfn, dfn);
-            MC_ASSERT(ok);
-        }
-
-        PtrDict(mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
-        {
-            bool ok;
-            (void)ok;
-            ok = PtrDict::initValues(this, MC_CONF_GENERICDICTINITSIZE, copyfn, dfn);
-            MC_ASSERT(ok);
-        }
-
-        bool growAndRehash()
-        {
-            bool ok;
-            unsigned int i;
-            char* key;
-            void* value;
-            size_t ncap;
-            (void)ok;
-            ncap = MC_UTIL_INCCAPACITY(m_gdcellcapacity);
-            PtrDict newdict(ncap, m_funccopyfn, m_funcdestroyfn);
-            for(i = 0; i < m_gdcount; i++)
-            {
-                key = m_gdkeys[i];
-                value = m_gdvalues[i];
-                ok = newdict.setActual(key, key, value);
-            }
-            PtrDict::deinitValues(this, false);
-            *this = newdict;
-            return true;
-        }
-
-        unsigned int getCellIndex(const char* key, unsigned long hash, bool* outfound)
-        {
-            unsigned int i;
-            unsigned int ix;
-            unsigned int cell;
-            unsigned int cellix;
-            unsigned long hashtocheck;
-            const char* keytocheck;
-            *outfound = false;
-            cellix = (unsigned int)hash & (m_gdcellcapacity - 1);
-            for(i = 0; i < m_gdcellcapacity; i++)
-            {
-                ix = (cellix + i) & (m_gdcellcapacity - 1);
-                cell = m_gdcells[ix];
-                if(cell == MC_CONF_GENERICDICTINVALIDIX)
-                {
-                    return ix;
-                }
-                hashtocheck = m_gdhashes[cell];
-                if(hash != hashtocheck)
-                {
-                    continue;
-                }
-                keytocheck = m_gdkeys[cell];
-                if(strcmp(key, keytocheck) == 0)
-                {
-                    *outfound = true;
-                    return ix;
-                }
-            }
-            return MC_CONF_GENERICDICTINVALIDIX;
-        }
-
-        bool setIntern(unsigned int cellix, unsigned long hash, const char* ckey, char* mkey, void* value)
-        {
-            bool ok;
-            bool found;
-            char* keycopy;
-            (void)ok;
-            if(m_gdcount >= m_gditemcapacity)
-            {
-                ok = growAndRehash();
-                cellix = getCellIndex(ckey, hash, &found);
-            }
-            if(mkey)
-            {
-                m_gdkeys[m_gdcount] = mkey;
-            }
-            else
-            {
-                keycopy = mc_util_strdup(ckey);
-                if(!keycopy)
-                {
-                    return false;
-                }
-                m_gdkeys[m_gdcount] = keycopy;
-            }
-            m_gdcells[cellix] = m_gdcount;
-            m_gdvalues[m_gdcount] = value;
-            m_gdcellindices[m_gdcount] = cellix;
-            m_gdhashes[m_gdcount] = hash;
-            m_gdcount++;
-            return true;
-        }
-
-        bool setActual(const char* ckey, char* mkey, void* value)
-        {
-            bool found;
-            unsigned int cellix;
-            unsigned int itemix;
-            unsigned long hash;
-            hash = mc_util_hashdata(ckey, mc_util_strlen(ckey));
-            found = false;
-            cellix = getCellIndex(ckey, hash, &found);
-            if(found)
-            {
-                itemix = m_gdcells[cellix];
-                m_gdvalues[itemix] = value;
-                return true;
-            }
-            return setIntern(cellix, hash, ckey, mkey, value);
-        }
-
-        bool set(const char* key, void* value)
-        {
-            return setActual(key, nullptr, value);
-        }
-
-        void* get(const char* key)
-        {
-            bool found;
-            unsigned int itemix;
-            unsigned long hash;
-            unsigned long cellix;
-            hash = mc_util_hashdata(key, mc_util_strlen(key));
-            found = false;
-            cellix = getCellIndex(key, hash, &found);
-            if(found == false)
-            {
-                return nullptr;
-            }
-            itemix = m_gdcells[cellix];
-            return m_gdvalues[itemix];
-        }
-
-        void* getValueAt(unsigned int ix)
-        {
-            if(ix >= m_gdcount)
-            {
-                return nullptr;
-            }
-            return m_gdvalues[ix];
-        }
-
-        const char* getKeyAt(unsigned int ix)
-        {
-            if(ix >= m_gdcount)
-            {
-                return nullptr;
-            }
-            return m_gdkeys[ix];
-        }
-
-        size_t count()
-        {
-            return m_gdcount;
-        }
-
-        bool removeByKey(const char* key)
-        {
-            bool found;
-            unsigned int x;
-            unsigned int k;
-            unsigned int i;
-            unsigned int j;
-            unsigned int cell;
-            unsigned int itemix;
-            unsigned int lastitemix;
-            unsigned long hash;
-            hash = mc_util_hashdata(key, mc_util_strlen(key));
-            found = false;
-            cell = getCellIndex(key, hash, &found);
-            if(!found)
-            {
-                return false;
-            }
-            itemix = m_gdcells[cell];
-            mc_memory_free(m_gdkeys[itemix]);
-            lastitemix = m_gdcount - 1;
-            if(itemix < lastitemix)
-            {
-                m_gdkeys[itemix] = m_gdkeys[lastitemix];
-                m_gdvalues[itemix] = m_gdvalues[lastitemix];
-                m_gdcellindices[itemix] = m_gdcellindices[lastitemix];
-                m_gdhashes[itemix] = m_gdhashes[lastitemix];
-                m_gdcells[m_gdcellindices[itemix]] = itemix;
-            }
-            m_gdcount--;
-            i = cell;
-            j = i;
-            for(x = 0; x < (m_gdcellcapacity - 1); x++)
-            {
-                j = (j + 1) & (m_gdcellcapacity - 1);
-                if(m_gdcells[j] == MC_CONF_GENERICDICTINVALIDIX)
-                {
-                    break;
-                }
-                k = (unsigned int)(m_gdhashes[m_gdcells[j]]) & (m_gdcellcapacity - 1);
-                if((j > i && (k <= i || k > j)) || (j < i && (k <= i && k > j)))
-                {
-                    m_gdcellindices[m_gdcells[j]] = i;
-                    m_gdcells[i] = m_gdcells[j];
-                    i = j;
-                }
-            }
-            m_gdcells[i] = MC_CONF_GENERICDICTINVALIDIX;
-            return true;
-        }
-
-        PtrDict* copy()
-        {
-            bool ok;
-            size_t i;
-            void* item;
-            void* itemcopy;
-            const char* key;
-            PtrDict* dictcopy;
-            (void)ok;
-            if(!m_funccopyfn || !m_funcdestroyfn)
-            {
-                return nullptr;
-            }
-            dictcopy = Memory::make<PtrDict>(m_funccopyfn, m_funcdestroyfn);
-            for(i = 0; i < count(); i++)
-            {
-                key = getKeyAt(i);
-                item = getValueAt(i);
-                itemcopy = dictcopy->m_funccopyfn(item);
-                if(item && !itemcopy)
-                {
-                    PtrDict::destroyItemsAndDict(dictcopy);
-                    return nullptr;
-                }
-                ok = dictcopy->set(key, itemcopy);
-            }
-            return dictcopy;
-        }
-};
-
-
-struct mcconfig_t
+struct RuntimeConfig
 {
     bool dumpast;
+    bool exitafterastdump;
     bool dumpbytecode;
     bool printinstructions;
     bool fatalcomplaints;
@@ -2254,7 +2111,6 @@ struct mcconfig_t
     /* allows redefinition of symbols */
     bool replmode;
 };
-
 
 class ValData
 {
@@ -2969,113 +2825,6 @@ class Value: public ValData
 */
 static_assert(sizeof(ValData) == sizeof(Value));
 
-/*
-class GCMemory
-{
-    public:
-        enum
-        {
-            MemPoolSize = (64*2),
-        };
-
-        struct DataPool
-        {
-
-            public:
-                Object* m_pooldata[MemPoolSize];
-                int m_poolitemcount;
-        };
-
-    public:
-        static void destroyPool(DataPool* pool)
-        {
-            size_t j;
-            Object* data;
-            for(j = 0; j < (size_t)pool->m_poolitemcount; j++)
-            {
-                data = pool->m_pooldata[j];
-                mc_objectdata_deinit(data);
-                mc_memory_free(data);
-            }
-            memset(pool, 0, sizeof(DataPool));
-        }
-
-        static void destroy(GCMemory* m)
-        {
-            size_t i;
-            Object* obj;
-            if(m != nullptr)
-            {
-                PtrList::destroy(m->m_gcobjlistremains, nullptr);
-                PtrList::destroy(m->m_gcobjlistback, nullptr);
-                for(i = 0; i < m->m_gcobjliststored->count(); i++)
-                {
-                    obj = (Object*)m->m_gcobjliststored->get(i);
-                    mc_objectdata_deinit(obj);
-                    mc_memory_free(obj);
-                }
-                PtrList::destroy(m->m_gcobjliststored, nullptr);
-                destroyPool(&m->m_poolarray);
-                destroyPool(&m->m_poolmap);
-                destroyPool(&m->m_poolstring);
-                for(i = 0; i < (size_t)m->m_poolonlydata.m_poolitemcount; i++)
-                {
-                    mc_memory_free(m->m_poolonlydata.m_pooldata[i]);
-                }
-                mc_memory_free(m);
-            }
-        }
-
-
-    public:
-        int m_allocssincesweep;
-        PtrList* m_gcobjliststored;
-        PtrList* m_gcobjlistback;
-        PtrList* m_gcobjlistremains;
-        DataPool m_poolonlydata;
-        DataPool m_poolarray;
-        DataPool m_poolmap;
-        DataPool m_poolstring;
-
-    private:
-        void initPool(DataPool* pool)
-        {
-            pool->m_poolitemcount = 0;
-            memset(pool, 0, sizeof(DataPool));
-        }
-
-    public:
-        GCMemory()
-        {
-            m_gcobjliststored = Memory::make<PtrList>(sizeof(void*), true);
-            m_gcobjlistback = Memory::make<PtrList>(sizeof(void*), true);
-            m_gcobjlistremains = Memory::make<PtrList>(sizeof(Value), false);
-            m_allocssincesweep = 0;
-            initPool(&m_poolonlydata);
-            initPool(&m_poolarray);
-            initPool(&m_poolmap);
-            initPool(&m_poolstring);
-        }
-
-        template<typename ValTypT>
-        inline DataPool* getPoolForType(ValTypT type)
-        {
-            switch(type)
-            {
-                case Value::VALTYP_ARRAY:
-                    return &m_poolarray;
-                case Value::VALTYP_MAP:
-                    return &m_poolmap;
-                case Value::VALTYP_STRING:
-                    return &m_poolstring;
-                default:
-                    break;
-            }
-            return nullptr;
-        }
-};
-*/
-
 
 class GCMemory
 {
@@ -3083,6 +2832,8 @@ class GCMemory
         enum
         {
             MemPoolSize = (16),
+            SweepInterval = (128),
+
         };
 
         struct DataPool
@@ -3125,6 +2876,7 @@ class GCMemory
                 destroyPool(&m->m_poolarray);
                 destroyPool(&m->m_poolmap);
                 destroyPool(&m->m_poolstring);
+                destroyPool(&m->m_poolscriptfuncs);
 
                 for(i = 0; i < (size_t)m->m_poolonlydata.m_poolitemcount; i++)
                 {
@@ -3149,6 +2901,7 @@ class GCMemory
         DataPool m_poolarray;
         DataPool m_poolmap;
         DataPool m_poolstring;
+        DataPool m_poolscriptfuncs;
 
     private:
         void initPool(DataPool* pool)
@@ -3168,6 +2921,7 @@ class GCMemory
             initPool(&m_poolarray);
             initPool(&m_poolmap);
             initPool(&m_poolstring);
+            initPool(&m_poolscriptfuncs);
         }
 
         template<typename ValTypT>
@@ -3175,6 +2929,8 @@ class GCMemory
         {
             switch(type)
             {
+                case Value::VALTYP_FUNCSCRIPT:
+                    return &m_poolscriptfuncs;
                 case Value::VALTYP_ARRAY:
                     return &m_poolarray;
                 case Value::VALTYP_MAP:
@@ -3251,11 +3007,525 @@ class ObjClass
 
 };
 
-struct mcopdefinition_t
+class AstSymbol
 {
-    const char* name;
-    int numoperands;
-    int operandwidths[2];
+    public:
+        enum Type
+        {
+            SYMTYP_NONE = 0,
+            SYMTYP_MODULEGLOBAL,
+            SYMTYP_LOCAL,
+            SYMTYP_GLOBALBUILTIN,
+            SYMTYP_FREE,
+            SYMTYP_FUNCTION,
+            SYMTYP_THIS
+        };
+
+    public:
+        static void destroy(AstSymbol* symbol)
+        {
+            if(symbol != nullptr)
+            {
+                mc_memory_free(symbol->m_symname);
+                symbol->m_symname = nullptr;
+                mc_memory_free(symbol);
+                symbol = nullptr;
+            }
+        }
+
+        static AstSymbol* copy(AstSymbol* symbol)
+        {
+            return Memory::make<AstSymbol>(symbol->m_symname, symbol->m_symtype, symbol->m_symindex, symbol->m_symisassignable);
+        }
+
+    public:
+        Type m_symtype;
+        char* m_symname;
+        int m_symindex;
+        bool m_symisassignable;
+
+    public:
+        AstSymbol(const char* syname, Type sytype, int syindex, bool syassignable)
+        {
+            m_symname = mc_util_strdup(syname);
+            MC_ASSERT(m_symname);
+            m_symtype = sytype;
+            m_symindex = syindex;
+            m_symisassignable = syassignable;
+        }
+};
+
+class SymStore
+{
+    public:
+        static void destroy(SymStore* store)
+        {
+            if(store != nullptr)
+            {
+                PtrDict::destroyItemsAndDict(store->m_storedsymbols);
+                store->m_storedobjects.destroy(&store->m_storedobjects, true);
+                mc_memory_free(store);
+                store = nullptr;
+            }
+        }
+
+    public:
+        PtrDict* m_storedsymbols;
+        GenericList<Value> m_storedobjects = GenericList<Value>(0, Value::makeNull());
+
+    public:
+        SymStore()
+        {
+            m_storedsymbols = Memory::make<PtrDict>((mcitemcopyfn_t)AstSymbol::copy, (mcitemdestroyfn_t)AstSymbol::destroy);
+        }
+
+        AstSymbol* getSymbol(const char* name)
+        {
+            return (AstSymbol*)m_storedsymbols->get(name);
+        }
+
+        bool setNamed(const char* name, Value object)
+        {
+            bool ok;
+            int ix;
+            AstSymbol* symbol;
+            AstSymbol* existingsymbol;
+            (void)ok;
+            existingsymbol = getSymbol(name);
+            if(existingsymbol)
+            {
+                ok = m_storedobjects.set(existingsymbol->m_symindex, object);
+                return ok;
+            }
+            ix = m_storedobjects.count();
+            ok = m_storedobjects.push(object);
+            symbol = Memory::make<AstSymbol>(name, AstSymbol::SYMTYP_GLOBALBUILTIN, ix, false);
+            ok = m_storedsymbols->set(name, symbol);
+            return true;
+        }
+
+        Value getAtIndex(int ix, bool* outok)
+        {
+            Value* res;
+            res = (Value*)m_storedobjects.getp(ix);
+            if(!res)
+            {
+                *outok = false;
+                return Value::makeNull();
+            }
+            *outok = true;
+            return *res;
+        }
+
+        Value* getData()
+        {
+            return (Value*)m_storedobjects.data();
+        }
+
+        int getCount()
+        {
+            return m_storedobjects.count();
+        }
+
+};
+
+class AstScopeBlock
+{
+    public:
+        static void destroy(AstScopeBlock* scope)
+        {
+            PtrDict::destroyItemsAndDict(scope->m_blscopestore);
+            mc_memory_free(scope);
+            scope = nullptr;
+        }
+
+        static AstScopeBlock* copy(AstScopeBlock* scope)
+        {
+            AstScopeBlock* copy;
+            copy = Memory::make<AstScopeBlock>(scope->m_blscopeoffset, scope->m_blscopestore->copy());
+            copy->m_blscopenumdefs = scope->m_blscopenumdefs;
+            return copy;
+        }
+
+   public:
+        PtrDict* m_blscopestore;
+        int m_blscopeoffset;
+        int m_blscopenumdefs;
+
+    public:
+        AstScopeBlock(int ofs): AstScopeBlock(ofs, nullptr)
+        {
+        }
+
+        AstScopeBlock(int ofs, PtrDict* ss)
+        {
+            if(ss != nullptr)
+            {
+                m_blscopestore = ss;
+            }
+            else
+            {
+                m_blscopestore = Memory::make<PtrDict>((mcitemcopyfn_t)AstSymbol::copy, (mcitemdestroyfn_t)AstSymbol::destroy);
+            }
+            m_blscopenumdefs = 0;
+            m_blscopeoffset = ofs;
+        }
+};
+
+
+
+class AstSymTable
+{
+    public:
+        static void destroy(AstSymTable* table)
+        {
+            if(table != nullptr)
+            {
+                while(table->m_symtbblockscopes->count() > 0)
+                {
+                    table->scopeBlockPop();
+                }
+                PtrList::destroy(table->m_symtbblockscopes, nullptr);
+                PtrList::destroy(table->m_symtbmodglobalsymbols, (mcitemdestroyfn_t)AstSymbol::destroy);
+                PtrList::destroy(table->m_symtbfreesymbols, (mcitemdestroyfn_t)AstSymbol::destroy);
+                mc_memory_free(table);
+                table = nullptr;
+            }
+        }
+
+    public:
+        AstSymTable* m_symtbouter;
+        SymStore* m_symtbglobalstore;
+        PtrList* m_symtbblockscopes;
+        PtrList* m_symtbfreesymbols;
+        PtrList* m_symtbmodglobalsymbols;
+        int m_symtbmaxnumdefinitions;
+        int m_symtbmodglobaloffset;
+
+    public:
+        AstSymTable(AstSymTable* syouter, SymStore* sygstore, PtrList* syblockscopes, PtrList* syfreesyms, PtrList* symodglobalsymbols, int mgo)
+        {
+            m_symtbmaxnumdefinitions = 0;
+            m_symtbouter = syouter;
+            m_symtbglobalstore = sygstore;
+            m_symtbmodglobaloffset = mgo;
+            if(syblockscopes)
+            {
+                m_symtbblockscopes = syblockscopes;
+            }
+            else
+            {
+                m_symtbblockscopes = Memory::make<PtrList>(sizeof(void*), true);
+            }
+            if(syfreesyms)
+            {
+                m_symtbfreesymbols = syfreesyms;
+            }
+            else
+            {
+                m_symtbfreesymbols = Memory::make<PtrList>(sizeof(void*), true);
+            }
+            if(symodglobalsymbols)
+            {
+                m_symtbmodglobalsymbols = symodglobalsymbols;
+            }
+            else
+            {
+                m_symtbmodglobalsymbols = Memory::make<PtrList>(sizeof(void*), true);
+            }
+            MC_ASSERT(scopeBlockPush());
+        }
+
+        AstSymTable* copy()
+        {
+            AstSymTable* copy;
+            auto cblocks = m_symtbblockscopes->copy((mcitemcopyfn_t)AstScopeBlock::copy, (mcitemdestroyfn_t)AstScopeBlock::destroy);
+            auto cfrees = m_symtbfreesymbols->copy((mcitemcopyfn_t)AstSymbol::copy, (mcitemdestroyfn_t)AstSymbol::destroy);
+            auto cmods = m_symtbmodglobalsymbols->copy((mcitemcopyfn_t)AstSymbol::copy, (mcitemdestroyfn_t)AstSymbol::destroy);
+            copy = Memory::make<AstSymTable>(m_symtbouter, m_symtbglobalstore, cblocks, cfrees, cmods, m_symtbmodglobaloffset);
+            copy->m_symtbmaxnumdefinitions = m_symtbmaxnumdefinitions;
+            copy->m_symtbmodglobaloffset = m_symtbmodglobaloffset;
+            return copy;
+        }
+
+        bool setSymbol(AstSymbol* symbol)
+        {
+            AstScopeBlock* topscope;
+            AstSymbol* existing;
+            topscope = (AstScopeBlock*)m_symtbblockscopes->top();
+            existing = (AstSymbol*)topscope->m_blscopestore->get(symbol->m_symname);
+            if(existing)
+            {
+                AstSymbol::destroy(existing);
+            }
+            return topscope->m_blscopestore->set(symbol->m_symname, symbol);
+        }
+
+        int nextSymbolIndex()
+        {
+            int ix;
+            AstScopeBlock* topscope;
+            topscope = (AstScopeBlock*)m_symtbblockscopes->top();
+            ix = topscope->m_blscopeoffset + topscope->m_blscopenumdefs;
+            return ix;
+        }
+
+        int getNumDefinitions()
+        {
+            int i;
+            int count;
+            AstScopeBlock* scope;
+            count = 0;
+            for(i = m_symtbblockscopes->count() - 1; i >= 0; i--)
+            {
+                scope = (AstScopeBlock*)m_symtbblockscopes->get(i);
+                count += scope->m_blscopenumdefs;
+            }
+            return count;
+        }
+
+
+        bool addModuleSymbol(AstSymbol* symbol)
+        {
+            bool ok;
+            AstSymbol* copy;
+            (void)ok;
+            if(symbol->m_symtype != AstSymbol::SYMTYP_MODULEGLOBAL)
+            {
+                MC_ASSERT(false);
+                return false;
+            }
+            if(isDefined(symbol->m_symname))
+            {
+                /* todo: make sure it should be true in this case */
+                return true;
+            }
+            copy = AstSymbol::copy(symbol);
+            if(!copy)
+            {
+                return false;
+            }
+            ok = setSymbol(copy);
+            return true;
+        }
+
+        AstSymbol* defineSymbol(const char* name, bool assignable)
+        {
+            bool ok;
+            bool globalsymboladded;
+            int ix;
+            int definitionscount;
+            AstSymbol::Type symboltype;
+            AstSymbol* symbol;
+            AstScopeBlock* topscope;
+            AstSymbol* globalsymbol;
+            AstSymbol* globalsymbolcopy;
+            (void)ok;
+            (void)globalsymboladded;
+            globalsymbol = m_symtbglobalstore->getSymbol(name);
+            if(globalsymbol)
+            {
+                return nullptr;
+            }
+            /* module symbol */
+            if(strchr(name, ':'))
+            {
+                return nullptr;
+            }
+            /* "this" is reserved */
+            #if 1
+            if(mc_util_strequal(name, "this"))
+            {
+                return defineThis();
+            }
+            #endif
+            symboltype = m_symtbouter == nullptr ? AstSymbol::SYMTYP_MODULEGLOBAL : AstSymbol::SYMTYP_LOCAL;
+            ix = nextSymbolIndex();
+            symbol = Memory::make<AstSymbol>(name, symboltype, ix, assignable);
+            globalsymboladded = false;
+            ok = false;
+            if(symboltype == AstSymbol::SYMTYP_MODULEGLOBAL && m_symtbblockscopes->count() == 1)
+            {
+                globalsymbolcopy = AstSymbol::copy(symbol);
+                if(!globalsymbolcopy)
+                {
+                    AstSymbol::destroy(symbol);
+                    return nullptr;
+                }
+                ok = m_symtbmodglobalsymbols->push(globalsymbolcopy);
+                globalsymboladded = true;
+            }
+            ok = setSymbol(symbol);
+            topscope = (AstScopeBlock*)m_symtbblockscopes->top();
+            topscope->m_blscopenumdefs++;
+            definitionscount = getNumDefinitions();
+            if(definitionscount > m_symtbmaxnumdefinitions)
+            {
+                m_symtbmaxnumdefinitions = definitionscount;
+            }
+            return symbol;
+        }
+
+        AstSymbol* defineAndDestroyOld(AstSymbol* original)
+        {
+            bool ok;
+            AstSymbol* copy;
+            AstSymbol* symbol;
+            (void)ok;
+            copy = Memory::make<AstSymbol>(original->m_symname, original->m_symtype, original->m_symindex, original->m_symisassignable);
+            ok = m_symtbfreesymbols->push(copy);
+            symbol = Memory::make<AstSymbol>(original->m_symname, AstSymbol::SYMTYP_FREE, m_symtbfreesymbols->count() - 1, original->m_symisassignable);
+            ok = setSymbol(symbol);
+            return symbol;
+        }
+
+        AstSymbol* defineFunctionName(const char* name, bool assignable)
+        {
+            bool ok;
+            AstSymbol* symbol;
+            (void)ok;
+            /* module symbol */
+            if(strchr(name, ':'))
+            {
+                return nullptr;
+            }
+            symbol = Memory::make<AstSymbol>(name, AstSymbol::SYMTYP_FUNCTION, 0, assignable);
+            ok = setSymbol(symbol);
+            return symbol;
+        }
+
+        AstSymbol* defineThis()
+        {
+            bool ok;
+            AstSymbol* symbol;
+            (void)ok;
+            symbol = Memory::make<AstSymbol>("this", AstSymbol::SYMTYP_THIS, 0, false);
+            ok = setSymbol(symbol);
+            return symbol;
+        }
+
+        AstSymbol* resolve(const char* name)
+        {
+            int i;
+            AstSymbol* symbol;
+            AstScopeBlock* scope;
+            symbol = nullptr;
+            scope = nullptr;
+            symbol = m_symtbglobalstore->getSymbol(name);
+            if(symbol)
+            {
+                return symbol;
+            }
+
+            for(i = m_symtbblockscopes->count() - 1; i >= 0; i--)
+            {
+                scope = (AstScopeBlock*)m_symtbblockscopes->get(i);
+                symbol = (AstSymbol*)scope->m_blscopestore->get(name);
+                if(symbol)
+                {
+                    break;
+                }
+            }
+            if(symbol && symbol->m_symtype == AstSymbol::SYMTYP_THIS)
+            {
+                symbol = defineAndDestroyOld(symbol);
+            }
+            if(!symbol && m_symtbouter)
+            {
+                symbol = m_symtbouter->resolve(name);
+                if(!symbol)
+                {
+                    return nullptr;
+                }
+                if(symbol->m_symtype == AstSymbol::SYMTYP_MODULEGLOBAL || symbol->m_symtype == AstSymbol::SYMTYP_GLOBALBUILTIN)
+                {
+                    return symbol;
+                }
+                symbol = defineAndDestroyOld(symbol);
+            }
+            return symbol;
+        }
+
+        bool isDefined(const char* name)
+        {
+            /* todo: rename to something more obvious */
+            AstSymbol* symbol;
+            AstScopeBlock* topscope;
+            symbol = m_symtbglobalstore->getSymbol(name);
+            if(symbol)
+            {
+                return true;
+            }
+            topscope = (AstScopeBlock*)m_symtbblockscopes->top();
+            symbol = (AstSymbol*)topscope->m_blscopestore->get(name);
+            if(symbol)
+            {
+                return true;
+            }
+            return false;
+        }
+
+        bool scopeBlockPush()
+        {
+            bool ok;
+            int blockscopeoffset;
+            AstScopeBlock* newscope;
+            AstScopeBlock* prevblockscope;
+            (void)ok;
+            blockscopeoffset = 0;
+            prevblockscope = (AstScopeBlock*)m_symtbblockscopes->top();
+            if(prevblockscope)
+            {
+                blockscopeoffset = m_symtbmodglobaloffset + prevblockscope->m_blscopeoffset + prevblockscope->m_blscopenumdefs;
+            }
+            else
+            {
+                blockscopeoffset = m_symtbmodglobaloffset;
+            }
+            newscope = Memory::make<AstScopeBlock>(blockscopeoffset);
+            ok = m_symtbblockscopes->push(newscope);
+            return true;
+        }
+
+        void scopeBlockPop()
+        {
+            AstScopeBlock* topscope;
+            topscope = (AstScopeBlock*)m_symtbblockscopes->top();
+            m_symtbblockscopes->pop(nullptr);
+            Memory::destroy(topscope);
+        }
+
+        AstScopeBlock* scopeBlockGet()
+        {
+            AstScopeBlock* topscope;
+            topscope = (AstScopeBlock*)m_symtbblockscopes->top();
+            return topscope;
+        }
+
+        bool isModuleGlobalScope()
+        {
+            return m_symtbouter == nullptr;
+        }
+
+        bool isTopBlockScope()
+        {
+            return m_symtbblockscopes->count() == 1;
+        }
+
+        bool isTopGlobalScope()
+        {
+            return isModuleGlobalScope() && isTopBlockScope();
+        }
+
+        size_t getModuleGlobalSymCount()
+        {
+            return m_symtbmodglobalsymbols->count();
+        }
+
+        AstSymbol* getModuleGlobalSymAt(int ix)
+        {
+            return (AstSymbol*)m_symtbmodglobalsymbols->get(ix);
+        }
 };
 
 
@@ -3286,84 +3556,6 @@ class AstLocation
 
 };
 
-class AstSymbol
-{
-    public:
-        static void destroy(AstSymbol* symbol)
-        {
-            if(symbol != nullptr)
-            {
-                mc_memory_free(symbol->m_symname);
-                symbol->m_symname = nullptr;
-                mc_memory_free(symbol);
-                symbol = nullptr;
-            }
-        }
-
-        static AstSymbol* copy(AstSymbol* symbol)
-        {
-            return Memory::make<AstSymbol>(symbol->m_symname, symbol->m_symtype, symbol->m_symindex, symbol->m_symisassignable);
-        }
-
-    public:
-        mcastsymtype_t m_symtype;
-        char* m_symname;
-        int m_symindex;
-        bool m_symisassignable;
-
-    public:
-        AstSymbol(const char* syname, mcastsymtype_t sytype, int syindex, bool syassignable)
-        {
-            m_symname = mc_util_strdup(syname);
-            MC_ASSERT(m_symname);
-            m_symtype = sytype;
-            m_symindex = syindex;
-            m_symisassignable = syassignable;
-        }
-};
-
-class mcastscopeblock_t
-{
-    public:
-        static void destroy(mcastscopeblock_t* scope)
-        {
-            PtrDict::destroyItemsAndDict(scope->m_blscopestore);
-            mc_memory_free(scope);
-            scope = nullptr;
-        }
-
-        static mcastscopeblock_t* copy(mcastscopeblock_t* scope)
-        {
-            mcastscopeblock_t* copy;
-            copy = Memory::make<mcastscopeblock_t>(scope->m_blscopeoffset, scope->m_blscopestore->copy());
-            copy->m_blscopenumdefs = scope->m_blscopenumdefs;
-            return copy;
-        }
-
-    public:
-        PtrDict* m_blscopestore;
-        int m_blscopeoffset;
-        int m_blscopenumdefs;
-
-    public:
-        mcastscopeblock_t(int ofs): mcastscopeblock_t(ofs, nullptr)
-        {
-        }
-
-        mcastscopeblock_t(int ofs, PtrDict* ss)
-        {
-            if(ss != nullptr)
-            {
-                m_blscopestore = ss;
-            }
-            else
-            {
-                m_blscopestore = Memory::make<PtrDict>((mcitemcopyfn_t)AstSymbol::copy, (mcitemdestroyfn_t)AstSymbol::destroy);
-            }
-            m_blscopenumdefs = 0;
-            m_blscopeoffset = ofs;
-        }
-};
 
 
 class AstScopeComp
@@ -3434,7 +3626,7 @@ class AstScopeFile
         PtrList* m_filescopeloadednames;
 
     public:
-        AstScopeFile(mcconfig_t* cfg, ErrList* errlist, AstSourceFile* file)
+        AstScopeFile(RuntimeConfig* cfg, ErrList* errlist, AstSourceFile* file)
         {
             m_filescopeparser = Memory::make<AstParser>(cfg, errlist);
             m_scopefilesymtab = nullptr;
@@ -3443,434 +3635,7 @@ class AstScopeFile
         }
 };
 
-class SymStore
-{
-    public:
-        static void destroy(SymStore* store)
-        {
-            if(store != nullptr)
-            {
-                PtrDict::destroyItemsAndDict(store->m_storedsymbols);
-                store->m_storedobjects.destroy(&store->m_storedobjects, true);
-                mc_memory_free(store);
-                store = nullptr;
-            }
-        }
 
-    public:
-        PtrDict* m_storedsymbols;
-        GenericList<Value> m_storedobjects = GenericList<Value>(0, Value::makeNull());
-
-    public:
-        SymStore()
-        {
-            m_storedsymbols = Memory::make<PtrDict>((mcitemcopyfn_t)AstSymbol::copy, (mcitemdestroyfn_t)AstSymbol::destroy);
-        }
-
-        AstSymbol* getSymbol(const char* name)
-        {
-            return (AstSymbol*)m_storedsymbols->get(name);
-        }
-
-        bool setNamed(const char* name, Value object)
-        {
-            bool ok;
-            int ix;
-            AstSymbol* symbol;
-            AstSymbol* existingsymbol;
-            (void)ok;
-            existingsymbol = getSymbol(name);
-            if(existingsymbol)
-            {
-                ok = m_storedobjects.set(existingsymbol->m_symindex, object);
-                return ok;
-            }
-            ix = m_storedobjects.count();
-            ok = m_storedobjects.push(object);
-            symbol = Memory::make<AstSymbol>(name, MC_SYM_GLOBALBUILTIN, ix, false);
-            ok = m_storedsymbols->set(name, symbol);
-            return true;
-        }
-
-        Value getAtIndex(int ix, bool* outok)
-        {
-            Value* res;
-            res = (Value*)m_storedobjects.getp(ix);
-            if(!res)
-            {
-                *outok = false;
-                return Value::makeNull();
-            }
-            *outok = true;
-            return *res;
-        }
-
-        Value* getData()
-        {
-            return (Value*)m_storedobjects.data();
-        }
-
-        int getCount()
-        {
-            return m_storedobjects.count();
-        }
-
-};
-
-
-class AstSymTable
-{
-    public:
-        static void destroy(AstSymTable* table)
-        {
-            if(table != nullptr)
-            {
-                while(table->m_symtbblockscopes->count() > 0)
-                {
-                    table->scopeBlockPop();
-                }
-                PtrList::destroy(table->m_symtbblockscopes, nullptr);
-                PtrList::destroy(table->m_symtbmodglobalsymbols, (mcitemdestroyfn_t)AstSymbol::destroy);
-                PtrList::destroy(table->m_symtbfreesymbols, (mcitemdestroyfn_t)AstSymbol::destroy);
-                mc_memory_free(table);
-                table = nullptr;
-            }
-        }
-
-    public:
-        AstSymTable* m_symtbouter;
-        SymStore* m_symtbglobalstore;
-        PtrList* m_symtbblockscopes;
-        PtrList* m_symtbfreesymbols;
-        PtrList* m_symtbmodglobalsymbols;
-        int m_symtbmaxnumdefinitions;
-        int m_symtbmodglobaloffset;
-
-    public:
-        AstSymTable(AstSymTable* syouter, SymStore* sygstore, PtrList* syblockscopes, PtrList* syfreesyms, PtrList* symodglobalsymbols, int mgo)
-        {
-            m_symtbmaxnumdefinitions = 0;
-            m_symtbouter = syouter;
-            m_symtbglobalstore = sygstore;
-            m_symtbmodglobaloffset = mgo;
-            if(syblockscopes)
-            {
-                m_symtbblockscopes = syblockscopes;
-            }
-            else
-            {
-                m_symtbblockscopes = Memory::make<PtrList>(sizeof(void*), true);
-            }
-            if(syfreesyms)
-            {
-                m_symtbfreesymbols = syfreesyms;
-            }
-            else
-            {
-                m_symtbfreesymbols = Memory::make<PtrList>(sizeof(void*), true);
-            }
-            if(symodglobalsymbols)
-            {
-                m_symtbmodglobalsymbols = symodglobalsymbols;
-            }
-            else
-            {
-                m_symtbmodglobalsymbols = Memory::make<PtrList>(sizeof(void*), true);
-            }
-            MC_ASSERT(scopeBlockPush());
-        }
-
-        AstSymTable* copy()
-        {
-            AstSymTable* copy;
-            auto cblocks = m_symtbblockscopes->copy((mcitemcopyfn_t)mcastscopeblock_t::copy, (mcitemdestroyfn_t)mcastscopeblock_t::destroy);
-            auto cfrees = m_symtbfreesymbols->copy((mcitemcopyfn_t)AstSymbol::copy, (mcitemdestroyfn_t)AstSymbol::destroy);
-            auto cmods = m_symtbmodglobalsymbols->copy((mcitemcopyfn_t)AstSymbol::copy, (mcitemdestroyfn_t)AstSymbol::destroy);
-            copy = Memory::make<AstSymTable>(m_symtbouter, m_symtbglobalstore, cblocks, cfrees, cmods, m_symtbmodglobaloffset);
-            copy->m_symtbmaxnumdefinitions = m_symtbmaxnumdefinitions;
-            copy->m_symtbmodglobaloffset = m_symtbmodglobaloffset;
-            return copy;
-        }
-
-        bool setSymbol(AstSymbol* symbol)
-        {
-            mcastscopeblock_t* topscope;
-            AstSymbol* existing;
-            topscope = (mcastscopeblock_t*)m_symtbblockscopes->top();
-            existing = (AstSymbol*)topscope->m_blscopestore->get(symbol->m_symname);
-            if(existing)
-            {
-                AstSymbol::destroy(existing);
-            }
-            return topscope->m_blscopestore->set(symbol->m_symname, symbol);
-        }
-
-        int nextSymbolIndex()
-        {
-            int ix;
-            mcastscopeblock_t* topscope;
-            topscope = (mcastscopeblock_t*)m_symtbblockscopes->top();
-            ix = topscope->m_blscopeoffset + topscope->m_blscopenumdefs;
-            return ix;
-        }
-
-        int getNumDefinitions()
-        {
-            int i;
-            int count;
-            mcastscopeblock_t* scope;
-            count = 0;
-            for(i = m_symtbblockscopes->count() - 1; i >= 0; i--)
-            {
-                scope = (mcastscopeblock_t*)m_symtbblockscopes->get(i);
-                count += scope->m_blscopenumdefs;
-            }
-            return count;
-        }
-
-
-        bool addModuleSymbol(AstSymbol* symbol)
-        {
-            bool ok;
-            AstSymbol* copy;
-            (void)ok;
-            if(symbol->m_symtype != MC_SYM_MODULEGLOBAL)
-            {
-                MC_ASSERT(false);
-                return false;
-            }
-            if(isDefined(symbol->m_symname))
-            {
-                /* todo: make sure it should be true in this case */
-                return true;
-            }
-            copy = AstSymbol::copy(symbol);
-            if(!copy)
-            {
-                return false;
-            }
-            ok = setSymbol(copy);
-            return true;
-        }
-
-        AstSymbol* defineSymbol(const char* name, bool assignable)
-        {
-            bool ok;
-            bool globalsymboladded;
-            int ix;
-            int definitionscount;
-            mcastsymtype_t symboltype;
-            AstSymbol* symbol;
-            mcastscopeblock_t* topscope;
-            AstSymbol* globalsymbol;
-            AstSymbol* globalsymbolcopy;
-            (void)ok;
-            (void)globalsymboladded;
-            globalsymbol = m_symtbglobalstore->getSymbol(name);
-            if(globalsymbol)
-            {
-                return nullptr;
-            }
-            /* module symbol */
-            if(strchr(name, ':'))
-            {
-                return nullptr;
-            }
-            /* "this" is reserved */
-            #if 1
-            if(mc_util_strequal(name, "this"))
-            {
-                return defineThis();
-            }
-            #endif
-            symboltype = m_symtbouter == nullptr ? MC_SYM_MODULEGLOBAL : MC_SYM_LOCAL;
-            ix = nextSymbolIndex();
-            symbol = Memory::make<AstSymbol>(name, symboltype, ix, assignable);
-            globalsymboladded = false;
-            ok = false;
-            if(symboltype == MC_SYM_MODULEGLOBAL && m_symtbblockscopes->count() == 1)
-            {
-                globalsymbolcopy = AstSymbol::copy(symbol);
-                if(!globalsymbolcopy)
-                {
-                    AstSymbol::destroy(symbol);
-                    return nullptr;
-                }
-                ok = m_symtbmodglobalsymbols->push(globalsymbolcopy);
-                globalsymboladded = true;
-            }
-            ok = setSymbol(symbol);
-            topscope = (mcastscopeblock_t*)m_symtbblockscopes->top();
-            topscope->m_blscopenumdefs++;
-            definitionscount = getNumDefinitions();
-            if(definitionscount > m_symtbmaxnumdefinitions)
-            {
-                m_symtbmaxnumdefinitions = definitionscount;
-            }
-            return symbol;
-        }
-
-        AstSymbol* defineAndDestroyOld(AstSymbol* original)
-        {
-            bool ok;
-            AstSymbol* copy;
-            AstSymbol* symbol;
-            (void)ok;
-            copy = Memory::make<AstSymbol>(original->m_symname, original->m_symtype, original->m_symindex, original->m_symisassignable);
-            ok = m_symtbfreesymbols->push(copy);
-            symbol = Memory::make<AstSymbol>(original->m_symname, MC_SYM_FREE, m_symtbfreesymbols->count() - 1, original->m_symisassignable);
-            ok = setSymbol(symbol);
-            return symbol;
-        }
-
-        AstSymbol* defineFunctionName(const char* name, bool assignable)
-        {
-            bool ok;
-            AstSymbol* symbol;
-            (void)ok;
-            /* module symbol */
-            if(strchr(name, ':'))
-            {
-                return nullptr;
-            }
-            symbol = Memory::make<AstSymbol>(name, MC_SYM_FUNCTION, 0, assignable);
-            ok = setSymbol(symbol);
-            return symbol;
-        }
-
-        AstSymbol* defineThis()
-        {
-            bool ok;
-            AstSymbol* symbol;
-            (void)ok;
-            symbol = Memory::make<AstSymbol>("this", MC_SYM_THIS, 0, false);
-            ok = setSymbol(symbol);
-            return symbol;
-        }
-
-        AstSymbol* resolve(const char* name)
-        {
-            int i;
-            AstSymbol* symbol;
-            mcastscopeblock_t* scope;
-            symbol = nullptr;
-            scope = nullptr;
-            symbol = m_symtbglobalstore->getSymbol(name);
-            if(symbol)
-            {
-                return symbol;
-            }
-
-            for(i = m_symtbblockscopes->count() - 1; i >= 0; i--)
-            {
-                scope = (mcastscopeblock_t*)m_symtbblockscopes->get(i);
-                symbol = (AstSymbol*)scope->m_blscopestore->get(name);
-                if(symbol)
-                {
-                    break;
-                }
-            }
-            if(symbol && symbol->m_symtype == MC_SYM_THIS)
-            {
-                symbol = defineAndDestroyOld(symbol);
-            }
-            if(!symbol && m_symtbouter)
-            {
-                symbol = m_symtbouter->resolve(name);
-                if(!symbol)
-                {
-                    return nullptr;
-                }
-                if(symbol->m_symtype == MC_SYM_MODULEGLOBAL || symbol->m_symtype == MC_SYM_GLOBALBUILTIN)
-                {
-                    return symbol;
-                }
-                symbol = defineAndDestroyOld(symbol);
-            }
-            return symbol;
-        }
-
-        bool isDefined(const char* name)
-        {
-            /* todo: rename to something more obvious */
-            AstSymbol* symbol;
-            mcastscopeblock_t* topscope;
-            symbol = m_symtbglobalstore->getSymbol(name);
-            if(symbol)
-            {
-                return true;
-            }
-            topscope = (mcastscopeblock_t*)m_symtbblockscopes->top();
-            symbol = (AstSymbol*)topscope->m_blscopestore->get(name);
-            if(symbol)
-            {
-                return true;
-            }
-            return false;
-        }
-
-        bool scopeBlockPush()
-        {
-            bool ok;
-            int blockscopeoffset;
-            mcastscopeblock_t* newscope;
-            mcastscopeblock_t* prevblockscope;
-            (void)ok;
-            blockscopeoffset = 0;
-            prevblockscope = (mcastscopeblock_t*)m_symtbblockscopes->top();
-            if(prevblockscope)
-            {
-                blockscopeoffset = m_symtbmodglobaloffset + prevblockscope->m_blscopeoffset + prevblockscope->m_blscopenumdefs;
-            }
-            else
-            {
-                blockscopeoffset = m_symtbmodglobaloffset;
-            }
-            newscope = Memory::make<mcastscopeblock_t>(blockscopeoffset);
-            ok = m_symtbblockscopes->push(newscope);
-            return true;
-        }
-
-        void scopeBlockPop()
-        {
-            mcastscopeblock_t* topscope;
-            topscope = (mcastscopeblock_t*)m_symtbblockscopes->top();
-            m_symtbblockscopes->pop(nullptr);
-            Memory::destroy(topscope);
-        }
-
-        mcastscopeblock_t* scopeBlockGet()
-        {
-            mcastscopeblock_t* topscope;
-            topscope = (mcastscopeblock_t*)m_symtbblockscopes->top();
-            return topscope;
-        }
-
-        bool isModuleGlobalScope()
-        {
-            return m_symtbouter == nullptr;
-        }
-
-        bool isTopBlockScope()
-        {
-            return m_symtbblockscopes->count() == 1;
-        }
-
-        bool isTopGlobalScope()
-        {
-            return isModuleGlobalScope() && isTopBlockScope();
-        }
-
-        size_t getModuleGlobalSymCount()
-        {
-            return m_symtbmodglobalsymbols->count();
-        }
-
-        AstSymbol* getModuleGlobalSymAt(int ix)
-        {
-            return (AstSymbol*)m_symtbmodglobalsymbols->get(ix);
-        }
-};
 
 class AstToken
 {
@@ -4121,7 +3886,7 @@ class AstToken
 class AstExpression
 {
     public:
-        enum mcastexprtype_t
+        enum ExprType
         {
             EXPR_NONE,
             EXPR_IDENT,
@@ -4151,6 +3916,32 @@ class AstExpression
             EXPR_STMTBLOCK,
             EXPR_STMTIMPORT,
             EXPR_STMTRECOVER
+        };
+
+        enum MathOpType
+        {
+            MATHOP_NONE,
+            MATHOP_ASSIGN,
+            MATHOP_PLUS,
+            MATHOP_MINUS,
+            MATHOP_BINNOT,
+            MATHOP_BANG,
+            MATHOP_ASTERISK,
+            MATHOP_SLASH,
+            MATHOP_LT,
+            MATHOP_LTE,
+            MATHOP_GT,
+            MATHOP_GTE,
+            MATHOP_EQ,
+            MATHOP_NOTEQ,
+            MATHOP_MODULUS,
+            MATHOP_LOGICALAND,
+            MATHOP_LOGICALOR,
+            MATHOP_BINAND,
+            MATHOP_BINOR,
+            MATHOP_BINXOR,
+            MATHOP_LSHIFT,
+            MATHOP_RSHIFT
         };
 
         class ExprCodeBlock
@@ -4269,13 +4060,13 @@ class AstExpression
 
         struct ExprPrefix
         {
-            mcastmathoptype_t op;
+            MathOpType op;
             AstExpression* right;
         };
 
         struct ExprInfix
         {
-            mcastmathoptype_t op;
+            MathOpType op;
             AstExpression* left;
             AstExpression* right;
         };
@@ -4309,7 +4100,7 @@ class AstExpression
 
         struct ExprLogical
         {
-            mcastmathoptype_t op;
+            MathOpType op;
             AstExpression* left;
             AstExpression* right;
         };
@@ -4433,7 +4224,7 @@ class AstExpression
 
 
     public:
-        static AstExpression* makeAstItemBaseExpression(mcastexprtype_t type)
+        static AstExpression* makeAstItemBaseExpression(ExprType type)
         {
             auto res = Memory::make<AstExpression>();
             res->m_exprtype = type;
@@ -4499,7 +4290,7 @@ class AstExpression
             return res;
         }
 
-        static AstExpression* makeAstItemPrefix(mcastmathoptype_t op, AstExpression* right)
+        static AstExpression* makeAstItemPrefix(MathOpType op, AstExpression* right)
         {
             auto res = makeAstItemBaseExpression(EXPR_PREFIX);
             res->m_uexpr.exprprefix.op = op;
@@ -4507,7 +4298,7 @@ class AstExpression
             return res;
         }
 
-        static AstExpression* makeAstItemInfix(mcastmathoptype_t op, AstExpression* left, AstExpression* right)
+        static AstExpression* makeAstItemInfix(MathOpType op, AstExpression* left, AstExpression* right)
         {
             auto res = makeAstItemBaseExpression(EXPR_INFIX);
             res->m_uexpr.exprinfix.op = op;
@@ -4551,7 +4342,7 @@ class AstExpression
             return res;
         }
 
-        static AstExpression* makeAstItemLogical(mcastmathoptype_t op, AstExpression* left, AstExpression* right)
+        static AstExpression* makeAstItemLogical(MathOpType op, AstExpression* left, AstExpression* right)
         {
             auto res = makeAstItemBaseExpression(EXPR_LOGICAL);
             res->m_uexpr.exprlogical.op = op;
@@ -5206,40 +4997,41 @@ class AstExpression
             }
         }
 
-
+    // AstExprData
     public:
-        mcastexprtype_t m_exprtype;
+        ExprType m_exprtype;
         AstLocation m_exprpos;
-        union mcexprunion_t
+        union
         {
-            ExprIdent* exprident;
-            mcfloat_t exprlitnumber;
             bool exprlitbool;
+            mcfloat_t exprlitnumber;
             ExprLiteralArray exprlitarray;
             ExprImportStmt exprimportstmt;
-            ExprLiteralString exprlitstring;
-            ExprLiteralMap exprlitmap;
-            ExprPrefix exprprefix;
-            ExprCall exprcall;
-            ExprIfStmt exprifstmt;
-            ExprWhileStmt exprwhileloopstmt;
+            ExprIdent* exprident;
             ExprCodeBlock* exprblockstmt;
-            ExprRecover exprrecoverstmt;
-            ExprInfix exprinfix;
-            ExprLiteralFunction exprlitfunction;
-            ExprIndex exprindex;
-            ExprAssign exprassign;
-            ExprLogical exprlogical;
-            ExprTernary exprternary;
-            ExprDefine exprdefine;
-            ExprForeachStmt exprforeachloopstmt;
-            ExprLoopStmt exprforloopstmt;
             AstExpression* exprreturnvalue;
             AstExpression* exprexpression;
+            ExprLoopStmt exprforloopstmt;
+            ExprTernary exprternary;
+            ExprLogical exprlogical;
+            ExprLiteralFunction exprlitfunction;
+            ExprInfix exprinfix;
+            ExprIndex exprindex;
+            ExprForeachStmt exprforeachloopstmt;
+            ExprDefine exprdefine;
+            ExprAssign exprassign;
+            ExprWhileStmt exprwhileloopstmt;
+            ExprRecover exprrecoverstmt;
+            ExprPrefix exprprefix;
+            ExprLiteralString exprlitstring;
+            ExprLiteralMap exprlitmap;
+            ExprIfStmt exprifstmt;
+            ExprCall exprcall;
         } m_uexpr;
 
     public:
 };
+
 
 class CompiledProgram
 {
@@ -5499,21 +5291,38 @@ class Traceback
 class Error
 {
     public:
-        static const char* mc_util_errortypename(mcerrtype_t type)
+        enum
+        {
+            MaxErrorMsgLength = (64),
+        };
+
+        enum Type
+        {
+            ERRTYP_NONE = 0,
+            ERRTYP_PARSING,
+            ERRTYP_COMPILING,
+            ERRTYP_RUNTIME,
+            ERRTYP_TIMEOUT,
+            ERRTYP_MEMORY,
+            ERRTYP_USER
+        };
+
+    public:
+        static const char* mc_util_errortypename(Type type)
         {
             switch(type)
             {
-                case MC_ERROR_PARSING:
+                case ERRTYP_PARSING:
                     return "PARSING";
-                case MC_ERROR_COMPILING:
+                case ERRTYP_COMPILING:
                     return "COMPILATION";
-                case MC_ERROR_RUNTIME:
+                case ERRTYP_RUNTIME:
                     return "RUNTIME";
-                case MC_ERROR_TIMEOUT:
+                case ERRTYP_TIMEOUT:
                     return "TIMEOUT";
-                case MC_ERROR_MEMORY:
+                case ERRTYP_MEMORY:
                     return "ALLOCATION";
-                case MC_ERROR_USER:
+                case ERRTYP_USER:
                     return "USER";
                 default:
                     break;
@@ -5521,9 +5330,74 @@ class Error
             return "NONE";
         }
 
+        static bool printUserError(Printer* pr, Value obj)
+        {
+            const char* cred;
+            const char* creset;
+            Traceback* traceback;
+            static const char eprefix[] = "script error";
+            Console::Color mcc(fileno(stdout));
+            cred = mcc.get('r');
+            creset = mcc.get('0');
+            pr->format("%s%s:%s %s\n", cred, eprefix, creset, mc_value_errorgetmessage(obj));
+            traceback = mc_value_errorgettraceback(obj);
+            MC_ASSERT(traceback != nullptr);
+            if(traceback)
+            {
+                pr->format("%sTraceback:%s\n", cred, creset);
+                traceback->printTo(pr, &mcc);
+            }
+            return true;
+        }
+
+        static bool printErrorTo(Error* err, Printer* pr)
+        {
+            int j;
+            int colnum;
+            int linenum;
+            const char* line;
+            const char* typestr;
+            const char* filename;
+            const char* cred;
+            const char* cblue;
+            const char* creset;
+            Traceback* traceback;
+            static const char eprefix[] = "runtime error";
+            Console::Color mcc(fileno(stdout));
+            cred = mcc.get('r');
+            cblue = mcc.get('b');
+            creset = mcc.get('0');
+            typestr = err->getTypeString();
+            filename = err->getFile();
+            line = err->getSourceLineCode();
+            linenum = err->getSourceLineNumber();
+            colnum = err->getSourceColumn();
+            if(line)
+            {
+                pr->put(line);
+                pr->put("\n");
+                if(colnum >= 0)
+                {
+                    for(j = 0; j < (colnum - 1); j++)
+                    {
+                        pr->put(" ");
+                    }
+                    pr->put("^\n");
+                }
+            }
+            pr->format("%s%s %s%s in \"%s\" on %s%d:%d:%s %s\n", cred, eprefix, typestr, creset, filename, cblue, linenum, colnum, creset, err->getMessage());
+            traceback = err->getTraceback();
+            if(traceback)
+            {
+                pr->format("traceback:\n");
+                traceback->printTo(pr, &mcc);
+            }
+            return true;
+        }
+
     public:
-        mcerrtype_t m_errtype = MC_ERROR_NONE;
-        char m_message[MC_CONF_MAXERRORMSGLENGTH] = {};
+        Type m_errtype = ERRTYP_NONE;
+        char m_message[MaxErrorMsgLength] = {};
         AstLocation m_pos = {};
         Traceback* m_traceback = nullptr;
 
@@ -5581,28 +5455,28 @@ class Error
             return m_pos.m_loccolumn + 1;
         }
 
-        mcerrtype_t getType()
+        Type getType()
         {
             switch(m_errtype)
             {
-                case MC_ERROR_NONE:
-                    return MC_ERROR_NONE;
-                case MC_ERROR_PARSING:
-                    return MC_ERROR_PARSING;
-                case MC_ERROR_COMPILING:
-                    return MC_ERROR_COMPILING;
-                case MC_ERROR_RUNTIME:
-                    return MC_ERROR_RUNTIME;
-                case MC_ERROR_TIMEOUT:
-                    return MC_ERROR_TIMEOUT;
-                case MC_ERROR_MEMORY:
-                    return MC_ERROR_MEMORY;
-                case MC_ERROR_USER:
-                    return MC_ERROR_USER;
+                case ERRTYP_NONE:
+                    return ERRTYP_NONE;
+                case ERRTYP_PARSING:
+                    return ERRTYP_PARSING;
+                case ERRTYP_COMPILING:
+                    return ERRTYP_COMPILING;
+                case ERRTYP_RUNTIME:
+                    return ERRTYP_RUNTIME;
+                case ERRTYP_TIMEOUT:
+                    return ERRTYP_TIMEOUT;
+                case ERRTYP_MEMORY:
+                    return ERRTYP_MEMORY;
+                case ERRTYP_USER:
+                    return ERRTYP_USER;
                 default:
                     break;
             }
-            return MC_ERROR_NONE;
+            return ERRTYP_NONE;
         }
 
         const char* getTypeString()
@@ -5617,54 +5491,20 @@ class Error
 
         bool printErrorTo(Printer* pr)
         {
-            int j;
-            int colnum;
-            int linenum;
-            const char* line;
-            const char* typestr;
-            const char* filename;
-            const char* cred;
-            const char* cblue;
-            const char* creset;
-            Traceback* traceback;
-            Console::Color mcc(fileno(stdout));
-            cred = mcc.get('r');
-            cblue = mcc.get('b');
-            creset = mcc.get('0');
-            typestr = getTypeString();
-            filename = getFile();
-            line = getSourceLineCode();
-            linenum = getSourceLineNumber();
-            colnum = getSourceColumn();
-            if(line)
-            {
-                pr->put(line);
-                pr->put("\n");
-                if(colnum >= 0)
-                {
-                    for(j = 0; j < (colnum - 1); j++)
-                    {
-                        pr->put(" ");
-                    }
-                    pr->put("^\n");
-                }
-            }
-            pr->format("%s%s ERROR%s in \"%s\" on %s%d:%d:%s %s\n", cred, typestr, creset, filename, cblue, linenum, colnum, creset, getMessage());
-            traceback = getTraceback();
-            if(traceback)
-            {
-                pr->format("traceback:\n");
-                getTraceback()->printTo(pr, &mcc);
-            }
-            return true;
+            return printErrorTo(this, pr);
         }
-
 };
 
 class ErrList
 {
     public:
-        Error m_erroritems[MC_CONF_MAXERRORCOUNT];
+        enum
+        {
+            MaxErrItemCount = (4),
+        };
+
+    public:
+        Error m_erroritems[MaxErrItemCount];
         int m_count;
 
     public:
@@ -5698,12 +5538,12 @@ class ErrList
             m_count = 0;
         }
 
-        void pushMessage(mcerrtype_t type, AstLocation pos, const char* message)
+        void pushMessage(Error::Type type, AstLocation pos, const char* message)
         {
             int len;
             int tocopy;
             Error err;
-            if(m_count >= MC_CONF_MAXERRORCOUNT)
+            if(m_count >= MaxErrItemCount)
             {
             }
             else
@@ -5711,9 +5551,9 @@ class ErrList
                 err.m_errtype = type;
                 len = mc_util_strlen(message);
                 tocopy = len;
-                if(tocopy >= (MC_CONF_MAXERRORMSGLENGTH - 1))
+                if(tocopy >= (Error::MaxErrorMsgLength - 1))
                 {
-                    tocopy = MC_CONF_MAXERRORMSGLENGTH - 1;
+                    tocopy = Error::MaxErrorMsgLength - 1;
                 }
                 memcpy(err.m_message, message, tocopy);
                 err.m_message[tocopy] = '\0';
@@ -5725,16 +5565,16 @@ class ErrList
         }
 
         template<typename... ArgsT>
-        void pushFormat(mcerrtype_t type, AstLocation pos, const char* format, ArgsT&&... args)
+        void pushFormat(Error::Type type, AstLocation pos, const char* format, ArgsT&&... args)
         {
             static auto tmpsnprintf = snprintf;
             int needsz;
             int printedsz;
-            char res[MC_CONF_MAXERRORMSGLENGTH];
+            char res[Error::MaxErrorMsgLength];
             (void)needsz;
             (void)printedsz;
             needsz = tmpsnprintf(nullptr, 0, format, args...);
-            printedsz = tmpsnprintf(res, MC_CONF_MAXERRORMSGLENGTH, format, args...);
+            printedsz = tmpsnprintf(res, Error::MaxErrorMsgLength, format, args...);
             MC_ASSERT(needsz == printedsz);
             pushMessage(type, pos, res);
         }
@@ -6312,7 +6152,7 @@ class AstLexer: public AstInfo
             {
                 expectedtypestr = AstToken::tokenName(type);
                 actualtypestr = AstToken::tokenName(m_currtoken.type());
-                m_errors->pushFormat(MC_ERROR_PARSING, m_currtoken.m_tokpos, "expected token \"%s\", but got \"%s\"", expectedtypestr, actualtypestr);
+                m_errors->pushFormat(Error::ERRTYP_PARSING, m_currtoken.m_tokpos, "expected token \"%s\", but got \"%s\"", expectedtypestr, actualtypestr);
                 return false;
             }
             return true;
@@ -6392,9 +6232,10 @@ class AstLexer: public AstInfo
         {
             int len;
             int position;
-            static const char allowed[] = ".xXaAbBcCdDeEfF";
+            static const char allowedchars[] = ".xXaAbBcCdDeEfF";
+            static const int allowlen = ((int)(sizeof(allowedchars) / sizeof(allowedchars[0])));
             position = m_position;
-            while(charIsDigit(m_currentchar) || charIsOneOf(m_currentchar, allowed, MC_UTIL_STATICARRAYSIZE(allowed) - 1))
+            while(charIsDigit(m_currentchar) || charIsOneOf(m_currentchar, allowedchars, allowlen - 1))
             {
                 readChar();
             }
@@ -6529,6 +6370,9 @@ class AstLexer: public AstInfo
 class AstParser
 {
     public:
+        using mcastrightassocparsefn_t = AstExpression* (*)(AstParser*);
+        using mcastleftassocparsefn_t = AstExpression* (*)(AstParser*, AstExpression*);
+
         enum mcastprecedence_t
         {
             MC_ASTPREC_LOWEST = 0,
@@ -6627,83 +6471,83 @@ class AstParser
             return MC_ASTPREC_LOWEST;
         }
 
-        static mcastmathoptype_t tokenToMathOP(AstToken::Type tk)
+        static AstExpression::MathOpType tokenToMathOP(AstToken::Type tk)
         {
             switch(tk)
             {
                 case AstToken::TOK_ASSIGN:
-                    return MC_MATHOP_ASSIGN;
+                    return AstExpression::MATHOP_ASSIGN;
                 case AstToken::TOK_PLUS:
-                    return MC_MATHOP_PLUS;
+                    return AstExpression::MATHOP_PLUS;
                 case AstToken::TOK_UNARYMINUS:
-                    return MC_MATHOP_MINUS;
+                    return AstExpression::MATHOP_MINUS;
                 case AstToken::TOK_UNARYBINNOT:
-                    return MC_MATHOP_BINNOT;
+                    return AstExpression::MATHOP_BINNOT;
                 case AstToken::TOK_BANG:
-                    return MC_MATHOP_BANG;
+                    return AstExpression::MATHOP_BANG;
                 case AstToken::TOK_ASTERISK:
-                    return MC_MATHOP_ASTERISK;
+                    return AstExpression::MATHOP_ASTERISK;
                 case AstToken::TOK_SLASH:
-                    return MC_MATHOP_SLASH;
+                    return AstExpression::MATHOP_SLASH;
                 case AstToken::TOK_LT:
-                    return MC_MATHOP_LT;
+                    return AstExpression::MATHOP_LT;
                 case AstToken::TOK_LTE:
-                    return MC_MATHOP_LTE;
+                    return AstExpression::MATHOP_LTE;
                 case AstToken::TOK_GT:
-                    return MC_MATHOP_GT;
+                    return AstExpression::MATHOP_GT;
                 case AstToken::TOK_GTE:
-                    return MC_MATHOP_GTE;
+                    return AstExpression::MATHOP_GTE;
                 case AstToken::TOK_EQ:
-                    return MC_MATHOP_EQ;
+                    return AstExpression::MATHOP_EQ;
                 case AstToken::TOK_NOTEQ:
-                    return MC_MATHOP_NOTEQ;
+                    return AstExpression::MATHOP_NOTEQ;
                 case AstToken::TOK_PERCENT:
-                    return MC_MATHOP_MODULUS;
+                    return AstExpression::MATHOP_MODULUS;
                 case AstToken::TOK_AND:
-                    return MC_MATHOP_LOGICALAND;
+                    return AstExpression::MATHOP_LOGICALAND;
                 case AstToken::TOK_OR:
-                    return MC_MATHOP_LOGICALOR;
+                    return AstExpression::MATHOP_LOGICALOR;
                 case AstToken::TOK_ASSIGNPLUS:
-                    return MC_MATHOP_PLUS;
+                    return AstExpression::MATHOP_PLUS;
                 case AstToken::TOK_ASSIGNMINUS:
-                    return MC_MATHOP_MINUS;
+                    return AstExpression::MATHOP_MINUS;
                 case AstToken::TOK_ASSIGNASTERISK:
-                    return MC_MATHOP_ASTERISK;
+                    return AstExpression::MATHOP_ASTERISK;
                 case AstToken::TOK_ASSIGNSLASH:
-                    return MC_MATHOP_SLASH;
+                    return AstExpression::MATHOP_SLASH;
                 case AstToken::TOK_ASSIGNPERCENT:
-                    return MC_MATHOP_MODULUS;
+                    return AstExpression::MATHOP_MODULUS;
                 case AstToken::TOK_ASSIGNBINAND:
-                    return MC_MATHOP_BINAND;
+                    return AstExpression::MATHOP_BINAND;
                 case AstToken::TOK_ASSIGNBINOR:
-                    return MC_MATHOP_BINOR;
+                    return AstExpression::MATHOP_BINOR;
                 case AstToken::TOK_ASSIGNBINXOR:
-                    return MC_MATHOP_BINXOR;
+                    return AstExpression::MATHOP_BINXOR;
                 case AstToken::TOK_ASSIGNLSHIFT:
-                    return MC_MATHOP_LSHIFT;
+                    return AstExpression::MATHOP_LSHIFT;
                 case AstToken::TOK_ASSIGNRSHIFT:
-                    return MC_MATHOP_RSHIFT;
+                    return AstExpression::MATHOP_RSHIFT;
                 case AstToken::TOK_BINAND:
-                    return MC_MATHOP_BINAND;
+                    return AstExpression::MATHOP_BINAND;
                 case AstToken::TOK_BINOR:
-                    return MC_MATHOP_BINOR;
+                    return AstExpression::MATHOP_BINOR;
                 case AstToken::TOK_BINXOR:
-                    return MC_MATHOP_BINXOR;
+                    return AstExpression::MATHOP_BINXOR;
                 case AstToken::TOK_LSHIFT:
-                    return MC_MATHOP_LSHIFT;
+                    return AstExpression::MATHOP_LSHIFT;
                 case AstToken::TOK_RSHIFT:
-                    return MC_MATHOP_RSHIFT;
+                    return AstExpression::MATHOP_RSHIFT;
                 case AstToken::TOK_PLUSPLUS:
-                    return MC_MATHOP_PLUS;
+                    return AstExpression::MATHOP_PLUS;
                 case AstToken::TOK_MINUSMINUS:
-                    return MC_MATHOP_MINUS;
+                    return AstExpression::MATHOP_MINUS;
                 default:
                     {
                         MC_ASSERT(false);
                     }
                     break;
             }
-            return MC_MATHOP_NONE;
+            return AstExpression::MATHOP_NONE;
         }
 
         static char getEscapeChar(char c)
@@ -6965,13 +6809,13 @@ class AstParser
         }
 
     public:
-        mcconfig_t* m_config;
+        RuntimeConfig* m_config;
         AstLexer m_lexer;
         ErrList* m_prserrlist;
         int m_parsedepth;
 
     public:
-        AstParser(mcconfig_t* config, ErrList* errors)
+        AstParser(RuntimeConfig* config, ErrList* errors)
         {
             m_config = config;
             m_prserrlist = errors;
@@ -7141,7 +6985,7 @@ class AstParser
                 /* this is actually completely unnecessary */
                 if(expr->m_exprtype != AstExpression::EXPR_ASSIGN && expr->m_exprtype != AstExpression::EXPR_CALL)
                 {
-                    m_prserrlist->pushFormat(MC_ERROR_PARSING, expr->pos, "only assignments and function calls can be expression statements");
+                    m_prserrlist->pushFormat(Error::ERRTYP_PARSING, expr->pos, "only assignments and function calls can be expression statements");
                     AstExpression::destroyExpression(expr);
                     return nullptr;
                 }
@@ -7224,7 +7068,7 @@ class AstParser
             processedname = processAndCopyString(m_lexer.m_currtoken.m_tokstrdata, m_lexer.m_currtoken.m_tokstrlength);
             if(!processedname)
             {
-                m_prserrlist->pushFormat(MC_ERROR_PARSING, m_lexer.m_currtoken.m_tokpos, "error when parsing module name");
+                m_prserrlist->pushFormat(Error::ERRTYP_PARSING, m_lexer.m_currtoken.m_tokpos, "error when parsing module name");
                 return nullptr;
             }
             m_lexer.nextToken();
@@ -7344,7 +7188,7 @@ class AstParser
                 }
                 if(init->m_exprtype != AstExpression::EXPR_STMTDEFINE && init->m_exprtype != AstExpression::EXPR_STMTEXPRESSION)
                 {
-                    m_prserrlist->pushFormat(MC_ERROR_PARSING, init->m_exprpos, "expected a definition or expression as 'for' loop init clause");
+                    m_prserrlist->pushFormat(Error::ERRTYP_PARSING, init->m_exprpos, "expected a definition or expression as 'for' loop init clause");
                     goto err;
                 }
                 if(!m_lexer.expectCurrent(AstToken::TOK_SEMICOLON))
@@ -7412,7 +7256,7 @@ class AstParser
             {
                 if(m_lexer.currentTokenIs(AstToken::TOK_EOF))
                 {
-                    m_prserrlist->pushFormat(MC_ERROR_PARSING, m_lexer.m_currtoken.m_tokpos, "unexpected EOF");
+                    m_prserrlist->pushFormat(Error::ERRTYP_PARSING, m_lexer.m_currtoken.m_tokpos, "unexpected EOF");
                     goto err;
                 }
                 if(m_lexer.currentTokenIs(AstToken::TOK_SEMICOLON))
@@ -7448,14 +7292,14 @@ class AstParser
             pos = m_lexer.m_currtoken.m_tokpos;
             if(m_lexer.m_currtoken.type() == AstToken::TOK_INVALID)
             {
-                m_prserrlist->pushFormat(MC_ERROR_PARSING, m_lexer.m_currtoken.m_tokpos, "illegal token");
+                m_prserrlist->pushFormat(Error::ERRTYP_PARSING, m_lexer.m_currtoken.m_tokpos, "illegal token");
                 return nullptr;
             }
             parserightassoc = getRightAssocParseFunc(m_lexer.m_currtoken.type());
             if(!parserightassoc)
             {
                 literal = m_lexer.m_currtoken.dupLiteralString();
-                m_prserrlist->pushFormat(MC_ERROR_PARSING, m_lexer.m_currtoken.m_tokpos, "no prefix parse function for \"%s\" found", literal);
+                m_prserrlist->pushFormat(Error::ERRTYP_PARSING, m_lexer.m_currtoken.m_tokpos, "no prefix parse function for \"%s\" found", literal);
                 mc_memory_free(literal);
                 return nullptr;
             }
@@ -7610,7 +7454,7 @@ class AstParser
 
         AstExpression* parseLogicalExpr(AstExpression* left)
         {
-            mcastmathoptype_t op;
+            AstExpression::MathOpType op;
             mcastprecedence_t prec;
             AstExpression* res;
             AstExpression* right;
@@ -7649,7 +7493,7 @@ class AstParser
         AstExpression* parseAssignExpr(AstExpression* left)
         {
             AstLocation pos;
-            mcastmathoptype_t op;
+            AstExpression::MathOpType op;
             AstToken::Type assigntype;
             AstExpression* res;
             AstExpression* source;
@@ -7708,7 +7552,7 @@ class AstParser
         AstExpression* parseIncDecPrefixExpr()
         {
             AstLocation pos;
-            mcastmathoptype_t op;
+            AstExpression::MathOpType op;
             AstToken::Type operationtype;
             AstExpression* res;
             AstExpression* dest;
@@ -7747,7 +7591,7 @@ class AstParser
         AstExpression* parseIncDecPostfixExpr(AstExpression* left)
         {
             AstLocation pos;
-            mcastmathoptype_t op;
+            AstExpression::MathOpType op;
             AstToken::Type operationtype;
             AstExpression* res;
             AstExpression* source;
@@ -7777,7 +7621,7 @@ class AstParser
 
         AstExpression* parsePrefixExpr()
         {
-            mcastmathoptype_t op;
+            AstExpression::MathOpType op;
             AstExpression* res;
             AstExpression* right;
             op = tokenToMathOP(m_lexer.m_currtoken.m_toktype);
@@ -7793,7 +7637,7 @@ class AstParser
 
         AstExpression* parseInfixExpr(AstExpression* left)
         {
-            mcastmathoptype_t op;
+            AstExpression::MathOpType op;
             mcastprecedence_t prec;
             AstExpression* res;
             AstExpression* right;
@@ -7903,7 +7747,7 @@ class AstParser
                             break;
                         default:
                             {
-                                m_prserrlist->pushFormat(MC_ERROR_PARSING, key->m_exprpos, "can only use primitive types as literal 'map' object keys");
+                                m_prserrlist->pushFormat(Error::ERRTYP_PARSING, key->m_exprpos, "can only use primitive types as literal 'map' object keys");
                                 AstExpression::destroyExpression(key);
                                 goto err;
                             }
@@ -7962,7 +7806,7 @@ class AstParser
             processedliteral = processAndCopyString(m_lexer.m_currtoken.m_tokstrdata, m_lexer.m_currtoken.m_tokstrlength);
             if(!processedliteral)
             {
-                m_prserrlist->pushFormat(MC_ERROR_PARSING, m_lexer.m_currtoken.m_tokpos, "error parsing string literal");
+                m_prserrlist->pushFormat(Error::ERRTYP_PARSING, m_lexer.m_currtoken.m_tokpos, "error parsing string literal");
                 return nullptr;
             }
             m_lexer.nextToken();
@@ -7985,7 +7829,7 @@ class AstParser
             tostrcallexpr = AstExpression::makeAstItemInlineCall(templateexpr, "tostring");
             tostrcallexpr->m_exprpos = pos;
             templateexpr = nullptr;
-            leftaddexpr = AstExpression::makeAstItemInfix(MC_MATHOP_PLUS, leftstringexpr, tostrcallexpr);
+            leftaddexpr = AstExpression::makeAstItemInfix(AstExpression::MATHOP_PLUS, leftstringexpr, tostrcallexpr);
             leftaddexpr->m_exprpos = pos;
             leftstringexpr = nullptr;
             tostrcallexpr = nullptr;
@@ -8003,7 +7847,7 @@ class AstParser
             {
                 goto err;
             }
-            rightaddexpr = AstExpression::makeAstItemInfix(MC_MATHOP_PLUS, leftaddexpr, rightexpr);
+            rightaddexpr = AstExpression::makeAstItemInfix(AstExpression::MATHOP_PLUS, leftaddexpr, rightexpr);
             rightaddexpr->m_exprpos = pos;
             leftaddexpr = nullptr;
             rightexpr = nullptr;
@@ -8027,7 +7871,7 @@ class AstParser
             processedliteral = processAndCopyString(m_lexer.m_currtoken.m_tokstrdata, m_lexer.m_currtoken.m_tokstrlength);
             if(!processedliteral)
             {
-                m_prserrlist->pushFormat(MC_ERROR_PARSING, m_lexer.m_currtoken.m_tokpos, "error parsing string literal");
+                m_prserrlist->pushFormat(Error::ERRTYP_PARSING, m_lexer.m_currtoken.m_tokpos, "error parsing string literal");
                 return nullptr;
             }
             m_lexer.nextToken();
@@ -8066,7 +7910,7 @@ class AstParser
             if(errno || parsedlen != m_lexer.m_currtoken.m_tokstrlength)
             {
                 literal = m_lexer.m_currtoken.dupLiteralString();
-                m_prserrlist->pushFormat(MC_ERROR_PARSING, m_lexer.m_currtoken.m_tokpos, "failed to parse number literal \"%s\"", literal);
+                m_prserrlist->pushFormat(Error::ERRTYP_PARSING, m_lexer.m_currtoken.m_tokpos, "failed to parse number literal \"%s\"", literal);
                 mc_memory_free(literal);
                 return nullptr;
             }    
@@ -8170,51 +8014,51 @@ class AstParser
         AstExpression* parseStatement()
         {
             AstLocation pos;
-            AstExpression* res;
+            AstExpression* expr;
             pos = m_lexer.m_currtoken.m_tokpos;
-            res = nullptr;
+            expr = nullptr;
             switch(m_lexer.m_currtoken.m_toktype)
             {
                 case AstToken::TOK_VAR:
                 case AstToken::TOK_CONST:
                     {
-                        res = parseVarLetStmt();
+                        expr = parseVarLetStmt();
                     }
                     break;
                 case AstToken::TOK_IF:
                     {
-                        res = parseIfStmt();
+                        expr = parseIfStmt();
                     }
                     break;
                 case AstToken::TOK_RETURN:
                     {
-                        res = parseReturnStmt();
+                        expr = parseReturnStmt();
                     }
                     break;
                 case AstToken::TOK_WHILE:
                     {
-                        res = parseLoopWhileStmt();
+                        expr = parseLoopWhileStmt();
                     }
                     break;
                 case AstToken::TOK_BREAK:
                     {
-                        res = parseBreakStmt();
+                        expr = parseBreakStmt();
                     }
                     break;
                 case AstToken::TOK_FOR:
                     {
-                        res = parseLoopForBaseStmt();
+                        expr = parseLoopForBaseStmt();
                     }
                     break;
                 case AstToken::TOK_FUNCTION:
                     {
                         if(m_lexer.peekTokenIs(AstToken::TOK_IDENT))
                         {
-                            res = parseFunctionStmt();
+                            expr = parseFunctionStmt();
                         }
                         else
                         {
-                            res = parseExprStmt();
+                            expr = parseExprStmt();
                         }
                     }
                     break;
@@ -8222,40 +8066,40 @@ class AstParser
                     {
                         if(m_config->replmode && m_parsedepth == 0)
                         {
-                            res = parseExprStmt();
+                            expr = parseExprStmt();
                         }
                         else
                         {
-                            res = parseBlockStmt();
+                            expr = parseBlockStmt();
                         }
                     }
                     break;
                 case AstToken::TOK_CONTINUE:
                     {
-                        res = parseContinueStmt();
+                        expr = parseContinueStmt();
                     }
                     break;
                 case AstToken::TOK_IMPORT:
                     {
-                        res = parseImportStmt();
+                        expr = parseImportStmt();
                     }
                     break;
                 case AstToken::TOK_RECOVER:
                     {
-                        res = parseRecoverStmt();
+                        expr = parseRecoverStmt();
                     }
                     break;
                 default:
                     {
-                        res = parseExprStmt();
+                        expr = parseExprStmt();
                     }
                     break;
             }
-            if(res)
+            if(expr)
             {
-                res->m_exprpos = pos;
+                expr->m_exprpos = pos;
             }
-            return res;
+            return expr;
         }
 
         PtrList* parseAll(const char* input, AstSourceFile* file)
@@ -8296,12 +8140,64 @@ class AstParser
             PtrList::destroy(statements, (mcitemdestroyfn_t)AstExpression::destroyExpression);
             return nullptr;
         }
-
-
 };
 
 class AstPrinter
 {
+    public:
+        static const char* getMathOpString(AstExpression::MathOpType op)
+        {
+            switch(op)
+            {
+                case AstExpression::MATHOP_NONE:
+                    return "AstExpression::MATHOP_NONE";
+                case AstExpression::MATHOP_ASSIGN:
+                    return "=";
+                case AstExpression::MATHOP_PLUS:
+                    return "+";
+                case AstExpression::MATHOP_MINUS:
+                    return "-";
+                case AstExpression::MATHOP_BANG:
+                    return "!";
+                case AstExpression::MATHOP_ASTERISK:
+                    return "*";
+                case AstExpression::MATHOP_SLASH:
+                    return "/";
+                case AstExpression::MATHOP_LT:
+                    return "<";
+                case AstExpression::MATHOP_GT:
+                    return ">";
+                case AstExpression::MATHOP_EQ:
+                    return "==";
+                case AstExpression::MATHOP_NOTEQ:
+                    return "!=";
+                case AstExpression::MATHOP_MODULUS:
+                    return "%";
+                case AstExpression::MATHOP_LOGICALAND:
+                    return "&&";
+                case AstExpression::MATHOP_LOGICALOR:
+                    return "||";
+                case AstExpression::MATHOP_BINAND:
+                    return "&";
+                case AstExpression::MATHOP_BINOR:
+                    return "|";
+                case AstExpression::MATHOP_BINXOR:
+                    return "^";
+                case AstExpression::MATHOP_LSHIFT:
+                    return "<<";
+                case AstExpression::MATHOP_RSHIFT:
+                    return ">>";
+                case AstExpression::MATHOP_LTE:
+                    return "<=";
+                case AstExpression::MATHOP_GTE:
+                    return ">=";
+                case AstExpression::MATHOP_BINNOT:
+                    return "~";
+            }
+            return "AstExpression::MATHOP_UNKNOWN";
+        }
+
+
     public:
         Printer* m_pdest;
         bool m_pseudolisp;
@@ -8455,7 +8351,7 @@ class AstPrinter
             AstExpression::ExprPrefix* ex;
             ex = &astexpr->m_uexpr.exprprefix;
             m_pdest->put("(");
-            m_pdest->put(mc_util_mathopstring(ex->op));
+            m_pdest->put(getMathOpString(ex->op));
             printExpression(ex->right);
             m_pdest->put(")");
         }
@@ -8467,7 +8363,7 @@ class AstPrinter
             m_pdest->put("(");
             printExpression(ex->left);
             m_pdest->put(" ");
-            m_pdest->put(mc_util_mathopstring(ex->op));
+            m_pdest->put(getMathOpString(ex->op));
             m_pdest->put(" ");
             printExpression(ex->right);
             m_pdest->put(")");
@@ -8512,7 +8408,7 @@ class AstPrinter
             ex = &astexpr->m_uexpr.exprlogical;
             printExpression(ex->left);
             m_pdest->put(" ");
-            m_pdest->put(mc_util_mathopstring(ex->op));
+            m_pdest->put(getMathOpString(ex->op));
             m_pdest->put(" ");
             printExpression(ex->right);
         }
@@ -8901,7 +8797,7 @@ class Module
             (void)ok;
             namebuf = Memory::make<Printer>(nullptr);
             ok = namebuf->format("%s::%s", m_modname, symbol->m_symname);
-            modulesymbol = Memory::make<AstSymbol>(namebuf->getString(), MC_SYM_MODULEGLOBAL, symbol->m_symindex, false);
+            modulesymbol = Memory::make<AstSymbol>(namebuf->getString(), AstSymbol::SYMTYP_MODULEGLOBAL, symbol->m_symindex, false);
             Printer::destroy(namebuf);
             if(!modulesymbol)
             {
@@ -8913,201 +8809,75 @@ class Module
 };
 
 
-class AstOptimizer
-{
-    public:
-        static AstExpression* optimizeExpr(AstExpression* expr)
-        {
-            switch(expr->m_exprtype)
-            {
-                case AstExpression::EXPR_INFIX:
-                    return optimizeInfix(expr);
-                case AstExpression::EXPR_PREFIX:
-                    return optimizePrefix(expr);
-                default:
-                    break;
-            }
-            return nullptr;
-        }
-
-        static AstExpression* optimizeInfix(AstExpression* expr)
-        {
-            bool leftisnumeric;
-            bool rightisnumeric;
-            bool leftisstring;
-            bool rightisstring;
-            mcfloat_t dnleft;
-            mcfloat_t dnright;
-            size_t len;
-            AstExpression* res;
-            AstExpression* left;
-            AstExpression* right;
-            AstExpression* leftoptimized;
-            AstExpression* rightoptimized;
-            left = expr->m_uexpr.exprinfix.left;
-            leftoptimized = optimizeExpr(left);
-            if(leftoptimized)
-            {
-                left = leftoptimized;
-            }
-            right = expr->m_uexpr.exprinfix.right;
-            rightoptimized = optimizeExpr(right);
-            if(rightoptimized)
-            {
-                right = rightoptimized;
-            }
-            res = nullptr;
-            leftisnumeric = left->m_exprtype == AstExpression::EXPR_NUMBERLITERAL || left->m_exprtype == AstExpression::EXPR_BOOLLITERAL;
-            rightisnumeric = right->m_exprtype == AstExpression::EXPR_NUMBERLITERAL || right->m_exprtype == AstExpression::EXPR_BOOLLITERAL;
-            leftisstring = left->m_exprtype == AstExpression::EXPR_STRINGLITERAL;
-            rightisstring = right->m_exprtype == AstExpression::EXPR_STRINGLITERAL;
-            if(leftisnumeric && rightisnumeric)
-            {
-                dnleft = left->m_exprtype == AstExpression::EXPR_NUMBERLITERAL ? left->m_uexpr.exprlitnumber : left->m_uexpr.exprlitbool;
-                dnright = right->m_exprtype == AstExpression::EXPR_NUMBERLITERAL ? right->m_uexpr.exprlitnumber : right->m_uexpr.exprlitbool;
-                switch(expr->m_uexpr.exprinfix.op)
-                {
-                    case MC_MATHOP_PLUS:
-                        {
-                            res = AstExpression::makeAstItemLiteralNumber(mc_mathutil_add(dnleft, dnright));
-                        }
-                        break;
-                    case MC_MATHOP_MINUS:
-                        {
-                            res = AstExpression::makeAstItemLiteralNumber(mc_mathutil_sub(dnleft, dnright));
-                        }
-                        break;
-                    case MC_MATHOP_ASTERISK:
-                        {
-                            res = AstExpression::makeAstItemLiteralNumber(mc_mathutil_mult(dnleft, dnright));
-                        }
-                        break;
-                    case MC_MATHOP_SLASH:
-                        {
-                            res = AstExpression::makeAstItemLiteralNumber(mc_mathutil_div(dnleft, dnright));
-                        }
-                        break;
-                    case MC_MATHOP_LT:
-                        {
-                            res = AstExpression::makeAstItemLiteralBool(dnleft < dnright);
-                        }
-                        break;
-                    case MC_MATHOP_LTE:
-                        {
-                            res = AstExpression::makeAstItemLiteralBool(dnleft <= dnright);
-                        }
-                        break;
-                    case MC_MATHOP_GT:
-                        {
-                            res = AstExpression::makeAstItemLiteralBool(dnleft > dnright);
-                        }
-                        break;
-                    case MC_MATHOP_GTE:
-                        {
-                            res = AstExpression::makeAstItemLiteralBool(dnleft >= dnright);
-                        }
-                        break;
-                    case MC_MATHOP_EQ:
-                        {
-                            res = AstExpression::makeAstItemLiteralBool(MC_UTIL_CMPFLOAT(dnleft, dnright));
-                        }
-                        break;
-                    case MC_MATHOP_NOTEQ:
-                        {
-                            res = AstExpression::makeAstItemLiteralBool(!MC_UTIL_CMPFLOAT(dnleft, dnright));
-                        }
-                        break;
-                    case MC_MATHOP_MODULUS:
-                        {
-                            res = AstExpression::makeAstItemLiteralNumber(mc_mathutil_mod(dnleft, dnright));
-                        }
-                        break;
-                    case MC_MATHOP_BINAND:
-                        {
-                            res = AstExpression::makeAstItemLiteralNumber(mc_mathutil_binand(dnleft, dnright));
-                        }
-                        break;
-                    case MC_MATHOP_BINOR:
-                        {
-                            res = AstExpression::makeAstItemLiteralNumber(mc_mathutil_binor(dnleft, dnright));
-                        }
-                        break;
-                    case MC_MATHOP_BINXOR:
-                        {
-                            res = AstExpression::makeAstItemLiteralNumber(mc_mathutil_binxor(dnleft, dnright));
-                        }
-                        break;
-                    case MC_MATHOP_LSHIFT:
-                        {
-                            res = AstExpression::makeAstItemLiteralNumber(mc_mathutil_binshiftleft(dnleft, dnright));
-                        }
-                        break;
-                    case MC_MATHOP_RSHIFT:
-                        {
-                            res = AstExpression::makeAstItemLiteralNumber(mc_mathutil_binshiftright(dnleft, dnright));
-                        }
-                        break;
-                    default:
-                        {
-                        }
-                        break;
-                }
-            }
-            else if(expr->m_uexpr.exprinfix.op == MC_MATHOP_PLUS && leftisstring && rightisstring)
-            {
-                /* TODO:FIXME: horrible method of joining strings!!!!!!! */
-                char* resstr;
-                const char* strleft;
-                const char* strright;
-                strleft = left->m_uexpr.exprlitstring.m_strexprdata;
-                strright = right->m_uexpr.exprlitstring.m_strexprdata;
-                resstr = mc_util_stringallocfmt("%s%s", strleft, strright);
-                len = mc_util_strlen(resstr);
-                if(resstr)
-                {
-                    res = AstExpression::makeAstItemLiteralString(resstr, len);
-                }
-            }
-            AstExpression::destroyExpression(leftoptimized);
-            AstExpression::destroyExpression(rightoptimized);
-            if(res)
-            {
-                res->m_exprpos = expr->m_exprpos;
-            }
-            return res;
-        }
-
-        static AstExpression* optimizePrefix(AstExpression* expr)
-        {
-            AstExpression* res;
-            AstExpression* right;
-            AstExpression* rightoptimized;
-            right = expr->m_uexpr.exprprefix.right;
-            rightoptimized = optimizeExpr(right);
-            if(rightoptimized)
-            {
-                right = rightoptimized;
-            }
-            res = nullptr;
-            if(expr->m_uexpr.exprprefix.op == MC_MATHOP_MINUS && right->m_exprtype == AstExpression::EXPR_NUMBERLITERAL)
-            {
-                res = AstExpression::makeAstItemLiteralNumber(-right->m_uexpr.exprlitnumber);
-            }
-            else if(expr->m_uexpr.exprprefix.op == MC_MATHOP_BANG && right->m_exprtype == AstExpression::EXPR_BOOLLITERAL)
-            {
-                res = AstExpression::makeAstItemLiteralBool(!right->m_uexpr.exprlitbool);
-            }
-            AstExpression::destroyExpression(rightoptimized);
-            if(res)
-            {
-                res->m_exprpos = expr->m_exprpos;
-            }
-            return res;
-        }
-};
-
 class AstCompiler
 {
+    public:
+        enum OpCode
+        {
+            OPCODE_HALT = 0,
+            OPCODE_CONSTANT,
+            OPCODE_ADD,
+            OPCODE_SUB,
+            OPCODE_MUL,
+            OPCODE_DIV,
+            OPCODE_MOD,
+            OPCODE_POP,
+            OPCODE_BINOR,
+            OPCODE_BINXOR,
+            OPCODE_BINAND,
+            OPCODE_LSHIFT,
+            OPCODE_RSHIFT,
+            OPCODE_BANG,
+            OPCODE_COMPARE,
+            OPCODE_TRUE,
+            OPCODE_FALSE,
+            OPCODE_COMPAREEQ,
+            OPCODE_EQUAL,
+            OPCODE_NOTEQUAL,
+            OPCODE_GREATERTHAN,
+            OPCODE_GREATERTHANEQUAL,
+            OPCODE_MINUS,
+            OPCODE_BINNOT,
+            OPCODE_JUMP,
+            OPCODE_JUMPIFFALSE,
+            OPCODE_JUMPIFTRUE,
+            OPCODE_NULL,
+            OPCODE_GETMODULEGLOBAL,
+            OPCODE_SETMODULEGLOBAL,
+            OPCODE_DEFINEMODULEGLOBAL,
+            OPCODE_ARRAY,
+            OPCODE_MAPSTART,
+            OPCODE_MAPEND,
+            OPCODE_GETTHIS,
+            OPCODE_GETINDEX,
+            OPCODE_SETINDEX,
+            OPCODE_GETDOTINDEX,
+            OPCODE_GETVALUEAT,
+            OPCODE_CALL,
+            OPCODE_RETURNVALUE,
+            OPCODE_RETURN,
+            OPCODE_GETLOCAL,
+            OPCODE_DEFINELOCAL,
+            OPCODE_SETLOCAL,
+            OPCODE_GETGLOBALBUILTIN,
+            OPCODE_FUNCTION,
+            OPCODE_GETFREE,
+            OPCODE_SETFREE,
+            OPCODE_CURRENTFUNCTION,
+            OPCODE_DUP,
+            OPCODE_NUMBER,
+            OPCODE_FOREACHLEN,
+            OPCODE_SETRECOVER,
+            OPCODE_MAX
+        };
+
+        struct OpDefinition
+        {
+            const char* name;
+            int numoperands;
+            int operandwidths[2];
+        };
+
     public:
         static void destroy(AstCompiler* comp)
         {
@@ -9118,7 +8888,7 @@ class AstCompiler
             }
         }
 
-        static mcopdefinition_t* makeOpDef(mcopdefinition_t* dest, const char* name, int numop, int opa1, int opa2)
+        static OpDefinition* makeOpDef(OpDefinition* dest, const char* name, int numop, int opa1, int opa2)
         {
             dest->name = name;
             dest->numoperands = numop;
@@ -9134,65 +8904,65 @@ class AstCompiler
             } \
             break;
 
-        static mcopdefinition_t* opdefLookup(mcopdefinition_t* def, mcinternopcode_t op)
+        static OpDefinition* opdefLookup(OpDefinition* def, mcinternopcode_t op)
         {
             switch(op)
             {
-                makecase(def, MC_OPCODE_HALT, "MC_OPCODE_HALT", 0, 0, 0);
-                makecase(def, MC_OPCODE_CONSTANT, "MC_OPCODE_CONSTANT", 1, 2, 0);
-                makecase(def, MC_OPCODE_ADD, "MC_OPCODE_ADD", 0, 0, 0);
-                makecase(def, MC_OPCODE_POP, "MC_OPCODE_POP", 0, 0, 0);
-                makecase(def, MC_OPCODE_SUB, "MC_OPCODE_SUB", 0, 0, 0);
-                makecase(def, MC_OPCODE_MUL, "MC_OPCODE_MUL", 0, 0, 0);
-                makecase(def, MC_OPCODE_DIV, "MC_OPCODE_DIV", 0, 0, 0);
-                makecase(def, MC_OPCODE_MOD, "MC_OPCODE_MOD", 0, 0, 0);
-                makecase(def, MC_OPCODE_TRUE, "MC_OPCODE_TRUE", 0, 0, 0);
-                makecase(def, MC_OPCODE_FALSE, "MC_OPCODE_FALSE", 0, 0, 0);
-                makecase(def, MC_OPCODE_COMPARE, "MC_OPCODE_COMPARE", 0, 0, 0);
-                makecase(def, MC_OPCODE_COMPAREEQ, "MC_OPCODE_COMPAREEQ", 0, 0, 0);
-                makecase(def, MC_OPCODE_EQUAL, "MC_OPCODE_EQUAL", 0, 0, 0);
-                makecase(def, MC_OPCODE_NOTEQUAL, "MC_OPCODE_NOTEQUAL", 0, 0, 0);
-                makecase(def, MC_OPCODE_GREATERTHAN, "MC_OPCODE_GREATERTHAN", 0, 0, 0);
-                makecase(def, MC_OPCODE_GREATERTHANEQUAL, "MC_OPCODE_GREATERTHANEQUAL", 0, 0, 0);
-                makecase(def, MC_OPCODE_MINUS, "MC_OPCODE_MINUS", 0, 0, 0);
-                makecase(def, MC_OPCODE_BINNOT, "MC_OPCODE_BINNOT", 0, 0, 0);
-                makecase(def, MC_OPCODE_BANG, "MC_OPCODE_BANG", 0, 0, 0);
-                makecase(def, MC_OPCODE_JUMP, "MC_OPCODE_JUMP", 1, 2, 0);
-                makecase(def, MC_OPCODE_JUMPIFFALSE, "MC_OPCODE_JUMPIFFALSE", 1, 2, 0);
-                makecase(def, MC_OPCODE_JUMPIFTRUE, "MC_OPCODE_JUMPIFTRUE", 1, 2, 0);
-                makecase(def, MC_OPCODE_NULL, "MC_OPCODE_NULL", 0, 0, 0);
-                makecase(def, MC_OPCODE_GETMODULEGLOBAL, "MC_OPCODE_GETMODULEGLOBAL", 1, 2, 0);
-                makecase(def, MC_OPCODE_SETMODULEGLOBAL, "MC_OPCODE_SETMODULEGLOBAL", 1, 2, 0);
-                makecase(def, MC_OPCODE_DEFINEMODULEGLOBAL, "MC_OPCODE_DEFINEMODULEGLOBAL", 1, 2, 0);
-                makecase(def, MC_OPCODE_ARRAY, "MC_OPCODE_ARRAY", 1, 2, 0);
-                makecase(def, MC_OPCODE_MAPSTART, "MC_OPCODE_MAPSTART", 1, 2, 0);
-                makecase(def, MC_OPCODE_MAPEND, "MC_OPCODE_MAPEND", 1, 2, 0);
-                makecase(def, MC_OPCODE_GETTHIS, "MC_OPCODE_GETTHIS", 0, 0, 0);
-                makecase(def, MC_OPCODE_GETINDEX, "MC_OPCODE_GETINDEX", 0, 0, 0);
-                makecase(def, MC_OPCODE_SETINDEX, "MC_OPCODE_SETINDEX", 0, 0, 0);
-                makecase(def, MC_OPCODE_GETDOTINDEX, "MC_OPCODE_GETDOTINDEX", 0, 0, 0);
-                makecase(def, MC_OPCODE_GETVALUEAT, "MC_OPCODE_GETVALUEAT", 0, 0, 0);
-                makecase(def, MC_OPCODE_CALL, "MC_OPCODE_CALL", 1, 1, 0);
-                makecase(def, MC_OPCODE_RETURNVALUE, "MC_OPCODE_RETURNVALUE", 0, 0, 0);
-                makecase(def, MC_OPCODE_RETURN, "MC_OPCODE_RETURN", 0, 0, 0);
-                makecase(def, MC_OPCODE_GETLOCAL, "MC_OPCODE_GETLOCAL", 1, 1, 0);
-                makecase(def, MC_OPCODE_DEFINELOCAL, "MC_OPCODE_DEFINELOCAL", 1, 1, 0);
-                makecase(def, MC_OPCODE_SETLOCAL, "MC_OPCODE_SETLOCAL", 1, 1, 0);
-                makecase(def, MC_OPCODE_GETGLOBALBUILTIN, "MC_OPCODE_GETGLOBALBUILTIN", 1, 2, 0);
-                makecase(def, MC_OPCODE_FUNCTION, "MC_OPCODE_FUNCTION", 2, 2, 1);
-                makecase(def, MC_OPCODE_GETFREE, "MC_OPCODE_GETFREE", 1, 1, 0);
-                makecase(def, MC_OPCODE_SETFREE, "MC_OPCODE_SETFREE", 1, 1, 0);
-                makecase(def, MC_OPCODE_CURRENTFUNCTION, "MC_OPCODE_CURRENTFUNCTION", 0, 0, 0);
-                makecase(def, MC_OPCODE_DUP, "MC_OPCODE_DUP", 0, 0, 0);
-                makecase(def, MC_OPCODE_NUMBER, "MC_OPCODE_NUMBER", 1, 8, 0);
-                makecase(def, MC_OPCODE_FOREACHLEN, "MC_OPCODE_FOREACHLEN", 0, 0, 0);
-                makecase(def, MC_OPCODE_SETRECOVER, "MC_OPCODE_SETRECOVER", 1, 2, 0);
-                makecase(def, MC_OPCODE_BINOR, "MC_OPCODE_BINOR", 0, 0, 0);
-                makecase(def, MC_OPCODE_BINXOR, "MC_OPCODE_BINXOR", 0, 0, 0);
-                makecase(def, MC_OPCODE_BINAND, "MC_OPCODE_BINAND", 0, 0, 0);
-                makecase(def, MC_OPCODE_LSHIFT, "MC_OPCODE_LSHIFT", 0, 0, 0);
-                makecase(def, MC_OPCODE_RSHIFT, "MC_OPCODE_RSHIFT", 0, 0, 0);
-                makecase(def, MC_OPCODE_MAX, "MC_OPCODE_MAX", 0, 0, 0);
+                makecase(def, OPCODE_HALT, "OPCODE_HALT", 0, 0, 0);
+                makecase(def, OPCODE_CONSTANT, "OPCODE_CONSTANT", 1, 2, 0);
+                makecase(def, OPCODE_ADD, "OPCODE_ADD", 0, 0, 0);
+                makecase(def, OPCODE_POP, "OPCODE_POP", 0, 0, 0);
+                makecase(def, OPCODE_SUB, "OPCODE_SUB", 0, 0, 0);
+                makecase(def, OPCODE_MUL, "OPCODE_MUL", 0, 0, 0);
+                makecase(def, OPCODE_DIV, "OPCODE_DIV", 0, 0, 0);
+                makecase(def, OPCODE_MOD, "OPCODE_MOD", 0, 0, 0);
+                makecase(def, OPCODE_TRUE, "OPCODE_TRUE", 0, 0, 0);
+                makecase(def, OPCODE_FALSE, "OPCODE_FALSE", 0, 0, 0);
+                makecase(def, OPCODE_COMPARE, "OPCODE_COMPARE", 0, 0, 0);
+                makecase(def, OPCODE_COMPAREEQ, "OPCODE_COMPAREEQ", 0, 0, 0);
+                makecase(def, OPCODE_EQUAL, "OPCODE_EQUAL", 0, 0, 0);
+                makecase(def, OPCODE_NOTEQUAL, "OPCODE_NOTEQUAL", 0, 0, 0);
+                makecase(def, OPCODE_GREATERTHAN, "OPCODE_GREATERTHAN", 0, 0, 0);
+                makecase(def, OPCODE_GREATERTHANEQUAL, "OPCODE_GREATERTHANEQUAL", 0, 0, 0);
+                makecase(def, OPCODE_MINUS, "OPCODE_MINUS", 0, 0, 0);
+                makecase(def, OPCODE_BINNOT, "OPCODE_BINNOT", 0, 0, 0);
+                makecase(def, OPCODE_BANG, "OPCODE_BANG", 0, 0, 0);
+                makecase(def, OPCODE_JUMP, "OPCODE_JUMP", 1, 2, 0);
+                makecase(def, OPCODE_JUMPIFFALSE, "OPCODE_JUMPIFFALSE", 1, 2, 0);
+                makecase(def, OPCODE_JUMPIFTRUE, "OPCODE_JUMPIFTRUE", 1, 2, 0);
+                makecase(def, OPCODE_NULL, "OPCODE_NULL", 0, 0, 0);
+                makecase(def, OPCODE_GETMODULEGLOBAL, "OPCODE_GETMODULEGLOBAL", 1, 2, 0);
+                makecase(def, OPCODE_SETMODULEGLOBAL, "OPCODE_SETMODULEGLOBAL", 1, 2, 0);
+                makecase(def, OPCODE_DEFINEMODULEGLOBAL, "OPCODE_DEFINEMODULEGLOBAL", 1, 2, 0);
+                makecase(def, OPCODE_ARRAY, "OPCODE_ARRAY", 1, 2, 0);
+                makecase(def, OPCODE_MAPSTART, "OPCODE_MAPSTART", 1, 2, 0);
+                makecase(def, OPCODE_MAPEND, "OPCODE_MAPEND", 1, 2, 0);
+                makecase(def, OPCODE_GETTHIS, "OPCODE_GETTHIS", 0, 0, 0);
+                makecase(def, OPCODE_GETINDEX, "OPCODE_GETINDEX", 0, 0, 0);
+                makecase(def, OPCODE_SETINDEX, "OPCODE_SETINDEX", 0, 0, 0);
+                makecase(def, OPCODE_GETDOTINDEX, "OPCODE_GETDOTINDEX", 0, 0, 0);
+                makecase(def, OPCODE_GETVALUEAT, "OPCODE_GETVALUEAT", 0, 0, 0);
+                makecase(def, OPCODE_CALL, "OPCODE_CALL", 1, 1, 0);
+                makecase(def, OPCODE_RETURNVALUE, "OPCODE_RETURNVALUE", 0, 0, 0);
+                makecase(def, OPCODE_RETURN, "OPCODE_RETURN", 0, 0, 0);
+                makecase(def, OPCODE_GETLOCAL, "OPCODE_GETLOCAL", 1, 1, 0);
+                makecase(def, OPCODE_DEFINELOCAL, "OPCODE_DEFINELOCAL", 1, 1, 0);
+                makecase(def, OPCODE_SETLOCAL, "OPCODE_SETLOCAL", 1, 1, 0);
+                makecase(def, OPCODE_GETGLOBALBUILTIN, "OPCODE_GETGLOBALBUILTIN", 1, 2, 0);
+                makecase(def, OPCODE_FUNCTION, "OPCODE_FUNCTION", 2, 2, 1);
+                makecase(def, OPCODE_GETFREE, "OPCODE_GETFREE", 1, 1, 0);
+                makecase(def, OPCODE_SETFREE, "OPCODE_SETFREE", 1, 1, 0);
+                makecase(def, OPCODE_CURRENTFUNCTION, "OPCODE_CURRENTFUNCTION", 0, 0, 0);
+                makecase(def, OPCODE_DUP, "OPCODE_DUP", 0, 0, 0);
+                makecase(def, OPCODE_NUMBER, "OPCODE_NUMBER", 1, 8, 0);
+                makecase(def, OPCODE_FOREACHLEN, "OPCODE_FOREACHLEN", 0, 0, 0);
+                makecase(def, OPCODE_SETRECOVER, "OPCODE_SETRECOVER", 1, 2, 0);
+                makecase(def, OPCODE_BINOR, "OPCODE_BINOR", 0, 0, 0);
+                makecase(def, OPCODE_BINXOR, "OPCODE_BINXOR", 0, 0, 0);
+                makecase(def, OPCODE_BINAND, "OPCODE_BINAND", 0, 0, 0);
+                makecase(def, OPCODE_LSHIFT, "OPCODE_LSHIFT", 0, 0, 0);
+                makecase(def, OPCODE_RSHIFT, "OPCODE_RSHIFT", 0, 0, 0);
+                makecase(def, OPCODE_MAX, "OPCODE_MAX", 0, 0, 0);
                 default:
                     {
                         return nullptr; 
@@ -9205,7 +8975,7 @@ class AstCompiler
 
         static const char* opdefGetName(mcinternopcode_t op)
         {
-            mcopdefinition_t def;
+            OpDefinition def;
             return opdefLookup(&def, op)->name;
         }
 
@@ -9294,7 +9064,7 @@ class AstCompiler
 
     public:
         State* m_pstate = nullptr;
-        mcconfig_t* m_config = nullptr;
+        RuntimeConfig* m_config = nullptr;
         GCMemory* m_astmem = nullptr;
         ErrList* m_ccerrlist = nullptr;
         PtrList* m_files = nullptr;
@@ -9312,7 +9082,7 @@ class AstCompiler
         {
         }
 
-        AstCompiler(State* state, mcconfig_t* config, GCMemory* gcmem, ErrList* errors, PtrList* files, SymStore* gstore, Printer* fstderr)
+        AstCompiler(State* state, RuntimeConfig* config, GCMemory* gcmem, ErrList* errors, PtrList* files, SymStore* gstore, Printer* fstderr)
         {
             bool ok;
             (void)ok;
@@ -9321,7 +9091,7 @@ class AstCompiler
             m_pstate = state; 
         }
 
-        bool initBase(State* state, mcconfig_t* cfg, GCMemory* gcmem, ErrList* errors, PtrList* files, SymStore* gstor, Printer* fstderr)
+        bool initBase(State* state, RuntimeConfig* cfg, GCMemory* gcmem, ErrList* errors, PtrList* files, SymStore* gstor, Printer* fstderr)
         {
             bool ok;
             const char* filename;
@@ -9388,8 +9158,8 @@ class AstCompiler
             int width;
             int instrlen;
             uint16_t val;
-            mcopdefinition_t vdef;
-            mcopdefinition_t* def;
+            OpDefinition vdef;
+            OpDefinition* def;
             (void)ok;
             def = opdefLookup(&vdef, op);
             if(!def)
@@ -9560,6 +9330,10 @@ class AstCompiler
                 AstPrinter apr(m_filestderr);
                 apr.beginPrint(statements);
             }
+            if(m_config->exitafterastdump)
+            {
+                return false;
+            }
             ok = compileStmtList(statements);
             PtrList::destroy(statements, (mcitemdestroyfn_t)AstExpression::destroyExpression);
             if(m_config->dumpbytecode)
@@ -9627,7 +9401,7 @@ class AstCompiler
                 {
                     if(m_config->fatalcomplaints)
                     {
-                        m_ccerrlist->pushFormat(MC_ERROR_COMPILING, importstmt->m_exprpos, "module \"%s\" was already imported", modname);
+                        m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, importstmt->m_exprpos, "module \"%s\" was already imported", modname);
                         result = false;
                     }
                     else
@@ -9658,7 +9432,7 @@ class AstCompiler
             symtab = getsymtable();
             if(symtab->m_symtbouter != nullptr || symtab->m_symtbblockscopes->count() > 1)
             {
-                m_ccerrlist->pushFormat(MC_ERROR_COMPILING, importstmt->m_exprpos, "modules can only be imported in global scope");
+                m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, importstmt->m_exprpos, "modules can only be imported in global scope");
                 result = false;
                 goto end;
             }
@@ -9667,7 +9441,7 @@ class AstCompiler
                 fs = (AstScopeFile*)m_filescopelist->get(i);
                 if(mc_util_strequal(fs->m_filescopesourcefile->path(), filepath))
                 {
-                    m_ccerrlist->pushFormat(MC_ERROR_COMPILING, importstmt->m_exprpos, "cyclic reference of file \"%s\"", filepath);
+                    m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, importstmt->m_exprpos, "cyclic reference of file \"%s\"", filepath);
                     result = false;
                     goto end;
                 }
@@ -9680,7 +9454,7 @@ class AstCompiler
                 code = mc_fsutil_fileread(searchedpath, &flen);
                 if(!code)
                 {
-                    m_ccerrlist->pushFormat(MC_ERROR_COMPILING, importstmt->m_exprpos, "reading module file \"%s\" failed", filepath);
+                    m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, importstmt->m_exprpos, "reading module file \"%s\" failed", filepath);
                     result = false;
                     goto end;
                 }
@@ -9721,14 +9495,14 @@ class AstCompiler
                 currentsymbol = symtab->resolve(name);
                 if(currentsymbol)
                 {
-                    m_ccerrlist->pushFormat(MC_ERROR_COMPILING, pos, "symbol \"%s\" is already defined", name);
+                    m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, pos, "symbol \"%s\" is already defined", name);
                     return nullptr;
                 }
             }
             symbol = symtab->defineSymbol(name, assignable);
             if(!symbol)
             {
-                m_ccerrlist->pushFormat(MC_ERROR_COMPILING, pos, "cannot define symbol \"%s\"", name);
+                m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, pos, "cannot define symbol \"%s\"", name);
                 return nullptr;
             }
             return symbol;
@@ -9770,13 +9544,13 @@ class AstCompiler
                 ifcase = (AstExpression::ExprIfCase*)ifstmt->m_ifcases->get(i);
                 ok = compileExpression(ifcase->m_ifcond);
                 opbuf[0] = 0xbeef;
-                nextcasejumpip = emitOpCode(MC_OPCODE_JUMPIFFALSE, 1, opbuf);
+                nextcasejumpip = emitOpCode(OPCODE_JUMPIFFALSE, 1, opbuf);
                 ok = compilecodeblock(ifcase->m_ifthen);
                 /* don't emit jump for the last statement */
                 if(i < (ifstmt->m_ifcases->count() - 1) || ifstmt->m_ifstmtelsestmt)
                 {
                     opbuf[0] = 0xbeef;
-                    jumptoendip = emitOpCode(MC_OPCODE_JUMP, 1, opbuf);
+                    jumptoendip = emitOpCode(OPCODE_JUMP, 1, opbuf);
                     ok = jumptoendips->push(&jumptoendip);
                 }
                 afterelifip = getip();
@@ -9803,18 +9577,18 @@ class AstCompiler
             (void)ok;
             if(compscope->m_outerscope == nullptr)
             {
-                m_ccerrlist->pushFormat( MC_ERROR_COMPILING, expr->m_exprpos, "nothing to return from");
+                m_ccerrlist->pushFormat( Error::ERRTYP_COMPILING, expr->m_exprpos, "nothing to return from");
                 return false;
             }
             ip = -1;
             if(expr->m_uexpr.exprreturnvalue)
             {
                 ok = compileExpression(expr->m_uexpr.exprreturnvalue);
-                ip = emitOpCode(MC_OPCODE_RETURNVALUE, 0, nullptr);
+                ip = emitOpCode(OPCODE_RETURNVALUE, 0, nullptr);
             }
             else
             {
-                ip = emitOpCode(MC_OPCODE_RETURN, 0, nullptr);
+                ip = emitOpCode(OPCODE_RETURN, 0, nullptr);
             }
             if(ip < 0)
             {
@@ -9838,13 +9612,13 @@ class AstCompiler
             ok = compileExpression(loop->loopcond);
             aftertestip = getip();
             opbuf[0] = aftertestip + 6;
-            ip = emitOpCode(MC_OPCODE_JUMPIFTRUE, 1, opbuf);
+            ip = emitOpCode(OPCODE_JUMPIFTRUE, 1, opbuf);
             if(ip < 0)
             {
                 return false;
             }
             opbuf[0] = 0xdead;
-            jumptoafterbodyip = emitOpCode(MC_OPCODE_JUMP, 1, opbuf);
+            jumptoafterbodyip = emitOpCode(OPCODE_JUMP, 1, opbuf);
             if(jumptoafterbodyip < 0)
             {
                 return false;
@@ -9855,7 +9629,7 @@ class AstCompiler
             popbreakip();
             popcontinueip();
             opbuf[0] = beforetestip;
-            ip = emitOpCode(MC_OPCODE_JUMP, 1, opbuf);
+            ip = emitOpCode(OPCODE_JUMP, 1, opbuf);
             if(ip < 0)
             {
                 return false;
@@ -9872,11 +9646,11 @@ class AstCompiler
             breakip = getbreakip();
             if(breakip < 0)
             {
-                m_ccerrlist->pushFormat(MC_ERROR_COMPILING, expr->m_exprpos, "nothing to break from.");
+                m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, expr->m_exprpos, "nothing to break from.");
                 return false;
             }
             opbuf[0] = breakip;
-            ip = emitOpCode(MC_OPCODE_JUMP, 1, opbuf);
+            ip = emitOpCode(OPCODE_JUMP, 1, opbuf);
             if(ip < 0)
             {
                 return false;
@@ -9891,11 +9665,11 @@ class AstCompiler
             continueip = getcontinueip();
             if(continueip < 0)
             {
-                m_ccerrlist->pushFormat(MC_ERROR_COMPILING, expr->m_exprpos, "nothing to continue from.");
+                m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, expr->m_exprpos, "nothing to continue from.");
                 return false;
             }
             opbuf[0] = continueip;
-            ip = emitOpCode(MC_OPCODE_JUMP, 1, opbuf);
+            ip = emitOpCode(OPCODE_JUMP, 1, opbuf);
             if(ip < 0)
             {
                 return false;
@@ -9903,27 +9677,17 @@ class AstCompiler
             return true;
         }
 
-
         bool compileExpression(AstExpression* expr)
         {
             bool ok;
             bool res;
             int ip;
             uint64_t opbuf[10];
-            AstExpression* exproptimized;
             AstScopeComp* compscope;
             AstSymTable* symtab;
             (void)ok;
             ok = false;
             ip = -1;
-            exproptimized = nullptr;
-            #if 1
-            exproptimized = AstOptimizer::optimizeExpr(expr);
-            if(exproptimized != nullptr)
-            {
-                expr = exproptimized;
-            }
-            #endif
             ok = m_srcposstack->push(&expr->m_exprpos);
             compscope = getCompilationScope();
             symtab = getsymtable();
@@ -9937,62 +9701,62 @@ class AstCompiler
                         AstExpression* left;
                         AstExpression* right;
                         rearrange = false;
-                        op = MC_OPCODE_HALT;
+                        op = OPCODE_HALT;
                         switch(expr->m_uexpr.exprinfix.op)
                         {
-                            case MC_MATHOP_PLUS:
-                                op = MC_OPCODE_ADD;
+                            case AstExpression::MATHOP_PLUS:
+                                op = OPCODE_ADD;
                                 break;
-                            case MC_MATHOP_MINUS:
-                                op = MC_OPCODE_SUB;
+                            case AstExpression::MATHOP_MINUS:
+                                op = OPCODE_SUB;
                                 break;
-                            case MC_MATHOP_ASTERISK:
-                                op = MC_OPCODE_MUL;
+                            case AstExpression::MATHOP_ASTERISK:
+                                op = OPCODE_MUL;
                                 break;
-                            case MC_MATHOP_SLASH:
-                                op = MC_OPCODE_DIV;
+                            case AstExpression::MATHOP_SLASH:
+                                op = OPCODE_DIV;
                                 break;
-                            case MC_MATHOP_MODULUS:
-                                op = MC_OPCODE_MOD;
+                            case AstExpression::MATHOP_MODULUS:
+                                op = OPCODE_MOD;
                                 break;
-                            case MC_MATHOP_EQ:
-                                op = MC_OPCODE_EQUAL;
+                            case AstExpression::MATHOP_EQ:
+                                op = OPCODE_EQUAL;
                                 break;
-                            case MC_MATHOP_NOTEQ:
-                                op = MC_OPCODE_NOTEQUAL;
+                            case AstExpression::MATHOP_NOTEQ:
+                                op = OPCODE_NOTEQUAL;
                                 break;
-                            case MC_MATHOP_GT:
-                                op = MC_OPCODE_GREATERTHAN;
+                            case AstExpression::MATHOP_GT:
+                                op = OPCODE_GREATERTHAN;
                                 break;
-                            case MC_MATHOP_GTE:
-                                op = MC_OPCODE_GREATERTHANEQUAL;
+                            case AstExpression::MATHOP_GTE:
+                                op = OPCODE_GREATERTHANEQUAL;
                                 break;
-                            case MC_MATHOP_LT:
-                                op = MC_OPCODE_GREATERTHAN;
+                            case AstExpression::MATHOP_LT:
+                                op = OPCODE_GREATERTHAN;
                                 rearrange = true;
                                 break;
-                            case MC_MATHOP_LTE:
-                                op = MC_OPCODE_GREATERTHANEQUAL;
+                            case AstExpression::MATHOP_LTE:
+                                op = OPCODE_GREATERTHANEQUAL;
                                 rearrange = true;
                                 break;
-                            case MC_MATHOP_BINOR:
-                                op = MC_OPCODE_BINOR;
+                            case AstExpression::MATHOP_BINOR:
+                                op = OPCODE_BINOR;
                                 break;
-                            case MC_MATHOP_BINXOR:
-                                op = MC_OPCODE_BINXOR;
+                            case AstExpression::MATHOP_BINXOR:
+                                op = OPCODE_BINXOR;
                                 break;
-                            case MC_MATHOP_BINAND:
-                                op = MC_OPCODE_BINAND;
+                            case AstExpression::MATHOP_BINAND:
+                                op = OPCODE_BINAND;
                                 break;
-                            case MC_MATHOP_LSHIFT:
-                                op = MC_OPCODE_LSHIFT;
+                            case AstExpression::MATHOP_LSHIFT:
+                                op = OPCODE_LSHIFT;
                                 break;
-                            case MC_MATHOP_RSHIFT:
-                                op = MC_OPCODE_RSHIFT;
+                            case AstExpression::MATHOP_RSHIFT:
+                                op = OPCODE_RSHIFT;
                                 break;
                             default:
                                 {
-                                    m_ccerrlist->pushFormat(MC_ERROR_COMPILING, expr->m_exprpos, "unknown infix operator");
+                                    m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, expr->m_exprpos, "unknown infix operator");
                                     goto error;
                                 }
                                 break;
@@ -10003,22 +9767,22 @@ class AstCompiler
                         ok = compileExpression(right);
                         switch(expr->m_uexpr.exprinfix.op)
                         {
-                            case MC_MATHOP_EQ:
-                            case MC_MATHOP_NOTEQ:
+                            case AstExpression::MATHOP_EQ:
+                            case AstExpression::MATHOP_NOTEQ:
                                 {
-                                    ip = emitOpCode(MC_OPCODE_COMPAREEQ, 0, nullptr);
+                                    ip = emitOpCode(OPCODE_COMPAREEQ, 0, nullptr);
                                     if(ip < 0)
                                     {
                                         goto error;
                                     }
                                 }
                                 break;
-                            case MC_MATHOP_GT:
-                            case MC_MATHOP_GTE:
-                            case MC_MATHOP_LT:
-                            case MC_MATHOP_LTE:
+                            case AstExpression::MATHOP_GT:
+                            case AstExpression::MATHOP_GTE:
+                            case AstExpression::MATHOP_LT:
+                            case AstExpression::MATHOP_LTE:
                                 {
-                                    ip = emitOpCode(MC_OPCODE_COMPARE, 0, nullptr);
+                                    ip = emitOpCode(OPCODE_COMPARE, 0, nullptr);
                                     if(ip < 0)
                                     {
                                         goto error;
@@ -10043,7 +9807,7 @@ class AstCompiler
                         mcfloat_t number;
                         number = expr->m_uexpr.exprlitnumber;
                         opbuf[0] = mc_util_doubletouint64(number);
-                        ip = emitOpCode(MC_OPCODE_NUMBER, 1, opbuf);
+                        ip = emitOpCode(OPCODE_NUMBER, 1, opbuf);
                         if(ip < 0)
                         {
                             goto error;
@@ -10083,7 +9847,7 @@ class AstCompiler
                             ok = m_stringconstposdict->set(expr->m_uexpr.exprlitstring.m_strexprdata, posval);
                         }
                         opbuf[0] = pos;
-                        ip = emitOpCode(MC_OPCODE_CONSTANT, 1, opbuf);
+                        ip = emitOpCode(OPCODE_CONSTANT, 1, opbuf);
                         if(ip < 0)
                         {
                             goto error;
@@ -10092,7 +9856,7 @@ class AstCompiler
                     break;
                 case AstExpression::EXPR_NULLLITERAL:
                     {
-                        ip = emitOpCode(MC_OPCODE_NULL, 0, nullptr);
+                        ip = emitOpCode(OPCODE_NULL, 0, nullptr);
                         if(ip < 0)
                         {
                             goto error;
@@ -10101,7 +9865,7 @@ class AstCompiler
                     break;
                 case AstExpression::EXPR_BOOLLITERAL:
                     {
-                        ip = emitOpCode(expr->m_uexpr.exprlitbool ? MC_OPCODE_TRUE : MC_OPCODE_FALSE, 0, nullptr);
+                        ip = emitOpCode(expr->m_uexpr.exprlitbool ? OPCODE_TRUE : OPCODE_FALSE, 0, nullptr);
                         if(ip < 0)
                         {
                             goto error;
@@ -10120,7 +9884,7 @@ class AstCompiler
                             }
                         }
                         opbuf[0] = expr->m_uexpr.exprlitarray.m_litarritems->count();
-                        ip = emitOpCode(MC_OPCODE_ARRAY, 1, opbuf);
+                        ip = emitOpCode(OPCODE_ARRAY, 1, opbuf);
                         if(ip < 0)
                         {
                             goto error;
@@ -10137,7 +9901,7 @@ class AstCompiler
                         map = &expr->m_uexpr.exprlitmap;
                         len = map->m_litmapkeys->count();
                         opbuf[0] = len;
-                        ip = emitOpCode(MC_OPCODE_MAPSTART, 1, opbuf);
+                        ip = emitOpCode(OPCODE_MAPSTART, 1, opbuf);
                         if(ip < 0)
                         {
                             goto error;
@@ -10158,7 +9922,7 @@ class AstCompiler
                             }
                         }
                         opbuf[0] = len;
-                        ip = emitOpCode(MC_OPCODE_MAPEND, 1, opbuf);
+                        ip = emitOpCode(OPCODE_MAPEND, 1, opbuf);
                         if(ip < 0)
                         {
                             goto error;
@@ -10173,21 +9937,21 @@ class AstCompiler
                         {
                             goto error;
                         }
-                        op = MC_OPCODE_HALT;
+                        op = OPCODE_HALT;
                         switch(expr->m_uexpr.exprprefix.op)
                         {
-                            case MC_MATHOP_MINUS:
-                                op = MC_OPCODE_MINUS;
+                            case AstExpression::MATHOP_MINUS:
+                                op = OPCODE_MINUS;
                                 break;
-                            case MC_MATHOP_BINNOT:
-                                op = MC_OPCODE_BINNOT;
+                            case AstExpression::MATHOP_BINNOT:
+                                op = OPCODE_BINNOT;
                                 break;
-                            case MC_MATHOP_BANG:
-                                op = MC_OPCODE_BANG;
+                            case AstExpression::MATHOP_BANG:
+                                op = OPCODE_BANG;
                                 break;
                             default:
                                 {
-                                    m_ccerrlist->pushFormat(MC_ERROR_COMPILING, expr->m_exprpos, "unknown prefix operator.");
+                                    m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, expr->m_exprpos, "unknown prefix operator.");
                                     goto error;
                                 }
                                 break;
@@ -10209,7 +9973,7 @@ class AstCompiler
                         {
                             if(m_config->strictmode)
                             {
-                                m_ccerrlist->pushFormat(MC_ERROR_COMPILING, ident->m_exprpos, "compilation: failed to resolve symbol \"%s\"", ident->m_identvalue);
+                                m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, ident->m_exprpos, "compilation: failed to resolve symbol \"%s\"", ident->m_identvalue);
                                 goto error;
                             }
                             else
@@ -10241,12 +10005,12 @@ class AstCompiler
                         #if 1
                         if(index->isdot)
                         {
-                            ip = emitOpCode(MC_OPCODE_GETDOTINDEX, 0, nullptr);
+                            ip = emitOpCode(OPCODE_GETDOTINDEX, 0, nullptr);
                         }
                         else
                         #endif
                         {
-                            ip = emitOpCode(MC_OPCODE_GETINDEX, 0, nullptr);
+                            ip = emitOpCode(OPCODE_GETINDEX, 0, nullptr);
                         }
                         if(ip < 0)
                         {
@@ -10278,14 +10042,14 @@ class AstCompiler
                             fnsymbol = symtab->defineFunctionName(fn->name, false);
                             if(!fnsymbol)
                             {
-                                m_ccerrlist->pushFormat(MC_ERROR_COMPILING, expr->m_exprpos, "cannot define function name as \"%s\"", fn->name);
+                                m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, expr->m_exprpos, "cannot define function name as \"%s\"", fn->name);
                                 goto error;
                             }
                         }
                         thissymbol = symtab->defineThis();
                         if(!thissymbol)
                         {
-                            m_ccerrlist->pushFormat(MC_ERROR_COMPILING, expr->m_exprpos, "cannot define \"this\" symbol");
+                            m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, expr->m_exprpos, "cannot define \"this\" symbol");
                             goto error;
                         }
                         for(i = 0; i < expr->m_uexpr.exprlitfunction.funcparamlist->count(); i++)
@@ -10302,9 +10066,9 @@ class AstCompiler
                         {
                             goto error;
                         }
-                        if(!lastopcodeis(MC_OPCODE_RETURNVALUE) && !lastopcodeis(MC_OPCODE_RETURN))
+                        if(!lastopcodeis(OPCODE_RETURNVALUE) && !lastopcodeis(OPCODE_RETURN))
                         {
-                            ip = emitOpCode(MC_OPCODE_RETURN, 0, nullptr);
+                            ip = emitOpCode(OPCODE_RETURN, 0, nullptr);
                             if(ip < 0)
                             {
                                 goto error;
@@ -10349,7 +10113,7 @@ class AstCompiler
                         }
                         opbuf[0] = pos;
                         opbuf[1] = freesyms->count();
-                        ip = emitOpCode(MC_OPCODE_FUNCTION, 2, opbuf);
+                        ip = emitOpCode(OPCODE_FUNCTION, 2, opbuf);
                         if(ip < 0)
                         {
                             PtrList::destroy(freesyms, (mcitemdestroyfn_t)AstSymbol::destroy);
@@ -10378,7 +10142,7 @@ class AstCompiler
                             }
                         }
                         opbuf[0] = expr->m_uexpr.exprcall.args->count();
-                        ip = emitOpCode(MC_OPCODE_CALL, 1, opbuf);
+                        ip = emitOpCode(OPCODE_CALL, 1, opbuf);
                         if(ip < 0)
                         {
                             goto error;
@@ -10394,7 +10158,7 @@ class AstCompiler
                         assign = &expr->m_uexpr.exprassign;
                         if(assign->dest->m_exprtype != AstExpression::EXPR_IDENT && assign->dest->m_exprtype != AstExpression::EXPR_INDEX)
                         {
-                            m_ccerrlist->pushFormat(MC_ERROR_COMPILING, assign->dest->m_exprpos, "expression is not assignable");
+                            m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, assign->dest->m_exprpos, "expression is not assignable");
                             goto error;
                         }
                         if(assign->is_postfix)
@@ -10410,7 +10174,7 @@ class AstCompiler
                         {
                             goto error;
                         }
-                        ip = emitOpCode(MC_OPCODE_DUP, 0, nullptr);
+                        ip = emitOpCode(OPCODE_DUP, 0, nullptr);
                         if(ip < 0)
                         {
                             goto error;
@@ -10424,7 +10188,7 @@ class AstCompiler
                             {
                                 if(m_config->strictmode)
                                 {
-                                    m_ccerrlist->pushFormat(MC_ERROR_COMPILING, assign->dest->m_exprpos, "cannot assign to undeclared symbol \"%s\"", ident->m_identvalue);
+                                    m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, assign->dest->m_exprpos, "cannot assign to undeclared symbol \"%s\"", ident->m_identvalue);
                                     goto error;
                                 }
                                 else
@@ -10432,14 +10196,14 @@ class AstCompiler
                                     symbol = doDefineSymbol(ident->m_exprpos, ident->m_identvalue, true, false);
                                     if(!symbol)
                                     {
-                                        m_ccerrlist->pushFormat(MC_ERROR_COMPILING, assign->dest->m_exprpos, "failed to implicitly create symbol \"%s\"", ident->m_identvalue);
+                                        m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, assign->dest->m_exprpos, "failed to implicitly create symbol \"%s\"", ident->m_identvalue);
                                         goto error;
                                     }
                                 }
                             }
                             if(!symbol->m_symisassignable)
                             {
-                                m_ccerrlist->pushFormat(MC_ERROR_COMPILING, assign->dest->m_exprpos, "compilation: cannot assign to readonly symbol \"%s\"", ident->m_identvalue);
+                                m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, assign->dest->m_exprpos, "compilation: cannot assign to readonly symbol \"%s\"", ident->m_identvalue);
                                 goto error;
                             }
                             ok = storesymbol(symbol, false);
@@ -10461,7 +10225,7 @@ class AstCompiler
                             {
                                 goto error;
                             }
-                            ip = emitOpCode(MC_OPCODE_SETINDEX, 0, nullptr);
+                            ip = emitOpCode(OPCODE_SETINDEX, 0, nullptr);
                             if(ip < 0)
                             {
                                 goto error;
@@ -10469,7 +10233,7 @@ class AstCompiler
                         }
                         if(assign->is_postfix)
                         {
-                            ip = emitOpCode(MC_OPCODE_POP, 0, nullptr);
+                            ip = emitOpCode(OPCODE_POP, 0, nullptr);
                             if(ip < 0)
                             {
                                 goto error;
@@ -10490,27 +10254,27 @@ class AstCompiler
                         {
                             goto error;
                         }
-                        ip = emitOpCode(MC_OPCODE_DUP, 0, nullptr);
+                        ip = emitOpCode(OPCODE_DUP, 0, nullptr);
                         if(ip < 0)
                         {
                             goto error;
                         }
                         afterleftjumpip = 0;
-                        if(logi->op == MC_MATHOP_LOGICALAND)
+                        if(logi->op == AstExpression::MATHOP_LOGICALAND)
                         {
                             opbuf[0] = 0xbeef;
-                            afterleftjumpip = emitOpCode(MC_OPCODE_JUMPIFFALSE, 1, opbuf);
+                            afterleftjumpip = emitOpCode(OPCODE_JUMPIFFALSE, 1, opbuf);
                         }
                         else
                         {
                             opbuf[0] = 0xbeef;
-                            afterleftjumpip = emitOpCode(MC_OPCODE_JUMPIFTRUE, 1, opbuf);
+                            afterleftjumpip = emitOpCode(OPCODE_JUMPIFTRUE, 1, opbuf);
                         }
                         if(afterleftjumpip < 0)
                         {
                             goto error;
                         }
-                        ip = emitOpCode(MC_OPCODE_POP, 0, nullptr);
+                        ip = emitOpCode(OPCODE_POP, 0, nullptr);
                         if(ip < 0)
                         {
                             goto error;
@@ -10538,14 +10302,14 @@ class AstCompiler
                             goto error;
                         }
                         opbuf[0] = 0xbeef;
-                        elsejumpip = emitOpCode(MC_OPCODE_JUMPIFFALSE, 1, opbuf);
+                        elsejumpip = emitOpCode(OPCODE_JUMPIFFALSE, 1, opbuf);
                         ok = compileExpression(ternary->teriftrue);
                         if(!ok)
                         {
                             goto error;
                         }
                         opbuf[0] = 0xbeef;
-                        endjumpip = emitOpCode(MC_OPCODE_JUMP, 1, opbuf);
+                        endjumpip = emitOpCode(OPCODE_JUMP, 1, opbuf);
                         elseip = getip();
                         changeuint16operand(elsejumpip + 1, elseip);
                         ok = compileExpression(ternary->teriffalse);
@@ -10565,7 +10329,7 @@ class AstCompiler
                         {
                             return false;
                         }
-                        ip = emitOpCode(MC_OPCODE_POP, 0, nullptr);
+                        ip = emitOpCode(OPCODE_POP, 0, nullptr);
                         if(ip < 0)
                         {
                             return false;
@@ -10641,7 +10405,7 @@ class AstCompiler
                             return false;
                         }
                         opbuf[0] = 0;
-                        ip = emitOpCode(MC_OPCODE_NUMBER, 1, opbuf);
+                        ip = emitOpCode(OPCODE_NUMBER, 1, opbuf);
                         if(ip < 0)
                         {
                             return false;
@@ -10657,7 +10421,7 @@ class AstCompiler
                             sourcesymbol = symtab->resolve(foreach->source->m_uexpr.exprident->m_identvalue);
                             if(!sourcesymbol)
                             {
-                                m_ccerrlist->pushFormat(MC_ERROR_COMPILING, foreach->source->m_exprpos, "symbol \"%s\" could not be resolved", foreach->source->m_uexpr.exprident->m_identvalue);
+                                m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, foreach->source->m_exprpos, "symbol \"%s\" could not be resolved", foreach->source->m_uexpr.exprident->m_identvalue);
                                 return false;
                             }
                         }
@@ -10681,7 +10445,7 @@ class AstCompiler
                         }
                         /* Update */
                         opbuf[0] = 0xbeef;
-                        jumptoafterupdateip = emitOpCode(MC_OPCODE_JUMP, 1, opbuf);
+                        jumptoafterupdateip = emitOpCode(OPCODE_JUMP, 1, opbuf);
                         if(jumptoafterupdateip < 0)
                         {
                             return false;
@@ -10693,12 +10457,12 @@ class AstCompiler
                             return false;
                         }
                         opbuf[0] = mc_util_doubletouint64(1);
-                        ip = emitOpCode(MC_OPCODE_NUMBER, 1, opbuf);
+                        ip = emitOpCode(OPCODE_NUMBER, 1, opbuf);
                         if(ip < 0)
                         {
                             return false;
                         }
-                        ip = emitOpCode(MC_OPCODE_ADD, 0, nullptr);
+                        ip = emitOpCode(OPCODE_ADD, 0, nullptr);
                         if(ip < 0)
                         {
                             return false;
@@ -10717,7 +10481,7 @@ class AstCompiler
                         {
                             return false;
                         }
-                        ip = emitOpCode(MC_OPCODE_FOREACHLEN, 0, nullptr);
+                        ip = emitOpCode(OPCODE_FOREACHLEN, 0, nullptr);
                         if(ip < 0)
                         {
                             return false;
@@ -10728,25 +10492,25 @@ class AstCompiler
                         {
                             return false;
                         }
-                        ip = emitOpCode(MC_OPCODE_COMPARE, 0, nullptr);
+                        ip = emitOpCode(OPCODE_COMPARE, 0, nullptr);
                         if(ip < 0)
                         {
                             return false;
                         }
-                        ip = emitOpCode(MC_OPCODE_EQUAL, 0, nullptr);
+                        ip = emitOpCode(OPCODE_EQUAL, 0, nullptr);
                         if(ip < 0)
                         {
                             return false;
                         }
                         aftertestip = getip();
                         opbuf[0] = aftertestip + 6;
-                        ip = emitOpCode(MC_OPCODE_JUMPIFFALSE, 1, opbuf);
+                        ip = emitOpCode(OPCODE_JUMPIFFALSE, 1, opbuf);
                         if(ip < 0)
                         {
                             return false;
                         }
                         opbuf[0] = 0xdead;
-                        jumptoafterbodyip = emitOpCode(MC_OPCODE_JUMP, 1, opbuf);
+                        jumptoafterbodyip = emitOpCode(OPCODE_JUMP, 1, opbuf);
                         if(jumptoafterbodyip < 0)
                         {
                             return false;
@@ -10761,7 +10525,7 @@ class AstCompiler
                         {
                             return false;
                         }
-                        ip = emitOpCode(MC_OPCODE_GETVALUEAT, 0, nullptr);
+                        ip = emitOpCode(OPCODE_GETVALUEAT, 0, nullptr);
                         if(ip < 0)
                         {
                             return false;
@@ -10783,7 +10547,7 @@ class AstCompiler
                         popbreakip();
                         popcontinueip();
                         opbuf[0] = updateip;
-                        ip = emitOpCode(MC_OPCODE_JUMP, 1, opbuf);
+                        ip = emitOpCode(OPCODE_JUMP, 1, opbuf);
                         if(ip < 0)
                         {
                             return false;
@@ -10815,7 +10579,7 @@ class AstCompiler
                                 return false;
                             }
                             opbuf[0] = 0xbeef;
-                            jumptoafterupdateip = emitOpCode(MC_OPCODE_JUMP, 1, opbuf);
+                            jumptoafterupdateip = emitOpCode(OPCODE_JUMP, 1, opbuf);
                             if(jumptoafterupdateip < 0)
                             {
                                 return false;
@@ -10830,7 +10594,7 @@ class AstCompiler
                             {
                                 return false;
                             }
-                            ip = emitOpCode(MC_OPCODE_POP, 0, nullptr);
+                            ip = emitOpCode(OPCODE_POP, 0, nullptr);
                             if(ip < 0)
                             {
                                 return false;
@@ -10852,7 +10616,7 @@ class AstCompiler
                         }
                         else
                         {
-                            ip = emitOpCode(MC_OPCODE_TRUE, 0, nullptr);
+                            ip = emitOpCode(OPCODE_TRUE, 0, nullptr);
                             if(ip < 0)
                             {
                                 return false;
@@ -10860,13 +10624,13 @@ class AstCompiler
                         }
                         aftertestip = getip();
                         opbuf[0] = aftertestip + 6;
-                        ip = emitOpCode(MC_OPCODE_JUMPIFTRUE, 1, opbuf);
+                        ip = emitOpCode(OPCODE_JUMPIFTRUE, 1, opbuf);
                         if(ip < 0)
                         {
                             return false;
                         }
                         opbuf[0] = 0xdead;
-                        jumptoafterbodyip = emitOpCode(MC_OPCODE_JUMP, 1, opbuf);
+                        jumptoafterbodyip = emitOpCode(OPCODE_JUMP, 1, opbuf);
                         if(jumptoafterbodyip < 0)
                         {
                             return false;
@@ -10882,7 +10646,7 @@ class AstCompiler
                         popbreakip();
                         popcontinueip();
                         opbuf[0] = updateip;
-                        ip = emitOpCode(MC_OPCODE_JUMP, 1, opbuf);
+                        ip = emitOpCode(OPCODE_JUMP, 1, opbuf);
                         if(ip < 0)
                         {
                             return false;
@@ -10923,25 +10687,25 @@ class AstCompiler
                         {
                             if(symtab->isModuleGlobalScope())
                             {
-                                m_ccerrlist->pushFormat(MC_ERROR_COMPILING, expr->m_exprpos, "recover statement cannot be defined in global scope");
+                                m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, expr->m_exprpos, "recover statement cannot be defined in global scope");
                                 return false;
                             }
                         }
                         #if 0
                         if(!symtab->isTopBlockScope())
                         {
-                            m_ccerrlist->pushFormat(MC_ERROR_COMPILING, expr->m_exprpos, "recover statement cannot be defined within other statements");
+                            m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, expr->m_exprpos, "recover statement cannot be defined within other statements");
                             return false;
                         }
                         #endif
                         opbuf[0] = 0xbeef;
-                        recip = emitOpCode(MC_OPCODE_SETRECOVER, 1, opbuf);
+                        recip = emitOpCode(OPCODE_SETRECOVER, 1, opbuf);
                         if(recip < 0)
                         {
                             return false;
                         }
                         opbuf[0] = 0xbeef;
-                        jumptoafterrecoverip = emitOpCode(MC_OPCODE_JUMP, 1, opbuf);
+                        jumptoafterrecoverip = emitOpCode(OPCODE_JUMP, 1, opbuf);
                         if(jumptoafterrecoverip < 0)
                         {
                             return false;
@@ -10964,10 +10728,10 @@ class AstCompiler
                         {
                             return false;
                         }
-                        if(!lastopcodeis(MC_OPCODE_RETURN) && !lastopcodeis(MC_OPCODE_RETURNVALUE))
+                        if(!lastopcodeis(OPCODE_RETURN) && !lastopcodeis(OPCODE_RETURNVALUE))
                         {
                             #if 0
-                                m_ccerrlist->pushFormat(MC_ERROR_COMPILING, expr->m_exprpos, "recover body must end with a return statement");
+                                m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, expr->m_exprpos, "recover body must end with a return statement");
                                 return false;
                             #else
                                 mc_util_complain(expr->m_exprpos, "recover body should end with a return statement");
@@ -10991,7 +10755,6 @@ class AstCompiler
             res = false;
         end:
             m_srcposstack->pop(nullptr);
-            AstExpression::destroyExpression(exproptimized);
             return res;
         }
 
@@ -11011,12 +10774,12 @@ class AstCompiler
             ok = symtab->scopeBlockPush();
             if(block->m_blockstatements->count() == 0)
             {
-                ip = emitOpCode(MC_OPCODE_NULL, 0, nullptr);
+                ip = emitOpCode(OPCODE_NULL, 0, nullptr);
                 if(ip < 0)
                 {
                     return false;
                 }
-                ip = emitOpCode(MC_OPCODE_POP, 0, nullptr);
+                ip = emitOpCode(OPCODE_POP, 0, nullptr);
                 if(ip < 0)
                 {
                     return false;
@@ -11079,33 +10842,33 @@ class AstCompiler
             {
                 return false;
             }
-            if(symbol->m_symtype == MC_SYM_MODULEGLOBAL)
+            if(symbol->m_symtype == AstSymbol::SYMTYP_MODULEGLOBAL)
             {
                 opbuf[0] = symbol->m_symindex;
-                ip = emitOpCode(MC_OPCODE_GETMODULEGLOBAL, 1, opbuf);
+                ip = emitOpCode(OPCODE_GETMODULEGLOBAL, 1, opbuf);
             }
-            else if(symbol->m_symtype == MC_SYM_GLOBALBUILTIN)
+            else if(symbol->m_symtype == AstSymbol::SYMTYP_GLOBALBUILTIN)
             {
                 opbuf[0] = symbol->m_symindex;
-                ip = emitOpCode(MC_OPCODE_GETGLOBALBUILTIN, 1, opbuf);
+                ip = emitOpCode(OPCODE_GETGLOBALBUILTIN, 1, opbuf);
             }
-            else if(symbol->m_symtype == MC_SYM_LOCAL)
+            else if(symbol->m_symtype == AstSymbol::SYMTYP_LOCAL)
             {
                 opbuf[0] = symbol->m_symindex;
-                ip = emitOpCode(MC_OPCODE_GETLOCAL, 1, opbuf);
+                ip = emitOpCode(OPCODE_GETLOCAL, 1, opbuf);
             }
-            else if(symbol->m_symtype == MC_SYM_FREE)
+            else if(symbol->m_symtype == AstSymbol::SYMTYP_FREE)
             {
                 opbuf[0] = symbol->m_symindex;
-                ip = emitOpCode(MC_OPCODE_GETFREE, 1, opbuf);
+                ip = emitOpCode(OPCODE_GETFREE, 1, opbuf);
             }
-            else if(symbol->m_symtype == MC_SYM_FUNCTION)
+            else if(symbol->m_symtype == AstSymbol::SYMTYP_FUNCTION)
             {
-                ip = emitOpCode(MC_OPCODE_CURRENTFUNCTION, 0, nullptr);
+                ip = emitOpCode(OPCODE_CURRENTFUNCTION, 0, nullptr);
             }
-            else if(symbol->m_symtype == MC_SYM_THIS)
+            else if(symbol->m_symtype == AstSymbol::SYMTYP_THIS)
             {
-                ip = emitOpCode(MC_OPCODE_GETTHIS, 0, nullptr);
+                ip = emitOpCode(OPCODE_GETTHIS, 0, nullptr);
             }
             return ip >= 0;
         }
@@ -11115,36 +10878,36 @@ class AstCompiler
             int ip;
             uint64_t opbuf[10];
             ip = -1;
-            if(symbol->m_symtype == MC_SYM_MODULEGLOBAL)
+            if(symbol->m_symtype == AstSymbol::SYMTYP_MODULEGLOBAL)
             {
                 if(define)
                 {
                     opbuf[0] = symbol->m_symindex;
-                    ip = emitOpCode(MC_OPCODE_DEFINEMODULEGLOBAL, 1, opbuf);
+                    ip = emitOpCode(OPCODE_DEFINEMODULEGLOBAL, 1, opbuf);
                 }
                 else
                 {
                     opbuf[0] = symbol->m_symindex;
-                    ip = emitOpCode(MC_OPCODE_SETMODULEGLOBAL, 1, opbuf);
+                    ip = emitOpCode(OPCODE_SETMODULEGLOBAL, 1, opbuf);
                 }
             }
-            else if(symbol->m_symtype == MC_SYM_LOCAL)
+            else if(symbol->m_symtype == AstSymbol::SYMTYP_LOCAL)
             {
                 if(define)
                 {
                     opbuf[0] = symbol->m_symindex;
-                    ip = emitOpCode(MC_OPCODE_DEFINELOCAL, 1, opbuf);
+                    ip = emitOpCode(OPCODE_DEFINELOCAL, 1, opbuf);
                 }
                 else
                 {
                     opbuf[0] = symbol->m_symindex;
-                    ip = emitOpCode(MC_OPCODE_SETLOCAL, 1, opbuf);
+                    ip = emitOpCode(OPCODE_SETLOCAL, 1, opbuf);
                 }
             }
-            else if(symbol->m_symtype == MC_SYM_FREE)
+            else if(symbol->m_symtype == AstSymbol::SYMTYP_FREE)
             {
                 opbuf[0] = symbol->m_symindex;
-                ip = emitOpCode(MC_OPCODE_SETFREE, 1, opbuf);
+                ip = emitOpCode(OPCODE_SETFREE, 1, opbuf);
             }
             return ip >= 0;
         }
@@ -11240,7 +11003,7 @@ class AstCompiler
         {
             bool ok;
             int globaloffset;
-            mcastscopeblock_t* prevsttopscope;
+            AstScopeBlock* prevsttopscope;
             AstSymTable* prevst;
             AstSourceFile* file;
             AstScopeFile* filescope;
@@ -11270,8 +11033,8 @@ class AstCompiler
             AstSymTable* poppedst;
             AstSymTable* currentst;
             AstScopeFile* scope;
-            mcastscopeblock_t* currentsttopscope;
-            mcastscopeblock_t* poppedsttopscope;
+            AstScopeBlock* currentsttopscope;
+            AstScopeBlock* poppedsttopscope;
             poppedst = getsymtable();
             poppedsttopscope = poppedst->scopeBlockGet();
             poppednumdefs = poppedsttopscope->m_blscopenumdefs;
@@ -11328,7 +11091,7 @@ class AstCompiler
             {
                 goto compilefailed;
             }
-            emitOpCode(MC_OPCODE_HALT, 0, 0);
+            emitOpCode(OPCODE_HALT, 0, 0);
             /* might've changed */
             compscope = getCompilationScope();
             MC_ASSERT(compscope->m_outerscope == nullptr);
@@ -11442,10 +11205,10 @@ class VMFrame
             return res;
         }
 
-        inline mcopcode_t readOpCode()
+        inline AstCompiler::OpCode readOpCode()
         {
             m_sourcebcpos = m_bcposition;
-            return (mcopcode_t)readUint8();
+            return (AstCompiler::OpCode)readUint8();
         }
 
         inline AstLocation getPosition()
@@ -11458,22 +11221,31 @@ class VMFrame
         }
 };
 
-
-struct mcexecstate_t
-{
-    size_t vsposition;
-    VMFrame* currframe;
-    GenericList<Value>* valuestack;
-    GenericList<Value>* valthisstack;
-    GenericList<Value>* nativethisstack;
-    size_t thisstpos;
-    GenericList<VMFrame>* framestack;
-    Value lastpopped;
-
-};
-
 class State
 {
+    public:
+        enum
+        {
+            MaxOperOverloads = (25),
+            MinValstackSize = (4),
+            MinVMThisstackSize = (MinValstackSize),
+            MinNativeThisstackSize = (32),
+            MinVMGlobals = (4),
+            MinVMFrames = (4),
+        };
+
+        struct ExecInfo
+        {
+            size_t vsposition;
+            VMFrame* currframe;
+            GenericList<Value>* valuestack;
+            GenericList<Value>* valthisstack;
+            GenericList<Value>* nativethisstack;
+            size_t thisstpos;
+            GenericList<VMFrame>* framestack;
+            Value lastpopped;
+        };
+
     public:
 
         static void destroy(State* state)
@@ -11487,7 +11259,7 @@ class State
 
 
     public:
-        mcconfig_t m_config;
+        RuntimeConfig m_config;
         ErrList m_errorlist;
         GCMemory* m_stategcmem;
         SymStore* m_vmglobalstore;
@@ -11495,10 +11267,10 @@ class State
         size_t m_globalvalcount;
         bool m_hadrecovered;
         bool m_running;
-        Value m_operoverloadkeys[MC_CONF_MAXOPEROVERLOADS];
+        Value m_operoverloadkeys[MaxOperOverloads];
         PtrList* m_sharedfilelist;
         AstCompiler* m_sharedcompiler;
-        mcexecstate_t m_execstate;
+        ExecInfo m_execstate;
         Printer* m_stdoutprinter;
         Printer* m_stderrprinter;
         ObjClass* m_stdobjectobject;
@@ -11512,11 +11284,11 @@ class State
         State()
         {
             setDefaultConfig();
-            m_execstate.valuestack = Memory::make<GenericList<Value>>(MC_CONF_MINVMVALSTACKSIZE, Value::makeNull());
-            m_execstate.valthisstack = Memory::make<GenericList<Value>>(MC_CONF_MINVMTHISSTACKSIZE, Value::makeNull());
-            m_execstate.nativethisstack = Memory::make<GenericList<Value>>(MC_CONF_MINNATIVETHISSTACKSIZE, Value::makeNull());
-            m_globalvalstack = Memory::make<GenericList<Value>>(MC_CONF_MINVMGLOBALS, Value::makeNull());
-            m_execstate.framestack = Memory::make<GenericList<VMFrame>>(MC_CONF_MINVMFRAMES, VMFrame{});
+            m_execstate.valuestack = Memory::make<GenericList<Value>>(MinValstackSize, Value::makeNull());
+            m_execstate.valthisstack = Memory::make<GenericList<Value>>(MinVMThisstackSize, Value::makeNull());
+            m_execstate.nativethisstack = Memory::make<GenericList<Value>>(MinNativeThisstackSize, Value::makeNull());
+            m_globalvalstack = Memory::make<GenericList<Value>>(MinVMGlobals, Value::makeNull());
+            m_execstate.framestack = Memory::make<GenericList<VMFrame>>(MinVMFrames, VMFrame{});
             m_stategcmem = Memory::make<GCMemory>();
             if(!m_stategcmem)
             {
@@ -11524,10 +11296,10 @@ class State
             }
             m_sharedfilelist = Memory::make<PtrList>(sizeof(void*), true);
             mc_vm_init(this);
-            m_vmglobalstore = Memory::make<SymStore>();
-            m_sharedcompiler = Memory::make<AstCompiler>(this, &m_config, m_stategcmem, &m_errorlist, m_sharedfilelist, m_vmglobalstore, m_stderrprinter);
             m_stdoutprinter = Memory::make<Printer>(stdout);
             m_stderrprinter = Memory::make<Printer>(stderr);
+            m_vmglobalstore = Memory::make<SymStore>();
+            m_sharedcompiler = Memory::make<AstCompiler>(this, &m_config, m_stategcmem, &m_errorlist, m_sharedfilelist, m_vmglobalstore, m_stderrprinter);
             mc_state_makestdclasses(this);
             return;
         err:
@@ -11568,6 +11340,7 @@ class State
         {
             m_config.replmode = false;
             m_config.dumpast = false;
+            m_config.exitafterastdump = false;
             m_config.dumpbytecode = false;
             m_config.fatalcomplaints = false;
             m_config.exitaftercompiling = false;
@@ -11576,7 +11349,7 @@ class State
         }
 
         template<typename... ArgsT>
-        void pushError(mcerrtype_t type, AstLocation pos, const char* fmt, ArgsT&&... args)
+        void pushError(Error::Type type, AstLocation pos, const char* fmt, ArgsT&&... args)
         {
             m_errorlist.pushFormat(type, pos, fmt, args...);
         }
@@ -11584,7 +11357,7 @@ class State
         template<typename... ArgsT>
         void pushRuntimeError(const char* fmt, ArgsT&&... args)
         {
-            pushError(MC_ERROR_RUNTIME, AstLocation::Invalid(), fmt, args...);
+            pushError(Error::ERRTYP_RUNTIME, AstLocation::Invalid(), fmt, args...);
         }
 
         bool setGlobalFunction(const char* name, mcnativefn_t fn, void* data)
@@ -11598,12 +11371,12 @@ class State
             return setGlobalValue(name, obj);
         }
 
-        bool setGlobalValue(const char* name, Value obj)
+        inline bool setGlobalValue(const char* name, Value obj)
         {
             return m_vmglobalstore->setNamed(name, obj);
         }
 
-        Value getGlobalByName(const char* name)
+        inline Value getGlobalByName(const char* name)
         {
             bool ok;
             Value res;
@@ -11614,33 +11387,46 @@ class State
             symbol = st->resolve(name);
             if(!symbol)
             {
-                pushError(MC_ERROR_USER, AstLocation::Invalid(), "symbol \"%s\" is not defined", name);
+                pushError(Error::ERRTYP_USER, AstLocation::Invalid(), "symbol \"%s\" is not defined", name);
                 return Value::makeNull();
             }
             res = Value::makeNull();
-            if(symbol->m_symtype == MC_SYM_MODULEGLOBAL)
+            if(symbol->m_symtype == AstSymbol::SYMTYP_MODULEGLOBAL)
             {
                 res = getGlobalByIndex(symbol->m_symindex);
             }
-            else if(symbol->m_symtype == MC_SYM_GLOBALBUILTIN)
+            else if(symbol->m_symtype == AstSymbol::SYMTYP_GLOBALBUILTIN)
             {
                 ok = false;
                 res = m_vmglobalstore->getAtIndex(symbol->m_symindex, &ok);
                 if(!ok)
                 {
-                    pushError(MC_ERROR_USER, AstLocation::Invalid(), "failed to get global object at %d", symbol->m_symindex);
+                    pushError(Error::ERRTYP_USER, AstLocation::Invalid(), "failed to get global object at %d", symbol->m_symindex);
                     return Value::makeNull();
                 }
             }
             else
             {
-                pushError(MC_ERROR_USER, AstLocation::Invalid(), "value associated with symbol \"%s\" could not be loaded", name);
+                pushError(Error::ERRTYP_USER, AstLocation::Invalid(), "value associated with symbol \"%s\" could not be loaded", name);
                 return Value::makeNull();
             }
             return res;
         }
 
         //inserthere
+        inline void saveExecInfo(ExecInfo* est)
+        {
+            est->thisstpos = m_execstate.thisstpos;
+            est->vsposition = m_execstate.vsposition;
+            est->currframe = m_execstate.currframe;
+        }
+
+        inline void restoreExecInfo(ExecInfo* est)
+        {
+            m_execstate.thisstpos = est->thisstpos;
+            m_execstate.vsposition = est->vsposition;
+            m_execstate.currframe = est->currframe;
+        }
 
         inline bool setGlobalByIndex(size_t ix, Value val)
         {
@@ -11715,7 +11501,7 @@ class State
         #if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
             if(m_execstate.vsposition == 0)
             {
-                m_errorlist.pushFormat(MC_ERROR_RUNTIME, m_execstate.currframe->getPosition(), "stack underflow");
+                m_errorlist.pushFormat(Error::ERRTYP_RUNTIME, m_execstate.currframe->getPosition(), "stack underflow");
                 MC_ASSERT(false);
                 return Value::makeNull();
             }
@@ -11751,7 +11537,7 @@ class State
         #if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
             if(m_execstate.thisstpos == 0)
             {
-                errorspushFormat(MC_ERROR_RUNTIME, m_execstate.currframe->getPosition(), "'this' stack underflow");
+                errorspushFormat(Error::ERRTYP_RUNTIME, m_execstate.currframe->getPosition(), "'this' stack underflow");
                 MC_ASSERT(false);
                 return Value::makeNull();
             }
@@ -11779,8 +11565,7 @@ class State
             return m_execstate.valthisstack->get(ix);
         }
 
-
-        bool vmPushFrame(VMFrame frame)
+        inline bool vmPushFrame(VMFrame frame)
         {
             int add;
             Object::ObjFunction* framefunction;
@@ -11793,7 +11578,6 @@ class State
             setStackPos(frame.m_basepointer + framefunction->m_funcdata.valscriptfunc.numlocals);
             return true;
         }
-
 
         inline bool vmPopFrame()
         {
@@ -11852,7 +11636,7 @@ class State
             return res;
         }
 
-        Value vmCallValue(GenericList<Value>* constants, Value callee, Value thisval, size_t argc, Value* args)
+        inline Value vmCallValue(GenericList<Value>* constants, Value callee, Value thisval, size_t argc, Value* args)
         {
             bool ok;
             size_t i;
@@ -11861,7 +11645,7 @@ class State
             size_t oldframescount;
             VMFrame tempframe;
             Value retv;
-            mcexecstate_t est;
+            ExecInfo est;
             Value::Type type;
             (void)oldsp;
             (void)oldframescount;
@@ -11874,7 +11658,7 @@ class State
             {
                 //VMFrame::init(&tempframe, callee, 0);
                 VMFrame::init(&tempframe, callee, m_execstate.vsposition - argc);
-                mc_vm_savestate(this, &est);
+                this->saveExecInfo(&est);
                 oldsp = m_execstate.vsposition;
                 oldthissp = m_execstate.thisstpos;
                 vmPushFrame(tempframe);
@@ -11887,7 +11671,7 @@ class State
                 ok = mc_vm_execvm(this, callee, constants, true);
                 if(!ok)
                 {
-                    mc_vm_restorestate(this, &est);
+                    this->restoreExecInfo(&est);
                     return Value::makeNull();
                 }
                 #if 1
@@ -11898,18 +11682,18 @@ class State
                 #endif
                 m_execstate.thisstpos = oldthissp;
                 retv = m_execstate.lastpopped;
-                mc_vm_restorestate(this, &est);
+                this->restoreExecInfo(&est);
                 return retv;
             }
             if(type == Value::VALTYP_FUNCNATIVE)
             {
                 return vmCallNativeFunction(callee, AstLocation::Invalid(), thisval, argc, args);
             }
-            m_errorlist.pushFormat(MC_ERROR_USER, AstLocation::Invalid(), "object is not callable");
+            m_errorlist.pushFormat(Error::ERRTYP_USER, AstLocation::Invalid(), "object is not callable");
             return Value::makeNull();
         }
 
-        Value callFunctionByName(const char* fname, Value thisval, size_t argc, Value* args)
+        inline Value callFunctionByName(const char* fname, Value thisval, size_t argc, Value* args)
         {
             Value res;
             Value callee;
@@ -11927,22 +11711,22 @@ class State
             return res;
         }
 
-        bool hasErrors()
+        inline bool hasErrors()
         {
             return errorCount() > 0;
         }
 
-        int errorCount()
+        inline int errorCount()
         {
             return m_errorlist.count();
         }
 
-        void errorsClear()
+        inline void errorsClear()
         {
             m_errorlist.clear();
         }
 
-        Error* errorGet(int index)
+        inline Error* errorGet(int index)
         {
             return (Error*)m_errorlist.get(index);
         }
@@ -13389,7 +13173,7 @@ Value mc_value_copydeepmap(State* state, Value obj, GenericDict<TypeKeyT, TypeVa
 
 
 
-bool mc_printutil_bcreadoperands(mcopdefinition_t* def, const uint16_t* instr, uint64_t outoperands[2])
+bool mc_printutil_bcreadoperands(AstCompiler::OpDefinition* def, const uint16_t* instr, uint64_t outoperands[2])
 {
     int i;
     int offset;
@@ -13456,8 +13240,8 @@ void mc_printer_printoneinstruc(Printer* pr, uint16_t* code, uint16_t op, size_t
     int i;
     mcfloat_t dval;
     uint64_t operands[2];
-    mcopdefinition_t* def;
-    mcopdefinition_t vdef;
+    AstCompiler::OpDefinition* def;
+    AstCompiler::OpDefinition vdef;
     AstLocation srcpos;
     (void)ok;
     def = AstCompiler::opdefLookup(&vdef, op);
@@ -13485,7 +13269,7 @@ void mc_printer_printoneinstruc(Printer* pr, uint16_t* code, uint16_t op, size_t
     {
         for(i = 0; i < def->numoperands; i++)
         {
-            if(op == MC_OPCODE_NUMBER)
+            if(op == AstCompiler::OPCODE_NUMBER)
             {
                 dval = mc_util_uint64todouble(operands[i]);
                 pr->format(" %1.17g", dval);
@@ -13626,14 +13410,6 @@ void mc_printer_printobjmap(Printer* pr, Value obj)
     pr->put("}");
 }
 
-
-void mc_printer_printobjerror(Printer* pr, Value obj)
-{
-    mc_error_printusererror(pr, obj);
-}
-
-
-
 void mc_printer_printvalue(Printer* pr, Value obj, bool accurate)
 {
     Value::Type type;
@@ -13700,7 +13476,7 @@ void mc_printer_printvalue(Printer* pr, Value obj, bool accurate)
             break;
         case Value::VALTYP_ERROR:
             {
-                mc_printer_printobjerror(pr, obj);
+                Error::printUserError(pr, obj);
             }
             break;
         case Value::VALTYP_ANY:
@@ -13715,27 +13491,6 @@ void mc_printer_printvalue(Printer* pr, Value obj, bool accurate)
 
 
 
-bool mc_error_printusererror(Printer* pr, Value obj)
-{
-    const char* cred;
-    const char* creset;
-    Traceback* traceback;
-    Console::Color mcc(fileno(stdout));
-    cred = mcc.get('r');
-    creset = mcc.get('0');
-    pr->format("%sERROR:%s %s\n", cred, creset, mc_value_errorgetmessage(obj));
-    traceback = mc_value_errorgettraceback(obj);
-    MC_ASSERT(traceback != nullptr);
-    if(traceback)
-    {
-        pr->format("%sTraceback:%s\n", cred, creset);
-        traceback->printTo(pr, &mcc);
-    }
-    return true;
-}
-
-
-
 bool mc_vm_runexecfunc(State* state, CompiledProgram* comp_res, GenericList<Value>* constants);
 
 Value mc_program_execute(State* state, CompiledProgram* program)
@@ -13745,7 +13500,7 @@ Value mc_program_execute(State* state, CompiledProgram* program)
     (void)ok;
     if(program == nullptr)
     {
-        state->m_errorlist.pushFormat(MC_ERROR_USER, AstLocation::Invalid(), "program passed to execute was null.");
+        state->m_errorlist.pushFormat(Error::ERRTYP_USER, AstLocation::Invalid(), "program passed to execute was null.");
         return Value::makeNull();
     }
     state->reset();
@@ -13793,58 +13548,6 @@ err:
     return Value::makeNull();
 }
 
-const char* mc_util_mathopstring(mcastmathoptype_t op)
-{
-    switch(op)
-    {
-        case MC_MATHOP_NONE:
-            return "MC_MATHOP_NONE";
-        case MC_MATHOP_ASSIGN:
-            return "=";
-        case MC_MATHOP_PLUS:
-            return "+";
-        case MC_MATHOP_MINUS:
-            return "-";
-        case MC_MATHOP_BANG:
-            return "!";
-        case MC_MATHOP_ASTERISK:
-            return "*";
-        case MC_MATHOP_SLASH:
-            return "/";
-        case MC_MATHOP_LT:
-            return "<";
-        case MC_MATHOP_GT:
-            return ">";
-        case MC_MATHOP_EQ:
-            return "==";
-        case MC_MATHOP_NOTEQ:
-            return "!=";
-        case MC_MATHOP_MODULUS:
-            return "%";
-        case MC_MATHOP_LOGICALAND:
-            return "&&";
-        case MC_MATHOP_LOGICALOR:
-            return "||";
-        case MC_MATHOP_BINAND:
-            return "&";
-        case MC_MATHOP_BINOR:
-            return "|";
-        case MC_MATHOP_BINXOR:
-            return "^";
-        case MC_MATHOP_LSHIFT:
-            return "<<";
-        case MC_MATHOP_RSHIFT:
-            return ">>";
-        case MC_MATHOP_LTE:
-            return "<=";
-        case MC_MATHOP_GTE:
-            return ">=";
-        case MC_MATHOP_BINNOT:
-            return "~";
-    }
-    return "MC_MATHOP_UNKNOWN";
-}
-
 #if 1
     bool mc_argcheck_check(State* state, bool generateerror, size_t argc, Value* args, ...)
     {
@@ -13875,7 +13578,7 @@ bool mc_argcheck_checkactual(State* state, bool generateerror, size_t argc, Valu
     {
         if(generateerror)
         {
-            state->pushError(MC_ERROR_RUNTIME, AstLocation::Invalid(), "Invalid number or arguments, got %d instead of %d", argc, expectedargc);
+            state->pushError(Error::ERRTYP_RUNTIME, AstLocation::Invalid(), "Invalid number or arguments, got %d instead of %d", argc, expectedargc);
         }
         return false;
     }
@@ -13894,7 +13597,7 @@ bool mc_argcheck_checkactual(State* state, bool generateerror, size_t argc, Valu
                 {
                     return false;
                 }
-                state->pushError(MC_ERROR_RUNTIME, AstLocation::Invalid(), "Invalid argument %d type, got %s, expected %s", i, typestr, expectedtypestr);
+                state->pushError(Error::ERRTYP_RUNTIME, AstLocation::Invalid(), "Invalid argument %d type, got %s, expected %s", i, typestr, expectedtypestr);
                 mc_memory_free(expectedtypestr);
             }
             return false;
@@ -14113,7 +13816,7 @@ void mc_state_gcsweep(State* state)
 
 int mc_state_gcshouldsweep(State* state)
 {
-    return state->m_stategcmem->m_allocssincesweep > MC_CONF_GCMEMSWEEPINTERVAL;
+    return state->m_stategcmem->m_allocssincesweep > GCMemory::SweepInterval;
 }
 
 bool mc_state_gcdisablefor(Value obj)
@@ -14213,7 +13916,7 @@ bool mc_traceback_vmpush(Traceback* traceback, State* state)
     return true;
 }
 
-void mc_vm_setoverloadkey(State* state, mcopcode_t opc, const char* rawstr)
+void mc_vm_setoverloadkey(State* state, AstCompiler::OpCode opc, const char* rawstr)
 {
     Value keyobj;
     keyobj = mc_value_makestring(state, rawstr);
@@ -14229,24 +13932,24 @@ bool mc_vm_init(State* state)
     state->m_execstate.thisstpos = 0;
     state->m_execstate.lastpopped = Value::makeNull();
     state->m_running = false;
-    for(i = 0; i < MC_CONF_MAXOPEROVERLOADS; i++)
+    for(i = 0; i < State::MaxOperOverloads; i++)
     {
         state->m_operoverloadkeys[i] = Value::makeNull();
     }
-    mc_vm_setoverloadkey(state, MC_OPCODE_ADD, "__operator_add__");
-    mc_vm_setoverloadkey(state, MC_OPCODE_SUB, "__operator_sub__");
-    mc_vm_setoverloadkey(state, MC_OPCODE_MUL, "__operator_mul__");
-    mc_vm_setoverloadkey(state, MC_OPCODE_DIV, "__operator_div__");
-    mc_vm_setoverloadkey(state, MC_OPCODE_MOD, "__operator_mod__");
-    mc_vm_setoverloadkey(state, MC_OPCODE_BINOR, "__operator_or__");
-    mc_vm_setoverloadkey(state, MC_OPCODE_BINXOR, "__operator_xor__");
-    mc_vm_setoverloadkey(state, MC_OPCODE_BINAND, "__operator_and__");
-    mc_vm_setoverloadkey(state, MC_OPCODE_LSHIFT, "__operator_lshift__");
-    mc_vm_setoverloadkey(state, MC_OPCODE_RSHIFT, "__operator_rshift__");
-    mc_vm_setoverloadkey(state, MC_OPCODE_MINUS, "__operator_minus__");
-    mc_vm_setoverloadkey(state, MC_OPCODE_BINNOT, "__operator_binnot__");
-    mc_vm_setoverloadkey(state, MC_OPCODE_BANG, "__operator_bang__");
-    mc_vm_setoverloadkey(state, MC_OPCODE_COMPARE, "__cmp__");
+    mc_vm_setoverloadkey(state, AstCompiler::OPCODE_ADD, "__operator_add__");
+    mc_vm_setoverloadkey(state, AstCompiler::OPCODE_SUB, "__operator_sub__");
+    mc_vm_setoverloadkey(state, AstCompiler::OPCODE_MUL, "__operator_mul__");
+    mc_vm_setoverloadkey(state, AstCompiler::OPCODE_DIV, "__operator_div__");
+    mc_vm_setoverloadkey(state, AstCompiler::OPCODE_MOD, "__operator_mod__");
+    mc_vm_setoverloadkey(state, AstCompiler::OPCODE_BINOR, "__operator_or__");
+    mc_vm_setoverloadkey(state, AstCompiler::OPCODE_BINXOR, "__operator_xor__");
+    mc_vm_setoverloadkey(state, AstCompiler::OPCODE_BINAND, "__operator_and__");
+    mc_vm_setoverloadkey(state, AstCompiler::OPCODE_LSHIFT, "__operator_lshift__");
+    mc_vm_setoverloadkey(state, AstCompiler::OPCODE_RSHIFT, "__operator_rshift__");
+    mc_vm_setoverloadkey(state, AstCompiler::OPCODE_MINUS, "__operator_minus__");
+    mc_vm_setoverloadkey(state, AstCompiler::OPCODE_BINNOT, "__operator_binnot__");
+    mc_vm_setoverloadkey(state, AstCompiler::OPCODE_BANG, "__operator_bang__");
+    mc_vm_setoverloadkey(state, AstCompiler::OPCODE_COMPARE, "__cmp__");
     return true;
 }
 
@@ -14307,7 +14010,7 @@ MC_INLINE void mc_vm_rungc(State* state, GenericList<Value>* constants)
     mc_state_gcmarkobjlist(state->m_execstate.valuestack->data(), state->m_execstate.vsposition);
     mc_state_gcmarkobjlist(state->m_execstate.valthisstack->data(), state->m_execstate.thisstpos);
     mc_state_gcmarkobject(state->m_execstate.lastpopped);
-    mc_state_gcmarkobjlist(state->m_operoverloadkeys, MC_CONF_MAXOPEROVERLOADS);
+    mc_state_gcmarkobjlist(state->m_operoverloadkeys, State::MaxOperOverloads);
     mc_state_gcsweep(state);
 }
 
@@ -14335,7 +14038,7 @@ MC_FORCEINLINE bool mc_vmdo_callobject(State* state, Value callee, int nargs)
                 mc_printer_printvalue(state->m_stderrprinter, callee, true);
                 state->m_stderrprinter->format(">\n");
                 #if 0
-                    state->m_errorlist.pushFormat(MC_ERROR_RUNTIME, state->m_execstate.currframe->getPosition(), "failed to pop native 'this'");
+                    state->m_errorlist.pushFormat(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "failed to pop native 'this'");
                 #endif
             #endif
         }
@@ -14354,7 +14057,7 @@ MC_FORCEINLINE bool mc_vmdo_callobject(State* state, Value callee, int nargs)
         if(nargs != calleefunction->m_funcdata.valscriptfunc.numargs)
         {
             #if 0
-            state->m_errorlist.pushFormat(MC_ERROR_RUNTIME, state->m_execstate.currframe->getPosition(), "invalid number of arguments to \"%s\": expected %d, got %d",
+            state->m_errorlist.pushFormat(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "invalid number of arguments to \"%s\": expected %d, got %d",
                               mc_value_functiongetname(callee), calleefunction->m_funcdata.valscriptfunc.numargs, nargs);
             return false;
             #endif
@@ -14362,13 +14065,13 @@ MC_FORCEINLINE bool mc_vmdo_callobject(State* state, Value callee, int nargs)
         ok = VMFrame::init(&calleeframe, callee, state->m_execstate.vsposition - nargs);
         if(!ok)
         {
-            state->m_errorlist.pushFormat(MC_ERROR_RUNTIME, AstLocation::Invalid(), "frame init failed in mc_vmdo_callobject");
+            state->m_errorlist.pushFormat(Error::ERRTYP_RUNTIME, AstLocation::Invalid(), "frame init failed in mc_vmdo_callobject");
             return false;
         }
         ok = state->vmPushFrame(calleeframe);
         if(!ok)
         {
-            state->m_errorlist.pushFormat(MC_ERROR_RUNTIME, AstLocation::Invalid(), "pushing frame failed in mc_vmdo_callobject");
+            state->m_errorlist.pushFormat(Error::ERRTYP_RUNTIME, AstLocation::Invalid(), "pushing frame failed in mc_vmdo_callobject");
             return false;
         }
     }
@@ -14392,7 +14095,7 @@ MC_FORCEINLINE bool mc_vmdo_callobject(State* state, Value callee, int nargs)
     else
     {
         calleetypename = Value::getTypename(calleetype);
-        state->m_errorlist.pushFormat(MC_ERROR_RUNTIME, state->m_execstate.currframe->getPosition(), "%s object is not callable", calleetypename);
+        state->m_errorlist.pushFormat(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "%s object is not callable", calleetypename);
         return false;
     }
     return true;
@@ -14414,7 +14117,7 @@ MC_FORCEINLINE bool mc_vmdo_tryoverloadoperator(State* state, Value left, Value 
         return true;
     }
     numoper = 2;
-    if(op == MC_OPCODE_MINUS || op == MC_OPCODE_BINNOT || op == MC_OPCODE_BANG)
+    if(op == AstCompiler::OPCODE_MINUS || op == AstCompiler::OPCODE_BINNOT || op == AstCompiler::OPCODE_BANG)
     {
         numoper = 1;
     }
@@ -14463,7 +14166,7 @@ MC_FORCEINLINE bool mc_vm_checkassign(State* state, Value oldvalue, Value nvalue
     #if 0
     if(oldvaluetype != nvaluetype)
     {
-        state->pushError(MC_ERROR_RUNTIME, state->m_execstate.currframe->getPosition(), "trying to assign variable of type %s to %s",
+        state->pushError(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "trying to assign variable of type %s to %s",
                           Value::getTypename(nvaluetype), Value::getTypename(oldvaluetype));
         return false;
     }
@@ -14472,7 +14175,7 @@ MC_FORCEINLINE bool mc_vm_checkassign(State* state, Value oldvalue, Value nvalue
 }
 
 
-MC_FORCEINLINE bool mc_vmdo_opaddstring(State* state, Value valleft, Value valright, Value::Type righttype, mcopcode_t opcode)
+MC_FORCEINLINE bool mc_vmdo_opaddstring(State* state, Value valleft, Value valright, Value::Type righttype, AstCompiler::OpCode opcode)
 {
     Value nstring;
     (void)opcode;
@@ -14484,7 +14187,7 @@ MC_FORCEINLINE bool mc_vmdo_opaddstring(State* state, Value valleft, Value valri
     return true;
 }
 
-MC_FORCEINLINE bool mc_vmdo_math(State* state, mcopcode_t opcode)
+MC_FORCEINLINE bool mc_vmdo_math(State* state, AstCompiler::OpCode opcode)
 {
     bool ok;
     bool overloadfound;
@@ -14503,7 +14206,7 @@ MC_FORCEINLINE bool mc_vmdo_math(State* state, mcopcode_t opcode)
     valleft = state->vmStackPop();
     lefttype = valleft.getType();
     righttype = valright.getType();
-    if(lefttype == Value::VALTYP_STRING && opcode == MC_OPCODE_ADD)
+    if(lefttype == Value::VALTYP_STRING && opcode == AstCompiler::OPCODE_ADD)
     {
         if(mc_vmdo_opaddstring(state, valleft, valright, righttype, opcode))
         {
@@ -14517,42 +14220,42 @@ MC_FORCEINLINE bool mc_vmdo_math(State* state, mcopcode_t opcode)
         res = 0;
         switch(opcode)
         {
-            case MC_OPCODE_ADD:
+            case AstCompiler::OPCODE_ADD:
                 {
                     res = mc_mathutil_add(dnleft, dnright);
                 }
                 break;
-            case MC_OPCODE_SUB:
+            case AstCompiler::OPCODE_SUB:
                 {
                     res = mc_mathutil_sub(dnleft, dnright);
                 }
                 break;
-            case MC_OPCODE_MUL:
+            case AstCompiler::OPCODE_MUL:
                 {
                     res = mc_mathutil_mult(dnleft, dnright);
                 }
                 break;
-            case MC_OPCODE_DIV:
+            case AstCompiler::OPCODE_DIV:
                 {
                     res = mc_mathutil_div(dnleft, dnright);
                 }
                 break;
-            case MC_OPCODE_MOD:
+            case AstCompiler::OPCODE_MOD:
                 {
                     res = mc_mathutil_mod(dnleft, dnright);
                 }
                 break;
-            case MC_OPCODE_BINOR:
+            case AstCompiler::OPCODE_BINOR:
                 {
                     res = mc_mathutil_binor(dnleft, dnright);
                 }
                 break;
-            case MC_OPCODE_BINXOR:
+            case AstCompiler::OPCODE_BINXOR:
                 {
                     res = mc_mathutil_binxor(dnleft, dnright);
                 }
                 break;
-            case MC_OPCODE_BINAND:
+            case AstCompiler::OPCODE_BINAND:
                 {
                     res = mc_mathutil_binand(dnleft, dnright);
                 }
@@ -14561,7 +14264,7 @@ MC_FORCEINLINE bool mc_vmdo_math(State* state, mcopcode_t opcode)
             // TODO: shifting, signedness: how does nodejs do it?
             // enabling checks for <0 breaks sha1.mc!
             */
-            case MC_OPCODE_LSHIFT:
+            case AstCompiler::OPCODE_LSHIFT:
                 {
                     #if 0
                     if((dnleft < 0) || (dnright < 0))
@@ -14575,7 +14278,7 @@ MC_FORCEINLINE bool mc_vmdo_math(State* state, mcopcode_t opcode)
                     }
                 }
                 break;
-            case MC_OPCODE_RSHIFT:
+            case AstCompiler::OPCODE_RSHIFT:
                 {
                     #if 0
                     if((dnleft < 0) || (dnright < 0))
@@ -14609,7 +14312,7 @@ MC_FORCEINLINE bool mc_vmdo_math(State* state, mcopcode_t opcode)
         opcodename = AstCompiler::opdefGetName(opcode);
         lefttypename = Value::getTypename(lefttype);
         righttypename = Value::getTypename(righttype);
-        state->pushError(MC_ERROR_RUNTIME, state->m_execstate.currframe->getPosition(), "invalid operand types for %s: got %s and %s",
+        state->pushError(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "invalid operand types for %s: got %s and %s",
                           opcodename, lefttypename, righttypename);
         return false;
     }
@@ -14768,7 +14471,7 @@ MC_FORCEINLINE bool mc_vmdo_getindexpartial(State* state, Value left, Value::Typ
             {
                 res = Value::makeNull();
                 lefttypename = Value::getTypename(lefttype);
-                state->pushError(MC_ERROR_RUNTIME, state->m_execstate.currframe->getPosition(), "object type '%s' has no field '%s'", lefttypename, mc_value_stringgetdata(index));
+                state->pushError(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "object type '%s' has no field '%s'", lefttypename, mc_value_stringgetdata(index));
                 state->vmStackPush(res);
                 return false;
             }
@@ -14776,7 +14479,7 @@ MC_FORCEINLINE bool mc_vmdo_getindexpartial(State* state, Value left, Value::Typ
     }
     if(lefttype != Value::VALTYP_ARRAY && lefttype != Value::VALTYP_MAP && lefttype != Value::VALTYP_STRING)
     {
-        state->pushError(MC_ERROR_RUNTIME, state->m_execstate.currframe->getPosition(), "getindexpartial: type %s is not indexable", lefttypename);
+        state->pushError(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "getindexpartial: type %s is not indexable", lefttypename);
 
         return false;
     }
@@ -14787,7 +14490,7 @@ MC_FORCEINLINE bool mc_vmdo_getindexpartial(State* state, Value left, Value::Typ
         {
             lefttypename = Value::getTypename(lefttype);
             indextypename = Value::getTypename(indextype);
-            state->pushError(MC_ERROR_RUNTIME, state->m_execstate.currframe->getPosition(), "cannot get partial index of %s with %s", lefttypename, indextypename);
+            state->pushError(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "cannot get partial index of %s with %s", lefttypename, indextypename);
             return false;
         }
         ix = (int)Value::asNumber(index);
@@ -14806,7 +14509,7 @@ MC_FORCEINLINE bool mc_vmdo_getindexpartial(State* state, Value left, Value::Typ
         {
             lefttypename = Value::getTypename(lefttype);
             indextypename = Value::getTypename(indextype);
-            state->pushError(MC_ERROR_RUNTIME, state->m_execstate.currframe->getPosition(), "cannot index %s with %s", lefttypename, indextypename);
+            state->pushError(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "cannot index %s with %s", lefttypename, indextypename);
             return false;
         }
         str = mc_value_stringgetdata(left);
@@ -14868,7 +14571,7 @@ MC_FORCEINLINE bool mc_vmdo_setindexpartial(State* state, Value left, Value::Typ
         }
         #endif
         lefttypename = Value::getTypename(lefttype);
-        state->pushError(MC_ERROR_RUNTIME, state->m_execstate.currframe->getPosition(), "setindexpartial: type %s is not indexable", lefttypename);
+        state->pushError(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "setindexpartial: type %s is not indexable", lefttypename);
         return false;
     }
     if(lefttype == Value::VALTYP_ARRAY)
@@ -14877,7 +14580,7 @@ MC_FORCEINLINE bool mc_vmdo_setindexpartial(State* state, Value left, Value::Typ
         {
             lefttypename = Value::getTypename(lefttype);
             indextypename = Value::getTypename(indextype);
-            state->pushError(MC_ERROR_RUNTIME, state->m_execstate.currframe->getPosition(), "cannot set index of %s with %s", lefttypename, indextypename);
+            state->pushError(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "cannot set index of %s with %s", lefttypename, indextypename);
             return false;
         }
         ix = (int)Value::asNumber(index);                        
@@ -14885,7 +14588,7 @@ MC_FORCEINLINE bool mc_vmdo_setindexpartial(State* state, Value left, Value::Typ
         alen = mc_value_arraygetlength(left);
         if(!ok)
         {
-            state->pushError(MC_ERROR_RUNTIME, state->m_execstate.currframe->getPosition(), "failed to set array index %d (of %d)", ix, alen);
+            state->pushError(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "failed to set array index %d (of %d)", ix, alen);
             return false;
         }
     }
@@ -14940,7 +14643,7 @@ MC_FORCEINLINE bool mc_vmdo_getvalueatfull(State* state)
     if(lefttype != Value::VALTYP_ARRAY && lefttype != Value::VALTYP_MAP && lefttype != Value::VALTYP_STRING)
     {
         lefttypename = Value::getTypename(lefttype);
-        state->pushError(MC_ERROR_RUNTIME, state->m_execstate.currframe->getPosition(), "getvalueatfull: type %s is not indexable", lefttypename);
+        state->pushError(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "getvalueatfull: type %s is not indexable", lefttypename);
         return false;
     }
     res = Value::makeNull();
@@ -14948,7 +14651,7 @@ MC_FORCEINLINE bool mc_vmdo_getvalueatfull(State* state)
     {
         lefttypename = Value::getTypename(lefttype);
         indextypename = Value::getTypename(indextype);
-        state->pushError(MC_ERROR_RUNTIME, state->m_execstate.currframe->getPosition(), "cannot get full index %s with %s", lefttypename, indextypename);
+        state->pushError(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "cannot get full index %s with %s", lefttypename, indextypename);
         return false;
     }
     ix = (int)Value::asNumber(index);
@@ -14992,14 +14695,14 @@ MC_FORCEINLINE bool mc_vmdo_makefunction(State* state, GenericList<Value>* const
     constant = constants->getp(constantix);
     if(!constant)
     {
-        state->pushError(MC_ERROR_RUNTIME, state->m_execstate.currframe->getPosition(), "constant %d not found", constantix);
+        state->pushError(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "constant %d not found", constantix);
         return false;
     }
     constanttype = (*constant).getType();
     if(constanttype != Value::VALTYP_FUNCSCRIPT)
     {
         tname = Value::getTypename(constanttype);
-        state->pushError(MC_ERROR_RUNTIME, state->m_execstate.currframe->getPosition(), "%s is not a function", tname);
+        state->pushError(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "%s is not a function", tname);
         return false;
     }
     constfun = Value::asFunction(*constant);
@@ -15019,7 +14722,7 @@ MC_FORCEINLINE bool mc_vmdo_makefunction(State* state, GenericList<Value>* const
     return true;
 }
 
-MC_FORCEINLINE bool mc_vmdo_docmpvalue(State* state, mcopcode_t opcode)
+MC_FORCEINLINE bool mc_vmdo_docmpvalue(State* state, AstCompiler::OpCode opcode)
 {
     bool ok;
     bool isoverloaded;
@@ -15033,7 +14736,7 @@ MC_FORCEINLINE bool mc_vmdo_docmpvalue(State* state, mcopcode_t opcode)
     right = state->vmStackPop();
     left = state->vmStackPop();
     isoverloaded = false;
-    ok = mc_vmdo_tryoverloadoperator(state, left, right, MC_OPCODE_COMPARE, &isoverloaded);
+    ok = mc_vmdo_tryoverloadoperator(state, left, right, AstCompiler::OPCODE_COMPARE, &isoverloaded);
     if(!ok)
     {
         return false;
@@ -15044,7 +14747,7 @@ MC_FORCEINLINE bool mc_vmdo_docmpvalue(State* state, mcopcode_t opcode)
         #if 0
         fprintf(stderr, "compare: ok=%d cres.result=%g\n", ok, cres.result);
         #endif
-        if((ok == true) || (opcode == MC_OPCODE_COMPAREEQ))
+        if((ok == true) || (opcode == AstCompiler::OPCODE_COMPAREEQ))
         {
             res = Value::makeNumber(cres.result);
             state->vmStackPush(res);
@@ -15053,14 +14756,14 @@ MC_FORCEINLINE bool mc_vmdo_docmpvalue(State* state, mcopcode_t opcode)
         {
             righttname = Value::getTypename(right.getType());
             lefttname = Value::getTypename(left.getType());
-            state->pushError(MC_ERROR_RUNTIME, state->m_execstate.currframe->getPosition(), "cannot compare %s and %s", lefttname, righttname);
+            state->pushError(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "cannot compare %s and %s", lefttname, righttname);
             return false;
         }
     }
     return true;
 }
 
-MC_FORCEINLINE bool mc_vmdo_docmpvalgreater(State* state, mcopcode_t opcode)
+MC_FORCEINLINE bool mc_vmdo_docmpvalgreater(State* state, AstCompiler::OpCode opcode)
 {
     bool resval;
     mcfloat_t comparisonres;
@@ -15071,22 +14774,22 @@ MC_FORCEINLINE bool mc_vmdo_docmpvalgreater(State* state, mcopcode_t opcode)
     resval = false;
     switch(opcode)
     {
-        case MC_OPCODE_EQUAL:
+        case AstCompiler::OPCODE_EQUAL:
             {
                 resval = MC_UTIL_CMPFLOAT(comparisonres, 0);
             }
             break;
-        case MC_OPCODE_NOTEQUAL:
+        case AstCompiler::OPCODE_NOTEQUAL:
             {
                 resval = !MC_UTIL_CMPFLOAT(comparisonres, 0);
             }
             break;
-        case MC_OPCODE_GREATERTHAN:
+        case AstCompiler::OPCODE_GREATERTHAN:
             {
                 resval = comparisonres > 0;
             }
             break;
-        case MC_OPCODE_GREATERTHANEQUAL:
+        case AstCompiler::OPCODE_GREATERTHANEQUAL:
             {
                 resval = comparisonres > 0 || MC_UTIL_CMPFLOAT(comparisonres, 0);
             }
@@ -15170,7 +14873,7 @@ MC_FORCEINLINE bool mc_vmdo_makemapend(State* state)
         {
             keytype = key.getType();
             keytypename = Value::getTypename(keytype);
-            state->pushError(MC_ERROR_RUNTIME, state->m_execstate.currframe->getPosition(), "key of type %s is not hashable", keytypename);
+            state->pushError(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "key of type %s is not hashable", keytypename);
             return false;
         }
         val = kvpairs[i + 1];
@@ -15187,23 +14890,22 @@ MC_FORCEINLINE bool mc_vmdo_makemapend(State* state)
     #define MC_CONF_USECOMPUTEDGOTOS 0
 #endif
 
-#define MC_CONF_USECOMPUTEDGOTOS 0
 
 #if defined(MC_CONF_USECOMPUTEDGOTOS) && (MC_CONF_USECOMPUTEDGOTOS == 1)
     #define MAKELABEL(opname) LABEL_##opname
     #define mcvm_case(opn) LABEL_##opn
 #else
-    #define mcvm_case(opn) case opn
+    #define mcvm_case(opn) case AstCompiler::opn
 #endif
 
 #define mc_vmmac_break() \
     goto readnextop
 
 
-void mc_vmutil_getopinfo(mcopcode_t opc, const char** oname)
+void mc_vmutil_getopinfo(AstCompiler::OpCode opc, const char** oname)
 {
-    mcopdefinition_t vdef;
-    mcopdefinition_t* def;
+    AstCompiler::OpDefinition vdef;
+    AstCompiler::OpDefinition* def;
     *oname = "!invalid!";
     def = AstCompiler::opdefLookup(&vdef, opc);
     if(def != nullptr)
@@ -15232,66 +14934,66 @@ bool mc_vm_execvm(State* state, Value function, GenericList<Value>* constants, b
     #if defined(MC_CONF_USECOMPUTEDGOTOS) && (MC_CONF_USECOMPUTEDGOTOS == 1)
         fprintf(stderr, "**using computed gotos**\n");
         static void* dispatchtable[] = {
-            &&MAKELABEL(MC_OPCODE_HALT),
-            &&MAKELABEL(MC_OPCODE_CONSTANT),
-            &&MAKELABEL(MC_OPCODE_ADD),
-            &&MAKELABEL(MC_OPCODE_SUB),
-            &&MAKELABEL(MC_OPCODE_MUL),
-            &&MAKELABEL(MC_OPCODE_DIV),
-            &&MAKELABEL(MC_OPCODE_MOD),
-            &&MAKELABEL(MC_OPCODE_POP),
-            &&MAKELABEL(MC_OPCODE_BINOR),
-            &&MAKELABEL(MC_OPCODE_BINXOR),
-            &&MAKELABEL(MC_OPCODE_BINAND),
-            &&MAKELABEL(MC_OPCODE_LSHIFT),
-            &&MAKELABEL(MC_OPCODE_RSHIFT),
-            &&MAKELABEL(MC_OPCODE_BANG),
-            &&MAKELABEL(MC_OPCODE_COMPARE),
-            &&MAKELABEL(MC_OPCODE_TRUE),
-            &&MAKELABEL(MC_OPCODE_FALSE),
-            &&MAKELABEL(MC_OPCODE_COMPAREEQ),
-            &&MAKELABEL(MC_OPCODE_EQUAL),
-            &&MAKELABEL(MC_OPCODE_NOTEQUAL),
-            &&MAKELABEL(MC_OPCODE_GREATERTHAN),
-            &&MAKELABEL(MC_OPCODE_GREATERTHANEQUAL),
-            &&MAKELABEL(MC_OPCODE_MINUS),
-            &&MAKELABEL(MC_OPCODE_BINNOT),
-            &&MAKELABEL(MC_OPCODE_JUMP),
-            &&MAKELABEL(MC_OPCODE_JUMPIFFALSE),
-            &&MAKELABEL(MC_OPCODE_JUMPIFTRUE),
-            &&MAKELABEL(MC_OPCODE_NULL),
-            &&MAKELABEL(MC_OPCODE_GETMODULEGLOBAL),
-            &&MAKELABEL(MC_OPCODE_SETMODULEGLOBAL),
-            &&MAKELABEL(MC_OPCODE_DEFINEMODULEGLOBAL),
-            &&MAKELABEL(MC_OPCODE_ARRAY),
-            &&MAKELABEL(MC_OPCODE_MAPSTART),
-            &&MAKELABEL(MC_OPCODE_MAPEND),
-            &&MAKELABEL(MC_OPCODE_GETTHIS),
-            &&MAKELABEL(MC_OPCODE_GETINDEX),
-            &&MAKELABEL(MC_OPCODE_SETINDEX),
-            &&MAKELABEL(MC_OPCODE_GETDOTINDEX),
-            &&MAKELABEL(MC_OPCODE_GETVALUEAT),
-            &&MAKELABEL(MC_OPCODE_CALL),
-            &&MAKELABEL(MC_OPCODE_RETURNVALUE),
-            &&MAKELABEL(MC_OPCODE_RETURN),
-            &&MAKELABEL(MC_OPCODE_GETLOCAL),
-            &&MAKELABEL(MC_OPCODE_DEFINELOCAL),
-            &&MAKELABEL(MC_OPCODE_SETLOCAL),
-            &&MAKELABEL(MC_OPCODE_GETGLOBALBUILTIN),
-            &&MAKELABEL(MC_OPCODE_FUNCTION),
-            &&MAKELABEL(MC_OPCODE_GETFREE),
-            &&MAKELABEL(MC_OPCODE_SETFREE),
-            &&MAKELABEL(MC_OPCODE_CURRENTFUNCTION),
-            &&MAKELABEL(MC_OPCODE_DUP),
-            &&MAKELABEL(MC_OPCODE_NUMBER),
-            &&MAKELABEL(MC_OPCODE_FOREACHLEN),
-            &&MAKELABEL(MC_OPCODE_SETRECOVER),
+            &&MAKELABEL(OPCODE_HALT),
+            &&MAKELABEL(OPCODE_CONSTANT),
+            &&MAKELABEL(OPCODE_ADD),
+            &&MAKELABEL(OPCODE_SUB),
+            &&MAKELABEL(OPCODE_MUL),
+            &&MAKELABEL(OPCODE_DIV),
+            &&MAKELABEL(OPCODE_MOD),
+            &&MAKELABEL(OPCODE_POP),
+            &&MAKELABEL(OPCODE_BINOR),
+            &&MAKELABEL(OPCODE_BINXOR),
+            &&MAKELABEL(OPCODE_BINAND),
+            &&MAKELABEL(OPCODE_LSHIFT),
+            &&MAKELABEL(OPCODE_RSHIFT),
+            &&MAKELABEL(OPCODE_BANG),
+            &&MAKELABEL(OPCODE_COMPARE),
+            &&MAKELABEL(OPCODE_TRUE),
+            &&MAKELABEL(OPCODE_FALSE),
+            &&MAKELABEL(OPCODE_COMPAREEQ),
+            &&MAKELABEL(OPCODE_EQUAL),
+            &&MAKELABEL(OPCODE_NOTEQUAL),
+            &&MAKELABEL(OPCODE_GREATERTHAN),
+            &&MAKELABEL(OPCODE_GREATERTHANEQUAL),
+            &&MAKELABEL(OPCODE_MINUS),
+            &&MAKELABEL(OPCODE_BINNOT),
+            &&MAKELABEL(OPCODE_JUMP),
+            &&MAKELABEL(OPCODE_JUMPIFFALSE),
+            &&MAKELABEL(OPCODE_JUMPIFTRUE),
+            &&MAKELABEL(OPCODE_NULL),
+            &&MAKELABEL(OPCODE_GETMODULEGLOBAL),
+            &&MAKELABEL(OPCODE_SETMODULEGLOBAL),
+            &&MAKELABEL(OPCODE_DEFINEMODULEGLOBAL),
+            &&MAKELABEL(OPCODE_ARRAY),
+            &&MAKELABEL(OPCODE_MAPSTART),
+            &&MAKELABEL(OPCODE_MAPEND),
+            &&MAKELABEL(OPCODE_GETTHIS),
+            &&MAKELABEL(OPCODE_GETINDEX),
+            &&MAKELABEL(OPCODE_SETINDEX),
+            &&MAKELABEL(OPCODE_GETDOTINDEX),
+            &&MAKELABEL(OPCODE_GETVALUEAT),
+            &&MAKELABEL(OPCODE_CALL),
+            &&MAKELABEL(OPCODE_RETURNVALUE),
+            &&MAKELABEL(OPCODE_RETURN),
+            &&MAKELABEL(OPCODE_GETLOCAL),
+            &&MAKELABEL(OPCODE_DEFINELOCAL),
+            &&MAKELABEL(OPCODE_SETLOCAL),
+            &&MAKELABEL(OPCODE_GETGLOBALBUILTIN),
+            &&MAKELABEL(OPCODE_FUNCTION),
+            &&MAKELABEL(OPCODE_GETFREE),
+            &&MAKELABEL(OPCODE_SETFREE),
+            &&MAKELABEL(OPCODE_CURRENTFUNCTION),
+            &&MAKELABEL(OPCODE_DUP),
+            &&MAKELABEL(OPCODE_NUMBER),
+            &&MAKELABEL(OPCODE_FOREACHLEN),
+            &&MAKELABEL(OPCODE_SETRECOVER),
         };
     #endif
     #if 0
     if(mc_util_unlikely(state->m_running))
     {
-        state->error.pushFormat(MC_ERROR_USER, AstLocation::Invalid(), "state is already executing code");
+        state->error.pushFormat(Error::ERRTYP_USER, AstLocation::Invalid(), "state is already executing code");
         return false;
     }
     #endif
@@ -15307,7 +15009,7 @@ bool mc_vm_execvm(State* state, Value function, GenericList<Value>* constants, b
     ok = state->vmPushFrame(createdframe);
     if(!ok)
     {
-        state->m_errorlist.pushFormat(MC_ERROR_USER, AstLocation::Invalid(), "pushing frame failed");
+        state->m_errorlist.pushFormat(Error::ERRTYP_USER, AstLocation::Invalid(), "pushing frame failed");
         return false;
     }
     {
@@ -15336,7 +15038,7 @@ bool mc_vm_execvm(State* state, Value function, GenericList<Value>* constants, b
         opcode = state->m_execstate.currframe->readOpCode();
         if(mc_util_unlikely(state->m_config.printinstructions))
         {
-            mc_vmutil_getopinfo((mcopcode_t)opcode, &oname);
+            mc_vmutil_getopinfo((AstCompiler::OpCode)opcode, &oname);
             fprintf(stderr, "opcode=%d (%s)\n", opcode, oname);
         }
         #if defined(MC_CONF_USECOMPUTEDGOTOS) && (MC_CONF_USECOMPUTEDGOTOS == 1)
@@ -15350,19 +15052,19 @@ bool mc_vm_execvm(State* state, Value function, GenericList<Value>* constants, b
                 {
                     const char* prevname;
                     const char* thisname;
-                    mc_vmutil_getopinfo((mcopcode_t)opcode, &thisname);
-                    mc_vmutil_getopinfo((mcopcode_t)prevcode, &prevname);
-                    state->pushError(MC_ERROR_RUNTIME, state->m_execstate.currframe->getPosition(), "unknown opcode: %d (%s) (previous opcode was %d (%s))", opcode, thisname, prevcode, prevname);
+                    mc_vmutil_getopinfo((AstCompiler::OpCode)opcode, &thisname);
+                    mc_vmutil_getopinfo((AstCompiler::OpCode)prevcode, &prevname);
+                    state->pushError(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "unknown opcode: %d (%s) (previous opcode was %d (%s))", opcode, thisname, prevcode, prevname);
                     MC_ASSERT(false);
                     goto onexecerror;
                 }
                 break;
             #endif
-            mcvm_case(MC_OPCODE_HALT):
+            mcvm_case(OPCODE_HALT):
                 {
                     goto onexecfinish;
                 }
-            mcvm_case(MC_OPCODE_RETURNVALUE):
+            mcvm_case(OPCODE_RETURNVALUE):
                 {
                     Value res;
                     res = state->vmStackPop();
@@ -15378,7 +15080,7 @@ bool mc_vm_execvm(State* state, Value function, GenericList<Value>* constants, b
                     }
                 }
                 mc_vmmac_break();
-            mcvm_case(MC_OPCODE_RETURN):
+            mcvm_case(OPCODE_RETURN):
                 {
                     ok = state->vmPopFrame();
                     state->vmStackPush(Value::makeNull());
@@ -15389,7 +15091,7 @@ bool mc_vm_execvm(State* state, Value function, GenericList<Value>* constants, b
                     }
                 }
                 mc_vmmac_break();
-            mcvm_case(MC_OPCODE_CONSTANT):
+            mcvm_case(OPCODE_CONSTANT):
                 {
                     uint16_t constantix;
                     Value* constant;
@@ -15397,65 +15099,65 @@ bool mc_vm_execvm(State* state, Value function, GenericList<Value>* constants, b
                     constant = (Value*)constants->getp(constantix);
                     if(!constant)
                     {
-                        state->pushError(MC_ERROR_RUNTIME, state->m_execstate.currframe->getPosition(), "constant at %d not found", constantix);
+                        state->pushError(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "constant at %d not found", constantix);
                         goto onexecerror;
                     }
                     state->vmStackPush(*constant);
                 }
                 mc_vmmac_break();
-            mcvm_case(MC_OPCODE_ADD):
-            mcvm_case(MC_OPCODE_SUB):
-            mcvm_case(MC_OPCODE_MUL):
-            mcvm_case(MC_OPCODE_DIV):
-            mcvm_case(MC_OPCODE_MOD):
-            mcvm_case(MC_OPCODE_BINOR):
-            mcvm_case(MC_OPCODE_BINXOR):
-            mcvm_case(MC_OPCODE_BINAND):
-            mcvm_case(MC_OPCODE_LSHIFT):
-            mcvm_case(MC_OPCODE_RSHIFT):
+            mcvm_case(OPCODE_ADD):
+            mcvm_case(OPCODE_SUB):
+            mcvm_case(OPCODE_MUL):
+            mcvm_case(OPCODE_DIV):
+            mcvm_case(OPCODE_MOD):
+            mcvm_case(OPCODE_BINOR):
+            mcvm_case(OPCODE_BINXOR):
+            mcvm_case(OPCODE_BINAND):
+            mcvm_case(OPCODE_LSHIFT):
+            mcvm_case(OPCODE_RSHIFT):
                 {
-                    if(!mc_vmdo_math(state, (mcopcode_t)opcode))
+                    if(!mc_vmdo_math(state, (AstCompiler::OpCode)opcode))
                     {
                         goto onexecerror;
                     }
                 }
                 mc_vmmac_break();
-            mcvm_case(MC_OPCODE_POP):
+            mcvm_case(OPCODE_POP):
                 {
                     state->vmStackPop();
                 }
                 mc_vmmac_break();
-            mcvm_case(MC_OPCODE_TRUE):
+            mcvm_case(OPCODE_TRUE):
                 {
                     state->vmStackPush(Value::makeBool(true));
                 }
                 mc_vmmac_break();
-            mcvm_case(MC_OPCODE_FALSE):
+            mcvm_case(OPCODE_FALSE):
                 {
                     state->vmStackPush(Value::makeBool(false));
                 }
                 mc_vmmac_break();
-            mcvm_case(MC_OPCODE_COMPARE):
-            mcvm_case(MC_OPCODE_COMPAREEQ):
+            mcvm_case(OPCODE_COMPARE):
+            mcvm_case(OPCODE_COMPAREEQ):
                 {
-                    if(!mc_vmdo_docmpvalue(state, (mcopcode_t)opcode))
+                    if(!mc_vmdo_docmpvalue(state, (AstCompiler::OpCode)opcode))
                     {
                         goto onexecerror;
                     }
                 }
                 mc_vmmac_break();
-            mcvm_case(MC_OPCODE_EQUAL):
-            mcvm_case(MC_OPCODE_NOTEQUAL):
-            mcvm_case(MC_OPCODE_GREATERTHAN):
-            mcvm_case(MC_OPCODE_GREATERTHANEQUAL):
+            mcvm_case(OPCODE_EQUAL):
+            mcvm_case(OPCODE_NOTEQUAL):
+            mcvm_case(OPCODE_GREATERTHAN):
+            mcvm_case(OPCODE_GREATERTHANEQUAL):
                 {
-                    if(!mc_vmdo_docmpvalgreater(state, (mcopcode_t)opcode))
+                    if(!mc_vmdo_docmpvalgreater(state, (AstCompiler::OpCode)opcode))
                     {
                         goto onexecerror;
                     }
                 }
                 mc_vmmac_break();
-            mcvm_case(MC_OPCODE_MINUS):
+            mcvm_case(OPCODE_MINUS):
                 {
                     bool overloadfound;
                     mcfloat_t val;
@@ -15474,7 +15176,7 @@ bool mc_vm_execvm(State* state, Value function, GenericList<Value>* constants, b
                     else
                     {
                         overloadfound = false;
-                        ok = mc_vmdo_tryoverloadoperator(state, operand, Value::makeNull(), MC_OPCODE_MINUS, &overloadfound);
+                        ok = mc_vmdo_tryoverloadoperator(state, operand, Value::makeNull(), AstCompiler::OPCODE_MINUS, &overloadfound);
                         if(!ok)
                         {
                             goto onexecerror;
@@ -15482,13 +15184,13 @@ bool mc_vm_execvm(State* state, Value function, GenericList<Value>* constants, b
                         if(!overloadfound)
                         {
                             opertname = Value::getTypename(opertype);
-                            state->pushError(MC_ERROR_RUNTIME, state->m_execstate.currframe->getPosition(), "invalid operand type for MINUS, got %s", opertname);
+                            state->pushError(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "invalid operand type for MINUS, got %s", opertname);
                             goto onexecerror;
                         }
                     }
                 }
                 mc_vmmac_break();
-            mcvm_case(MC_OPCODE_BINNOT):
+            mcvm_case(OPCODE_BINNOT):
                 {
                     bool overloadfound;
                     int64_t val;
@@ -15507,7 +15209,7 @@ bool mc_vm_execvm(State* state, Value function, GenericList<Value>* constants, b
                     else
                     {
                         overloadfound = false;
-                        ok = mc_vmdo_tryoverloadoperator(state, operand, Value::makeNull(), MC_OPCODE_BINNOT, &overloadfound);
+                        ok = mc_vmdo_tryoverloadoperator(state, operand, Value::makeNull(), AstCompiler::OPCODE_BINNOT, &overloadfound);
                         if(!ok)
                         {
                             goto onexecerror;
@@ -15515,13 +15217,13 @@ bool mc_vm_execvm(State* state, Value function, GenericList<Value>* constants, b
                         if(!overloadfound)
                         {
                             opertname = Value::getTypename(opertype);
-                            state->pushError(MC_ERROR_RUNTIME, state->m_execstate.currframe->getPosition(), "invalid operand type for BINNOT, got %s", opertname);
+                            state->pushError(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "invalid operand type for BINNOT, got %s", opertname);
                             goto onexecerror;
                         }
                     }
                 }
                 mc_vmmac_break();
-            mcvm_case(MC_OPCODE_BANG):
+            mcvm_case(OPCODE_BANG):
                 {
                     bool overloadfound;
                     Value res;
@@ -15542,7 +15244,7 @@ bool mc_vm_execvm(State* state, Value function, GenericList<Value>* constants, b
                     else
                     {
                         overloadfound = false;
-                        ok = mc_vmdo_tryoverloadoperator(state, operand, Value::makeNull(), MC_OPCODE_BANG, &overloadfound);
+                        ok = mc_vmdo_tryoverloadoperator(state, operand, Value::makeNull(), AstCompiler::OPCODE_BANG, &overloadfound);
                         if(!ok)
                         {
                             goto onexecerror;
@@ -15555,14 +15257,14 @@ bool mc_vm_execvm(State* state, Value function, GenericList<Value>* constants, b
                     }
                 }
                 mc_vmmac_break();
-            mcvm_case(MC_OPCODE_JUMP):
+            mcvm_case(OPCODE_JUMP):
                 {
                     uint16_t pos;
                     pos = state->m_execstate.currframe->readUint16();
                     state->m_execstate.currframe->m_bcposition = pos;
                 }
                 mc_vmmac_break();
-            mcvm_case(MC_OPCODE_JUMPIFFALSE):
+            mcvm_case(OPCODE_JUMPIFFALSE):
                 {
                     uint16_t pos;
                     Value test;
@@ -15574,7 +15276,7 @@ bool mc_vm_execvm(State* state, Value function, GenericList<Value>* constants, b
                     }
                 }
                 mc_vmmac_break();
-            mcvm_case(MC_OPCODE_JUMPIFTRUE):
+            mcvm_case(OPCODE_JUMPIFTRUE):
                 {
                     uint16_t pos;
                     Value test;
@@ -15586,12 +15288,12 @@ bool mc_vm_execvm(State* state, Value function, GenericList<Value>* constants, b
                     }
                 }
                 mc_vmmac_break();
-            mcvm_case(MC_OPCODE_NULL):
+            mcvm_case(OPCODE_NULL):
                 {
                     state->vmStackPush(Value::makeNull());
                 }
                 mc_vmmac_break();
-            mcvm_case(MC_OPCODE_DEFINEMODULEGLOBAL):
+            mcvm_case(OPCODE_DEFINEMODULEGLOBAL):
                 {
                     uint16_t ix;
                     Value value;
@@ -15600,7 +15302,7 @@ bool mc_vm_execvm(State* state, Value function, GenericList<Value>* constants, b
                     state->setGlobalByIndex(ix, value);
                 }
                 mc_vmmac_break();
-            mcvm_case(MC_OPCODE_SETMODULEGLOBAL):
+            mcvm_case(OPCODE_SETMODULEGLOBAL):
                 {
                     uint16_t ix;
                     Value nvalue;
@@ -15615,7 +15317,7 @@ bool mc_vm_execvm(State* state, Value function, GenericList<Value>* constants, b
                     state->setGlobalByIndex(ix, nvalue);
                 }
                 mc_vmmac_break();
-            mcvm_case(MC_OPCODE_GETMODULEGLOBAL):
+            mcvm_case(OPCODE_GETMODULEGLOBAL):
                 {
                     uint16_t ix;
                     Value global;
@@ -15624,7 +15326,7 @@ bool mc_vm_execvm(State* state, Value function, GenericList<Value>* constants, b
                     state->vmStackPush(global);
                 }
                 mc_vmmac_break();
-            mcvm_case(MC_OPCODE_ARRAY):
+            mcvm_case(OPCODE_ARRAY):
                 {
                     if(!mc_vmdo_makearray(state))
                     {
@@ -15632,7 +15334,7 @@ bool mc_vm_execvm(State* state, Value function, GenericList<Value>* constants, b
                     }
                 }
                 mc_vmmac_break();
-            mcvm_case(MC_OPCODE_MAPSTART):
+            mcvm_case(OPCODE_MAPSTART):
                 {
                     if(!mc_vmdo_makemapstart(state))
                     {
@@ -15640,7 +15342,7 @@ bool mc_vm_execvm(State* state, Value function, GenericList<Value>* constants, b
                     }
                 }
                 mc_vmmac_break();
-            mcvm_case(MC_OPCODE_MAPEND):
+            mcvm_case(OPCODE_MAPEND):
                 {
                     if(!mc_vmdo_makemapend(state))
                     {
@@ -15648,7 +15350,7 @@ bool mc_vm_execvm(State* state, Value function, GenericList<Value>* constants, b
                     }
                 }
                 mc_vmmac_break();
-            mcvm_case(MC_OPCODE_GETVALUEAT):
+            mcvm_case(OPCODE_GETVALUEAT):
                 {
                     if(!mc_vmdo_getvalueatfull(state))
                     {
@@ -15656,7 +15358,7 @@ bool mc_vm_execvm(State* state, Value function, GenericList<Value>* constants, b
                     }
                 }
                 mc_vmmac_break();
-            mcvm_case(MC_OPCODE_CALL):
+            mcvm_case(OPCODE_CALL):
                 {
                     uint16_t nargs;
                     Value callee;
@@ -15669,14 +15371,14 @@ bool mc_vm_execvm(State* state, Value function, GenericList<Value>* constants, b
                     }
                 }
                 mc_vmmac_break();
-            mcvm_case(MC_OPCODE_DEFINELOCAL):
+            mcvm_case(OPCODE_DEFINELOCAL):
                 {
                     uint16_t pos;
                     pos = state->m_execstate.currframe->readUint8();
                     state->m_execstate.valuestack->set(state->m_execstate.currframe->m_basepointer + pos, state->vmStackPop());
                 }
                 mc_vmmac_break();
-            mcvm_case(MC_OPCODE_SETLOCAL):
+            mcvm_case(OPCODE_SETLOCAL):
                 {
                     uint16_t pos;
                     Value nvalue;
@@ -15691,7 +15393,7 @@ bool mc_vm_execvm(State* state, Value function, GenericList<Value>* constants, b
                     state->m_execstate.valuestack->set(state->m_execstate.currframe->m_basepointer + pos, nvalue);
                 }
                 mc_vmmac_break();
-            mcvm_case(MC_OPCODE_GETLOCAL):
+            mcvm_case(OPCODE_GETLOCAL):
                 {
                     size_t finalpos;
                     size_t pos;
@@ -15710,7 +15412,7 @@ bool mc_vm_execvm(State* state, Value function, GenericList<Value>* constants, b
                     state->vmStackPush(val);
                 }
                 mc_vmmac_break();
-            mcvm_case(MC_OPCODE_GETGLOBALBUILTIN):
+            mcvm_case(OPCODE_GETGLOBALBUILTIN):
                 {
                     uint16_t ix;
                     Value val;
@@ -15719,14 +15421,14 @@ bool mc_vm_execvm(State* state, Value function, GenericList<Value>* constants, b
                     val = state->m_vmglobalstore->getAtIndex(ix, &ok);
                     if(!ok)
                     {
-                        state->pushError(MC_ERROR_RUNTIME, state->m_execstate.currframe->getPosition(), "global value %d not found", ix);
+                        state->pushError(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "global value %d not found", ix);
                         goto onexecerror;
                     }
                     state->vmStackPush(val);
                 }
                 mc_vmmac_break();
 
-            mcvm_case(MC_OPCODE_FUNCTION):
+            mcvm_case(OPCODE_FUNCTION):
                 {
                     if(!mc_vmdo_makefunction(state, constants))
                     {
@@ -15734,7 +15436,7 @@ bool mc_vm_execvm(State* state, Value function, GenericList<Value>* constants, b
                     }
                 }
                 mc_vmmac_break();
-            mcvm_case(MC_OPCODE_GETFREE):
+            mcvm_case(OPCODE_GETFREE):
                 {
                     uint16_t freeix;
                     Value val;
@@ -15743,7 +15445,7 @@ bool mc_vm_execvm(State* state, Value function, GenericList<Value>* constants, b
                     state->vmStackPush(val);
                 }
                 mc_vmmac_break();
-            mcvm_case(MC_OPCODE_SETFREE):
+            mcvm_case(OPCODE_SETFREE):
                 {
                     uint16_t freeix;
                     Value val;
@@ -15752,21 +15454,21 @@ bool mc_vm_execvm(State* state, Value function, GenericList<Value>* constants, b
                     mc_value_functionsetfreevalat(state->m_execstate.currframe->m_function, freeix, val);
                 }
                 mc_vmmac_break();
-            mcvm_case(MC_OPCODE_CURRENTFUNCTION):
+            mcvm_case(OPCODE_CURRENTFUNCTION):
                 {
                     Value currentfunction;
                     currentfunction = state->m_execstate.currframe->m_function;
                     state->vmStackPush(currentfunction);
                 }
                 mc_vmmac_break();
-            mcvm_case(MC_OPCODE_GETTHIS):
+            mcvm_case(OPCODE_GETTHIS):
                 {
                     Value obj;
                     obj = state->vmStackThisGet(0);
                     state->vmStackPush(obj);
                 }
                 mc_vmmac_break();
-            mcvm_case(MC_OPCODE_GETDOTINDEX):
+            mcvm_case(OPCODE_GETDOTINDEX):
                 {
                     if(!mc_vmdo_getdotindex(state))
                     {
@@ -15774,7 +15476,7 @@ bool mc_vm_execvm(State* state, Value function, GenericList<Value>* constants, b
                     }
                 }
                 mc_vmmac_break();
-            mcvm_case(MC_OPCODE_GETINDEX):
+            mcvm_case(OPCODE_GETINDEX):
                 {
                     if(!mc_vmdo_getindexfull(state))
                     {
@@ -15782,7 +15484,7 @@ bool mc_vm_execvm(State* state, Value function, GenericList<Value>* constants, b
                     }
                 }
                 mc_vmmac_break();
-            mcvm_case(MC_OPCODE_SETINDEX):
+            mcvm_case(OPCODE_SETINDEX):
                 {
                     if(!mc_vmdo_setindexfull(state))
                     {
@@ -15790,14 +15492,14 @@ bool mc_vm_execvm(State* state, Value function, GenericList<Value>* constants, b
                     }
                 }
                 mc_vmmac_break();
-            mcvm_case(MC_OPCODE_DUP):
+            mcvm_case(OPCODE_DUP):
                 {
                     Value val;
                     val = state->vmStackGet(0);
                     state->vmStackPush(val);
                 }
                 mc_vmmac_break();
-            mcvm_case(MC_OPCODE_FOREACHLEN):
+            mcvm_case(OPCODE_FOREACHLEN):
                 {
                     int len;
                     const char* tname;
@@ -15821,13 +15523,13 @@ bool mc_vm_execvm(State* state, Value function, GenericList<Value>* constants, b
                     else
                     {
                         tname = Value::getTypename(type);
-                        state->pushError(MC_ERROR_RUNTIME, state->m_execstate.currframe->getPosition(), "cannot get length of %s", tname);
+                        state->pushError(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "cannot get length of %s", tname);
                         goto onexecerror;
                     }
                     state->vmStackPush(Value::makeNumber(len));
                 }
                 mc_vmmac_break();
-            mcvm_case(MC_OPCODE_NUMBER):
+            mcvm_case(OPCODE_NUMBER):
                 {
                     uint64_t val;
                     mcfloat_t dval;
@@ -15838,7 +15540,7 @@ bool mc_vm_execvm(State* state, Value function, GenericList<Value>* constants, b
                     state->vmStackPush(obj);
                 }
                 mc_vmmac_break();
-            mcvm_case(MC_OPCODE_SETRECOVER):
+            mcvm_case(OPCODE_SETRECOVER):
                 {
                     uint16_t recip;
                     recip = state->m_execstate.currframe->readUint16();
@@ -15851,7 +15553,7 @@ bool mc_vm_execvm(State* state, Value function, GenericList<Value>* constants, b
         if(state->m_errorlist.count() > 0)
         {
             err = state->m_errorlist.getLast();
-            if(err->m_errtype == MC_ERROR_RUNTIME && state->m_errorlist.count() >= 1)
+            if(err->m_errtype == Error::ERRTYP_RUNTIME && state->m_errorlist.count() >= 1)
             {
                 recoverframeix = -1;
                 for(fri = state->m_execstate.framestack->count() - 1; fri >= 0; fri--)
@@ -16570,7 +16272,7 @@ Value mc_objfnstring_tonumber(State* state, void* data, Value thisval, size_t ar
     }
     return Value::makeNumber(result);
 err:
-    state->pushError(MC_ERROR_RUNTIME, AstLocation::Invalid(), "cannot convert \"%s\" to number", string);
+    state->pushError(Error::ERRTYP_RUNTIME, AstLocation::Invalid(), "cannot convert \"%s\" to number", string);
     return Value::makeNull();
 }
 
@@ -16962,20 +16664,6 @@ Value mc_objfnarray_length(State* state, void* data, Value thisval, size_t argc,
     return Value::makeNumber(len);
 }
 
-void mc_vm_savestate(State* state, mcexecstate_t* est)
-{
-    est->thisstpos = state->m_execstate.thisstpos;
-    est->vsposition = state->m_execstate.vsposition;
-    est->currframe = state->m_execstate.currframe;
-}
-
-void mc_vm_restorestate(State* state, mcexecstate_t* est)
-{
-    state->m_execstate.thisstpos = est->thisstpos;
-    state->m_execstate.vsposition = est->vsposition;
-    state->m_execstate.currframe = est->currframe;
-}
-
 
 
 Value mc_objfnarray_map(State* state, void* data, Value thisval, size_t argc, Value* args)
@@ -17300,7 +16988,7 @@ Value mc_scriptfn_range(State* state, void* data, Value thisval, size_t argc, Va
         {
             typestr = Value::getTypename(type);
             expectedstr = Value::getTypename(Value::VALTYP_NUMBER);
-            state->pushError(MC_ERROR_RUNTIME, AstLocation::Invalid(), "invalid argument %d passed to range, got %s instead of %s", ai, typestr, expectedstr);
+            state->pushError(Error::ERRTYP_RUNTIME, AstLocation::Invalid(), "invalid argument %d passed to range, got %s instead of %s", ai, typestr, expectedstr);
             return Value::makeNull();
         }
     }
@@ -17324,12 +17012,12 @@ Value mc_scriptfn_range(State* state, void* data, Value thisval, size_t argc, Va
     }
     else
     {
-        state->pushError(MC_ERROR_RUNTIME, AstLocation::Invalid(), "invalid number of arguments passed to range, got %d", argc);
+        state->pushError(Error::ERRTYP_RUNTIME, AstLocation::Invalid(), "invalid number of arguments passed to range, got %d", argc);
         return Value::makeNull();
     }
     if(step == 0)
     {
-        state->m_errorlist.pushFormat(MC_ERROR_RUNTIME, AstLocation::Invalid(), "range step cannot be 0");
+        state->m_errorlist.pushFormat(Error::ERRTYP_RUNTIME, AstLocation::Invalid(), "range step cannot be 0");
         return Value::makeNull();
     }
     res = mc_value_makearray(state);
@@ -17525,11 +17213,11 @@ Value mc_scriptfn_crash(State* state, void* data, Value thisval, size_t argc, Va
     (void)thisval;
     if(argc == 1 && args[0].getType() == Value::VALTYP_STRING)
     {
-        state->m_errorlist.pushMessage(MC_ERROR_RUNTIME, state->m_execstate.currframe->getPosition(), mc_value_stringgetdata(args[0]));
+        state->m_errorlist.pushMessage(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), mc_value_stringgetdata(args[0]));
     }
     else
     {
-        state->m_errorlist.pushMessage(MC_ERROR_RUNTIME, state->m_execstate.currframe->getPosition(), "");
+        state->m_errorlist.pushMessage(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "");
     }
     return Value::makeNull();
 }
@@ -17546,7 +17234,7 @@ Value mc_scriptfn_assert(State* state, void* data, Value thisval, size_t argc, V
     }
     if(!Value::asBool(args[0]))
     {
-        state->m_errorlist.pushFormat(MC_ERROR_RUNTIME, AstLocation::Invalid(), "assertion failed");
+        state->m_errorlist.pushFormat(Error::ERRTYP_RUNTIME, AstLocation::Invalid(), "assertion failed");
         return Value::makeNull();
     }
     return Value::makeBool(true);
@@ -17593,14 +17281,14 @@ Value mc_scriptfn_random(State* state, void* data, Value thisval, size_t argc, V
         max = Value::asNumber(args[1]);
         if(min >= max)
         {
-            state->m_errorlist.pushFormat(MC_ERROR_RUNTIME, AstLocation::Invalid(), "max is bigger than min");
+            state->m_errorlist.pushFormat(Error::ERRTYP_RUNTIME, AstLocation::Invalid(), "max is bigger than min");
             return Value::makeNull();
         }
         range = max - min;
         res = min + (res * range);
         return Value::makeNumber(res);
     }
-    state->m_errorlist.pushFormat(MC_ERROR_RUNTIME, AstLocation::Invalid(), "invalid number or arguments");
+    state->m_errorlist.pushFormat(Error::ERRTYP_RUNTIME, AstLocation::Invalid(), "invalid number or arguments");
     return Value::makeNull();
 }
 
@@ -17703,7 +17391,7 @@ Value mc_scriptfn_slice(State* state, void* data, Value thisval, size_t argc, Va
         return mc_scriptutil_slicestring(state, data, thisval, argc, args);
     }
     typestr = Value::getTypename(argtype);
-    state->pushError(MC_ERROR_RUNTIME, AstLocation::Invalid(), "invalid argument 0 passed to slice, got %s instead", typestr);
+    state->pushError(Error::ERRTYP_RUNTIME, AstLocation::Invalid(), "invalid argument 0 passed to slice, got %s instead", typestr);
     return Value::makeNull();
 }
 
@@ -17858,7 +17546,7 @@ Value mc_nsfnmath_abs(State* state, void* data, Value thisval, size_t argc, Valu
         return Value::makeNull();
     }
     arg = Value::asNumber(args[0]);
-    res = MC_UTIL_FABS(arg);
+    res = fabs(arg);
     return Value::makeNumber(res);
 }
 
@@ -18063,7 +17751,7 @@ Value mc_nsfndir_readdir(State* state, void* data, Value thisval, size_t argc, V
         fslib_dirclose(&reader);
         return res;
     }
-    state->m_errorlist.pushMessage(MC_ERROR_RUNTIME, state->m_execstate.currframe->getPosition(), strerror(errno));
+    state->m_errorlist.pushMessage(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), strerror(errno));
     return Value::makeNull();
 }
 
@@ -18297,7 +17985,7 @@ void mc_cli_printtypesizes()
     printtypesize(Object);
     printtypesize(ErrList);
     printtypesize(AstParser);
-    printtypesize(mcconfig_t);
+    printtypesize(RuntimeConfig);
     printtypesize(AstSymTable);
     printtypesize(AstCompiler);
     printtypesize(AstSymbol);
@@ -18331,8 +18019,8 @@ void mc_cli_printtypesizes()
     printtypesize(Object::ObjUserdata);
     printtypesize(Object::ObjError);
     printtypesize(Object::ObjString);
-    printtypesize(mcopdefinition_t);
-    printtypesize(mcastscopeblock_t);
+    printtypesize(AstCompiler::OpDefinition);
+    printtypesize(AstScopeBlock);
     printtypesize(AstScopeFile);
     printtypesize(AstScopeComp);
     printtypesize(AstLexer);
@@ -18356,6 +18044,7 @@ static OptParser::LongFlags longopts[] =
     {"printsizes", 't', OptParser::OPTPARSE_NONE, "print type sizes"},
     {"eval", 'e', OptParser::OPTPARSE_REQUIRED, "evaluate a single line of code"},
     {"dumpast", 'a', OptParser::OPTPARSE_NONE, "dump AST after parsing"},
+    {"quitafterdump", 'q', OptParser::OPTPARSE_NONE, "quit after dumping AST"},
     {"dumpbc", 'd', OptParser::OPTPARSE_NONE, "dump bytecode after compiling"},
     {"exitcompile", 'x', OptParser::OPTPARSE_NONE, "exit after compiling (for debugging)"},
     {"printins", 'p', OptParser::OPTPARSE_NONE, "print each instruction as it is being executed"},
@@ -18379,6 +18068,7 @@ int main(int argc, char* argv[])
     evalcode = nullptr;
     ok = true;
     nargc = 0;
+    mc_memory_init();
     state = Memory::make<State>();
     nargc = 0;
     OptParser options(argc, argv);
@@ -18401,6 +18091,10 @@ int main(int argc, char* argv[])
         else if(co == 'a')
         {
             state->m_config.dumpast = true;
+        }
+        else if(co == 'q')
+        {
+            state->m_config.exitafterastdump = true;
         }
         else if(co == 'd')
         {
@@ -18479,6 +18173,7 @@ int main(int argc, char* argv[])
     }
     finished:
     Memory::destroy(state);
+    mc_memory_finish();
     fprintf(stderr, "ok=%d\n", ok);
     if(ok)
     {
