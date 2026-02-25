@@ -87,6 +87,7 @@ function fp_tokenize(src)
     // Writes characters in the buffer as a token, takes the positions, and clears the buffer
     var flushbuffer = function()
     {
+        println(`buffer = ${JSON.stringify(buffer)}`);
         if(buffer.length > 0)
         {
             var sbuf = buffer.join("")
@@ -101,14 +102,16 @@ function fp_tokenize(src)
         }
         buffer = [];
     };
-    for(var i = 0; i < chars.length; i++)
+    var i = 0;
+    while(i < chars.length)
     {
         var ch = chars[i];
+        println(`ch = ${JSON.stringify(ch)}`);
         var nextch = chars[i + 1];
         if(ch != "\n")
         {
             // Support the ability to escape symbols
-            if(ch == (92).chr())
+            if(ch == "\\n"[0])
             {
                 buffer.push(ch + nextch);
                 // skip lexing the next character altogether
@@ -117,7 +120,7 @@ function fp_tokenize(src)
             else
             {
                 // Tokenize grouping symbols
-                if((ch == (40).chr()) || (ch == (41).chr()) || (ch == (34).chr()))
+                if((ch == "(") || (ch == ")") || (ch == '"'))
                 {
                     flushbuffer();
                     buffer.push(ch);
@@ -140,6 +143,7 @@ function fp_tokenize(src)
                 }
             }
         }
+        i++
     }
     // Tokenize anything remaining in the buffer
     flushbuffer();
@@ -152,7 +156,7 @@ function fp_quote(x, s)
     if(s.length != 0)
     {
         var piece = s[s.length - 1];
-        if(piece == (39).chr())
+        if(piece == "'")
         {
             s.pop();
             var tmp = [x, null];

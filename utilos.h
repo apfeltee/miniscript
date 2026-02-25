@@ -16,6 +16,7 @@
 #include <time.h>
 #include <fcntl.h>
 
+
 #if defined(__unix__) || defined(__linux__)
     #define OSFN_ISUNIXY 1
 #endif
@@ -40,6 +41,8 @@
         #include <io.h>
     #endif
 #endif
+
+#include "mem.h"
 
 #if !defined(S_IFMT)
     #define S_IFMT  00170000
@@ -147,32 +150,132 @@
     #define PATH_MAX 1024
 #endif
 
-typedef struct FSDirReader FSDirReader;
-typedef struct FSDirItem FSDirItem;
+class FSDirReader;
 
-struct FSDirReader
+
+class FSDirReader
 {
-    #if defined(OSFN_ISUNIX)
-        DIR* handle;
-    #else
-        WIN32_FIND_DATA finddata;
-        HANDLE findhnd;
-    #endif
+    public:
+        struct Item
+        {
+            char name[OSFN_PATHSIZE + 1];
+            bool isdir;
+            bool isfile;
+        };
+
+    public:
+        #if defined(OSFN_ISUNIX)
+            DIR* m_handle;
+        #else
+            WIN32_FIND_DATA m_finddata;
+            HANDLE m_findhnd;
+        #endif
+
+    public:
+        bool openDir(const char* path)
+        {
+            #if defined(OSFN_ISUNIX)
+                if((this->m_handle = opendir(path)) == NULL)
+                {
+                    return false;
+                }
+                return true;
+            #else
+                size_t msz;
+                size_t plen;
+                char* itempattern;
+                /*
+                * dumb-as-shit windows has AI, but retarded API:
+                * unlike dirent.h, the method for reading items in a directory
+                * requires '<path>' + "/" "*"', that is; one must add a glob character.
+                * no idea if this interferes with dot files.
+                */
+                plen = strlen(path);
+                msz = (sizeof(char) * (plen + 5));
+                itempattern = (char*)mc_memory_malloc(msz);
+                memset(itempattern, 0, msz);
+                strncat(itempattern, path, plen);
+                {
+                    strncat(itempattern, "/*", 2);
+                }
+                this->m_findhnd = FindFirstFile(itempattern, &this->m_finddata);
+                mc_memory_free(itempattern);
+                if(INVALID_HANDLE_VALUE == this->m_findhnd)
+                {
+                   return false;
+                }
+                return true;
+            #endif
+            return false;
+        }
+
+        bool readItem(Item* itm)
+        {
+            #if defined(OSFN_ISUNIX)
+                struct dirent* ent;
+            #else
+                int ok;
+            #endif
+            itm->isdir = false;
+            itm->isfile = false;
+            memset(itm->name, 0, OSFN_PATHSIZE);
+            #if defined(OSFN_ISUNIX)
+                if((ent = readdir((DIR*)(this->m_handle))) == NULL)
+                {
+                    return false;
+                }
+                if(ent->d_type == DT_DIR)
+                {
+                    itm->isdir = true;
+                }
+                if(ent->d_type == DT_REG)
+                {
+                    itm->isfile = true;
+                }
+                strcpy(itm->name, ent->d_name);
+                return true;
+            #else
+                ok = FindNextFile(this->m_findhnd, &this->m_finddata);
+                if(ok != 0)
+                {
+                    if(INVALID_HANDLE_VALUE == this->m_findhnd)
+                    {
+                        return false;
+                    }
+                    if(this->m_finddata.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+                    {
+                        itm->isfile = false;
+                        itm->isdir = true;
+                    }
+                    else
+                    {
+                        itm->isfile = true;
+                        itm->isdir = false;
+                    }
+                    strcpy(itm->name, this->m_finddata.cFileName);
+                    return true;
+                }
+            #endif
+            return false;
+        }
+
+        bool closeDir()
+        {
+            #if defined(OSFN_ISUNIX)
+                closedir((DIR*)(this->m_handle));
+            #else
+                FindClose(this->m_findhnd);
+            #endif
+            return false;
+        }
+
 };
 
-struct FSDirItem
-{
-    char name[OSFN_PATHSIZE + 1];
-    bool isdir;
-    bool isfile;
-};
 
 
 char *osfn_utilstrndup(const char *src, size_t len);
 char *osfn_utilstrdup(const char *src);
-bool fslib_diropen(FSDirReader *rd, const char *path);
-bool fslib_dirread(FSDirReader *rd, FSDirItem *itm);
-bool fslib_dirclose(FSDirReader *rd);
+
 int osfn_fdopen(const char *path, int flags, int mode);
 int osfn_fdcreat(const char *path, int mode);
 int osfn_fdclose(int fd);

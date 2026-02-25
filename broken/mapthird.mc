@@ -14,7 +14,8 @@ function add(n)
     return n + g[0];
 }
 
-function dothing(i) {
+function dothing(i)
+{
     var newv = add(i)
     return newv
 }

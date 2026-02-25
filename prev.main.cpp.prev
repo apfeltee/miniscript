@@ -27,7 +27,9 @@
 #include "strbuf.h"
 #include "utilos.h"
 #include "fnmatch.h"
+
 #include "stod.h"
+
 
 /*
 SPDX-License-Identifier: MIT
@@ -433,7 +435,9 @@ void *mc_memory_calloc(size_t count, size_t typsize);
 void mc_memory_free(void *ptr);
 char *osfn_utilstrndup(const char *src, size_t len);
 char *osfn_utilstrdup(const char *src);
-
+bool fslib_diropen(FSDirReader *rd, const char *path);
+bool fslib_dirread(FSDirReader *rd, FSDirItem *itm);
+bool fslib_dirclose(FSDirReader *rd);
 int osfn_fdopen(const char *path, int flags, int mode);
 int osfn_fdcreat(const char *path, int mode);
 int osfn_fdclose(int fd);
@@ -609,18 +613,6 @@ class Printer
             MC_ASSERT(Printer::initFromStack(this, ofh, false));
         }
 
-        inline void flush()
-        {
-            return;
-            if(m_prdestrfile != nullptr)
-            {
-                //if(m_prconfig.shouldflush)
-                {
-                    fflush(m_prdestrfile);
-                }
-            }
-        }
-
         inline bool put(const char* str, size_t len)
         {
             if(m_prfailed)
@@ -638,8 +630,11 @@ class Printer
             else
             {
                 fwrite(str, sizeof(char), len, m_prdestrfile);
+                if(m_prconfig.shouldflush)
+                {
+                    fflush(m_prdestrfile);
+                }
             }
-            flush();
             return true;
         }
 
@@ -670,8 +665,11 @@ class Printer
             else
             {
                 tmprintf(m_prdestrfile, fmt, args...);
+                if(m_prconfig.shouldflush)
+                {
+                    fflush(m_prdestrfile);
+                }
             }
-            flush();
             return true;
         }
 
@@ -806,7 +804,7 @@ class Printer
             inum = (int64_t)flt;
             if(flt == inum)
             {
-                #if defined(PRIiFAST64)
+                #if 1
                     format("%" PRIiFAST64 "", inum);
                 #else
                     format("%ld", inum);
@@ -922,18 +920,6 @@ class GenericList
         inline ~GenericList()
         {
             GenericList::destroy(this, true);
-        }
-
-        inline void orphanData()
-        {
-            m_listcount = 0;
-            m_listcapacity = 0;
-            m_listitems = nullptr;
-        }
-
-        inline void clear()
-        {
-            m_listcount = 0;
         }
 
         inline size_t count()
@@ -1098,7 +1084,10 @@ class PtrList
             list->clear();
         }
 
-
+        static inline void orphanData(PtrList* list)
+        {
+            PtrList::initCapacity(list, 0, list->m_ptrlisttypesize, list->m_ptrlistisptr);
+        }
 
     protected:
         unsigned char* m_ptrlistitems;
@@ -1121,11 +1110,6 @@ class PtrList
         inline ~PtrList()
         {
             PtrList::destroy(this, nullptr);
-        }
-
-        inline void orphanData()
-        {
-            PtrList::initCapacity(this, 0, this->m_ptrlisttypesize, this->m_ptrlistisptr);
         }
 
         inline PtrList* copy(mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
@@ -1386,8 +1370,6 @@ class PtrList
             return getIndexOf(ptr) >= 0;
         }
 };
-
-
 
 class PtrDict
 {
@@ -1755,7 +1737,7 @@ class PtrDict
 
 
 template<typename TypeKeyT, typename TypeValueT>
-class ValDict
+class GenericDict
 {
     public:
         enum
@@ -1764,7 +1746,7 @@ class ValDict
         };
 
     public:
-        static inline bool initDict(ValDict* dict, unsigned int initialcapacity)
+        static inline bool initDict(GenericDict* dict, unsigned int initialcapacity)
         {
             unsigned int i;
             dict->m_vdcells = nullptr;
@@ -1800,7 +1782,7 @@ class ValDict
             return false;
         }
 
-        static inline void deinit(ValDict* dict)
+        static inline void deinit(GenericDict* dict)
         {
             dict->m_vdcount = 0;
             dict->m_vditemcapacity = 0;
@@ -1818,11 +1800,11 @@ class ValDict
         }
 
 
-        static inline void destroy(ValDict* dict)
+        static inline void destroy(GenericDict* dict)
         {
             if(dict != nullptr)
             {
-                ValDict::deinit(dict);
+                GenericDict::deinit(dict);
                 mc_memory_free(dict);
             }
         }
@@ -1840,17 +1822,17 @@ class ValDict
         mcitemcomparefn_t m_funckeyequalsfn;
 
     public:
-        inline ValDict(): ValDict(PtrDict::DefaultInitSize)
+        inline GenericDict(): GenericDict(PtrDict::DefaultInitSize)
         {
         }
 
-        inline ValDict(unsigned int mincapacity)
+        inline GenericDict(unsigned int mincapacity)
         {
             bool ok;
             unsigned int capacity;
             (void)ok;
             capacity = mc_util_upperpowoftwo(mincapacity * 2);
-            ok = ValDict::initDict(this, capacity);
+            ok = GenericDict::initDict(this, capacity);
             MC_ASSERT(ok);
         }
 
@@ -2072,7 +2054,7 @@ class ValDict
             void* value;
             (void)ok;
             ncap = MC_UTIL_INCCAPACITY(m_vdcellcapacity);    
-            ValDict newdict(ncap);
+            GenericDict newdict(ncap);
             newdict.m_funckeyequalsfn = m_funckeyequalsfn;
             newdict.m_funchashfn = m_funchashfn;
             for(i = 0; i < m_vdcount; i++)
@@ -2081,7 +2063,7 @@ class ValDict
                 value = getValueAt(i);
                 ok = newdict.setKV(key, value);
             }
-            ValDict::deinit(this);
+            GenericDict::deinit(this);
             *this = newdict;
             return true;
         }
@@ -2209,7 +2191,7 @@ class Object
                 } m_funcdata;
 
             public:
-                inline bool freeValuesAreAllocated()
+                bool freeValuesAreAllocated()
                 {
                     return m_funcdata.valscriptfunc.freevalscount >= MaxFreeVal;
                 }
@@ -2229,7 +2211,7 @@ class Object
 
         struct ObjMap
         {
-            ValDict<Value, Value>* actualmap;
+            GenericDict<Value, Value>* actualmap;
         };
 
         struct ObjString
@@ -2394,6 +2376,9 @@ class Value: public ValData
             {
                 alen = mc_value_stringgetlength(a);
                 blen = mc_value_stringgetlength(b);
+                #if 0
+                fprintf(stderr, "compare: alen=%d, blen=%d\n", alen, blen);
+                #endif
                 if(alen != blen)
                 {
                     cres->result = alen - blen;
@@ -2494,7 +2479,7 @@ class Value: public ValData
         * copyDeep* and copyFlat have rather confusing names. but i can't think of better ones...
         */
         template<typename TypeKeyT, typename TypeValueT>
-        static Value copyDeepIntern(State* state, Value obj, ValDict<TypeKeyT, TypeValueT>* targetdict)
+        static Value copyDeepIntern(State* state, Value obj, GenericDict<TypeKeyT, TypeValueT>* targetdict)
         {
             Type type;
             Value copy;
@@ -2569,7 +2554,7 @@ class Value: public ValData
         static Value copyDeep(State* state, Value obj)
         {
             Value res;
-            auto targetdict = Memory::make<ValDict<Value, Value>>();
+            auto targetdict = Memory::make<GenericDict<Value, Value>>();
             res = copyDeepIntern(state, obj, targetdict);
             Memory::destroy(targetdict);
             return res;
@@ -2879,7 +2864,7 @@ class GCMemory
             Object* obj;
             if(m != nullptr)
             {
-                Memory::destroy(m->m_gcobjlistremains);
+                PtrList::destroy(m->m_gcobjlistremains, nullptr);
                 PtrList::destroy(m->m_gcobjlistback, nullptr);
                 for(i = 0; i < m->m_gcobjliststored->count(); i++)
                 {
@@ -2911,7 +2896,7 @@ class GCMemory
         int m_allocssincesweep;
         PtrList* m_gcobjliststored;
         PtrList* m_gcobjlistback;
-        GenericList<Value>* m_gcobjlistremains;
+        PtrList* m_gcobjlistremains;
         DataPool m_poolonlydata;
         DataPool m_poolarray;
         DataPool m_poolmap;
@@ -2930,7 +2915,7 @@ class GCMemory
         {
             m_gcobjliststored = Memory::make<PtrList>(sizeof(void*), true);
             m_gcobjlistback = Memory::make<PtrList>(sizeof(void*), true);
-            m_gcobjlistremains = Memory::make<GenericList<Value>>(0, Value::makeNull());
+            m_gcobjlistremains = Memory::make<PtrList>(sizeof(Value), false);
             m_allocssincesweep = 0;
             initPool(&m_poolonlydata);
             initPool(&m_poolarray);
@@ -3348,10 +3333,12 @@ class AstSymTable
                 return nullptr;
             }
             /* "this" is reserved */
+            #if 1
             if(mc_util_strequal(name, "this"))
             {
                 return defineThis();
             }
+            #endif
             symboltype = m_symtbouter == nullptr ? AstSymbol::SYMTYP_MODULEGLOBAL : AstSymbol::SYMTYP_LOCAL;
             ix = nextSymbolIndex();
             symbol = Memory::make<AstSymbol>(name, symboltype, ix, assignable);
@@ -3578,14 +3565,14 @@ class AstScopeComp
         {
             PtrList::destroy(scope->m_scopeipstackcontinue, nullptr);
             PtrList::destroy(scope->m_scopeipstackbreak, nullptr);
-            Memory::destroy(scope->m_scopecompiledbc);
+            PtrList::destroy(scope->m_scopecompiledbc, nullptr);
             PtrList::destroy(scope->m_scopesrcposlist, nullptr);
             mc_memory_free(scope);
         }
 
     public:
         AstScopeComp* m_outerscope;
-        GenericList<uint16_t>* m_scopecompiledbc;
+        PtrList* m_scopecompiledbc;
         PtrList* m_scopesrcposlist;
         PtrList* m_scopeipstackbreak;
         PtrList* m_scopeipstackcontinue;
@@ -3595,7 +3582,7 @@ class AstScopeComp
         AstScopeComp(AstScopeComp* ou)
         {
             m_outerscope = ou;
-            m_scopecompiledbc = Memory::make<GenericList<uint16_t>>(0, 0);
+            m_scopecompiledbc = Memory::make<PtrList>(sizeof(uint16_t), false);
             m_scopesrcposlist = Memory::make<PtrList>(sizeof(AstLocation), false);
             m_scopeipstackbreak = Memory::make<PtrList>(sizeof(int), false);
             m_scopeipstackcontinue = Memory::make<PtrList>(sizeof(int), false);
@@ -3609,8 +3596,8 @@ class AstScopeComp
             bcdata = (uint16_t*)m_scopecompiledbc->data();
             astlocdata = (AstLocation*)m_scopesrcposlist->data();
             res = Memory::make<CompiledProgram>(bcdata, astlocdata, m_scopecompiledbc->count());
-            m_scopecompiledbc->orphanData();
-            m_scopesrcposlist->orphanData();
+            PtrList::orphanData(m_scopecompiledbc);
+            PtrList::orphanData(m_scopesrcposlist);
             return res;
         }
 };
@@ -3896,8 +3883,6 @@ class AstToken
         }
 };
 
-
-
 class AstExprData
 {
     public:
@@ -3974,7 +3959,7 @@ class AstExprData
                 {
                     if(block != nullptr)
                     {
-                        PtrList::destroy(block->m_blockstatements, (mcitemdestroyfn_t)destroyExprData);
+                        PtrList::destroy(block->m_blockstatements, (mcitemdestroyfn_t)destroyExpression);
                         mc_memory_free(block);
                     }
                 }
@@ -3985,8 +3970,8 @@ class AstExprData
                     {
                         return nullptr;
                     }
-                    auto copyfn = (mcitemcopyfn_t)AstExprData::copyExprData<AstExpression>;
-                    auto delfn = (mcitemdestroyfn_t)AstExprData::destroyExprData<AstExpression>;
+                    auto copyfn = (mcitemcopyfn_t)AstExprData::copyExpression<AstExpression>;
+                    auto delfn = (mcitemdestroyfn_t)AstExprData::destroyExpression<AstExpression>;
                     auto statementscopy = block->m_blockstatements->copy(copyfn, delfn);
                     if(!statementscopy)
                     {
@@ -4022,7 +4007,7 @@ class AstExprData
                     {
                         return nullptr;
                     }
-                    testcopy = copyExprData(ifcase->m_ifcond);
+                    testcopy = copyExpression(ifcase->m_ifcond);
                     if(!testcopy)
                     {
                         goto err;
@@ -4035,7 +4020,7 @@ class AstExprData
                     ifcasecopy = Memory::make<ExprIfCase>(testcopy, consequencecopy);
                     return ifcasecopy;
                 err:
-                    destroyExprData(testcopy);
+                    destroyExpression(testcopy);
                     Memory::destroy(consequencecopy);
                     ExprIfCase::destroy(ifcasecopy);
                     return nullptr;
@@ -4045,7 +4030,7 @@ class AstExprData
                 {
                     if(cond != nullptr)
                     {
-                        destroyExprData(cond->m_ifcond);
+                        destroyExpression(cond->m_ifcond);
                         Memory::destroy(cond->m_ifthen);
                         mc_memory_free(cond);
                     }
@@ -4243,17 +4228,19 @@ class AstExprData
         virtual AstExpression* copyInstanceExpression() = 0;
 
         template<typename InTypeT>
-        static void destroyExprData(InTypeT* expr)
+        static void destroyExpression(InTypeT* expr)
         {
+            //fprintf(stderr, "dummy destroyExpression() called by mistake?\n");
             if(expr != nullptr)
             {
-                ((AstExprData*)expr)->destroyInstanceExpression();
+                return ((AstExprData*)expr)->destroyInstanceExpression();
             }
         }
 
         template<typename InTypeT>
-        static AstExpression* copyExprData(InTypeT* expr)
+        static AstExpression* copyExpression(InTypeT* expr)
         {
+            //fprintf(stderr, "dummy copyExpression() called by mistake?\n");
             if(expr != nullptr)
             {
                 return ((AstExprData*)expr)->copyInstanceExpression();
@@ -4295,13 +4282,176 @@ class AstExprData
 
 };
 
+/*
+class AstExprArena
+{
+    public:
+        static constexpr size_t CHUNK_CAPACITY = (512 / 16);
+
+        struct Chunk
+        {
+            uint8_t* m_data;
+            size_t m_count;
+            Chunk* m_next;
+        };
+
+    private:
+        size_t m_nodesize;
+        Chunk* m_head;
+
+    public:
+        AstExprArena() : m_nodesize(0), m_head(nullptr)
+        {
+        }
+
+        void init(size_t nodesize)
+        {
+            m_nodesize = nodesize;
+        }
+
+        void* allocate()
+        {
+            if(!m_head || m_head->m_count >= CHUNK_CAPACITY)
+            {
+                auto* chunk = (Chunk*)mc_memory_malloc(sizeof(Chunk));
+                chunk->m_data = (uint8_t*)mc_memory_malloc(m_nodesize * CHUNK_CAPACITY);
+                chunk->m_count = 0;
+                chunk->m_next = m_head;
+                m_head = chunk;
+            }
+            void* slot = m_head->m_data + m_head->m_count * m_nodesize;
+            m_head->m_count++;
+            return slot;
+        }
+
+        void reset()
+        {
+            Chunk* current = m_head;
+            while(current)
+            {
+                Chunk* next = current->m_next;
+                mc_memory_free(current->m_data);
+                mc_memory_free(current);
+                current = next;
+            }
+            m_head = nullptr;
+        }
+};
+*/
+
+class AstExprArena
+{
+    public:
+        struct DestructNode
+        {
+            void (*m_dnodedestructor)(void*);
+            DestructNode* m_dnodeprev;
+            void* m_dnodeobject;
+        };
+
+    private:
+        char* m_arenabuffer;
+        size_t m_arenacapacity;
+        size_t m_arenaoffset;
+        DestructNode* m_arenatail = nullptr;
+
+    private:
+        void call_destructors()
+        {
+            while (m_arenatail)
+            {
+                m_arenatail->m_dnodedestructor(m_arenatail->m_dnodeobject);
+                m_arenatail = m_arenatail->m_dnodeprev;
+            }
+        }
+
+        // Check if we have memory of `size` bytes with specified `alignment`
+        std::pair<void*, size_t> allocate(size_t curroffset, size_t size, size_t alignment)
+        {
+            char* currentptr = m_arenabuffer + curroffset;
+            size_t space = m_arenacapacity - curroffset;
+            void* alignedptr = currentptr;
+            // Align the ptr to the specified alignment
+            MC_ASSERT(std::align(alignment, size, alignedptr, space) != nullptr);
+            auto new_offset = static_cast<char*>(alignedptr) - m_arenabuffer + size;
+            return {alignedptr, new_offset};
+        }
+
+    public:
+        explicit AstExprArena(size_t size)
+        {
+            m_arenabuffer = static_cast<char*>(mc_memory_malloc(size));
+            m_arenacapacity = size;
+            m_arenaoffset = 0;
+        }
+
+        ~AstExprArena()
+        {
+            call_destructors();
+            mc_memory_free(m_arenabuffer);
+        }
+
+        template <typename T, typename... Args>
+        T* create(Args&&... args) {
+            // Allocate space for obj
+            auto [ptr, new_offset] = allocate(m_arenaoffset, sizeof(T), alignof(T));
+
+            if constexpr (std::is_trivially_destructible_v<T>) {
+                // If T has trivial destructor, then just construct object 
+                // as per normal
+                T* obj = new (ptr) T(std::forward<Args>(args)...);
+                m_arenaoffset = new_offset;
+                return obj;
+            } else {
+                // Else we need to create a DestructNode, 
+                // to store destructor to be called later
+
+                // Allocate space for DestructNode
+                auto [dnode_ptr, final_offset] = allocate(new_offset, 
+                      sizeof(DestructNode), alignof(DestructNode));
+
+                // Now construct T only after successful allocation
+                T* obj = new (ptr) T(std::forward<Args>(args)...);
+
+                auto dtor_call = [](void* p) {
+                    static_cast<T*>(p)->~T();
+                };
+                DestructNode* new_node = new (dnode_ptr) DestructNode{dtor_call, 
+                                                              m_arenatail, obj};
+                m_arenatail = new_node;
+
+                // Commit offset after successful allocation and construction
+                m_arenaoffset = final_offset;
+                return obj;
+            }
+        }
+
+        void reset() {
+            call_destructors();
+            m_arenaoffset = 0;
+        }
+
+        // Non-copyable, non-movable type
+        AstExprArena(const AstExprArena&) = delete;
+        AstExprArena(AstExprArena&&) = delete;
+
+
+};
+
 class AstExpression: public AstExprData
 {
+    public:
+        enum
+        {
+            ArenaMinSize = (1024 * 128),
+        };
+
     public:
 
         static AstExpression* makeAstItemBaseExpression(ExprType type)
         {
             auto res = Memory::make<AstExpression>();
+            fprintf(stderr, "in makeAstItemBaseExpression: res=%p\n", res);
             res->m_exprtype = type;
             res->m_exprpos = AstLocation::Invalid();
             return res;
@@ -4913,6 +5063,7 @@ class AstExpression: public AstExprData
             return copyExpression(this);
         }
 
+
         static void destroyExpression(AstExpression* expr)
         {
             if(expr != nullptr)
@@ -5077,8 +5228,7 @@ class AstExpression: public AstExprData
                         }
                         break;
                 }
-                Memory::destroy(expr);
-                expr = nullptr;
+                /* node memory is owned by AstExprArena, not freed individually */
             }
         }
 
@@ -5209,26 +5359,27 @@ class Traceback
         };
 
     public:
-        GenericList<Item>* m_tbitems;
+        PtrList* m_tbitems;
 
     public:
         Traceback()
         {
-            m_tbitems = Memory::make<GenericList<Item>>(0, Item{});
+            m_tbitems = Memory::make<PtrList>(sizeof(Item), false);
         }
 
         static void destroy(Traceback* traceback)
         {
             size_t i;
+            Item* item;
             if(traceback != nullptr)
             {
                 for(i = 0; i < traceback->m_tbitems->count(); i++)
                 {
-                    auto item = (Item*)traceback->m_tbitems->getp(i);
+                    item = (Item*)traceback->m_tbitems->get(i);
                     mc_memory_free(item->m_tbtracefuncname);
                     item->m_tbtracefuncname = nullptr;
                 }
-                Memory::destroy(traceback->m_tbitems);
+                PtrList::destroy(traceback->m_tbitems, nullptr);
                 mc_memory_free(traceback);
                 traceback = nullptr;
             }
@@ -5245,7 +5396,7 @@ class Traceback
                 return false;
             }
             item.m_tbpos = pos;
-            ok = m_tbitems->push(item);
+            ok = m_tbitems->push(&item);
             return true;
         }
 
@@ -5257,7 +5408,7 @@ class Traceback
         const char* mc_traceback_getsourcefilepath(int depth)
         {
             Item* item;
-            item = (Item*)m_tbitems->getp(depth);
+            item = (Item*)m_tbitems->get(depth);
             if(!item)
             {
                 return nullptr;
@@ -5268,7 +5419,7 @@ class Traceback
         const char* mc_traceback_getsourcelinecode(int depth)
         {
             Item* item;
-            item = (Item*)m_tbitems->getp(depth);
+            item = (Item*)m_tbitems->get(depth);
             if(!item)
             {
                 return nullptr;
@@ -5279,7 +5430,7 @@ class Traceback
         int mc_traceback_getsourcelinenumber(int depth)
         {
             Item* item;
-            item = (Item*)m_tbitems->getp(depth);
+            item = (Item*)m_tbitems->get(depth);
             if(!item)
             {
                 return -1;
@@ -5290,7 +5441,7 @@ class Traceback
         int mc_traceback_getsourcecolumn(int depth)
         {
             Item* item;
-            item = (Item*)m_tbitems->getp(depth);
+            item = (Item*)m_tbitems->get(depth);
             if(!item)
             {
                 return -1;
@@ -5301,7 +5452,7 @@ class Traceback
         const char* mc_traceback_getfunctionname(int depth)
         {
             Item* item;
-            item = (Item*)m_tbitems->getp(depth);
+            item = (Item*)m_tbitems->get(depth);
             if(!item)
             {
                 return "";
@@ -5324,7 +5475,7 @@ class Traceback
             depth = m_tbitems->count();
             for(i = 0; i < depth; i++)
             {
-                item = (Item*)m_tbitems->getp(i);
+                item = (Item*)m_tbitems->get(i);
                 filename = item->getSourceFilename();
                 pr->format("  function %s%s%s", cblue, item->m_tbtracefuncname, creset);
                 if(item->m_tbpos.m_locline >= 0 && item->m_tbpos.m_loccolumn >= 0)
@@ -6807,7 +6958,9 @@ class AstParser
                 case AstToken::TOK_LBRACE: return callback_parseliteralmap;
                 case AstToken::TOK_PLUSPLUS: return callback_parseincdecprefixexpr;
                 case AstToken::TOK_MINUSMINUS: return callback_parseincdecprefixexpr;
+                #if 1
                 case AstToken::TOK_RECOVER: return callback_parserecoverstmt;
+                #endif
                 default:
                     break;
             }
@@ -6889,7 +7042,11 @@ class AstParser
             }
             nameident = Memory::make<AstExpression::ExprIdent>(m_lexer.m_currtoken);
             m_lexer.nextToken();
-            if(!m_lexer.currentTokenIs(AstToken::TOK_ASSIGN))
+            #if 0
+                if(!m_lexer.expectCurrent(AstToken::TOK_ASSIGN))
+            #else
+                if(!m_lexer.currentTokenIs(AstToken::TOK_ASSIGN))
+            #endif
             {
                 value = AstExpression::makeAstItemLiteralNull();
                 goto finish;
@@ -7027,6 +7184,15 @@ class AstParser
             }
             if(expr && (!m_config->replmode || m_parsedepth > 0))
             {
+                #if 0
+                /* this is actually completely unnecessary */
+                if(expr->m_exprtype != AstExpression::EXPR_ASSIGN && expr->m_exprtype != AstExpression::EXPR_CALL)
+                {
+                    m_prserrlist->pushFormat(Error::ERRTYP_PARSING, expr->pos, "only assignments and function calls can be expression statements");
+                    AstExpression::destroyExpression(expr);
+                    return nullptr;
+                }
+                #endif
             }
             res = AstExpression::makeAstItemExprStmt(expr);
             return res;
@@ -7940,6 +8106,9 @@ class AstParser
             number = 0;
             errno = 0;
             number = mc_util_strtod(m_lexer.m_currtoken.m_tokstrdata, m_lexer.m_currtoken.m_tokstrlength, &end);
+            #if 0
+                fprintf(stderr, "literal=<%s> number=<%f>\n", m_lexer.m_currtoken.m_tokstrdata, number);
+            #endif
             parsedlen = end - m_lexer.m_currtoken.m_tokstrdata;
             if(errno || parsedlen != m_lexer.m_currtoken.m_tokstrlength)
             {
@@ -9147,7 +9316,9 @@ class AstCompiler
             {
                 filename = (const char*)files->top();
             }
+            #if 1
             ok = filescopepush(filename);
+            #endif
             m_stringconstposdict = Memory::make<PtrDict>(nullptr, nullptr);
             return true;
         }
@@ -9176,14 +9347,14 @@ class AstCompiler
             PtrList::destroy(m_filescopelist, nullptr);
         }
 
-        void appendByteAt(GenericList<uint16_t>* res, const uint64_t* operands, int i, int n)
+        void appendByteAt(PtrList* res, const uint64_t* operands, int i, int n)
         {
             uint16_t val;
             val = (uint16_t)(operands[i] >> (n * 8));
-            res->push(val);
+            res->push(&val);
         }
 
-        int genCode(mcinternopcode_t op, int operandscount, const uint64_t* operands, GenericList<uint16_t>* res)
+        int genCode(mcinternopcode_t op, int operandscount, const uint64_t* operands, PtrList* res)
         {
             bool ok;
             int i;
@@ -9205,7 +9376,7 @@ class AstCompiler
             }
             val = op;
             ok = false;
-            ok = res->push(val);
+            ok = res->push(&val);
             for(i = 0; i < operandscount; i++)
             {
                 width = def->operandwidths[i];
@@ -10035,11 +10206,13 @@ class AstCompiler
                         {
                             goto error;
                         }
+                        #if 1
                         if(index->isdot)
                         {
                             ip = emitOpCode(OPCODE_GETDOTINDEX, 0, nullptr);
                         }
                         else
+                        #endif
                         {
                             ip = emitOpCode(OPCODE_GETINDEX, 0, nullptr);
                         }
@@ -10722,6 +10895,13 @@ class AstCompiler
                                 return false;
                             }
                         }
+                        #if 0
+                        if(!symtab->isTopBlockScope())
+                        {
+                            m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, expr->m_exprpos, "recover statement cannot be defined within other statements");
+                            return false;
+                        }
+                        #endif
                         opbuf[0] = 0xbeef;
                         recip = emitOpCode(OPCODE_SETRECOVER, 1, opbuf);
                         if(recip < 0)
@@ -10754,13 +10934,19 @@ class AstCompiler
                         }
                         if(!lastopcodeis(OPCODE_RETURN) && !lastopcodeis(OPCODE_RETURNVALUE))
                         {
-                            mc_util_complain(expr->m_exprpos, "recover body should end with a return statement");
+                            #if 0
+                                m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, expr->m_exprpos, "recover body must end with a return statement");
+                                return false;
+                            #else
+                                mc_util_complain(expr->m_exprpos, "recover body should end with a return statement");
+                            #endif
                         }
                         symtab->scopeBlockPop();
                         afterrecoverip = getip();
                         changeuint16operand(jumptoafterrecoverip + 1, afterrecoverip);
                     }
                     break;
+
                 default:
                     {
                         MC_ASSERT(false);
@@ -10830,16 +11016,17 @@ class AstCompiler
         {
             uint16_t hi;
             uint16_t lo;
-            auto bytecode = getbytecode();
+            PtrList* bytecode;
+            bytecode = getbytecode();
             if((ip + 1) >= (int)bytecode->count())
             {
             }
             else
             {
                 hi = operand >> 8;
-                bytecode->set(ip, hi);
+                bytecode->set(ip, &hi);
                 lo = operand;
-                bytecode->set(ip + 1, lo);
+                bytecode->set(ip + 1, &lo);
             }
         }
 
@@ -11008,12 +11195,13 @@ class AstCompiler
             return compscope->m_scopesrcposlist;
         }
 
-        GenericList<uint16_t>* getbytecode()
+        PtrList* getbytecode()
         {
             AstScopeComp* compscope;
             compscope = getCompilationScope();
             return compscope->m_scopecompiledbc;
         }
+
 
         bool filescopepush(const char* filepath)
         {
@@ -11437,7 +11625,6 @@ class State
             est->currframe = m_execstate.currframe;
         }
 
-
         inline void restoreExecInfo(ExecInfo* est)
         {
             m_execstate.thisstpos = est->thisstpos;
@@ -11462,7 +11649,7 @@ class State
 
         inline void setStackPos(size_t nsp)
         {
-            #if 1
+            #if 0
             size_t i;
             size_t count;
             size_t bytescount;
@@ -11498,7 +11685,7 @@ class State
                 MC_ASSERT((size_t)m_execstate.vsposition >= (size_t)(frame->m_basepointer + numlocals));
             }
         #endif
-            m_execstate.valuestack->set(m_execstate.vsposition, obj);
+            m_execstate.valuestack->m_listitems[m_execstate.vsposition] = obj;
             m_execstate.vsposition++;
         }
 
@@ -12353,7 +12540,7 @@ Value mc_value_makemapcapacity(State* state, size_t capacity)
         return Value::makeNull();
     }
     data->m_uvobj.valmap = Memory::make<Object::ObjMap>();
-    data->m_uvobj.valmap->actualmap = Memory::make<ValDict<Value, Value>>(capacity);
+    data->m_uvobj.valmap->actualmap = Memory::make<GenericDict<Value, Value>>(capacity);
     if(!data->m_uvobj.valmap->actualmap)
     {
         return Value::makeNull();
@@ -13027,7 +13214,7 @@ void mc_objectdata_deinit(Object* data)
 
 
 template<typename TypeKeyT, typename TypeValueT>
-Value mc_value_copydeepfuncscript(State* state, Value obj, ValDict<TypeKeyT, TypeValueT>* targetdict)
+Value mc_value_copydeepfuncscript(State* state, Value obj, GenericDict<TypeKeyT, TypeValueT>* targetdict)
 {
     bool ok;
     int i;
@@ -13102,7 +13289,7 @@ Value mc_value_copydeepfuncscript(State* state, Value obj, ValDict<TypeKeyT, Typ
 }
 
 template<typename TypeKeyT, typename TypeValueT>
-Value mc_value_copydeeparray(State* state, Value obj, ValDict<TypeKeyT, TypeValueT>* targetdict)
+Value mc_value_copydeeparray(State* state, Value obj, GenericDict<TypeKeyT, TypeValueT>* targetdict)
 {
     bool ok;
     int i;
@@ -13140,7 +13327,7 @@ Value mc_value_copydeeparray(State* state, Value obj, ValDict<TypeKeyT, TypeValu
 }
 
 template<typename TypeKeyT, typename TypeValueT>
-Value mc_value_copydeepmap(State* state, Value obj, ValDict<TypeKeyT, TypeValueT>* targetdict)
+Value mc_value_copydeepmap(State* state, Value obj, GenericDict<TypeKeyT, TypeValueT>* targetdict)
 {
     bool ok;
     int i;
@@ -13834,8 +14021,6 @@ int mc_state_gcshouldsweep(State* state)
 
 bool mc_state_gcdisablefor(Value obj)
 {
-    MC_ASSERT(!"mc_state_gcdisablefor() is broken!");
-    #if 0
     bool ok;
     Object* data;
     (void)ok;
@@ -13848,23 +14033,18 @@ bool mc_state_gcdisablefor(Value obj)
     {
         return false;
     }
-    ok = data->m_objmem->m_gcobjlistremains->push(obj);
+    ok = data->m_objmem->m_gcobjlistremains->push(&obj);
     return ok;
-    #endif
-    return false;
 }
 
 void mc_state_gcenablefor(Value obj)
 {
-    MC_ASSERT(!"mc_state_gcenablefor() is broken!");
-    #if 0 
     Object* data;
     if(obj.isAllocated())
     {
         data = obj.getAllocatedData();
         data->m_objmem->m_gcobjlistremains->removeItem(&obj);
     }
-    #endif
 }
 
 bool mc_state_gccandatabeputinpool(State* state, Object* data)
@@ -14010,6 +14190,9 @@ bool mc_vm_runexecfunc(State* state, CompiledProgram* comp_res, GenericList<Valu
     state->m_execstate.thisstpos = oldthissp;
     return res;
 }
+
+
+
 
 MC_INLINE void mc_vm_rungc(State* state, GenericList<Value>* constants)
 {
@@ -16014,7 +16197,6 @@ Value mc_scriptfn_print(State* state, void* data, Value thisval, size_t argc, Va
     {
         arg = args[i];
         mc_printer_printvalue(pr, arg, false);
-        state->m_stdoutprinter->flush();
     }
     return Value::makeNull();
 }
@@ -16025,7 +16207,6 @@ Value mc_scriptfn_println(State* state, void* data, Value thisval, size_t argc, 
     (void)thisval;
     o = mc_scriptfn_print(state, data, thisval, argc, args);
     state->m_stdoutprinter->putChar('\n');
-    state->m_stdoutprinter->flush();
     return o;
 }
 
@@ -16681,6 +16862,7 @@ Value mc_objfnarray_map(State* state, void* data, Value thisval, size_t argc, Va
     Value val;
     Value res;
     Value callee;
+    Value vargs[3];
     Value narr;
     GenericList<Value>* ary;
     GenericList<Value>* nary;
@@ -16695,22 +16877,9 @@ Value mc_objfnarray_map(State* state, void* data, Value thisval, size_t argc, Va
     for(i=0; i<len; i++)
     {
         val = ary->get(i);
-        #if 1
-            Value vargs[] = {val};
-        #else
-            Value vargs[3];
-            #if 0
-            vargs[0] = val;
-            vargs[1] = Value::makeNumber(i);
-            #else
-            vargs[0] = val;        
-            #endif
-        #endif
-        State::ExecInfo est;
-        state->saveExecInfo(&est);
-        //inline Value vmCallValue(GenericList<Value>* constants, Value callee, Value thisval, size_t argc, Value* args)
-        res = state->vmCallValue(state->m_sharedcompiler->getconstants(), callee, thisval, 1, vargs);
-        state->restoreExecInfo(&est);
+        vargs[0] = val;
+        vargs[1] = Value::makeNumber(i);
+        res = state->vmCallValue(nullptr, callee, thisval, 1, vargs);
         nary->push(res);
     }
     return narr;
@@ -17729,7 +17898,7 @@ Value mc_nsfndir_readdir(State* state, void* data, Value thisval, size_t argc, V
     Value vfullpath;
     Value vpath;
     Value vrespath;
-    FSDirReader::Item ent;
+    FSDirItem ent;
     FSDirReader reader;
     (void)state;
     (void)argc;
@@ -17746,10 +17915,10 @@ Value mc_nsfndir_readdir(State* state, void* data, Value thisval, size_t argc, V
     {
         joinpaths = Value::asBool(args[1]);
     }
-    if(reader.openDir(path))
+    if(fslib_diropen(&reader, path))
     {
         res = mc_value_makearray(state);
-        while(reader.readItem(&ent))
+        while(fslib_dirread(&reader, &ent))
         {
             isdot = ((strcmp(ent.name, ".") == 0) || (strcmp(ent.name, "..") == 0));
             if(isdot)
@@ -17768,7 +17937,7 @@ Value mc_nsfndir_readdir(State* state, void* data, Value thisval, size_t argc, V
             }
             mc_value_arraypush(res, vrespath);
         }
-        reader.closeDir();
+        fslib_dirclose(&reader);
         return res;
     }
     state->m_errorlist.pushMessage(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), strerror(errno));
@@ -17990,7 +18159,7 @@ void mc_cli_printtypesize(const char* name, size_t sz)
 void mc_cli_printtypesizes()
 {
     printtypesize(PtrDict);
-    printtypesize(ValDict<Value, Value>);
+    printtypesize(GenericDict<Value, Value>);
     printtypesize(PtrList);
     printtypesize(Printer::Config);
     printtypesize(Printer);
