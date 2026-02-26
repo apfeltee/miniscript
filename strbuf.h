@@ -110,25 +110,27 @@ class StringBuffer
 
         static bool destroy(StringBuffer* sb)
         {
-            mc_memory_free(sb->m_data);
+            destroyFromPtr(sb);
             mc_memory_free(sb);
             return true;
         }
 
         static bool destroyFromPtr(StringBuffer* sb)
         {
-            mc_memory_free(sb->m_data);
+            if(sb->m_data != nullptr)
+            {
+                mc_memory_free(sb->m_data);
+            }
             return true;
         }
 
     public:
-        char* m_data;
-
+        char* m_data = nullptr;
         /* total length of this buffer */
-        size_t m_length;
+        size_t m_length = 0;
 
         /* capacity should be >= length+1 to allow for \0 */
-        size_t m_capacity;
+        size_t m_capacity = 0;
 
     public:
         inline void checkBoundsInsert(size_t pos) const
@@ -155,6 +157,13 @@ class StringBuffer
         }
 
     public:
+        StringBuffer()
+        {
+            this->m_length = 0;
+            this->m_capacity = 0;
+            this->m_data = NULL;
+        }
+
         StringBuffer(size_t len)
         {
             this->m_length = 0;

@@ -6218,7 +6218,7 @@ mcastexpression_t* mc_astexpr_copyexpr(mcastexpression_t* expr)
                     return NULL;
                 }
                 res = mc_astexpr_makeifexpr(expr->pstate, casescopy, alternativecopy);
-                if(res)
+                if(!res)
                 {
                     mc_ptrlist_destroy(casescopy, (mcitemdestroyfn_t)mc_astifcase_destroy);
                     mc_astcodeblock_destroy(alternativecopy);

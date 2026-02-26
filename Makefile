@@ -54,8 +54,8 @@ EXTRAFLAGS =
 #EXTRAFLAGS += -fdata-sections -ffunction-sections -Wl,--gc-sections -Wl,--print-gc-sections
 
 
-CXX = g++ -std=c++20 $(WFLAGS) $(EXTRAFLAGS)
-#CXX = clang++ -gdwarf-4 -std=c++2c $(WFLAGS) $(EXTRAFLAGS)
+#CXX = g++ -std=c++20 $(WFLAGS) $(EXTRAFLAGS)
+CXX = clang++ -gdwarf-4 -std=c++2c $(WFLAGS) $(EXTRAFLAGS)
 CC = gcc $(WFLAGS) $(EXTRAFLAGS)
 #CC = tcc $(WFLAGS) $(EXTRAFLAGS)
 DEPCC = gcc
