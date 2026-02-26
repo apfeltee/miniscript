@@ -7,7 +7,27 @@ var maxiter = 32;
 var dx = (xmax - xmin) / 79;
 var dy = (ymax - ymin) / 24;
 var cy = ymin;
-var line = "";
+const chartab = {
+    33: "!",
+    34: '"',
+    36: "$",
+    37: "%",
+    35: "#",
+    39: "'",
+    55: "7",
+    40: "(",
+    38: "&",
+    42: "*",
+    64: "@",
+    41: ")",
+    52: "4",
+    43: "+",
+    63: "?",
+    44: ",",
+    60: "<",
+    45: "-",
+    50: "2",
+}
 while(cy <= ymax)
 {
     var cx = xmin;
@@ -30,11 +50,12 @@ while(cy <= ymax)
             y2 = ((y * y) >> 12);
             iter = iter + 1;
         }
-        print((32 + iter).chr());
+        var ch = (32 + iter);
+        var pch = "/";
+        print(chartab[ch])
         cx = cx + dx;
     }
     print("\n");
-    line = "";
     cy = cy + dy;
 }
 

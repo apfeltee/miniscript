@@ -103,7 +103,6 @@ typedef struct mcstoddiyfp_t mcstoddiyfp_t;
 
 
 class Object;
-class PtrList;
 class Printer;
 class PtrDict;
 class AstLexer;
@@ -824,36 +823,96 @@ template<typename ValType>
 class GenericList
 {
     public:
-        static void destroy(GenericList* list)
-        {
-            destroy(list, false);
-        }
 
-        static void destroy(GenericList* list, bool fromstack)
+
+    public:
+        static void destroy(GenericList* list)
         {
             if(list != nullptr)
             {
-                mc_memory_free(list->m_listitems);
-                if(!fromstack)
-                {
-                    mc_memory_free(list);
-                    list = nullptr;
-                }
+                list->destroyFromStack();
+                mc_memory_free(list);
+                list = nullptr;
             }
         }
 
-        static GenericList* copy(GenericList* list)
+        template<typename InputT>
+        static inline void destroy(GenericList* list, void(*dfn)(InputT))
+        {
+            if(list != nullptr)
+            {    
+                if(dfn != nullptr)
+                {
+                    clearAndDestroy(list, dfn);
+                }
+                list->destroyFromStack();
+                mc_memory_free(list);
+            }
+        }
+
+        template<typename InputT>
+        static inline void clearAndDestroy(GenericList* list, void(*dfn)(InputT))
+        {
+            size_t i;
+            void* item;
+            for(i = 0; i < list->count(); i++)
+            {
+                item = list->get(i);
+                if(dfn != nullptr)
+                {
+                    dfn((InputT)item);
+                }
+            }
+            list->clear();
+        }
+
+        GenericList* copy()
         {
             size_t i;
             GenericList* nlist;
-            nlist = Memory::make<GenericList>(0, list->m_nullvalue);
-            for(i=0; i<list->m_listcount; i++)
+            nlist = Memory::make<GenericList>(0, m_nullvalue);
+            for(i=0; i<m_listcount; i++)
             {
-                nlist->push(list->m_listitems[i]);
+                nlist->push(m_listitems[i]);
             }
             return nlist;
         }
 
+        template<typename InputT, typename OutputT>
+        inline GenericList* copy(OutputT(*copyfn)(InputT), void(*dfn)(InputT))
+        {
+            bool ok;
+            size_t i;
+            GenericList* arrcopy;
+            (void)ok;
+            arrcopy = Memory::make<GenericList<ValType>>(m_listcapacity, m_nullvalue);
+            if(copyfn)
+            {
+                for(i = 0; i < count(); i++)
+                {
+                    auto item = get(i);
+                    auto itemcopy = item;
+                    if(copyfn)
+                    {
+                        itemcopy = (ValType)copyfn(item);
+                    }
+                    if(item && !itemcopy)
+                    {
+                        goto listcopyfailed;
+                    }
+                    ok = arrcopy->push(itemcopy);
+                }
+                return arrcopy;
+            }
+            else
+            {
+                return copy();
+            }
+            return arrcopy;
+        listcopyfailed:
+            Memory::destroy(arrcopy, dfn);
+            return nullptr;
+        }
 
     public:
         size_t m_listcapacity;
@@ -921,7 +980,7 @@ class GenericList
 
         inline ~GenericList()
         {
-            GenericList::destroy(this, true);
+            //destroyFromStack();
         }
 
         inline void orphanData()
@@ -929,6 +988,14 @@ class GenericList
             m_listcount = 0;
             m_listcapacity = 0;
             m_listitems = nullptr;
+        }
+
+        inline void destroyFromStack()
+        {
+            mc_memory_free(m_listitems);
+            m_listitems = nullptr;
+            m_listcount = 0;
+            m_listcapacity = 0;
         }
 
         inline void clear()
@@ -955,6 +1022,25 @@ class GenericList
         {
             return &m_listitems[idx];
         }
+
+        inline ValType top()
+        {
+            if(m_listcount == 0)
+            {
+                return m_nullvalue;
+            }
+            return get(m_listcount - 1);
+        }
+
+        inline ValType* topp()
+        {
+            if(m_listcount == 0)
+            {
+                return nullptr;
+            }
+            return getp(m_listcount - 1);
+        }
+
 
         inline ValType* set(size_t idx, ValType val)
         {
@@ -997,7 +1083,10 @@ class GenericList
         {
             if(m_listcount > 0)
             {
-                *dest = m_listitems[m_listcount - 1];
+                if(dest != nullptr)
+                {
+                    *dest = m_listitems[m_listcount - 1];
+                }
                 m_listcount--;
                 return true;
             }
@@ -1028,362 +1117,6 @@ class GenericList
             }
             m_listcount = 0;
             m_listcapacity = 0;
-        }
-};
-
-class PtrList
-{
-    public:
-        enum {
-            InitialSize = 8,
-        };
-
-    private:
-        static inline bool initCapacity(PtrList* list, unsigned int capacity, size_t tsz, bool isp)
-        {
-            if(isp)
-            {
-                tsz = sizeof(void*);
-            }
-            list->m_ptrlisttypesize = tsz;
-            list->m_ptrlistisptr = isp;
-            if(capacity > 0)
-            {
-                list->m_ptrlistallocdata = (unsigned char*)mc_memory_malloc(capacity * list->m_ptrlisttypesize);
-                list->m_ptrlistitems = list->m_ptrlistallocdata;
-                if(!list->m_ptrlistallocdata)
-                {
-                    return false;
-                }
-            }
-            else
-            {
-                list->m_ptrlistallocdata = nullptr;
-                list->m_ptrlistitems = nullptr;
-            }
-            list->m_listcapacity = capacity;
-            list->m_ptrlistcount = 0;
-            list->m_ptrlistcaplocked = false;
-            return true;
-        }
-
-        static inline void deInit(PtrList* list)
-        {
-            mc_memory_free(list->m_ptrlistallocdata);
-        }
-
-    public:
-        static inline void destroy(PtrList* list, mcitemdestroyfn_t dfn)
-        {
-            if(list != nullptr)
-            {    
-                if(dfn)
-                {
-                    clearAndDestroy(list, dfn);
-                }
-                deInit(list);
-                mc_memory_free(list);
-            }
-        }
-
-        static inline void clearAndDestroy(PtrList* list, mcitemdestroyfn_t dfn)
-        {
-            size_t i;
-            void* item;
-            for(i = 0; i < list->count(); i++)
-            {
-                item = list->get(i);
-                dfn(item);
-            }
-            list->clear();
-        }
-
-
-
-    protected:
-        unsigned char* m_ptrlistitems;
-        unsigned char* m_ptrlistallocdata;
-        unsigned int m_ptrlistcount;
-        unsigned int m_listcapacity;
-        size_t m_ptrlisttypesize;
-        bool m_ptrlistcaplocked;
-        bool m_ptrlistisptr;
-
-    public:
-        inline PtrList(size_t tsz, bool isp)
-        {
-            bool ok;
-            (void)ok;
-            ok = initCapacity(this, InitialSize, tsz, isp);
-            MC_ASSERT(ok);
-        }
-
-        inline ~PtrList()
-        {
-            PtrList::destroy(this, nullptr);
-        }
-
-        inline void orphanData()
-        {
-            PtrList::initCapacity(this, 0, this->m_ptrlisttypesize, this->m_ptrlistisptr);
-        }
-
-        inline PtrList* copy(mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
-        {
-            bool ok;
-            size_t i;
-            void* item;
-            void* itemcopy;
-            PtrList* arrcopy;
-            (void)ok;
-            arrcopy = Memory::make<PtrList>(m_ptrlisttypesize, m_ptrlistisptr);
-            if(copyfn)
-            {
-                for(i = 0; i < count(); i++)
-                {
-                    item = (void*)get(i);
-                    itemcopy = item;
-                    if(copyfn)
-                    {
-                        itemcopy = copyfn(item);
-                    }
-                    if(item && !itemcopy)
-                    {
-                        goto listcopyfailed;
-                    }
-                    ok = arrcopy->push(itemcopy);
-                }
-                return arrcopy;
-            }
-            else
-            {
-                arrcopy->m_listcapacity = m_listcapacity;
-                arrcopy->m_ptrlistcount = m_ptrlistcount;
-                arrcopy->m_ptrlisttypesize = m_ptrlisttypesize;
-                arrcopy->m_ptrlistcaplocked = m_ptrlistcaplocked;
-                if(m_ptrlistallocdata)
-                {
-                    arrcopy->m_ptrlistallocdata = (unsigned char*)mc_memory_malloc(m_listcapacity * m_ptrlisttypesize);
-                    if(!arrcopy->m_ptrlistallocdata)
-                    {
-                        mc_memory_free(arrcopy);
-                        return nullptr;
-                    }
-                    arrcopy->m_ptrlistitems = arrcopy->m_ptrlistallocdata;
-                    memcpy(arrcopy->m_ptrlistallocdata, m_ptrlistitems, m_listcapacity * m_ptrlisttypesize);
-                }
-                else
-                {
-                    arrcopy->m_ptrlistallocdata = nullptr;
-                    arrcopy->m_ptrlistitems = nullptr;
-                }
-            }
-            return arrcopy;
-        listcopyfailed:
-            PtrList::destroy(arrcopy, dfn);
-            return nullptr;
-        }
-
-        inline bool push(void* value)
-        {
-            unsigned int ncap;
-            unsigned char* newdata;
-            if(m_ptrlistcount >= m_listcapacity)
-            {
-                MC_ASSERT(!m_ptrlistcaplocked);
-                if(m_ptrlistcaplocked)
-                {
-                    return false;
-                }
-                ncap = MC_UTIL_INCCAPACITY(m_listcapacity);
-                newdata = (unsigned char*)mc_memory_realloc(m_ptrlistallocdata, ncap * m_ptrlisttypesize);
-                if(!newdata)
-                {
-                    return false;
-                }
-                m_ptrlistallocdata = newdata;
-                m_ptrlistitems = m_ptrlistallocdata;
-                m_listcapacity = ncap;
-            }
-            if(value)
-            {
-                if(m_ptrlistisptr)
-                {
-                    ((void**)m_ptrlistitems)[m_ptrlistcount] = value;
-                }
-                else
-                {
-                    memcpy(m_ptrlistitems + (m_ptrlistcount * m_ptrlisttypesize), value, m_ptrlisttypesize);
-                }
-            }
-            m_ptrlistcount++;
-            return true;
-        }
-
-        inline bool pop(void** outvalue)
-        {
-            void* res;
-            if(m_ptrlistcount <= 0)
-            {
-                return false;
-            }
-            if(outvalue != nullptr)
-            {
-                res = get(m_ptrlistcount - 1);
-                if(m_ptrlistisptr)
-                {
-                    *outvalue = res;
-                }
-                else
-                {
-                    memcpy(*outvalue, res, m_ptrlisttypesize);
-                }
-            }
-            removeAt(m_ptrlistcount - 1);
-            return true;
-        }
-
-        inline void* popReturn()
-        {
-            void* dest;
-            if(pop(&dest))
-            {
-                return dest;
-            }
-            return nullptr;
-        }
-
-        inline void* top()
-        {
-            if(m_ptrlistcount <= 0)
-            {
-                return nullptr;
-            }
-            return get(m_ptrlistcount - 1);
-        }
-
-        inline bool set(unsigned int ix, void* value)
-        {
-            size_t offset;
-            if(ix >= m_ptrlistcount)
-            {
-                MC_ASSERT(false);
-                return false;
-            }
-            if(m_ptrlistisptr)
-            {
-                ((void**)m_ptrlistitems)[ix] = value;
-            }
-            else
-            {
-                offset = ix * m_ptrlisttypesize;
-                memmove(m_ptrlistitems + offset, value, m_ptrlisttypesize);
-            }
-            return true;
-        }
-
-        inline void* get(unsigned int ix)
-        {
-            size_t offset;
-            if(ix >= m_ptrlistcount)
-            {
-                MC_ASSERT(false);
-                return nullptr;
-            }
-            if(m_ptrlistisptr)
-            {
-                return ((void**)m_ptrlistitems)[ix];
-            }
-            offset = ix * m_ptrlisttypesize;
-            return m_ptrlistitems + offset;
-        }
-
-        inline size_t count()
-        {
-            return m_ptrlistcount;
-        }
-
-        inline bool removeAt(unsigned int ix)
-        {
-            size_t tomovebytes;
-            void* dest;
-            void* src;
-            if(ix >= m_ptrlistcount)
-            {
-                return false;
-            }
-            if(!m_ptrlistisptr)
-            {
-                if(ix == 0)
-                {
-                    m_ptrlistitems += m_ptrlisttypesize;
-                    m_listcapacity--;
-                    m_ptrlistcount--;
-                    return true;
-                }
-                if(ix == (m_ptrlistcount - 1))
-                {
-                    m_ptrlistcount--;
-                    return true;
-                }
-                tomovebytes = (m_ptrlistcount - 1 - ix) * m_ptrlisttypesize;
-                dest = m_ptrlistitems + (ix * m_ptrlisttypesize);
-                src = m_ptrlistitems + ((ix + 1) * m_ptrlisttypesize);
-                memmove(dest, src, tomovebytes);
-            }
-            m_ptrlistcount--;
-            return true;
-        }
-
-        inline void clear()
-        {
-            m_ptrlistcount = 0;
-        }
-
-        inline void* data()
-        {
-            return m_ptrlistitems;
-        }
-
-        inline void* getConstAt(unsigned int ix)
-        {
-            size_t offset;
-            if(ix >= m_ptrlistcount)
-            {
-                MC_ASSERT(false);
-                return nullptr;
-            }
-            offset = ix * m_ptrlisttypesize;
-            return m_ptrlistitems + offset;
-        }
-
-        inline int getIndexOf(void* ptr)
-        {
-            size_t i;
-            for(i = 0; i < count(); i++)
-            {
-                if(getConstAt(i) == ptr)
-                {
-                    return i;
-                }
-            }
-            return -1;
-        }
-
-        inline bool removeItem(void* ptr)
-        {
-            int ix;
-            ix = getIndexOf(ptr);
-            if(ix < 0)
-            {
-                return false;
-            }
-            return removeAt(ix);
-        }
-
-        inline bool contains(void* ptr)
-        {
-            return getIndexOf(ptr) >= 0;
         }
 };
 
@@ -1736,7 +1469,7 @@ class PtrDict
             {
                 return nullptr;
             }
-            dictcopy = Memory::make<PtrDict>(m_funccopyfn, m_funcdestroyfn);
+            dictcopy = Memory::make<PtrDict>((mcitemcopyfn_t)m_funccopyfn, (mcitemdestroyfn_t)m_funcdestroyfn);
             for(i = 0; i < count(); i++)
             {
                 key = getKeyAt(i);
@@ -2880,14 +2613,14 @@ class GCMemory
             if(m != nullptr)
             {
                 Memory::destroy(m->m_gcobjlistremains);
-                PtrList::destroy(m->m_gcobjlistback, nullptr);
+                Memory::destroy(m->m_gcobjlistback);
                 for(i = 0; i < m->m_gcobjliststored->count(); i++)
                 {
                     obj = (Object*)m->m_gcobjliststored->get(i);
                     mc_objectdata_deinit(obj);
                     mc_memory_free(obj);
                 }
-                PtrList::destroy(m->m_gcobjliststored, nullptr);
+                Memory::destroy(m->m_gcobjliststored);
                 destroyPool(&m->m_poolarray);
                 destroyPool(&m->m_poolmap);
                 destroyPool(&m->m_poolstring);
@@ -2909,8 +2642,8 @@ class GCMemory
 
     public:
         int m_allocssincesweep;
-        PtrList* m_gcobjliststored;
-        PtrList* m_gcobjlistback;
+        GenericList<void*>* m_gcobjliststored;
+        GenericList<void*>* m_gcobjlistback;
         GenericList<Value>* m_gcobjlistremains;
         DataPool m_poolonlydata;
         DataPool m_poolarray;
@@ -2928,8 +2661,8 @@ class GCMemory
     public:
         GCMemory()
         {
-            m_gcobjliststored = Memory::make<PtrList>(sizeof(void*), true);
-            m_gcobjlistback = Memory::make<PtrList>(sizeof(void*), true);
+            m_gcobjliststored = Memory::make<GenericList<void*>>(0, nullptr);
+            m_gcobjlistback = Memory::make<GenericList<void*>>(0, nullptr);
             m_gcobjlistremains = Memory::make<GenericList<Value>>(0, Value::makeNull());
             m_allocssincesweep = 0;
             initPool(&m_poolonlydata);
@@ -2981,7 +2714,7 @@ class ObjClass
                 memb = (Field*)cl->m_memberfields->get(i);
                 mc_memory_free(memb);
             }
-            PtrList::destroy(cl->m_memberfields, nullptr);
+            Memory::destroy(cl->m_memberfields);
             mc_memory_free(cl);
         }
 
@@ -2989,7 +2722,7 @@ class ObjClass
         const char* m_classname;
         ObjClass* m_parentclass;
         Value m_constructor;
-        PtrList* m_memberfields;
+        GenericList<Field*>* m_memberfields;
 
     public:
         ObjClass(const char* name, ObjClass* parclass)
@@ -2997,7 +2730,7 @@ class ObjClass
             m_parentclass = parclass;
             m_classname = name;
             m_constructor = Value::makeNull();
-            m_memberfields = Memory::make<PtrList>(sizeof(void*), true);
+            m_memberfields = Memory::make<GenericList<Field*>>(0, nullptr);
         }
 
         void addFunction(const char* name, bool ispseudo, mcnativefn_t fn)
@@ -3078,7 +2811,7 @@ class SymStore
             if(store != nullptr)
             {
                 PtrDict::destroyItemsAndDict(store->m_storedsymbols);
-                store->m_storedobjects.destroy(&store->m_storedobjects, true);
+                store->m_storedobjects.destroyFromStack();
                 mc_memory_free(store);
                 store = nullptr;
             }
@@ -3200,9 +2933,9 @@ class AstSymTable
                 {
                     table->scopeBlockPop();
                 }
-                PtrList::destroy(table->m_symtbblockscopes, nullptr);
-                PtrList::destroy(table->m_symtbmodglobalsymbols, (mcitemdestroyfn_t)AstSymbol::destroy);
-                PtrList::destroy(table->m_symtbfreesymbols, (mcitemdestroyfn_t)AstSymbol::destroy);
+                Memory::destroy(table->m_symtbblockscopes);
+                Memory::destroy(table->m_symtbmodglobalsymbols, AstSymbol::destroy);
+                Memory::destroy(table->m_symtbfreesymbols, AstSymbol::destroy);
                 mc_memory_free(table);
                 table = nullptr;
             }
@@ -3211,14 +2944,14 @@ class AstSymTable
     public:
         AstSymTable* m_symtbouter;
         SymStore* m_symtbglobalstore;
-        PtrList* m_symtbblockscopes;
-        PtrList* m_symtbfreesymbols;
-        PtrList* m_symtbmodglobalsymbols;
+        GenericList<AstScopeBlock*>* m_symtbblockscopes;
+        GenericList<AstSymbol*>* m_symtbfreesymbols;
+        GenericList<AstSymbol*>* m_symtbmodglobalsymbols;
         int m_symtbmaxnumdefinitions;
         int m_symtbmodglobaloffset;
 
     public:
-        AstSymTable(AstSymTable* syouter, SymStore* sygstore, PtrList* syblockscopes, PtrList* syfreesyms, PtrList* symodglobalsymbols, int mgo)
+        AstSymTable(AstSymTable* syouter, SymStore* sygstore, GenericList<AstScopeBlock*>* syblockscopes, GenericList<AstSymbol*>* syfreesyms, GenericList<AstSymbol*>* symodglobalsymbols, int mgo)
         {
             m_symtbmaxnumdefinitions = 0;
             m_symtbouter = syouter;
@@ -3230,7 +2963,7 @@ class AstSymTable
             }
             else
             {
-                m_symtbblockscopes = Memory::make<PtrList>(sizeof(void*), true);
+                m_symtbblockscopes = Memory::make<GenericList<AstScopeBlock*>>(0, nullptr);
             }
             if(syfreesyms)
             {
@@ -3238,7 +2971,7 @@ class AstSymTable
             }
             else
             {
-                m_symtbfreesymbols = Memory::make<PtrList>(sizeof(void*), true);
+                m_symtbfreesymbols = Memory::make<GenericList<AstSymbol*>>(0, nullptr);
             }
             if(symodglobalsymbols)
             {
@@ -3246,7 +2979,7 @@ class AstSymTable
             }
             else
             {
-                m_symtbmodglobalsymbols = Memory::make<PtrList>(sizeof(void*), true);
+                m_symtbmodglobalsymbols = Memory::make<GenericList<AstSymbol*>>(0, nullptr);
             }
             MC_ASSERT(scopeBlockPush());
         }
@@ -3254,9 +2987,9 @@ class AstSymTable
         AstSymTable* copy()
         {
             AstSymTable* copy;
-            auto cblocks = m_symtbblockscopes->copy((mcitemcopyfn_t)AstScopeBlock::copy, (mcitemdestroyfn_t)AstScopeBlock::destroy);
-            auto cfrees = m_symtbfreesymbols->copy((mcitemcopyfn_t)AstSymbol::copy, (mcitemdestroyfn_t)AstSymbol::destroy);
-            auto cmods = m_symtbmodglobalsymbols->copy((mcitemcopyfn_t)AstSymbol::copy, (mcitemdestroyfn_t)AstSymbol::destroy);
+            auto cblocks = m_symtbblockscopes->copy(AstScopeBlock::copy, AstScopeBlock::destroy);
+            auto cfrees = m_symtbfreesymbols->copy(AstSymbol::copy, AstSymbol::destroy);
+            auto cmods = m_symtbmodglobalsymbols->copy(AstSymbol::copy, AstSymbol::destroy);
             copy = Memory::make<AstSymTable>(m_symtbouter, m_symtbglobalstore, cblocks, cfrees, cmods, m_symtbmodglobaloffset);
             copy->m_symtbmaxnumdefinitions = m_symtbmaxnumdefinitions;
             copy->m_symtbmodglobaloffset = m_symtbmodglobaloffset;
@@ -3267,7 +3000,7 @@ class AstSymTable
         {
             AstScopeBlock* topscope;
             AstSymbol* existing;
-            topscope = (AstScopeBlock*)m_symtbblockscopes->top();
+            topscope = m_symtbblockscopes->top();
             existing = (AstSymbol*)topscope->m_blscopestore->get(symbol->m_symname);
             if(existing)
             {
@@ -3280,7 +3013,7 @@ class AstSymTable
         {
             int ix;
             AstScopeBlock* topscope;
-            topscope = (AstScopeBlock*)m_symtbblockscopes->top();
+            topscope = m_symtbblockscopes->top();
             ix = topscope->m_blscopeoffset + topscope->m_blscopenumdefs;
             return ix;
         }
@@ -3293,7 +3026,7 @@ class AstSymTable
             count = 0;
             for(i = m_symtbblockscopes->count() - 1; i >= 0; i--)
             {
-                scope = (AstScopeBlock*)m_symtbblockscopes->get(i);
+                scope = m_symtbblockscopes->get(i);
                 count += scope->m_blscopenumdefs;
             }
             return count;
@@ -3369,7 +3102,7 @@ class AstSymTable
                 globalsymboladded = true;
             }
             ok = setSymbol(symbol);
-            topscope = (AstScopeBlock*)m_symtbblockscopes->top();
+            topscope = m_symtbblockscopes->top();
             topscope->m_blscopenumdefs++;
             definitionscount = getNumDefinitions();
             if(definitionscount > m_symtbmaxnumdefinitions)
@@ -3432,7 +3165,7 @@ class AstSymTable
 
             for(i = m_symtbblockscopes->count() - 1; i >= 0; i--)
             {
-                scope = (AstScopeBlock*)m_symtbblockscopes->get(i);
+                scope = m_symtbblockscopes->get(i);
                 symbol = (AstSymbol*)scope->m_blscopestore->get(name);
                 if(symbol)
                 {
@@ -3469,7 +3202,7 @@ class AstSymTable
             {
                 return true;
             }
-            topscope = (AstScopeBlock*)m_symtbblockscopes->top();
+            topscope = m_symtbblockscopes->top();
             symbol = (AstSymbol*)topscope->m_blscopestore->get(name);
             if(symbol)
             {
@@ -3486,7 +3219,7 @@ class AstSymTable
             AstScopeBlock* prevblockscope;
             (void)ok;
             blockscopeoffset = 0;
-            prevblockscope = (AstScopeBlock*)m_symtbblockscopes->top();
+            prevblockscope = m_symtbblockscopes->top();
             if(prevblockscope)
             {
                 blockscopeoffset = m_symtbmodglobaloffset + prevblockscope->m_blscopeoffset + prevblockscope->m_blscopenumdefs;
@@ -3503,7 +3236,7 @@ class AstSymTable
         void scopeBlockPop()
         {
             AstScopeBlock* topscope;
-            topscope = (AstScopeBlock*)m_symtbblockscopes->top();
+            topscope = m_symtbblockscopes->top();
             m_symtbblockscopes->pop(nullptr);
             Memory::destroy(topscope);
         }
@@ -3511,7 +3244,7 @@ class AstSymTable
         AstScopeBlock* scopeBlockGet()
         {
             AstScopeBlock* topscope;
-            topscope = (AstScopeBlock*)m_symtbblockscopes->top();
+            topscope = m_symtbblockscopes->top();
             return topscope;
         }
 
@@ -3537,7 +3270,7 @@ class AstSymTable
 
         AstSymbol* getModuleGlobalSymAt(int ix)
         {
-            return (AstSymbol*)m_symtbmodglobalsymbols->get(ix);
+            return m_symtbmodglobalsymbols->get(ix);
         }
 };
 
@@ -3576,19 +3309,19 @@ class AstScopeComp
     public:
         static void destroy(AstScopeComp* scope)
         {
-            PtrList::destroy(scope->m_scopeipstackcontinue, nullptr);
-            PtrList::destroy(scope->m_scopeipstackbreak, nullptr);
+            Memory::destroy(scope->m_scopeipstackcontinue);
+            Memory::destroy(scope->m_scopeipstackbreak);
             Memory::destroy(scope->m_scopecompiledbc);
-            PtrList::destroy(scope->m_scopesrcposlist, nullptr);
+            Memory::destroy(scope->m_scopesrcposlist);
             mc_memory_free(scope);
         }
 
     public:
         AstScopeComp* m_outerscope;
         GenericList<uint16_t>* m_scopecompiledbc;
-        PtrList* m_scopesrcposlist;
-        PtrList* m_scopeipstackbreak;
-        PtrList* m_scopeipstackcontinue;
+        GenericList<AstLocation>* m_scopesrcposlist;
+        GenericList<int>* m_scopeipstackbreak;
+        GenericList<int>* m_scopeipstackcontinue;
         mcinternopcode_t m_scopelastopcode = 0;
 
     public:
@@ -3596,9 +3329,9 @@ class AstScopeComp
         {
             m_outerscope = ou;
             m_scopecompiledbc = Memory::make<GenericList<uint16_t>>(0, 0);
-            m_scopesrcposlist = Memory::make<PtrList>(sizeof(AstLocation), false);
-            m_scopeipstackbreak = Memory::make<PtrList>(sizeof(int), false);
-            m_scopeipstackcontinue = Memory::make<PtrList>(sizeof(int), false);
+            m_scopesrcposlist = Memory::make<GenericList<AstLocation>>(0, AstLocation::Invalid());
+            m_scopeipstackbreak = Memory::make<GenericList<int>>(0, 0);
+            m_scopeipstackcontinue = Memory::make<GenericList<int>>(0, 0);
         }
 
         CompiledProgram* orphanResult()
@@ -3620,31 +3353,39 @@ class AstScopeFile
     public:
         static void destroy(AstScopeFile* scope)
         {
-            size_t i;
-            void* name;
-            for(i = 0; i < scope->m_filescopeloadednames->count(); i++)
-            {
-                name = (void*)scope->m_filescopeloadednames->get(i);
-                mc_memory_free(name);
-            }
-            PtrList::destroy(scope->m_filescopeloadednames, nullptr);
-            Memory::destroy(scope->m_filescopeparser);
+            scope->deInit();
             mc_memory_free(scope);
         }
 
     public:
-        AstParser* m_filescopeparser;
-        AstSymTable* m_scopefilesymtab;
-        AstSourceFile* m_filescopesourcefile;
-        PtrList* m_filescopeloadednames;
+        AstParser* m_filescopeparser = nullptr;
+        AstSymTable* m_scopefilesymtab = nullptr;
+        AstSourceFile* m_filescopesourcefile = nullptr;
+        GenericList<char*>* m_filescopeloadednames = nullptr;
 
     public:
+        AstScopeFile()
+        {
+        }
+
         AstScopeFile(RuntimeConfig* cfg, ErrList* errlist, AstSourceFile* file)
         {
             m_filescopeparser = Memory::make<AstParser>(cfg, errlist);
             m_scopefilesymtab = nullptr;
             m_filescopesourcefile = file;
-            m_filescopeloadednames = Memory::make<PtrList>(sizeof(void*), true);
+            m_filescopeloadednames = Memory::make<GenericList<char*>>(0, nullptr);
+        }
+
+        void deInit()
+        {
+            size_t i;
+            for(i = 0; i < m_filescopeloadednames->count(); i++)
+            {
+                auto name = m_filescopeloadednames->get(i);
+                mc_memory_free(name);
+            }
+            Memory::destroy(m_filescopeloadednames);
+            Memory::destroy(m_filescopeparser);
         }
 };
 
@@ -3962,10 +3703,10 @@ class AstExprData
         class ExprCodeBlock
         {
             public:
-                PtrList* m_blockstatements;
+                GenericList<AstExpression*>* m_blockstatements;
 
             public:
-                ExprCodeBlock(PtrList* stmts)
+                ExprCodeBlock(GenericList<AstExpression*>* stmts)
                 {
                     m_blockstatements = stmts;
                 }
@@ -3974,7 +3715,7 @@ class AstExprData
                 {
                     if(block != nullptr)
                     {
-                        PtrList::destroy(block->m_blockstatements, (mcitemdestroyfn_t)destroyExprData);
+                        Memory::destroy(block->m_blockstatements, destroyExprData<AstExpression>);
                         mc_memory_free(block);
                     }
                 }
@@ -3985,8 +3726,8 @@ class AstExprData
                     {
                         return nullptr;
                     }
-                    auto copyfn = (mcitemcopyfn_t)AstExprData::copyExprData<AstExpression>;
-                    auto delfn = (mcitemdestroyfn_t)AstExprData::destroyExprData<AstExpression>;
+                    auto copyfn = AstExprData::copyExprData<AstExpression>;
+                    auto delfn = AstExprData::destroyExprData<AstExpression>;
                     auto statementscopy = block->m_blockstatements->copy(copyfn, delfn);
                     if(!statementscopy)
                     {
@@ -4054,19 +3795,19 @@ class AstExprData
 
         struct ExprIfStmt
         {
-            PtrList* m_ifcases;
+            GenericList<ExprIfCase*>* m_ifcases;
             ExprCodeBlock* m_ifstmtelsestmt;
         };
 
         struct ExprLiteralMap
         {
-            PtrList* m_litmapkeys;
-            PtrList* m_litmapvalues;
+            GenericList<AstExpression*>* m_litmapkeys;
+            GenericList<AstExpression*>* m_litmapvalues;
         };
 
         struct ExprLiteralArray
         {
-            PtrList* m_litarritems;
+            GenericList<AstExpression*>* m_litarritems;
         };
 
         struct ExprLiteralString
@@ -4086,47 +3827,6 @@ class AstExprData
             MathOpType op;
             AstExpression* left;
             AstExpression* right;
-        };
-
-        struct ExprLiteralFunction
-        {
-            char* name;
-            PtrList* funcparamlist;
-            ExprCodeBlock* body;
-        };
-
-        struct ExprCall
-        {
-            AstExpression* function;
-            PtrList* args;
-        };
-
-        struct ExprIndex
-        {
-            bool isdot;
-            AstExpression* left;
-            AstExpression* index;
-        };
-
-        struct ExprAssign
-        {
-            AstExpression* dest;
-            AstExpression* source;
-            bool is_postfix;
-        };
-
-        struct ExprLogical
-        {
-            MathOpType op;
-            AstExpression* left;
-            AstExpression* right;
-        };
-
-        struct ExprTernary
-        {
-            AstExpression* tercond;
-            AstExpression* teriftrue;
-            AstExpression* teriffalse;
         };
 
         class ExprIdent
@@ -4166,6 +3866,7 @@ class AstExprData
                 }
         };
 
+
         class ExprFuncParam
         {
             public:
@@ -4198,6 +3899,48 @@ class AstExprData
                         mc_memory_free(param);
                     }
                 }
+        };
+
+
+        struct ExprLiteralFunction
+        {
+            char* name;
+            GenericList<ExprFuncParam*>* funcparamlist;
+            ExprCodeBlock* body;
+        };
+
+        struct ExprCall
+        {
+            AstExpression* function;
+            GenericList<AstExpression*>* m_callargs;
+        };
+
+        struct ExprIndex
+        {
+            bool isdot;
+            AstExpression* left;
+            AstExpression* index;
+        };
+
+        struct ExprAssign
+        {
+            AstExpression* dest;
+            AstExpression* source;
+            bool is_postfix;
+        };
+
+        struct ExprLogical
+        {
+            MathOpType op;
+            AstExpression* left;
+            AstExpression* right;
+        };
+
+        struct ExprTernary
+        {
+            AstExpression* tercond;
+            AstExpression* teriftrue;
+            AstExpression* teriffalse;
         };
 
         struct ExprDefine
@@ -4350,14 +4093,14 @@ class AstExpression: public AstExprData
             return res;
         }
 
-        static AstExpression* makeAstItemLiteralArray(PtrList* values)
+        static AstExpression* makeAstItemLiteralArray(GenericList<AstExpression*>* values)
         {
             auto res = makeAstItemBaseExpression(EXPR_ARRAYLITERAL);
             res->m_uexpr.exprlitarray.m_litarritems = values;
             return res;
         }
 
-        static AstExpression* makeAstItemLiteralMap(PtrList* keys, PtrList* values)
+        static AstExpression* makeAstItemLiteralMap(GenericList<AstExpression*>* keys, GenericList<AstExpression*>* values)
         {
             auto res = makeAstItemBaseExpression(EXPR_MAPLITERAL);
             res->m_uexpr.exprlitmap.m_litmapkeys = keys;
@@ -4382,7 +4125,7 @@ class AstExpression: public AstExprData
             return res;
         }
 
-        static AstExpression* makeAstItemLiteralFunction(PtrList* params, ExprCodeBlock* body)
+        static AstExpression* makeAstItemLiteralFunction(GenericList<AstExpression::ExprFuncParam*>* params, ExprCodeBlock* body)
         {
             auto res = makeAstItemBaseExpression(EXPR_FUNCTIONLITERAL);
             res->m_uexpr.exprlitfunction.name = nullptr;
@@ -4391,11 +4134,11 @@ class AstExpression: public AstExprData
             return res;
         }
 
-        static AstExpression* makeAstItemCallExpr(AstExpression* function, PtrList* args)
+        static AstExpression* makeAstItemCallExpr(AstExpression* function, GenericList<AstExpression*>* args)
         {
             auto res = makeAstItemBaseExpression(EXPR_CALL);
             res->m_uexpr.exprcall.function = function;
-            res->m_uexpr.exprcall.args = args;
+            res->m_uexpr.exprcall.m_callargs = args;
             return res;
         }
 
@@ -4444,7 +4187,7 @@ class AstExpression: public AstExprData
             auto functionidentexpr = makeAstItemIdent(ident);
             functionidentexpr->m_exprpos = expr->m_exprpos;
             ident = nullptr;
-            auto args = Memory::make<PtrList>(sizeof(void*), true);
+            auto args = Memory::make<GenericList<AstExpression*>>(0, nullptr);
             args->push(expr);
             auto ce = makeAstItemCallExpr(functionidentexpr, args);
             ce->m_exprpos = expr->m_exprpos;
@@ -4460,7 +4203,7 @@ class AstExpression: public AstExprData
             return res;
         }
 
-        static AstExpression* makeAstItemIfStmt(PtrList* cases, ExprCodeBlock* alternative)
+        static AstExpression* makeAstItemIfStmt(GenericList<ExprIfCase*>* cases, ExprCodeBlock* alternative)
         {
             auto res = makeAstItemBaseExpression(EXPR_STMTIF);
             res->m_uexpr.exprifstmt.m_ifcases = cases;
@@ -4590,8 +4333,7 @@ class AstExpression: public AstExprData
                     break;
                 case EXPR_ARRAYLITERAL:
                     {
-                        PtrList* valuescopy;
-                        valuescopy = expr->m_uexpr.exprlitarray.m_litarritems->copy((mcitemcopyfn_t)copyExpression, (mcitemdestroyfn_t)destroyExpression);
+                        auto valuescopy = expr->m_uexpr.exprlitarray.m_litarritems->copy(copyExpression, destroyExpression);
                         if(!valuescopy)
                         {
                             return nullptr;
@@ -4602,14 +4344,12 @@ class AstExpression: public AstExprData
 
                 case EXPR_MAPLITERAL:
                     {
-                        PtrList* keyscopy;
-                        PtrList* valuescopy;
-                        keyscopy = expr->m_uexpr.exprlitmap.m_litmapkeys->copy((mcitemcopyfn_t)copyExpression, (mcitemdestroyfn_t)destroyExpression);
-                        valuescopy = expr->m_uexpr.exprlitmap.m_litmapvalues->copy((mcitemcopyfn_t)copyExpression, (mcitemdestroyfn_t)destroyExpression);
+                        auto keyscopy = expr->m_uexpr.exprlitmap.m_litmapkeys->copy(copyExpression, destroyExpression);
+                        auto valuescopy = expr->m_uexpr.exprlitmap.m_litmapvalues->copy(copyExpression, destroyExpression);
                         if(!keyscopy || !valuescopy)
                         {
-                            PtrList::destroy(keyscopy, (mcitemdestroyfn_t)destroyExpression);
-                            PtrList::destroy(valuescopy, (mcitemdestroyfn_t)destroyExpression);
+                            Memory::destroy(keyscopy, destroyExpression);
+                            Memory::destroy(valuescopy, destroyExpression);
                             return nullptr;
                         }
                         res = makeAstItemLiteralMap(keyscopy, valuescopy);
@@ -4644,14 +4384,13 @@ class AstExpression: public AstExprData
                 case EXPR_FUNCTIONLITERAL:
                     {
                         char* namecopy;
-                        PtrList* pacopy;
                         ExprCodeBlock* bodycopy;
-                        pacopy = expr->m_uexpr.exprlitfunction.funcparamlist->copy((mcitemcopyfn_t)ExprFuncParam::copy, (mcitemdestroyfn_t)ExprFuncParam::destroy);
+                        auto pacopy = expr->m_uexpr.exprlitfunction.funcparamlist->copy(ExprFuncParam::copy, ExprFuncParam::destroy);
                         bodycopy = ExprCodeBlock::copy(expr->m_uexpr.exprlitfunction.body);
                         namecopy = mc_util_strdup(expr->m_uexpr.exprlitfunction.name);
                         if(!pacopy || !bodycopy)
                         {
-                            PtrList::destroy(pacopy, (mcitemdestroyfn_t)ExprFuncParam::destroy);
+                            Memory::destroy(pacopy, ExprFuncParam::destroy);
                             Memory::destroy(bodycopy);
                             mc_memory_free(namecopy);
                             return nullptr;
@@ -4663,13 +4402,12 @@ class AstExpression: public AstExprData
                 case EXPR_CALL:
                     {
                         AstExpression* fcopy;
-                        PtrList* argscopy;
                         fcopy = copyExpression(expr->m_uexpr.exprcall.function);
-                        argscopy = expr->m_uexpr.exprcall.args->copy((mcitemcopyfn_t)copyExpression, (mcitemdestroyfn_t)destroyExpression);
+                        auto argscopy = expr->m_uexpr.exprcall.m_callargs->copy(copyExpression, destroyExpression);
                         if(!fcopy || !argscopy)
                         {
                             destroyExpression(fcopy);
-                            PtrList::destroy(expr->m_uexpr.exprcall.args, (mcitemdestroyfn_t)destroyExpression);
+                            Memory::destroy(expr->m_uexpr.exprcall.m_callargs, destroyExpression);
                             return nullptr;
                         }
                         res = makeAstItemCallExpr(fcopy, argscopy);
@@ -4751,20 +4489,19 @@ class AstExpression: public AstExprData
                     break;
                 case EXPR_STMTIF:
                     {
-                        PtrList* casescopy;
                         ExprCodeBlock* alternativecopy;
-                        casescopy = expr->m_uexpr.exprifstmt.m_ifcases->copy((mcitemcopyfn_t)ExprIfCase::copy, (mcitemdestroyfn_t)ExprIfCase::destroy);
+                        auto casescopy = expr->m_uexpr.exprifstmt.m_ifcases->copy(ExprIfCase::copy, ExprIfCase::destroy);
                         alternativecopy = ExprCodeBlock::copy(expr->m_uexpr.exprifstmt.m_ifstmtelsestmt);
                         if(!casescopy || !alternativecopy)
                         {
-                            PtrList::destroy(casescopy, (mcitemdestroyfn_t)ExprIfCase::destroy);
+                            Memory::destroy(casescopy, ExprIfCase::destroy);
                             Memory::destroy(alternativecopy);
                             return nullptr;
                         }
                         res = makeAstItemIfStmt(casescopy, alternativecopy);
                         if(res)
                         {
-                            PtrList::destroy(casescopy, (mcitemdestroyfn_t)ExprIfCase::destroy);
+                            Memory::destroy(casescopy, ExprIfCase::destroy);
                             Memory::destroy(alternativecopy);
                             return nullptr;
                         }
@@ -4945,13 +4682,13 @@ class AstExpression: public AstExprData
                         break;
                     case EXPR_ARRAYLITERAL:
                         {
-                            PtrList::destroy(expr->m_uexpr.exprlitarray.m_litarritems, (mcitemdestroyfn_t)destroyExpression);
+                            Memory::destroy(expr->m_uexpr.exprlitarray.m_litarritems, destroyExpression);
                         }
                         break;
                     case EXPR_MAPLITERAL:
                         {
-                            PtrList::destroy(expr->m_uexpr.exprlitmap.m_litmapkeys, (mcitemdestroyfn_t)destroyExpression);
-                            PtrList::destroy(expr->m_uexpr.exprlitmap.m_litmapvalues, (mcitemdestroyfn_t)destroyExpression);
+                            Memory::destroy(expr->m_uexpr.exprlitmap.m_litmapkeys, destroyExpression);
+                            Memory::destroy(expr->m_uexpr.exprlitmap.m_litmapvalues, destroyExpression);
                         }
                         break;
                     case EXPR_PREFIX:
@@ -4970,13 +4707,13 @@ class AstExpression: public AstExprData
                             ExprLiteralFunction* fn;
                             fn = &expr->m_uexpr.exprlitfunction;
                             mc_memory_free(fn->name);
-                            PtrList::destroy(fn->funcparamlist, (mcitemdestroyfn_t)ExprFuncParam::destroy);
+                            Memory::destroy(fn->funcparamlist, ExprFuncParam::destroy);
                             Memory::destroy(fn->body);
                         }
                         break;
                     case EXPR_CALL:
                         {
-                            PtrList::destroy(expr->m_uexpr.exprcall.args, (mcitemdestroyfn_t)destroyExpression);
+                            Memory::destroy(expr->m_uexpr.exprcall.m_callargs, destroyExpression);
                             destroyExpression(expr->m_uexpr.exprcall.function);
                         }
                         break;
@@ -5013,7 +4750,7 @@ class AstExpression: public AstExprData
                         break;
                     case EXPR_STMTIF:
                         {
-                            PtrList::destroy(expr->m_uexpr.exprifstmt.m_ifcases, (mcitemdestroyfn_t)ExprIfCase::destroy);
+                            Memory::destroy(expr->m_uexpr.exprifstmt.m_ifcases, ExprIfCase::destroy);
                             Memory::destroy(expr->m_uexpr.exprifstmt.m_ifstmtelsestmt);
                         }
                         break;
@@ -5127,7 +4864,7 @@ class AstSourceFile
                     item = (void*)file->m_srclines->get(i);
                     mc_memory_free(item);
                 }
-                PtrList::destroy(file->m_srclines, nullptr);
+                Memory::destroy(file->m_srclines);
                 mc_memory_free(file->m_dirpath);
                 mc_memory_free(file->m_path);
                 mc_memory_free(file);
@@ -5137,7 +4874,7 @@ class AstSourceFile
     public:
         char* m_dirpath;
         char* m_path;
-        PtrList* m_srclines;
+        GenericList<char*>* m_srclines;
 
     public:
         AstSourceFile(const char* strpath)
@@ -5157,7 +4894,7 @@ class AstSourceFile
             MC_ASSERT(m_dirpath);
             m_path = mc_util_strdup(strpath);
             MC_ASSERT(m_path);
-            m_srclines = Memory::make<PtrList>(sizeof(void*), true);
+            m_srclines = Memory::make<GenericList<char*>>(0, nullptr);
         }
 
         const char* getDirectory() const
@@ -5184,12 +4921,11 @@ class Traceback
                 const char* getSourceLine()
                 {
                     const char* line;
-                    PtrList* lines;
                     if(!m_tbpos.m_locfile)
                     {
                         return nullptr;
                     }
-                    lines = m_tbpos.m_locfile->m_srclines;
+                    auto lines = m_tbpos.m_locfile->m_srclines;
                     if((size_t)m_tbpos.m_locline >= (size_t)lines->count())
                     {
                         return nullptr;
@@ -5476,12 +5212,11 @@ class Error
         const char* getSourceLineCode()
         {
             const char* line;
-            PtrList* lines;
             if(!m_pos.m_locfile)
             {
                 return nullptr;
             }
-            lines = m_pos.m_locfile->m_srclines;
+            auto lines = m_pos.m_locfile->m_srclines;
             if(m_pos.m_locline >= (int)lines->count())
             {
                 return nullptr;
@@ -6920,15 +6655,13 @@ class AstParser
         AstExpression* parseIfStmt()
         {
             bool ok;
-            PtrList* cases;
             AstExpression::ExprIfCase* cond;
             AstExpression::ExprIfCase* elif;
             AstExpression::ExprCodeBlock* alternative;
             (void)ok;
             AstExpression* res;
-            cases = nullptr;
             alternative = nullptr;
-            cases = Memory::make<PtrList>(sizeof(void*), true);
+            auto cases = Memory::make<GenericList<AstExpression::ExprIfCase*>>(0, nullptr);
             m_lexer.nextToken();
             if(!m_lexer.expectCurrent(AstToken::TOK_LPAREN))
             {
@@ -6993,7 +6726,7 @@ class AstParser
             res = AstExpression::makeAstItemIfStmt(cases, alternative);
             return res;
         err:
-            PtrList::destroy(cases, (mcitemdestroyfn_t)AstExpression::ExprIfCase::destroy);
+            Memory::destroy(cases, AstExpression::ExprIfCase::destroy);
             Memory::destroy(alternative);
             return nullptr;
         }
@@ -7280,7 +7013,6 @@ class AstParser
             bool ok;
             AstExpression::ExprCodeBlock* res;
             AstExpression* expr;
-            PtrList* statements;
             (void)ok;
             if(!m_lexer.expectCurrent(AstToken::TOK_LBRACE))
             {
@@ -7288,7 +7020,7 @@ class AstParser
             }
             m_lexer.nextToken();
             m_parsedepth++;
-            statements = Memory::make<PtrList>(sizeof(void*), true);
+            auto statements = Memory::make<GenericList<AstExpression*>>(0, nullptr);
             while(!m_lexer.currentTokenIs(AstToken::TOK_RBRACE))
             {
                 if(m_lexer.currentTokenIs(AstToken::TOK_EOF))
@@ -7314,7 +7046,7 @@ class AstParser
             return res;
         err:
             m_parsedepth--;
-            PtrList::destroy(statements, (mcitemdestroyfn_t)AstExpression::destroyExpression);
+            Memory::destroy(statements, AstExpression::destroyExpression);
             return nullptr;
         }
 
@@ -7381,7 +7113,7 @@ class AstParser
         }
 
 
-        bool parseFuncParams(PtrList* outparams)
+        bool parseFuncParams(GenericList<AstExpression::ExprFuncParam*>* outparams)
         {
             bool ok;
             AstExpression::ExprIdent* ident;
@@ -7693,18 +7425,16 @@ class AstParser
         AstExpression* parseLiteralFunction()
         {
             bool ok;
-            PtrList* params;
             AstExpression::ExprCodeBlock* body;
             AstExpression* res;
             (void)ok;
             m_parsedepth++;
-            params = nullptr;
             body = nullptr;
             if(m_lexer.currentTokenIs(AstToken::TOK_FUNCTION))
             {
                 m_lexer.nextToken();
             }
-            params = Memory::make<PtrList>(sizeof(void*), true);
+            auto params = Memory::make<GenericList<AstExpression::ExprFuncParam*>>(0, nullptr);
             ok = parseFuncParams(params);
             if(!ok)
             {
@@ -7720,16 +7450,15 @@ class AstParser
             return res;
         err:
             Memory::destroy(body);
-            PtrList::destroy(params, (mcitemdestroyfn_t)AstExpression::ExprFuncParam::destroy);
+            Memory::destroy(params, AstExpression::ExprFuncParam::destroy);
             m_parsedepth -= 1;
             return nullptr;
         }
 
         AstExpression* parseLiteralArray()
         {
-            PtrList* array;
             AstExpression* res;
-            array = parseExprList(AstToken::TOK_LBRACKET, AstToken::TOK_RBRACKET, true);
+            auto array = parseExprList(AstToken::TOK_LBRACKET, AstToken::TOK_RBRACKET, true);
             if(!array)
             {
                 return nullptr;
@@ -7743,14 +7472,12 @@ class AstParser
             bool ok;
             size_t len;
             char* str;
-            PtrList* keys;
-            PtrList* values;
             AstExpression* res;
             AstExpression* key;
             AstExpression* value;
             (void)ok;
-            keys = Memory::make<PtrList>(sizeof(void*), true);
-            values = Memory::make<PtrList>(sizeof(void*), true);
+            auto keys = Memory::make<GenericList<AstExpression*>>(0, nullptr);
+            auto values = Memory::make<GenericList<AstExpression*>>(0, nullptr);
             if(!keys || !values)
             {
                 goto err;
@@ -7817,8 +7544,8 @@ class AstParser
             res = AstExpression::makeAstItemLiteralMap(keys, values);
             return res;
         err:
-            PtrList::destroy(keys, (mcitemdestroyfn_t)AstExpression::destroyExpression);
-            PtrList::destroy(values, (mcitemdestroyfn_t)AstExpression::destroyExpression);
+            Memory::destroy(keys, AstExpression::destroyExpression);
+            Memory::destroy(values, AstExpression::destroyExpression);
             return nullptr;
         }
 
@@ -7984,11 +7711,10 @@ class AstParser
 
         AstExpression* parseCallExpr(AstExpression* left)
         {
-            PtrList* args;
             AstExpression* res;
             AstExpression* function;
             function = left;
-            args = parseExprList(AstToken::TOK_LPAREN, AstToken::TOK_RPAREN, false);
+            auto args = parseExprList(AstToken::TOK_LPAREN, AstToken::TOK_RPAREN, false);
             if(!args)
             {
                 return nullptr;
@@ -7997,10 +7723,10 @@ class AstParser
             return res;
         }
 
-        PtrList* parseExprList(AstToken::Type starttoken, AstToken::Type endtoken, bool trailingcommaallowed)
+        GenericList<AstExpression*>* parseExprList(AstToken::Type starttoken, AstToken::Type endtoken, bool trailingcommaallowed)
         {
             bool ok;
-            PtrList* res;
+            GenericList<AstExpression*>* res;
             AstExpression* argexpr;
             (void)ok;
             if(!m_lexer.expectCurrent(starttoken))
@@ -8008,7 +7734,7 @@ class AstParser
                 return nullptr;
             }
             m_lexer.nextToken();
-            res = Memory::make<PtrList>(sizeof(void*), true);
+            res = Memory::make<GenericList<AstExpression*>>(0, nullptr);
             if(m_lexer.currentTokenIs(endtoken))
             {
                 m_lexer.nextToken();
@@ -8041,7 +7767,7 @@ class AstParser
             m_lexer.nextToken();
             return res;
         err:
-            PtrList::destroy(res, (mcitemdestroyfn_t)AstExpression::destroyExpression);
+            Memory::destroy(res, AstExpression::destroyExpression);
             return nullptr;
         }
 
@@ -8136,11 +7862,10 @@ class AstParser
             return expr;
         }
 
-        PtrList* parseAll(const char* input, AstSourceFile* file)
+        GenericList<AstExpression*>* parseAll(const char* input, AstSourceFile* file)
         {
             bool ok;
             AstExpression* expr;
-            PtrList* statements;
             (void)ok;
             m_parsedepth = 0;
             ok = AstLexer::init(&m_lexer, m_prserrlist, input, file);
@@ -8150,7 +7875,7 @@ class AstParser
             }
             m_lexer.nextToken();
             m_lexer.nextToken();
-            statements = Memory::make<PtrList>(sizeof(void*), true);
+            auto statements = Memory::make<GenericList<AstExpression*>>(0, nullptr);
             while(!m_lexer.currentTokenIs(AstToken::TOK_EOF))
             {
                 if(m_lexer.currentTokenIs(AstToken::TOK_SEMICOLON))
@@ -8171,7 +7896,7 @@ class AstParser
             }
             return statements;
         err:
-            PtrList::destroy(statements, (mcitemdestroyfn_t)AstExpression::destroyExpression);
+            Memory::destroy(statements, AstExpression::destroyExpression);
             return nullptr;
         }
 };
@@ -8243,7 +7968,7 @@ class AstPrinter
             m_pdest = pr;
         }
 
-        void beginPrint(PtrList* statements)
+        void beginPrint(GenericList<AstExpression*>* statements)
         {
             m_pdest->m_prconfig.quotstring = true;
             fprintf(stderr, "---AST dump begin---\n");
@@ -8252,7 +7977,7 @@ class AstPrinter
             m_pdest->m_prconfig.quotstring = false;
         }
 
-        void printStmtList(PtrList* statements)
+        void printStmtList(GenericList<AstExpression*>* statements)
         {
             int i;
             int count;
@@ -8304,11 +8029,11 @@ class AstPrinter
             ex = &astexpr->m_uexpr.exprcall;
             printExpression(ex->function);
             m_pdest->put("(");
-            for(i = 0; i < ex->args->count(); i++)
+            for(i = 0; i < ex->m_callargs->count(); i++)
             {
-                arg = (AstExpression*)ex->args->get(i);
+                arg = ex->m_callargs->get(i);
                 printExpression(arg);
-                if(i < (ex->args->count() - 1))
+                if(i < (ex->m_callargs->count() - 1))
                 {
                     m_pdest->put(", ");
                 }
@@ -8322,9 +8047,8 @@ class AstPrinter
             size_t len;
             AstExpression::ExprLiteralArray* ex;
             AstExpression* itemex;
-            PtrList* vl;
             ex = &astexpr->m_uexpr.exprlitarray;
-            vl = ex->m_litarritems;
+            auto vl = ex->m_litarritems;
             len = vl->count();
             m_pdest->put("[");
             for(i = 0; i < len; i++)
@@ -8581,7 +8305,7 @@ class AstPrinter
             m_pdest->put("{ ");
             for(i = 0; i < cnt; i++)
             {
-                istmt = (AstExpression*)blockexpr->m_blockstatements->get(i);
+                istmt = blockexpr->m_blockstatements->get(i);
                 printExpression(istmt);
                 m_pdest->put("\n");
             }
@@ -8787,28 +8511,28 @@ class Module
             if(module != nullptr)
             {
                 mc_memory_free(module->m_modname);
-                PtrList::destroy(module->m_modsymbols, (mcitemdestroyfn_t)AstSymbol::destroy);
+                Memory::destroy(module->m_modsymbols, AstSymbol::destroy);
                 mc_memory_free(module);
             }
         }
 
         static Module* copy(Module* src)
         {
-            auto modsyms = src->m_modsymbols->copy((mcitemcopyfn_t)AstSymbol::copy, (mcitemdestroyfn_t)AstSymbol::destroy);
+            auto modsyms = src->m_modsymbols->copy(AstSymbol::copy, AstSymbol::destroy);
             return Memory::make<Module>(src->m_modname, modsyms);
         }
 
 
     public:
         char* m_modname;
-        PtrList* m_modsymbols;
+        GenericList<AstSymbol*>* m_modsymbols;
 
     public:
         Module(const char* nm): Module(nm, nullptr)
         {
         }
 
-        Module(const char* nm, PtrList* ms)
+        Module(const char* nm, GenericList<AstSymbol*>* ms)
         {
             m_modname = mc_util_strdup(nm);
             MC_ASSERT(m_modname);
@@ -8818,7 +8542,7 @@ class Module
             }
             else
             {
-                m_modsymbols = Memory::make<PtrList>(sizeof(void*), true);
+                m_modsymbols = Memory::make<GenericList<AstSymbol*>>(0, nullptr);
             }
             MC_ASSERT(m_modsymbols);
         }
@@ -9024,8 +8748,8 @@ class AstCompiler
             const char* loadedname;
             PtrDict* modulescopy;
             GenericList<Value>* constantscopy;
-            PtrList* srcloadedmodulenames;
-            PtrList* copyloadedmodulenames;
+            GenericList<char*>* srcloadedmodulenames;
+            GenericList<char*>* copyloadedmodulenames;
             AstSymTable* srcst;
             AstSymTable* srcstocopy;
             AstSymTable* copyst;
@@ -9038,7 +8762,7 @@ class AstCompiler
                 return false;
             }
             srcst = src->getsymtable();
-            //MC_ASSERT(src->m_filescopelist->count() == 1);
+            //MC_ASSERT(src->m_filescopelist.count() == 1);
             MC_ASSERT(srcst->m_symtbouter == nullptr);
             srcstocopy = srcst->copy();
             if(!srcstocopy)
@@ -9056,7 +8780,7 @@ class AstCompiler
             }
             PtrDict::destroyItemsAndDict(copy->m_modules);
             copy->m_modules = modulescopy;
-            constantscopy = GenericList<Value>::copy(src->m_constants);
+            constantscopy = src->m_constants->copy();
             if(!constantscopy)
             {
                 goto compilercopyfailed;
@@ -9075,8 +8799,8 @@ class AstCompiler
                 *valcopy = *val;
                 ok = copy->m_stringconstposdict->set(key, valcopy);
             }
-            srcfilescope = (AstScopeFile*)src->m_filescopelist->top();
-            copyfilescope = (AstScopeFile*)copy->m_filescopelist->top();
+            srcfilescope = src->m_filescopelist.topp();
+            copyfilescope = copy->m_filescopelist.topp();
             srcloadedmodulenames = srcfilescope->m_filescopeloadednames;
             copyloadedmodulenames = copyfilescope->m_filescopeloadednames;
             for(i = 0; i < srcloadedmodulenames->count(); i++)
@@ -9101,22 +8825,22 @@ class AstCompiler
         RuntimeConfig* m_config = nullptr;
         GCMemory* m_astmem = nullptr;
         ErrList* m_ccerrlist = nullptr;
-        PtrList* m_files = nullptr;
+        GenericList<AstSourceFile*>* m_files = nullptr;
         SymStore* m_compglobalstore = nullptr;
         GenericList<Value>* m_constants = nullptr;
         AstScopeComp* m_compilationscope = nullptr;
-        PtrList* m_filescopelist = nullptr;
-        PtrList* m_srcposstack = nullptr;
+        GenericList<AstLocation>* m_srcposstack = nullptr;
         PtrDict* m_modules = nullptr;
         PtrDict* m_stringconstposdict = nullptr;
-        Printer* m_filestderr;
+        Printer* m_filestderr = nullptr;
+        GenericList<AstScopeFile> m_filescopelist = GenericList<AstScopeFile>(0, AstScopeFile{});
 
     public:
         AstCompiler()
         {
         }
 
-        AstCompiler(State* state, RuntimeConfig* config, GCMemory* gcmem, ErrList* errors, PtrList* files, SymStore* gstore, Printer* fstderr)
+        AstCompiler(State* state, RuntimeConfig* config, GCMemory* gcmem, ErrList* errors, GenericList<AstSourceFile*>* files, SymStore* gstore, Printer* fstderr)
         {
             bool ok;
             (void)ok;
@@ -9125,7 +8849,7 @@ class AstCompiler
             m_pstate = state; 
         }
 
-        bool initBase(State* state, RuntimeConfig* cfg, GCMemory* gcmem, ErrList* errors, PtrList* files, SymStore* gstor, Printer* fstderr)
+        bool initBase(State* state, RuntimeConfig* cfg, GCMemory* gcmem, ErrList* errors, GenericList<AstSourceFile*>* files, SymStore* gstor, Printer* fstderr)
         {
             bool ok;
             const char* filename;
@@ -9137,9 +8861,8 @@ class AstCompiler
             m_files = files;
             m_compglobalstore = gstor;
             m_filestderr = fstderr;
-            m_filescopelist = Memory::make<PtrList>(sizeof(void*), true);
             m_constants = Memory::make<GenericList<Value>>(0, Value::makeNull());
-            m_srcposstack = Memory::make<PtrList>(sizeof(AstLocation), false);
+            m_srcposstack = Memory::make<GenericList<AstLocation>>(0, AstLocation::Invalid());
             m_modules = Memory::make<PtrDict>((mcitemcopyfn_t)Module::copy, (mcitemdestroyfn_t)Module::destroy);
             ok = pushCompilationScope();
             filename = "<none>";
@@ -9162,7 +8885,7 @@ class AstCompiler
                 mc_memory_free(val);
             }
             Memory::destroy(m_stringconstposdict);
-            while(m_filescopelist->count() > 0)
+            while(m_filescopelist.count() > 0)
             {
                 filescopepop();
             }
@@ -9171,9 +8894,9 @@ class AstCompiler
                 popCompilationScope();
             }
             PtrDict::destroyItemsAndDict(m_modules);
-            PtrList::destroy(m_srcposstack, nullptr);
+            Memory::destroy(m_srcposstack);
             Memory::destroy(m_constants);
-            PtrList::destroy(m_filescopelist, nullptr);
+            m_filescopelist.destroyFromStack();
         }
 
         void appendByteAt(GenericList<uint16_t>* res, const uint64_t* operands, int i, int n)
@@ -9258,7 +8981,7 @@ class AstCompiler
             int i;
             int ip;
             int len;
-            AstLocation* srcpos;
+            AstLocation srcpos;
             AstScopeComp* compscope;
             (void)ok;
             ip = getip();
@@ -9269,7 +8992,7 @@ class AstCompiler
             }
             for(i = 0; i < len; i++)
             {
-                srcpos = (AstLocation*)m_srcposstack->top();
+                srcpos = m_srcposstack->top();
                 /*
                 MC_ASSERT(srcpos->line >= 0);
                 MC_ASSERT(srcpos->m_loccolumn >= 0);
@@ -9309,7 +9032,7 @@ class AstCompiler
         {
             AstScopeFile* filescope;
             AstSymTable* currenttable;
-            filescope = (AstScopeFile*)m_filescopelist->top();
+            filescope = m_filescopelist.topp();
             if(!filescope)
             {
                 MC_ASSERT(false);
@@ -9324,7 +9047,7 @@ class AstCompiler
         {
             AstScopeFile* filescope;
             AstSymTable* currenttable;
-            filescope = (AstScopeFile*)m_filescopelist->top();
+            filescope = m_filescopelist.topp();
             if(filescope != nullptr)
             {
                 currenttable = filescope->m_scopefilesymtab;
@@ -9346,12 +9069,11 @@ class AstCompiler
         bool doCompileSource(const char* code)
         {
             bool ok;
-            PtrList* statements;
             AstScopeFile* filescope;
             (void)ok;
-            filescope = (AstScopeFile*)m_filescopelist->top();
+            filescope = m_filescopelist.topp();
             MC_ASSERT(filescope);
-            statements = filescope->m_filescopeparser->parseAll(code, filescope->m_filescopesourcefile);
+            auto statements = filescope->m_filescopeparser->parseAll(code, filescope->m_filescopesourcefile);
             if(!statements)
             {
                 /* errors are added by parser */
@@ -9364,11 +9086,11 @@ class AstCompiler
             }
             if(m_config->exitafterastdump)
             {
-                PtrList::destroy(statements, (mcitemdestroyfn_t)AstExpression::destroyExpression);
+                Memory::destroy(statements, AstExpression::destroyExpression);
                 return false;
             }
             ok = compileStmtList(statements);
-            PtrList::destroy(statements, (mcitemdestroyfn_t)AstExpression::destroyExpression);
+            Memory::destroy(statements, AstExpression::destroyExpression);
             if(m_config->dumpbytecode)
             {
                 mc_printer_printbytecode(m_filestderr,
@@ -9379,7 +9101,7 @@ class AstCompiler
             return ok;
         }
 
-        bool compileStmtList(PtrList* statements)
+        bool compileStmtList(GenericList<AstExpression*>* statements)
         {
             bool ok;
             size_t i;
@@ -9424,12 +9146,12 @@ class AstCompiler
             result = false;
             filepath = nullptr;
             code = nullptr;
-            filescope = (AstScopeFile*)m_filescopelist->top();
+            filescope = m_filescopelist.topp();
             modpath = importstmt->m_uexpr.exprimportstmt.path;
             modname = Module::getModuleName(modpath);
             for(i = 0; i < filescope->m_filescopeloadednames->count(); i++)
             {
-                loadedname = (const char*)filescope->m_filescopeloadednames->get(i);
+                loadedname = filescope->m_filescopeloadednames->get(i);
                 if(mc_util_strequal(loadedname, modname))
                 {
                     if(m_config->fatalcomplaints)
@@ -9469,9 +9191,9 @@ class AstCompiler
                 result = false;
                 goto end;
             }
-            for(i = 0; i < m_filescopelist->count(); i++)
+            for(i = 0; i < m_filescopelist.count(); i++)
             {
-                fs = (AstScopeFile*)m_filescopelist->get(i);
+                fs = m_filescopelist.getp(i);
                 if(mc_util_strequal(fs->m_filescopesourcefile->path(), filepath))
                 {
                     m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, importstmt->m_exprpos, "cyclic reference of file \"%s\"", filepath);
@@ -9505,7 +9227,7 @@ class AstCompiler
             }
             for(i = 0; i < module->m_modsymbols->count(); i++)
             {
-                symbol = (AstSymbol*)module->m_modsymbols->get(i);
+                symbol = module->m_modsymbols->get(i);
                 ok = symtab->addModuleSymbol(symbol);
             }
             namecopy = mc_util_strdup(modname);
@@ -9565,13 +9287,12 @@ class AstCompiler
             int nextcasejumpip;
             int jumptoendip;
             int afterelifip;
-            int* pos;
+            int pos;
             AstExpression::ExprIfCase* ifcase;
             AstExpression::ExprIfStmt* ifstmt;
-            PtrList* jumptoendips;
             (void)ok;
             ifstmt = &expr->m_uexpr.exprifstmt;
-            jumptoendips = Memory::make<PtrList>(sizeof(int), false);
+            auto jumptoendips = Memory::make<GenericList<int>>(0, 0);
             for(i = 0; i < ifstmt->m_ifcases->count(); i++)
             {
                 ifcase = (AstExpression::ExprIfCase*)ifstmt->m_ifcases->get(i);
@@ -9584,7 +9305,7 @@ class AstCompiler
                 {
                     opbuf[0] = 0xbeef;
                     jumptoendip = emitOpCode(OPCODE_JUMP, 1, opbuf);
-                    ok = jumptoendips->push(&jumptoendip);
+                    ok = jumptoendips->push(jumptoendip);
                 }
                 afterelifip = getip();
                 changeuint16operand(nextcasejumpip + 1, afterelifip);
@@ -9596,10 +9317,10 @@ class AstCompiler
             afteraltip = getip();
             for(i = 0; i < jumptoendips->count(); i++)
             {
-                pos = (int*)jumptoendips->get(i);
-                changeuint16operand(*pos + 1, afteraltip);
+                pos = jumptoendips->get(i);
+                changeuint16operand(pos + 1, afteraltip);
             }
-            PtrList::destroy(jumptoendips, nullptr);
+            Memory::destroy(jumptoendips);
             return true;
         }
 
@@ -9721,7 +9442,7 @@ class AstCompiler
             (void)ok;
             ok = false;
             ip = -1;
-            ok = m_srcposstack->push(&expr->m_exprpos);
+            ok = m_srcposstack->push(expr->m_exprpos);
             compscope = getCompilationScope();
             symtab = getsymtable();
             res = false;
@@ -9910,7 +9631,7 @@ class AstCompiler
                         size_t i;
                         for(i = 0; i < expr->m_uexpr.exprlitarray.m_litarritems->count(); i++)
                         {
-                            ok = compileExpression((AstExpression*)expr->m_uexpr.exprlitarray.m_litarritems->get(i));
+                            ok = compileExpression(expr->m_uexpr.exprlitarray.m_litarritems->get(i));
                             if(!ok)
                             {
                                 goto error;
@@ -10055,7 +9776,6 @@ class AstCompiler
                         int pos;
                         int nlocals;
                         Value obj;
-                        PtrList* freesyms;
                         CompiledProgram* comp_res;
                         AstExpression::ExprLiteralFunction* fn;
                         AstSymbol* symbol;
@@ -10105,14 +9825,14 @@ class AstCompiler
                                 goto error;
                             }
                         }
-                        freesyms = symtab->m_symtbfreesymbols;
+                        auto freesyms = symtab->m_symtbfreesymbols;
                         /* because it gets destroyed with compiler_pop_compilation_scope() */
                         symtab->m_symtbfreesymbols = nullptr;
                         nlocals = symtab->m_symtbmaxnumdefinitions;
                         comp_res = compscope->orphanResult();
                         if(!comp_res)
                         {
-                            PtrList::destroy(freesyms, (mcitemdestroyfn_t)AstSymbol::destroy);
+                            Memory::destroy(freesyms, AstSymbol::destroy);
                             goto error;
                         }
                         popSymtable();
@@ -10122,7 +9842,7 @@ class AstCompiler
                         obj = mc_value_makefuncscript(m_pstate, fn->name, comp_res, true, nlocals, fn->funcparamlist->count(), 0);
                         if(obj.isNull())
                         {
-                            PtrList::destroy(freesyms, (mcitemdestroyfn_t)AstSymbol::destroy);
+                            Memory::destroy(freesyms, AstSymbol::destroy);
                             CompiledProgram::destroy(comp_res);
                             goto error;
                         }
@@ -10132,14 +9852,14 @@ class AstCompiler
                             ok = readsymbol(symbol);
                             if(!ok)
                             {
-                                PtrList::destroy(freesyms, (mcitemdestroyfn_t)AstSymbol::destroy);
+                                Memory::destroy(freesyms, AstSymbol::destroy);
                                 goto error;
                             }
                         }
                         pos = addconstant(obj);
                         if(pos < 0)
                         {
-                            PtrList::destroy(freesyms, (mcitemdestroyfn_t)AstSymbol::destroy);
+                            Memory::destroy(freesyms, AstSymbol::destroy);
                             goto error;
                         }
                         opbuf[0] = pos;
@@ -10147,10 +9867,10 @@ class AstCompiler
                         ip = emitOpCode(OPCODE_FUNCTION, 2, opbuf);
                         if(ip < 0)
                         {
-                            PtrList::destroy(freesyms, (mcitemdestroyfn_t)AstSymbol::destroy);
+                            Memory::destroy(freesyms, AstSymbol::destroy);
                             goto error;
                         }
-                        PtrList::destroy(freesyms, (mcitemdestroyfn_t)AstSymbol::destroy);
+                        Memory::destroy(freesyms, AstSymbol::destroy);
                     }
                     break;
 
@@ -10163,16 +9883,16 @@ class AstCompiler
                         {
                             goto error;
                         }
-                        for(i = 0; i < expr->m_uexpr.exprcall.args->count(); i++)
+                        for(i = 0; i < expr->m_uexpr.exprcall.m_callargs->count(); i++)
                         {
-                            argexpr = (AstExpression*)expr->m_uexpr.exprcall.args->get(i);
+                            argexpr = expr->m_uexpr.exprcall.m_callargs->get(i);
                             ok = compileExpression(argexpr);
                             if(!ok)
                             {
                                 goto error;
                             }
                         }
-                        opbuf[0] = expr->m_uexpr.exprcall.args->count();
+                        opbuf[0] = expr->m_uexpr.exprcall.m_callargs->count();
                         ip = emitOpCode(OPCODE_CALL, 1, opbuf);
                         if(ip < 0)
                         {
@@ -10210,7 +9930,7 @@ class AstCompiler
                         {
                             goto error;
                         }
-                        ok = m_srcposstack->push(&assign->dest->m_exprpos);
+                        ok = m_srcposstack->push(assign->dest->m_exprpos);
                         if(assign->dest->m_exprtype == AstExpression::EXPR_IDENT)
                         {
                             ident = assign->dest->m_uexpr.exprident;
@@ -10506,7 +10226,7 @@ class AstCompiler
                         afterupdateip = getip();
                         changeuint16operand(jumptoafterupdateip + 1, afterupdateip);
                         /* Test */
-                        ok = m_srcposstack->push(&foreach->source->m_exprpos);
+                        ok = m_srcposstack->push(foreach->source->m_exprpos);
                         ok = readsymbol(sourcesymbol);
                         if(!ok)
                         {
@@ -10933,17 +10653,14 @@ class AstCompiler
         {
             AstScopeComp* compscope;
             compscope = getCompilationScope();
-            return compscope->m_scopeipstackbreak->push(&ip);
+            return compscope->m_scopeipstackbreak->push(ip);
         }
 
         void popbreakip()
         {
             AstScopeComp* compscope;
             compscope = getCompilationScope();
-            if(compscope->m_scopeipstackbreak->count() == 0)
-            {
-            }
-            else
+            if(compscope->m_scopeipstackbreak->count() > 0)
             {
                 compscope->m_scopeipstackbreak->pop(nullptr);
             }
@@ -10951,22 +10668,22 @@ class AstCompiler
 
         int getbreakip()
         {
-            int* res;
+            int res;
             AstScopeComp* compscope;
             compscope = getCompilationScope();
             if(compscope->m_scopeipstackbreak->count() == 0)
             {
                 return -1;
             }
-            res = (int*)compscope->m_scopeipstackbreak->top();
-            return *res;
+            res = compscope->m_scopeipstackbreak->top();
+            return res;
         }
 
         bool pushcontinueip(int ip)
         {
             AstScopeComp* compscope;
             compscope = getCompilationScope();
-            return compscope->m_scopeipstackcontinue->push(&ip);
+            return compscope->m_scopeipstackcontinue->push(ip);
         }
 
         void popcontinueip()
@@ -10982,7 +10699,7 @@ class AstCompiler
 
         int getcontinueip()
         {
-            int* res;
+            int res;
             AstScopeComp* compscope;
             compscope = getCompilationScope();
             if(compscope->m_scopeipstackcontinue->count() == 0)
@@ -10990,8 +10707,8 @@ class AstCompiler
                 MC_ASSERT(false);
                 return -1;
             }
-            res = (int*)compscope->m_scopeipstackcontinue->top();
-            return *res;
+            res = compscope->m_scopeipstackcontinue->top();
+            return res;
         }
 
         int getip()
@@ -11001,7 +10718,7 @@ class AstCompiler
             return compscope->m_scopecompiledbc->count();
         }
 
-        PtrList* getsrcpositions()
+        GenericList<AstLocation>* getsrcpositions()
         {
             AstScopeComp* compscope;
             compscope = getCompilationScope();
@@ -11022,17 +10739,16 @@ class AstCompiler
             AstScopeBlock* prevsttopscope;
             AstSymTable* prevst;
             AstSourceFile* file;
-            AstScopeFile* filescope;
             (void)ok;
             prevst = nullptr;
-            if(m_filescopelist->count() > 0)
+            if(m_filescopelist.count() > 0)
             {
                 prevst = getsymtable();
             }
             file = Memory::make<AstSourceFile>(filepath);
             ok = m_files->push(file);
-            filescope = Memory::make<AstScopeFile>(m_config, m_ccerrlist, file);
-            ok = m_filescopelist->push(filescope);
+            AstScopeFile filescope(m_config, m_ccerrlist, file);
+            ok = m_filescopelist.push(filescope);
             globaloffset = 0;
             if(prevst)
             {
@@ -11048,7 +10764,6 @@ class AstCompiler
             int poppednumdefs;
             AstSymTable* poppedst;
             AstSymTable* currentst;
-            AstScopeFile* scope;
             AstScopeBlock* currentsttopscope;
             AstScopeBlock* poppedsttopscope;
             poppedst = getsymtable();
@@ -11058,14 +10773,14 @@ class AstCompiler
             {
                 popSymtable();
             }
-            scope = (AstScopeFile*)m_filescopelist->top();
+            auto scope = m_filescopelist.topp();
             if(!scope)
             {
                 MC_ASSERT(false);
             }
-            Memory::destroy(scope);
-            m_filescopelist->pop(nullptr);
-            if(m_filescopelist->count() > 0)
+            scope->deInit();
+            m_filescopelist.pop(nullptr);
+            if(m_filescopelist.count() > 0)
             {
                 currentst = getsymtable();
                 currentsttopscope = currentst->scopeBlockGet();
@@ -11127,7 +10842,7 @@ class AstCompiler
 
         AstSymTable* getsymtable()
         {
-            AstScopeFile* filescope = (AstScopeFile*)m_filescopelist->top();
+            auto filescope = m_filescopelist.topp();
             if(!filescope)
             {
                 MC_ASSERT(false);
@@ -11138,7 +10853,7 @@ class AstCompiler
 
         void setsymtable(AstSymTable* table)
         {
-            AstScopeFile* filescope = (AstScopeFile*)m_filescopelist->top();
+            auto filescope = m_filescopelist.topp();
             if(!filescope)
             {
                 MC_ASSERT(false);
@@ -11284,7 +10999,7 @@ class State
         bool m_hadrecovered;
         bool m_running;
         Value m_operoverloadkeys[MaxOperOverloads];
-        PtrList* m_sharedfilelist;
+        GenericList<AstSourceFile*>* m_sharedfilelist;
         AstCompiler* m_sharedcompiler;
         ExecInfo m_execstate;
         Printer* m_stdoutprinter;
@@ -11310,7 +11025,7 @@ class State
             {
                 goto err;
             }
-            m_sharedfilelist = Memory::make<PtrList>(sizeof(void*), true);
+            m_sharedfilelist = Memory::make<GenericList<AstSourceFile*>>(0, nullptr);
             mc_vm_init(this);
             m_stdoutprinter = Memory::make<Printer>(stdout);
             m_stderrprinter = Memory::make<Printer>(stderr);
@@ -11329,7 +11044,7 @@ class State
             Memory::destroy(m_sharedcompiler);
             Memory::destroy(m_vmglobalstore);
             Memory::destroy(m_stategcmem);
-            PtrList::destroy(m_sharedfilelist, (mcitemdestroyfn_t)AstSourceFile::destroy);
+            Memory::destroy(m_sharedfilelist, AstSourceFile::destroy);
             m_errorlist.destroy();
             Printer::destroy(m_stdoutprinter);
             Printer::destroy(m_stderrprinter);
@@ -11906,7 +11621,7 @@ bool mc_util_strnequal(const char* a, const char* b, size_t len)
     return strncmp(a, b, len) == 0;
 }
 
-PtrList* mc_util_splitstring(const char* str, const char* delimiter)
+GenericList<void*>* mc_util_splitstring(const char* str, const char* delimiter)
 {
     bool ok;
     size_t i;
@@ -11915,9 +11630,8 @@ PtrList* mc_util_splitstring(const char* str, const char* delimiter)
     char* line;
     const char* lineend;
     const char* linestart;
-    PtrList* res;
     (void)ok;
-    res = Memory::make<PtrList>(sizeof(void*), true);
+    auto res = Memory::make<GenericList<void*>>(0, nullptr);
     rest = nullptr;
     if(!str)
     {
@@ -11954,11 +11668,11 @@ err:
             mc_memory_free(line);
         }
     }
-    PtrList::destroy(res, nullptr);
+    Memory::destroy(res);
     return nullptr;
 }
 
-char* mc_util_joinstringarray(PtrList* items, const char* joinee, size_t jlen)
+char* mc_util_joinstringarray(GenericList<void*>* items, const char* joinee, size_t jlen)
 {
     size_t i;
     char* item;
@@ -11984,12 +11698,11 @@ char* mc_util_canonpath(const char* strpath)
     char* nextitem;
     void* item;
     const char* tmpstr;
-    PtrList* split;
     if(!strchr(strpath, '/') || (!strstr(strpath, "/../") && !strstr(strpath, "./")))
     {
         return mc_util_strdup(strpath);
     }
-    split = mc_util_splitstring(strpath, "/");
+    auto split = mc_util_splitstring(strpath, "/");
     if(!split)
     {
         return nullptr;
@@ -12021,7 +11734,7 @@ char* mc_util_canonpath(const char* strpath)
         item = split->get(i);
         mc_memory_free(item);
     }
-    PtrList::destroy(split, nullptr);
+    Memory::destroy(split);
     return joined;
 }
 
@@ -13775,7 +13488,6 @@ void mc_state_gcsweep(State* state)
     bool ok;
     size_t i;
     Object* data;
-    PtrList* objstemp;
     GCMemory::DataPool* pool;
     (void)ok;
     mc_state_gcmarkobjlist((Value*)state->m_stategcmem->m_gcobjlistremains->data(), state->m_stategcmem->m_gcobjlistremains->count());
@@ -13821,7 +13533,7 @@ void mc_state_gcsweep(State* state)
             }
         }
     }
-    objstemp = state->m_stategcmem->m_gcobjliststored;
+    auto objstemp = state->m_stategcmem->m_gcobjliststored;
     state->m_stategcmem->m_gcobjliststored = state->m_stategcmem->m_gcobjlistback;
     state->m_stategcmem->m_gcobjlistback = objstemp;
     state->m_stategcmem->m_allocssincesweep = 0;
@@ -14394,7 +14106,7 @@ MC_INLINE ObjClass::Field* mc_vmdo_getclassmember(State* state, ObjClass* cl, co
     (void)state;
     for(i=0; i<cl->m_memberfields->count(); i++)
     {
-        memb = (ObjClass::Field*)cl->m_memberfields->get(i);
+        memb = cl->m_memberfields->get(i);
         if(strcmp(memb->name, name) == 0)
         {
             return memb;
@@ -17991,7 +17703,6 @@ void mc_cli_printtypesizes()
 {
     printtypesize(PtrDict);
     printtypesize(ValDict<Value, Value>);
-    printtypesize(PtrList);
     printtypesize(Printer::Config);
     printtypesize(Printer);
     printtypesize(Error);
