@@ -97,10 +97,7 @@ typedef double mcfloat_t;
 typedef uint16_t mcinternopcode_t;
 typedef uint32_t mcshiftint_t;
 
-
 typedef struct mcstoddiyfp_t mcstoddiyfp_t;
-
-
 
 class Object;
 class Printer;
@@ -2707,13 +2704,6 @@ class ObjClass
     public:
         static void destroy(ObjClass* cl)
         {
-            size_t i;
-            Field* memb;
-            for(i=0; i<cl->m_memberfields->count(); i++)
-            {
-                memb = (Field*)cl->m_memberfields->get(i);
-                mc_memory_free(memb);
-            }
             Memory::destroy(cl->m_memberfields);
             mc_memory_free(cl);
         }
@@ -2722,7 +2712,7 @@ class ObjClass
         const char* m_classname;
         ObjClass* m_parentclass;
         Value m_constructor;
-        GenericList<Field*>* m_memberfields;
+        GenericList<Field>* m_memberfields;
 
     public:
         ObjClass(const char* name, ObjClass* parclass)
@@ -2730,16 +2720,15 @@ class ObjClass
             m_parentclass = parclass;
             m_classname = name;
             m_constructor = Value::makeNull();
-            m_memberfields = Memory::make<GenericList<Field*>>(0, nullptr);
+            m_memberfields = Memory::make<GenericList<Field>>(0, Field{});
         }
 
         void addFunction(const char* name, bool ispseudo, mcnativefn_t fn)
         {
-            Field* bt;
-            bt = Memory::make<Field>();
-            bt->name = name;
-            bt->ispseudo = ispseudo;
-            bt->fndest = fn;
+            Field bt;
+            bt.name = name;
+            bt.ispseudo = ispseudo;
+            bt.fndest = fn;
             m_memberfields->push(bt);
         }
 
@@ -6158,8 +6147,9 @@ class AstLexer: public AstInfo
 class AstParser
 {
     public:
-        using mcastrightassocparsefn_t = AstExpression* (*)(AstParser*);
-        using mcastleftassocparsefn_t = AstExpression* (*)(AstParser*, AstExpression*);
+        using mcastrightassocparsefn_t = bool(*)(AstParser*, AstExpression**);
+        //using mcastleftassocparsefn_t = AstExpression* (*)(AstParser*, AstExpression*);
+        using mcastleftassocparsefn_t = bool (*)(AstParser*, AstExpression**, AstExpression*);
 
         enum mcastprecedence_t
         {
@@ -6405,109 +6395,109 @@ class AstParser
             return nullptr;
         }
 
-        static AstExpression* callback_parseident(AstParser* p)
+        static bool callback_parseident(AstParser* p, AstExpression** res)
         {
-            return p->parseIdent();
+            return p->parseIdent(res);
         }
 
-        static AstExpression* callback_parseliteralnumber(AstParser* p)
+        static bool callback_parseliteralnumber(AstParser* p, AstExpression** res)
         {
-            return p->parseLiteralNumber();
+            return p->parseLiteralNumber(res);
         }
 
-        static AstExpression* callback_parseliteralbool(AstParser* p)
+        static bool callback_parseliteralbool(AstParser* p, AstExpression** res)
         {
-            return p->parseLiteralBool();
+            return p->parseLiteralBool(res);
         }
 
-        static AstExpression* callback_parseliteralstring(AstParser* p)
+        static bool callback_parseliteralstring(AstParser* p, AstExpression** res)
         {
-            return p->parseLiteralString();
+            return p->parseLiteralString(res);
         }
 
-        static AstExpression* callback_parseliteraltemplatestring(AstParser* p)
+        static bool callback_parseliteraltemplatestring(AstParser* p, AstExpression** res)
         {
-            return p->parseLiteralTemplateString();
+            return p->parseLiteralTemplateString(res);
         }
 
-        static AstExpression* callback_parseliteralnull(AstParser* p)
+        static bool callback_parseliteralnull(AstParser* p, AstExpression** res)
         {
-            return p->parseLiteralNull();
+            return p->parseLiteralNull(res);
         }
 
-        static AstExpression* callback_parseliteralarray(AstParser* p)
+        static bool callback_parseliteralarray(AstParser* p, AstExpression** res)
         {
-            return p->parseLiteralArray();
+            return p->parseLiteralArray(res);
         }
 
-        static AstExpression* callback_parseliteralmap(AstParser* p)
+        static bool callback_parseliteralmap(AstParser* p, AstExpression** res)
         {
-            return p->parseLiteralMap();
+            return p->parseLiteralMap(res);
         }
 
-        static AstExpression* callback_parseprefixexpr(AstParser* p)
+        static bool callback_parseprefixexpr(AstParser* p, AstExpression** res)
         {
-            return p->parsePrefixExpr();
+            return p->parsePrefixExpr(res);
         }
 
-        static AstExpression* callback_parseinfixexpr(AstParser* p, AstExpression* left)
+        static bool callback_parseinfixexpr(AstParser* p, AstExpression** res, AstExpression* left)
         {
-            return p->parseInfixExpr(left);
+            return p->parseInfixExpr(res, left);
         }
 
-        static AstExpression* callback_parseliteralfunction(AstParser* p)
+        static bool callback_parseliteralfunction(AstParser* p, AstExpression** res)
         {
-            return p->parseLiteralFunction();
+            return p->parseLiteralFunction(res);
         }
 
-        static AstExpression* callback_parseindexexpr(AstParser* p, AstExpression* left)
+        static bool callback_parseindexexpr(AstParser* p, AstExpression** res, AstExpression* left)
         {
-            return p->parseIndexExpr(left);
+            return p->parseIndexExpr(res, left);
         }
 
-        static AstExpression* callback_parseassignexpr(AstParser* p, AstExpression* left)
+        static bool callback_parseassignexpr(AstParser* p, AstExpression** res, AstExpression* left)
         {
-            return p->parseAssignExpr(left);
+            return p->parseAssignExpr(res, left);
         }
 
-        static AstExpression* callback_parselogicalexpr(AstParser* p, AstExpression* left)
+        static bool callback_parselogicalexpr(AstParser* p, AstExpression** res, AstExpression* left)
         {
-            return p->parseLogicalExpr(left);
+            return p->parseLogicalExpr(res, left);
         }
 
-        static AstExpression* callback_parseternaryexpr(AstParser* p, AstExpression* left)
+        static bool callback_parseternaryexpr(AstParser* p, AstExpression** res, AstExpression* left)
         {
-            return p->parseTernaryExpr(left);
+            return p->parseTernaryExpr(res, left);
         }
 
-        static AstExpression* callback_parseincdecprefixexpr(AstParser* p)
+        static bool callback_parseincdecprefixexpr(AstParser* p, AstExpression** res)
         {
-            return p->parseIncDecPrefixExpr();
+            return p->parseIncDecPrefixExpr(res);
         }
 
-        static AstExpression* callback_parseincdecpostfixexpr(AstParser* p, AstExpression* left)
+        static bool callback_parseincdecpostfixexpr(AstParser* p, AstExpression** res, AstExpression* left)
         {
-            return p->parseIncDecPostfixExpr(left);
+            return p->parseIncDecPostfixExpr(res, left);
         }
 
-        static AstExpression* callback_parsedotexpression(AstParser* p, AstExpression* left)
+        static bool callback_parsedotexpression(AstParser* p, AstExpression** res, AstExpression* left)
         {
-            return p->parseDotExpr(left);
+            return p->parseDotExpr(res, left);
         }
 
-        static AstExpression* callback_parserecoverstmt(AstParser* p)
+        static bool callback_parserecoverstmt(AstParser* p, AstExpression** res)
         {
-            return p->parseRecoverStmt();
+            return p->parseRecoverStmt(res);
         }
 
-        static AstExpression* callback_parsegroupedexpr(AstParser* p)
+        static bool callback_parsegroupedexpr(AstParser* p, AstExpression** res)
         {
-            return p->parseGroupedExpr();
+            return p->parseGroupedExpr(res);
         }
 
-        static AstExpression* callback_parsecallexpr(AstParser* p, AstExpression* left)
+        static bool callback_parsecallexpr(AstParser* p, AstExpression** res, AstExpression* left)
         {
-            return p->parseCallExpr(left);
+            return p->parseCallExpr(res, left);
         }
 
         static void destroy(AstParser* parser)
@@ -6608,12 +6598,11 @@ class AstParser
             m_parsedepth = 0;
         }
 
-        AstExpression* parseVarLetStmt()
+        bool parseVarLetStmt(AstExpression** res)
         {
             bool assignable;
             AstExpression::ExprIdent* nameident;
             AstExpression* value;
-            AstExpression* res;
             nameident = nullptr;
             value = nullptr;
             assignable = m_lexer.currentTokenIs(AstToken::TOK_VAR);
@@ -6630,8 +6619,7 @@ class AstParser
                 goto finish;
             }
             m_lexer.nextToken();
-            value = parseExpression(MC_ASTPREC_LOWEST);
-            if(!value)
+            if(!parseExpression(&value, MC_ASTPREC_LOWEST))
             {
                 goto err;
             }
@@ -6644,22 +6632,21 @@ class AstParser
                 }
             }
             finish:
-            res = AstExpression::makeAstItemDefine(nameident, value, assignable);
-            return res;
+            *res = AstExpression::makeAstItemDefine(nameident, value, assignable);
+            return true;
         err:
             AstExpression::destroyExpression(value);
             Memory::destroy(nameident);
-            return nullptr;
+            return false;
         }
 
-        AstExpression* parseIfStmt()
+        bool parseIfStmt(AstExpression** res)
         {
             bool ok;
             AstExpression::ExprIfCase* cond;
             AstExpression::ExprIfCase* elif;
             AstExpression::ExprCodeBlock* alternative;
             (void)ok;
-            AstExpression* res;
             alternative = nullptr;
             auto cases = Memory::make<GenericList<AstExpression::ExprIfCase*>>(0, nullptr);
             m_lexer.nextToken();
@@ -6670,8 +6657,7 @@ class AstParser
             m_lexer.nextToken();
             cond = Memory::make<AstExpression::ExprIfCase>(nullptr, nullptr);
             ok = cases->push(cond);
-            cond->m_ifcond = parseExpression(MC_ASTPREC_LOWEST);
-            if(!cond->m_ifcond)
+            if(!parseExpression(&cond->m_ifcond, MC_ASTPREC_LOWEST))
             {
                 goto err;
             }
@@ -6680,8 +6666,7 @@ class AstParser
                 goto err;
             }
             m_lexer.nextToken();
-            cond->m_ifthen = parseCodeBlock();
-            if(!cond->m_ifthen)
+            if(!parseCodeBlock(&cond->m_ifthen))
             {
                 goto err;
             }
@@ -6698,8 +6683,7 @@ class AstParser
                     m_lexer.nextToken();
                     elif = Memory::make<AstExpression::ExprIfCase>(nullptr, nullptr);
                     ok = cases->push(elif);
-                    elif->m_ifcond = parseExpression(MC_ASTPREC_LOWEST);
-                    if(!elif->m_ifcond)
+                    if(!parseExpression(&elif->m_ifcond, MC_ASTPREC_LOWEST))
                     {
                         goto err;
                     }
@@ -6708,66 +6692,59 @@ class AstParser
                         goto err;
                     }
                     m_lexer.nextToken();
-                    elif->m_ifthen = parseCodeBlock();
-                    if(!elif->m_ifthen)
+                    if(!parseCodeBlock(&elif->m_ifthen))
                     {
                         goto err;
                     }
                 }
                 else
                 {
-                    alternative = parseCodeBlock();
-                    if(!alternative)
+                    if(!parseCodeBlock(&alternative))
                     {
                         goto err;
                     }
                 }
             }
-            res = AstExpression::makeAstItemIfStmt(cases, alternative);
-            return res;
+            *res = AstExpression::makeAstItemIfStmt(cases, alternative);
+            return true;
         err:
             Memory::destroy(cases, AstExpression::ExprIfCase::destroy);
             Memory::destroy(alternative);
-            return nullptr;
+            return false;
         }
 
-        AstExpression* parseReturnStmt()
+        bool parseReturnStmt(AstExpression** res)
         {
-            AstExpression* res;
             AstExpression* expr;
             expr = nullptr;
             m_lexer.nextToken();
             if(!m_lexer.currentTokenIs(AstToken::TOK_SEMICOLON) && !m_lexer.currentTokenIs(AstToken::TOK_RBRACE) && !m_lexer.currentTokenIs(AstToken::TOK_EOF))
             {
-                expr = parseExpression(MC_ASTPREC_LOWEST);
-                if(!expr)
+                if(!parseExpression(&expr, MC_ASTPREC_LOWEST))
                 {
-                    return nullptr;
+                    return false;
                 }
             }
-            res = AstExpression::makeAstItemReturnStmt(expr);
-            return res;
+            *res = AstExpression::makeAstItemReturnStmt(expr);
+            return true;
         }
 
-        AstExpression* parseExprStmt()
+        bool parseExprStmt(AstExpression** res)
         {
-            AstExpression* res;
             AstExpression* expr;
-            expr = parseExpression(MC_ASTPREC_LOWEST);
-            if(!expr)
+            if(!parseExpression(&expr, MC_ASTPREC_LOWEST))
             {
-                return nullptr;
+                return false;
             }
             if(expr && (!m_config->replmode || m_parsedepth > 0))
             {
             }
-            res = AstExpression::makeAstItemExprStmt(expr);
-            return res;
+            *res = AstExpression::makeAstItemExprStmt(expr);
+            return true;
         }
 
-        AstExpression* parseLoopWhileStmt()
+        bool parseLoopWhileStmt(AstExpression** res)
         {
-            AstExpression* res;
             AstExpression* test;
             AstExpression::ExprCodeBlock* body;
             test = nullptr;
@@ -6778,8 +6755,7 @@ class AstParser
                 goto err;
             }
             m_lexer.nextToken();
-            test = parseExpression(MC_ASTPREC_LOWEST);
-            if(!test)
+            if(!parseExpression(&test, MC_ASTPREC_LOWEST))
             {
                 goto err;
             }
@@ -6788,67 +6764,74 @@ class AstParser
                 goto err;
             }
             m_lexer.nextToken();
-            body = parseCodeBlock();
-            if(!body)
+            if(!parseCodeBlock(&body))
             {
                 goto err;
             }
-            res = AstExpression::makeAstItemWhileStmt(test, body);
-            return res;
+            *res = AstExpression::makeAstItemWhileStmt(test, body);
+            return true;
         err:
             Memory::destroy(body);
             AstExpression::destroyExpression(test);
-            return nullptr;
+            return false;
         }
 
-        AstExpression* parseBreakStmt()
+        bool parseBreakStmt(AstExpression** res)
         {
             m_lexer.nextToken();
-            return AstExpression::makeAstItemBreakStmt();
+            auto expr = AstExpression::makeAstItemBreakStmt();
+            if(expr == nullptr)
+            {
+                return false;
+            }
+            *res = expr;
+            return true;
         }
 
-        AstExpression* parseContinueStmt()
+        bool parseContinueStmt(AstExpression** res)
         {
             m_lexer.nextToken();
-            return AstExpression::makeAstItemContinueStmt();
+            auto expr = AstExpression::makeAstItemContinueStmt();
+            if(expr == nullptr)
+            {
+                return false;
+            }
+            *res = expr;
+            return true;
         }
 
-        AstExpression* parseBlockStmt()
+        bool parseBlockStmt(AstExpression** res)
         {
             AstExpression::ExprCodeBlock* block;
-            AstExpression* res;
-            block = parseCodeBlock();
-            if(!block)
+            if(!parseCodeBlock(&block))
             {
-                return nullptr;
+                return false;
             }
-            res = AstExpression::makeAstItemBlockStmt(block);
-            return res;
+            *res = AstExpression::makeAstItemBlockStmt(block);
+            return true;
         }
 
-        AstExpression* parseImportStmt()
+        bool parseImportStmt(AstExpression** res)
         {
             char* processedname;
-            AstExpression* res;
             m_lexer.nextToken();
             if(!m_lexer.expectCurrent(AstToken::TOK_STRING))
             {
-                return nullptr;
+                return false;
             }
             processedname = processAndCopyString(m_lexer.m_currtoken.m_tokstrdata, m_lexer.m_currtoken.m_tokstrlength);
             if(!processedname)
             {
                 m_prserrlist->pushFormat(Error::ERRTYP_PARSING, m_lexer.m_currtoken.m_tokpos, "error when parsing module name");
-                return nullptr;
+                return false;
             }
             m_lexer.nextToken();
-            res = AstExpression::makeAstItemImportExpr(processedname);
-            return res;
+            *res = AstExpression::makeAstItemImportExpr(processedname);
+            return true;
         }
 
-        AstExpression* parseRecoverStmt()
+        bool parseRecoverStmt(AstExpression** res)
         {
-            AstExpression* res;
             AstExpression::ExprIdent* eid;
             AstExpression::ExprCodeBlock* body;
             eid = nullptr;
@@ -6856,12 +6839,12 @@ class AstParser
             m_lexer.nextToken();
             if(!m_lexer.expectCurrent(AstToken::TOK_LPAREN))
             {
-                return nullptr;
+                return false;
             }
             m_lexer.nextToken();
             if(!m_lexer.expectCurrent(AstToken::TOK_IDENT))
             {
-                return nullptr;
+                return false;
             }
             eid = Memory::make<AstExpression::ExprIdent>(m_lexer.m_currtoken);
             m_lexer.nextToken();
@@ -6870,37 +6853,35 @@ class AstParser
                 goto err;
             }
             m_lexer.nextToken();
-            body = parseCodeBlock();
-            if(!body)
+            if(!parseCodeBlock(&body))
             {
                 goto err;
             }
-            res = AstExpression::makeAstItemRecover(eid, body);
-            return res;
+            *res = AstExpression::makeAstItemRecover(eid, body);
+            return true;
         err:
             Memory::destroy(body);
             Memory::destroy(eid);
-            return nullptr;
+            return false;
         }
 
-        AstExpression* parseLoopForBaseStmt()
+        bool parseLoopForBaseStmt(AstExpression** res)
         {
             m_lexer.nextToken();
             if(!m_lexer.expectCurrent(AstToken::TOK_LPAREN))
             {
-                return nullptr;
+                return false;
             }
             m_lexer.nextToken();
             if(m_lexer.currentTokenIs(AstToken::TOK_IDENT) && m_lexer.peekTokenIs(AstToken::TOK_IN))
             {
-                return parseLoopForeachStmt();
+                return parseLoopForeachStmt(res);
             }
-            return thisparseLoopForClassicStmt();
+            return parseLoopForClassicStmt(res);
         }
 
-        AstExpression* parseLoopForeachStmt()
+        bool parseLoopForeachStmt(AstExpression** res)
         {
-            AstExpression* res;
             AstExpression* source;
             AstExpression::ExprCodeBlock* body;
             AstExpression::ExprIdent* iteratorident;
@@ -6914,8 +6895,7 @@ class AstParser
                 goto err;
             }
             m_lexer.nextToken();
-            source = parseExpression(MC_ASTPREC_LOWEST);
-            if(!source)
+            if(!parseExpression(&source, MC_ASTPREC_LOWEST))
             {
                 goto err;
             }
@@ -6924,23 +6904,21 @@ class AstParser
                 goto err;
             }
             m_lexer.nextToken();
-            body = parseCodeBlock();
-            if(!body)
+            if(!parseCodeBlock(&body))
             {
                 goto err;
             }
-            res = AstExpression::makeAstItemForeachStmt(iteratorident, source, body);
-            return res;
+            *res = AstExpression::makeAstItemForeachStmt(iteratorident, source, body);
+            return true;
         err:
             Memory::destroy(body);
             Memory::destroy(iteratorident);
             AstExpression::destroyExpression(source);
-            return nullptr;
+            return false;
         }
 
-        AstExpression* thisparseLoopForClassicStmt()
+        bool parseLoopForClassicStmt(AstExpression** res)
         {
-            AstExpression* res;
             AstExpression* init;
             AstExpression* test;
             AstExpression* update;
@@ -6951,8 +6929,7 @@ class AstParser
             body = nullptr;
             if(!m_lexer.currentTokenIs(AstToken::TOK_SEMICOLON))
             {
-                init = parseStatement();
-                if(!init)
+                if(!parseStatement(&init))
                 {
                     goto err;
                 }
@@ -6969,8 +6946,7 @@ class AstParser
             m_lexer.nextToken();
             if(!m_lexer.currentTokenIs(AstToken::TOK_SEMICOLON))
             {
-                test = parseExpression(MC_ASTPREC_LOWEST);
-                if(!test)
+                if(!parseExpression(&test, MC_ASTPREC_LOWEST))
                 {
                     goto err;
                 }
@@ -6982,8 +6958,7 @@ class AstParser
             m_lexer.nextToken();
             if(!m_lexer.currentTokenIs(AstToken::TOK_RPAREN))
             {
-                update = parseExpression(MC_ASTPREC_LOWEST);
-                if(!update)
+                if(!parseExpression(&update, MC_ASTPREC_LOWEST))
                 {
                     goto err;
                 }
@@ -6993,30 +6968,28 @@ class AstParser
                 }
             }
             m_lexer.nextToken();
-            body = parseCodeBlock();
-            if(!body)
+            if(!parseCodeBlock(&body))
             {
                 goto err;
             }
-            res = AstExpression::makeAstItemForLoopStmt(init, test, update, body);
-            return res;
+            *res = AstExpression::makeAstItemForLoopStmt(init, test, update, body);
+            return true;
         err:
             AstExpression::destroyExpression(init);
             AstExpression::destroyExpression(test);
             AstExpression::destroyExpression(update);
             Memory::destroy(body);
-            return nullptr;
+            return false;
         }
 
-        AstExpression::ExprCodeBlock* parseCodeBlock()
+        bool parseCodeBlock(AstExpression::ExprCodeBlock** res)
         {
             bool ok;
-            AstExpression::ExprCodeBlock* res;
             AstExpression* expr;
             (void)ok;
             if(!m_lexer.expectCurrent(AstToken::TOK_LBRACE))
             {
-                return nullptr;
+                return false;
             }
             m_lexer.nextToken();
             m_parsedepth++;
@@ -7033,8 +7006,7 @@ class AstParser
                     m_lexer.nextToken();
                     continue;
                 }
-                expr = parseStatement();
-                if(!expr)
+                if(!parseStatement(&expr))
                 {
                     goto err;
                 }
@@ -7042,15 +7014,15 @@ class AstParser
             }
             m_lexer.nextToken();
             m_parsedepth--;
-            res = Memory::make<AstExpression::ExprCodeBlock>(statements);
-            return res;
+            *res = Memory::make<AstExpression::ExprCodeBlock>(statements);
+            return true;
         err:
             m_parsedepth--;
             Memory::destroy(statements, AstExpression::destroyExpression);
-            return nullptr;
+            return false;
         }
 
-        AstExpression* parseExpression(mcastprecedence_t prec)
+        bool parseExpression(AstExpression** res, mcastprecedence_t prec)
         {
             char* literal;
             AstLocation pos;
@@ -7062,7 +7034,7 @@ class AstParser
             if(m_lexer.m_currtoken.type() == AstToken::TOK_INVALID)
             {
                 m_prserrlist->pushFormat(Error::ERRTYP_PARSING, m_lexer.m_currtoken.m_tokpos, "illegal token");
-                return nullptr;
+                return false;
             }
             parserightassoc = getRightAssocParseFunc(m_lexer.m_currtoken.type());
             if(!parserightassoc)
@@ -7070,12 +7042,11 @@ class AstParser
                 literal = m_lexer.m_currtoken.dupLiteralString();
                 m_prserrlist->pushFormat(Error::ERRTYP_PARSING, m_lexer.m_currtoken.m_tokpos, "no prefix parse function for \"%s\" found", literal);
                 mc_memory_free(literal);
-                return nullptr;
+                return false;
             }
-            leftexpr = parserightassoc(this);
-            if(!leftexpr)
+            if(!parserightassoc(this, &leftexpr))
             {
-                return nullptr;
+                return false;
             }
             leftexpr->m_exprpos = pos;
             while(!m_lexer.currentTokenIs(AstToken::TOK_SEMICOLON) && prec < getPrecedence(m_lexer.m_currtoken.type()))
@@ -7083,33 +7054,34 @@ class AstParser
                 parseleftassoc = getLeftAssocParseFunc(m_lexer.m_currtoken.m_toktype);
                 if(!parseleftassoc)
                 {
-                    return leftexpr;
+                    *res = leftexpr;
+                    return true;
                 }
                 pos = m_lexer.m_currtoken.m_tokpos;
-                newleftexpr = parseleftassoc(this, leftexpr);
-                if(!newleftexpr)
+                if(!parseleftassoc(this, &newleftexpr, leftexpr))
                 {
                     AstExpression::destroyExpression(leftexpr);
-                    return nullptr;
+                    return false;
                 }
                 newleftexpr->m_exprpos = pos;
                 leftexpr = newleftexpr;
             }
-            return leftexpr;
+            *res = leftexpr;
+            return true;
         }
 
-        AstExpression* parseGroupedExpr()
+        bool parseGroupedExpr(AstExpression** res)
         {
             AstExpression* expr;
             m_lexer.nextToken();
-            expr = parseExpression(MC_ASTPREC_LOWEST);
-            if(!expr || !m_lexer.expectCurrent(AstToken::TOK_RPAREN))
+            if(!parseExpression(&expr, MC_ASTPREC_LOWEST) || !m_lexer.expectCurrent(AstToken::TOK_RPAREN))
             {
                 AstExpression::destroyExpression(expr);
-                return nullptr;
+                return false;
             }
             m_lexer.nextToken();
-            return expr;
+            *res = expr;
+            return true;
         }
 
 
@@ -7157,10 +7129,9 @@ class AstParser
             return true;
         }
 
-        AstExpression* parseFunctionStmt()
+        bool parseFunctionStmt(AstExpression** res)
         {
             AstExpression::ExprIdent* nameident;
-            AstExpression* res;
             AstExpression* value;
             AstLocation pos;
             nameident = nullptr;
@@ -7173,8 +7144,7 @@ class AstParser
             }
             nameident = Memory::make<AstExpression::ExprIdent>(m_lexer.m_currtoken);
             m_lexer.nextToken();
-            value = callback_parseliteralfunction(this);
-            if(!value)
+            if(!callback_parseliteralfunction(this, &value))
             {
                 goto err;
             }
@@ -7184,95 +7154,84 @@ class AstParser
             {
                 goto err;
             }
-            res = AstExpression::makeAstItemDefine(nameident, value, false);
-            return res;
+            *res = AstExpression::makeAstItemDefine(nameident, value, false);
+            return true;
         err:
             AstExpression::destroyExpression(value);
             Memory::destroy(nameident);
-            return nullptr;
+            return false;
         }
 
-        //xxhere
-
-        AstExpression* parseTernaryExpr(AstExpression* left)
+        bool parseTernaryExpr(AstExpression** res, AstExpression* left)
         {
-            AstExpression* res;
             AstExpression* ift;
             AstExpression* iffalse;
             m_lexer.nextToken();
-            ift = parseExpression(MC_ASTPREC_LOWEST);
-            if(!ift)
+            if(!parseExpression(&ift, MC_ASTPREC_LOWEST))
             {
-                return nullptr;
+                return false;
             }
             if(!m_lexer.expectCurrent(AstToken::TOK_COLON))
             {
                 AstExpression::destroyExpression(ift);
-                return nullptr;
+                return false;
             }
             m_lexer.nextToken();
-            iffalse = parseExpression(MC_ASTPREC_LOWEST);
-            if(!iffalse)
+            if(!parseExpression(&iffalse, MC_ASTPREC_LOWEST))
             {
                 AstExpression::destroyExpression(ift);
-                return nullptr;
+                return false;
             }
-            res = AstExpression::makeAstItemTernary(left, ift, iffalse);
-            return res;
+            *res = AstExpression::makeAstItemTernary(left, ift, iffalse);
+            return true;
         }
 
-        AstExpression* parseLogicalExpr(AstExpression* left)
+        bool parseLogicalExpr(AstExpression** res, AstExpression* left)
         {
             AstExpression::MathOpType op;
             mcastprecedence_t prec;
-            AstExpression* res;
             AstExpression* right;
             op = tokenToMathOP(m_lexer.m_currtoken.m_toktype);
             prec = getPrecedence(m_lexer.m_currtoken.m_toktype);
             m_lexer.nextToken();
-            right = parseExpression(prec);
-            if(!right)
+            if(!parseExpression(&right, prec))
             {
-                return nullptr;
+                return false;
             }
-            res = AstExpression::makeAstItemLogical(op, left, right);
-            return res;
+            *res = AstExpression::makeAstItemLogical(op, left, right);
+            return true;
         }
 
-        AstExpression* parseIndexExpr(AstExpression* left)
+        bool parseIndexExpr(AstExpression** res, AstExpression* left)
         {
-            AstExpression* res;
             AstExpression* index;
             m_lexer.nextToken();
-            index = parseExpression(MC_ASTPREC_LOWEST);
-            if(!index)
+            if(!parseExpression(&index, MC_ASTPREC_LOWEST))
             {
-                return nullptr;
+                return false;
             }
             if(!m_lexer.expectCurrent(AstToken::TOK_RBRACKET))
             {
                 AstExpression::destroyExpression(index);
-                return nullptr;
+                return false;
             }
             m_lexer.nextToken();
-            res = AstExpression::makeAstItemIndex(left, index, false);
-            return res;
+            *res = AstExpression::makeAstItemIndex(left, index, false);
+            return true;
         }
 
-        AstExpression* parseAssignExpr(AstExpression* left)
+        bool parseAssignExpr(AstExpression** res, AstExpression* left)
         {
             AstLocation pos;
             AstExpression::MathOpType op;
             AstToken::Type assigntype;
-            AstExpression* res;
             AstExpression* source;
             AstExpression* leftcopy;
             AstExpression* newsource;
             source = nullptr;
             assigntype = m_lexer.m_currtoken.m_toktype;
             m_lexer.nextToken();
-            source = parseExpression(MC_ASTPREC_LOWEST);
-            if(!source)
+            if(!parseExpression(&source, MC_ASTPREC_LOWEST))
             {
                 goto err;
             }
@@ -7311,19 +7270,18 @@ class AstParser
                     }
                     break;
             }
-            res = AstExpression::makeAstItemAssign(left, source, false);
-            return res;
+            *res = AstExpression::makeAstItemAssign(left, source, false);
+            return true;
         err:
             AstExpression::destroyExpression(source);
-            return nullptr;
+            return false;
         }
 
-        AstExpression* parseIncDecPrefixExpr()
+        bool parseIncDecPrefixExpr(AstExpression** res)
         {
             AstLocation pos;
             AstExpression::MathOpType op;
             AstToken::Type operationtype;
-            AstExpression* res;
             AstExpression* dest;
             AstExpression* source;
             AstExpression* destcopy;
@@ -7334,8 +7292,7 @@ class AstParser
             pos = m_lexer.m_currtoken.m_tokpos;
             m_lexer.nextToken();
             op = tokenToMathOP(operationtype);
-            dest = parseExpression(MC_ASTPREC_PREFIX);
-            if(!dest)
+            if(!parseExpression(&dest, MC_ASTPREC_PREFIX))
             {
                 goto err;
             }
@@ -7350,19 +7307,18 @@ class AstParser
             }
             operation = AstExpression::makeAstItemInfix(op, destcopy, oneliteral);
             operation->m_exprpos = pos;
-            res = AstExpression::makeAstItemAssign(dest, operation, false);
-            return res;
+            *res = AstExpression::makeAstItemAssign(dest, operation, false);
+            return true;
         err:
             AstExpression::destroyExpression(source);
-            return nullptr;
+            return false;
         }
 
-        AstExpression* parseIncDecPostfixExpr(AstExpression* left)
+        bool parseIncDecPostfixExpr(AstExpression** res, AstExpression* left)
         {
             AstLocation pos;
             AstExpression::MathOpType op;
             AstToken::Type operationtype;
-            AstExpression* res;
             AstExpression* source;
             AstExpression* leftcopy;
             AstExpression* operation;
@@ -7381,52 +7337,47 @@ class AstParser
             oneliteral->m_exprpos = pos;
             operation = AstExpression::makeAstItemInfix(op, leftcopy, oneliteral);
             operation->m_exprpos = pos;
-            res = AstExpression::makeAstItemAssign(left, operation, true);
-            return res;
+            *res = AstExpression::makeAstItemAssign(left, operation, true);
+            return true;
         err:
             AstExpression::destroyExpression(source);
-            return nullptr;
+            return false;
         }
 
-        AstExpression* parsePrefixExpr()
+        bool parsePrefixExpr(AstExpression** res)
         {
             AstExpression::MathOpType op;
-            AstExpression* res;
             AstExpression* right;
             op = tokenToMathOP(m_lexer.m_currtoken.m_toktype);
             m_lexer.nextToken();
-            right = parseExpression(MC_ASTPREC_PREFIX);
-            if(!right)
+            if(!parseExpression(&right, MC_ASTPREC_PREFIX))
             {
-                return nullptr;
+                return false;
             }
-            res = AstExpression::makeAstItemPrefix(op, right);
-            return res;
+            *res = AstExpression::makeAstItemPrefix(op, right);
+            return true;
         }
 
-        AstExpression* parseInfixExpr(AstExpression* left)
+        bool parseInfixExpr(AstExpression** res, AstExpression* left)
         {
             AstExpression::MathOpType op;
             mcastprecedence_t prec;
-            AstExpression* res;
             AstExpression* right;
             op = tokenToMathOP(m_lexer.m_currtoken.m_toktype);
             prec = getPrecedence(m_lexer.m_currtoken.m_toktype);
             m_lexer.nextToken();
-            right = parseExpression(prec);
-            if(!right)
+            if(!parseExpression(&right, prec))
             {
-                return nullptr;
+                return false;
             }
-            res = AstExpression::makeAstItemInfix(op, left, right);
-            return res;
+            *res = AstExpression::makeAstItemInfix(op, left, right);
+            return true;
         }
 
-        AstExpression* parseLiteralFunction()
+        bool parseLiteralFunction(AstExpression** res)
         {
             bool ok;
             AstExpression::ExprCodeBlock* body;
-            AstExpression* res;
             (void)ok;
             m_parsedepth++;
             body = nullptr;
@@ -7440,39 +7391,36 @@ class AstParser
             {
                 goto err;
             }
-            body = parseCodeBlock();
-            if(!body)
+            if(!parseCodeBlock(&body))
             {
                 goto err;
             }
-            res = AstExpression::makeAstItemLiteralFunction(params, body);
+            *res = AstExpression::makeAstItemLiteralFunction(params, body);
             m_parsedepth -= 1;
-            return res;
+            return true;
         err:
             Memory::destroy(body);
             Memory::destroy(params, AstExpression::ExprFuncParam::destroy);
             m_parsedepth -= 1;
-            return nullptr;
+            return false;
         }
 
-        AstExpression* parseLiteralArray()
+        bool parseLiteralArray(AstExpression** res)
         {
-            AstExpression* res;
             auto array = parseExprList(AstToken::TOK_LBRACKET, AstToken::TOK_RBRACKET, true);
             if(!array)
             {
-                return nullptr;
+                return false;
             }
-            res = AstExpression::makeAstItemLiteralArray(array);
-            return res;
+            *res = AstExpression::makeAstItemLiteralArray(array);
+            return true;
         }
 
-        AstExpression* parseLiteralMap()
+        bool parseLiteralMap(AstExpression** res)
         {
             bool ok;
             size_t len;
             char* str;
-            AstExpression* res;
             AstExpression* key;
             AstExpression* value;
             (void)ok;
@@ -7496,8 +7444,7 @@ class AstParser
                 }
                 else
                 {
-                    key = parseExpression(MC_ASTPREC_LOWEST);
-                    if(!key)
+                    if(!parseExpression(&key, MC_ASTPREC_LOWEST))
                     {
                         goto err;
                     }
@@ -7524,8 +7471,7 @@ class AstParser
                     goto err;
                 }
                 m_lexer.nextToken();
-                value = parseExpression(MC_ASTPREC_LOWEST);
-                if(!value)
+                if(!parseExpression(&value, MC_ASTPREC_LOWEST))
                 {
                     goto err;
                 }
@@ -7541,15 +7487,15 @@ class AstParser
                 m_lexer.nextToken();
             }
             m_lexer.nextToken();
-            res = AstExpression::makeAstItemLiteralMap(keys, values);
-            return res;
+            *res = AstExpression::makeAstItemLiteralMap(keys, values);
+            return true;
         err:
             Memory::destroy(keys, AstExpression::destroyExpression);
             Memory::destroy(values, AstExpression::destroyExpression);
-            return nullptr;
+            return false;
         }
 
-        AstExpression* parseLiteralTemplateString()
+        bool parseLiteralTemplateString(AstExpression** res)
         {
             size_t len;
             char* processedliteral;
@@ -7571,7 +7517,7 @@ class AstParser
             if(!processedliteral)
             {
                 m_prserrlist->pushFormat(Error::ERRTYP_PARSING, m_lexer.m_currtoken.m_tokpos, "error parsing string literal");
-                return nullptr;
+                return false;
             }
             m_lexer.nextToken();
             if(!m_lexer.expectCurrent(AstToken::TOK_LBRACE))
@@ -7585,8 +7531,7 @@ class AstParser
             leftstringexpr->m_exprpos = pos;
             processedliteral = nullptr;
             pos = m_lexer.m_currtoken.m_tokpos;
-            templateexpr = parseExpression(MC_ASTPREC_LOWEST);
-            if(!templateexpr)
+            if(!parseExpression(&templateexpr, MC_ASTPREC_LOWEST))
             {
                 goto err;
             }
@@ -7606,8 +7551,7 @@ class AstParser
             m_lexer.nextToken();
             m_lexer.nextToken();
             pos = m_lexer.m_currtoken.m_tokpos;
-            rightexpr = parseExpression(MC_ASTPREC_HIGHEST);
-            if(!rightexpr)
+            if(!parseExpression(&rightexpr, MC_ASTPREC_HIGHEST))
             {
                 goto err;
             }
@@ -7615,7 +7559,8 @@ class AstParser
             rightaddexpr->m_exprpos = pos;
             leftaddexpr = nullptr;
             rightexpr = nullptr;
-            return rightaddexpr;
+            *res = rightaddexpr;
+            return true;
         err:
             AstExpression::destroyExpression(rightaddexpr);
             AstExpression::destroyExpression(rightexpr);
@@ -7624,41 +7569,40 @@ class AstParser
             AstExpression::destroyExpression(templateexpr);
             AstExpression::destroyExpression(leftstringexpr);
             mc_memory_free(processedliteral);
-            return nullptr;
+            return false;
         }
 
-        AstExpression* parseLiteralString()
+        bool parseLiteralString(AstExpression** res)
         {
             size_t len;
             char* processedliteral;
-            AstExpression* res;
             processedliteral = processAndCopyString(m_lexer.m_currtoken.m_tokstrdata, m_lexer.m_currtoken.m_tokstrlength);
             if(!processedliteral)
             {
                 m_prserrlist->pushFormat(Error::ERRTYP_PARSING, m_lexer.m_currtoken.m_tokpos, "error parsing string literal");
-                return nullptr;
+                return false;
             }
             m_lexer.nextToken();
             len = mc_util_strlen(processedliteral);
-            res = AstExpression::makeAstItemLiteralString(processedliteral, len);
-            return res;
+            *res = AstExpression::makeAstItemLiteralString(processedliteral, len);
+            return true;
         }
 
-        AstExpression* parseLiteralNull()
+        bool parseLiteralNull(AstExpression** res)
         {
             m_lexer.nextToken();
-            return AstExpression::makeAstItemLiteralNull();
+            *res = AstExpression::makeAstItemLiteralNull();
+            return true;
         }
 
-        AstExpression* parseLiteralBool()
+        bool parseLiteralBool(AstExpression** res)
         {
-            AstExpression* res;
-            res = AstExpression::makeAstItemLiteralBool(m_lexer.m_currtoken.m_toktype == AstToken::TOK_TRUE);
+            *res = AstExpression::makeAstItemLiteralBool(m_lexer.m_currtoken.m_toktype == AstToken::TOK_TRUE);
             m_lexer.nextToken();
-            return res;
+            return true;
         }
 
-        AstExpression* parseLiteralNumber()
+        bool parseLiteralNumber(AstExpression** res)
         {
             mcfloat_t number;
             long parsedlen;
@@ -7673,54 +7617,52 @@ class AstParser
                 literal = m_lexer.m_currtoken.dupLiteralString();
                 m_prserrlist->pushFormat(Error::ERRTYP_PARSING, m_lexer.m_currtoken.m_tokpos, "failed to parse number literal \"%s\"", literal);
                 mc_memory_free(literal);
-                return nullptr;
+                return false;
             }    
             m_lexer.nextToken();
-            return AstExpression::makeAstItemLiteralNumber(number);
+            *res = AstExpression::makeAstItemLiteralNumber(number);
+            return true;
         }
 
-        AstExpression* parseDotExpr(AstExpression* left)
+        bool parseDotExpr(AstExpression** res, AstExpression* left)
         {
             size_t len;
             char* str;
-            AstExpression* res;
             AstExpression* index;
             m_lexer.nextToken();
             if(!m_lexer.expectCurrent(AstToken::TOK_IDENT))
             {
-                return nullptr;
+                return false;
             }
             str = m_lexer.m_currtoken.dupLiteralString();
             len = mc_util_strlen(str);
             index = AstExpression::makeAstItemLiteralString(str, len);
             index->m_exprpos = m_lexer.m_currtoken.m_tokpos;
             m_lexer.nextToken();
-            res = AstExpression::makeAstItemIndex(left, index, true);
-            return res;
+            *res = AstExpression::makeAstItemIndex(left, index, true);
+            return true;
         }
         
-        AstExpression* parseIdent()
+        bool parseIdent(AstExpression** res)
         {
             AstExpression::ExprIdent* ident;
-            AstExpression* res;
             ident = Memory::make<AstExpression::ExprIdent>(m_lexer.m_currtoken);
-            res = AstExpression::makeAstItemIdent(ident);
+            *res = AstExpression::makeAstItemIdent(ident);
             m_lexer.nextToken();
-            return res;
+            return true;
         }
 
-        AstExpression* parseCallExpr(AstExpression* left)
+        bool parseCallExpr(AstExpression** res, AstExpression* left)
         {
-            AstExpression* res;
             AstExpression* function;
             function = left;
             auto args = parseExprList(AstToken::TOK_LPAREN, AstToken::TOK_RPAREN, false);
             if(!args)
             {
-                return nullptr;
+                return false;
             }
-            res = AstExpression::makeAstItemCallExpr(function, args);
-            return res;
+            *res = AstExpression::makeAstItemCallExpr(function, args);
+            return true;
         }
 
         GenericList<AstExpression*>* parseExprList(AstToken::Type starttoken, AstToken::Type endtoken, bool trailingcommaallowed)
@@ -7740,8 +7682,7 @@ class AstParser
                 m_lexer.nextToken();
                 return res;
             }
-            argexpr = parseExpression(MC_ASTPREC_LOWEST);
-            if(!argexpr)
+            if(!parseExpression(&argexpr, MC_ASTPREC_LOWEST))
             {
                 goto err;
             }
@@ -7753,8 +7694,7 @@ class AstParser
                 {
                     break;
                 }
-                argexpr = parseExpression(MC_ASTPREC_LOWEST);
-                if(!argexpr)
+                if(!parseExpression(&argexpr, MC_ASTPREC_LOWEST))
                 {
                     goto err;
                 }
@@ -7771,7 +7711,7 @@ class AstParser
             return nullptr;
         }
 
-        AstExpression* parseStatement()
+        bool parseStatement(AstExpression** res)
         {
             AstLocation pos;
             AstExpression* expr;
@@ -7782,43 +7722,67 @@ class AstParser
                 case AstToken::TOK_VAR:
                 case AstToken::TOK_CONST:
                     {
-                        expr = parseVarLetStmt();
+                        if(!parseVarLetStmt(&expr))
+                        {
+                            return false;
+                        }
                     }
                     break;
                 case AstToken::TOK_IF:
                     {
-                        expr = parseIfStmt();
+                        if(!parseIfStmt(&expr))
+                        {
+                            return false;
+                        }
                     }
                     break;
                 case AstToken::TOK_RETURN:
                     {
-                        expr = parseReturnStmt();
+                        if(!parseReturnStmt(&expr))
+                        {
+                            return false;
+                        }
                     }
                     break;
                 case AstToken::TOK_WHILE:
                     {
-                        expr = parseLoopWhileStmt();
+                        if(!parseLoopWhileStmt(&expr))
+                        {
+                            return false;
+                        }
                     }
                     break;
                 case AstToken::TOK_BREAK:
                     {
-                        expr = parseBreakStmt();
+                        if(!parseBreakStmt(&expr))
+                        {
+                            return false;
+                        }
                     }
                     break;
                 case AstToken::TOK_FOR:
                     {
-                        expr = parseLoopForBaseStmt();
+                        if(!parseLoopForBaseStmt(&expr))
+                        {
+                            return false;
+                        }
                     }
                     break;
                 case AstToken::TOK_FUNCTION:
                     {
                         if(m_lexer.peekTokenIs(AstToken::TOK_IDENT))
                         {
-                            expr = parseFunctionStmt();
+                            if(!parseFunctionStmt(&expr))
+                            {
+                                return false;
+                            }
                         }
                         else
                         {
-                            expr = parseExprStmt();
+                            if(!parseExprStmt(&expr))
+                            {
+                                return false;
+                            }
                         }
                     }
                     break;
@@ -7826,32 +7790,50 @@ class AstParser
                     {
                         if(m_config->replmode && m_parsedepth == 0)
                         {
-                            expr = parseExprStmt();
+                            if(!parseExprStmt(&expr))
+                            {
+                                return false;
+                            }
                         }
                         else
                         {
-                            expr = parseBlockStmt();
+                            if(!parseBlockStmt(&expr))
+                            {
+                                return false;
+                            }
                         }
                     }
                     break;
                 case AstToken::TOK_CONTINUE:
                     {
-                        expr = parseContinueStmt();
+                        if(!parseContinueStmt(&expr))
+                        {
+                            return false;
+                        }
                     }
                     break;
                 case AstToken::TOK_IMPORT:
                     {
-                        expr = parseImportStmt();
+                        if(!parseImportStmt(&expr))
+                        {
+                            return false;
+                        }
                     }
                     break;
                 case AstToken::TOK_RECOVER:
                     {
-                        expr = parseRecoverStmt();
+                        if(!parseRecoverStmt(&expr))
+                        {
+                            return false;
+                        }
                     }
                     break;
                 default:
                     {
-                        expr = parseExprStmt();
+                        if(!parseExprStmt(&expr))
+                        {
+                            return false;
+                        }
                     }
                     break;
             }
@@ -7859,7 +7841,8 @@ class AstParser
             {
                 expr->m_exprpos = pos;
             }
-            return expr;
+            *res = expr;
+            return true;
         }
 
         GenericList<AstExpression*>* parseAll(const char* input, AstSourceFile* file)
@@ -7883,8 +7866,7 @@ class AstParser
                     m_lexer.nextToken();
                     continue;
                 }
-                expr = parseStatement();
-                if(!expr)
+                if(!parseStatement(&expr))
                 {
                     goto err;
                 }
@@ -14102,11 +14084,10 @@ MC_FORCEINLINE ObjClass* mc_vmdo_findclassfor(State* state, Value::Type typ)
 MC_INLINE ObjClass::Field* mc_vmdo_getclassmember(State* state, ObjClass* cl, const char* name)
 {
     size_t i;
-    ObjClass::Field* memb;
     (void)state;
     for(i=0; i<cl->m_memberfields->count(); i++)
     {
-        memb = cl->m_memberfields->get(i);
+        auto memb = cl->m_memberfields->getp(i);
         if(strcmp(memb->name, name) == 0)
         {
             return memb;
