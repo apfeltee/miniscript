@@ -148,7 +148,7 @@ class ValDict
             return setKVIntern(cellix, hash, key, value);
         }
 
-        inline void* get(void* key)
+        inline ValType* get(KeyType* key)
         {
             bool found;
             unsigned int itemix;
