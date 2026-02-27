@@ -301,8 +301,6 @@ MC_FORCEINLINE mcfloat_t mc_mathutil_div(mcfloat_t dnleft, mcfloat_t dnright);
 MC_FORCEINLINE mcfloat_t mc_mathutil_mod(mcfloat_t dnleft, mcfloat_t dnright);
 
 
-Value mc_state_execcode(State *state, const char *code, const char *filename);
-
 Object *mc_gcmemory_allocobjectdata(State *state);
 
 void mc_state_gcunmarkall(State *state);
@@ -314,7 +312,6 @@ bool mc_state_gcdisablefor(Value obj);
 void mc_state_gcenablefor(Value obj);
 bool mc_state_gccandatabeputinpool(State *state, Object *data);
 
-bool mc_traceback_vmpush(Traceback *traceback, State *state);
 bool mc_vm_init(State *state);
 void mc_vm_reset(State *state);
 
@@ -985,10 +982,10 @@ class GenericList
 
         GenericList& operator=(const GenericList& other)
         {
-            this->m_listcapacity = other.m_listcapacity;
-            this->m_listcount = other.m_listcount;
-            this->m_listitems = other.m_listitems;
-            this->m_nullvalue = other.m_nullvalue;
+            m_listcapacity = other.m_listcapacity;
+            m_listcount = other.m_listcount;
+            m_listitems = other.m_listitems;
+            m_nullvalue = other.m_nullvalue;
             return *this;
         }
 
@@ -3010,7 +3007,7 @@ class AstExprData
 
                 void deInit()
                 {
-                    this->m_blockstatements.deInit(destroyExprData<AstExpression>);
+                    m_blockstatements.deInit(destroyExprData<AstExpression>);
                 }
         };
 
@@ -10037,27 +10034,27 @@ class State
 
         struct ExecInfo
         {
-            size_t thisstpos;
-            size_t vsposition;
-            Value lastpopped;
-            VMFrame* currframe;
-            GenericList<Value> valuestack = GenericList<Value>(MinValstackSize, Value::makeNull());
-            GenericList<Value> valthisstack = GenericList<Value>(MinVMThisstackSize, Value::makeNull());
-            GenericList<Value> nativethisstack = GenericList<Value>(MinNativeThisstackSize, Value::makeNull());
-            GenericList<VMFrame> framestack = GenericList<VMFrame>(MinVMFrames, VMFrame{});
+            public:
+                size_t thisstpos;
+                size_t vsposition;
+                Value lastpopped;
+                VMFrame* currframe;
+                GenericList<Value> valuestack = GenericList<Value>(MinValstackSize, Value::makeNull());
+                GenericList<Value> valthisstack = GenericList<Value>(MinVMThisstackSize, Value::makeNull());
+                GenericList<Value> nativethisstack = GenericList<Value>(MinNativeThisstackSize, Value::makeNull());
+                GenericList<VMFrame> framestack = GenericList<VMFrame>(MinVMFrames, VMFrame{});
 
-            void deInit()
-            {
-                this->valuestack.deInit();
-                this->framestack.deInit();
-                this->valthisstack.deInit();
-                this->nativethisstack.deInit();
-            }
-
+            public:
+                void deInit()
+                {
+                    this->valuestack.deInit();
+                    this->framestack.deInit();
+                    this->valthisstack.deInit();
+                    this->nativethisstack.deInit();
+                }
         };
 
     public:
-
         static void destroy(State* state)
         {
             if(state != nullptr)
@@ -10066,7 +10063,6 @@ class State
                 mc_memory_free(state);
             }
         }
-
 
     public:
         RuntimeConfig m_config;
@@ -10449,6 +10445,24 @@ class State
             return true;
         }
 
+        bool vmTracebackPush(Traceback* traceback)
+        {
+            bool ok;
+            int i;
+            VMFrame* frame;
+            (void)ok;
+            for(i = m_execstate.framestack.count() - 1; i >= 0; i--)
+            {
+                frame = m_execstate.framestack.getp(i);
+                ok = traceback->push(mc_value_functiongetname(frame->m_function), frame->getPosition());
+                if(!ok)
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
         inline Value vmCallNativeFunction(Value callee, AstLocation srcpos, Value selfval, size_t argc, Value* args)
         {
             Value::Type restype;
@@ -10480,7 +10494,7 @@ class State
                     {
                         traceback->push(nativefun->m_funcdata.valnativefunc.natfnname, AstLocation::Invalid());
                     }
-                    mc_traceback_vmpush(traceback, this);
+                    vmTracebackPush(traceback);
                     mc_value_errorsettraceback(res, traceback);
                 }
             }
@@ -10509,7 +10523,7 @@ class State
             {
                 //VMFrame::init(&tempframe, callee, 0);
                 VMFrame::init(&tempframe, callee, m_execstate.vsposition - argc);
-                this->saveExecInfo(&est);
+                saveExecInfo(&est);
                 oldsp = m_execstate.vsposition;
                 oldthissp = m_execstate.thisstpos;
                 vmPushFrame(tempframe);
@@ -10522,7 +10536,7 @@ class State
                 ok = execVM(callee, constants, true);
                 if(!ok)
                 {
-                    this->restoreExecInfo(&est);
+                    restoreExecInfo(&est);
                     return Value::makeNull();
                 }
                 #if 1
@@ -10533,7 +10547,7 @@ class State
                 #endif
                 m_execstate.thisstpos = oldthissp;
                 retv = m_execstate.lastpopped;
-                this->restoreExecInfo(&est);
+                restoreExecInfo(&est);
                 return retv;
             }
             if(type == Value::VALTYP_FUNCNATIVE)
@@ -10543,6 +10557,142 @@ class State
             m_errorlist.pushFormat(Error::ERRTYP_USER, AstLocation::Invalid(), "object is not callable");
             return Value::makeNull();
         }
+
+        inline bool vmCallObject(Value callee, int nargs)
+        {
+            bool ok;
+            const char* calleetypename;
+            Value::Type calleetype;
+            VMFrame calleeframe;
+            Value res;
+            Value tmpval;
+            Value selfval;
+            Value* stackpos;
+            Object::ObjFunction* calleefunction;
+            (void)ok;
+            calleetype = callee.getType();
+            selfval = Value::makeNull();
+            if(callee.isFuncNative())
+            {
+                if(!m_execstate.nativethisstack.pop(&tmpval))
+                {
+                    #if 0
+                        m_stderrprinter->format("failed to pop native 'this' for = <");
+                        mc_printer_printvalue(m_stderrprinter, callee, true);
+                        m_stderrprinter->format(">\n");
+                        #if 0
+                            m_errorlist.pushFormat(Error::ERRTYP_RUNTIME, m_execstate.currframe->getPosition(), "failed to pop native 'this'");
+                        #endif
+                    #endif
+                }
+                selfval = tmpval;
+            }
+            #if 0
+            {
+                m_stderrprinter->format("selfval = <<<");
+                mc_printer_printvalue(m_stderrprinter, selfval, true);
+                m_stderrprinter->format(">>>\n");
+            }
+            #endif
+            if(calleetype == Value::VALTYP_FUNCSCRIPT)
+            {
+                calleefunction = Value::asFunction(callee);
+                if(nargs != calleefunction->m_funcdata.valscriptfunc.numargs)
+                {
+                    #if 0
+                    m_errorlist.pushFormat(Error::ERRTYP_RUNTIME, m_execstate.currframe->getPosition(), "invalid number of arguments to \"%s\": expected %d, got %d",
+                                      mc_value_functiongetname(callee), calleefunction->m_funcdata.valscriptfunc.numargs, nargs);
+                    return false;
+                    #endif
+                }
+                ok = VMFrame::init(&calleeframe, callee, m_execstate.vsposition - nargs);
+                if(!ok)
+                {
+                    m_errorlist.pushFormat(Error::ERRTYP_RUNTIME, AstLocation::Invalid(), "frame init failed in vmCallObject");
+                    return false;
+                }
+                ok = vmPushFrame(calleeframe);
+                if(!ok)
+                {
+                    m_errorlist.pushFormat(Error::ERRTYP_RUNTIME, AstLocation::Invalid(), "pushing frame failed in vmCallObject");
+                    return false;
+                }
+            }
+            else if(calleetype == Value::VALTYP_FUNCNATIVE)
+            {
+                #if 0
+                if(!selfval.isNull())
+                {
+                    vmStackPop();
+                }
+                #endif
+                stackpos = m_execstate.valuestack.data() + m_execstate.vsposition - nargs;
+                res = vmCallNativeFunction(callee, m_execstate.currframe->getPosition(), selfval, nargs, stackpos);
+                if(hasErrors())
+                {
+                    return false;
+                }
+                setStackPos(m_execstate.vsposition - nargs - 1);
+                vmStackPush(res);
+            }
+            else
+            {
+                calleetypename = Value::getTypename(calleetype);
+                m_errorlist.pushFormat(Error::ERRTYP_RUNTIME, m_execstate.currframe->getPosition(), "%s object is not callable", calleetypename);
+                return false;
+            }
+            return true;
+        }
+
+        bool vmTryOverloadOperator(Value left, Value right, mcinternopcode_t op, bool* outoverloadfound)
+        {
+            int numoper;
+            Value key;
+            Value callee;
+            Value::Type lefttype;
+            Value::Type righttype;
+            *outoverloadfound = false;
+            lefttype = left.getType();
+            righttype = right.getType();
+            if(lefttype != Value::VALTYP_MAP && righttype != Value::VALTYP_MAP)
+            {
+                *outoverloadfound = false;
+                return true;
+            }
+            numoper = 2;
+            if(op == AstCompiler::OPCODE_MINUS || op == AstCompiler::OPCODE_BINNOT || op == AstCompiler::OPCODE_BANG)
+            {
+                numoper = 1;
+            }
+            key = m_operoverloadkeys[op];
+            callee = Value::makeNull();
+            if(lefttype == Value::VALTYP_MAP)
+            {
+                callee = mc_state_mapgetvalue(left, key);
+            }
+            if(!callee.isCallable())
+            {
+                if(righttype == Value::VALTYP_MAP)
+                {
+                    callee = mc_state_mapgetvalue(right, key);
+                }
+
+                if(!callee.isCallable())
+                {
+                    *outoverloadfound = false;
+                    return true;
+                }
+            }
+            *outoverloadfound = true;
+            vmStackPush(callee);
+            vmStackPush(left);
+            if(numoper == 2)
+            {
+                vmStackPush(right);
+            }
+            return vmCallObject(callee, numoper);
+        }
+
 
         inline Value callFunctionByName(const char* fname, Value thisval, size_t argc, Value* args)
         {
@@ -10561,6 +10711,530 @@ class State
             }
             return res;
         }
+
+        inline bool vmCheckAssign(Value oldvalue, Value nvalue)
+        {
+            return true;
+            Value::Type nvaluetype;
+            Value::Type oldvaluetype;
+            oldvaluetype = oldvalue.getType();
+            nvaluetype = nvalue.getType();
+            if(oldvaluetype == Value::VALTYP_NULL || nvaluetype == Value::VALTYP_NULL)
+            {
+                return true;
+            }
+            #if 0
+            if(oldvaluetype != nvaluetype)
+            {
+                pushError(Error::ERRTYP_RUNTIME, m_execstate.currframe->getPosition(), "trying to assign variable of type %s to %s",
+                                  Value::getTypename(nvaluetype), Value::getTypename(oldvaluetype));
+                return false;
+            }
+            #endif
+            return true;
+        }
+
+        inline bool vmOpAddString(Value valleft, Value valright, Value::Type righttype, AstCompiler::OpCode opcode)
+        {
+            Value nstring;
+            (void)opcode;
+            (void)righttype;
+            nstring = mc_value_makestrcapacity(this, 0);
+            mc_value_stringappendvalue(nstring, valleft);
+            mc_value_stringappendvalue(nstring, valright);
+            vmStackPush(nstring);
+            return true;
+        }
+
+        inline bool vmOpMath(AstCompiler::OpCode opcode)
+        {
+            bool ok;
+            bool overloadfound;
+            mcfloat_t res;
+            mcfloat_t dnright;
+            mcfloat_t dnleft;
+            const char* opcodename;
+            const char* lefttypename;
+            const char* righttypename;
+            Value valright;
+            Value valleft;
+            Value::Type lefttype;
+            Value::Type righttype;
+            (void)ok;
+            valright = vmStackPop();
+            valleft = vmStackPop();
+            lefttype = valleft.getType();
+            righttype = valright.getType();
+            if(lefttype == Value::VALTYP_STRING && opcode == AstCompiler::OPCODE_ADD)
+            {
+                if(vmOpAddString(valleft, valright, righttype, opcode))
+                {
+                    return true;
+                }
+            }
+            else if((valleft.isNumeric() || valleft.isNull()) && (valright.isNumeric() || valright.isNull()))
+            {
+                dnright = Value::asNumber(valright);
+                dnleft = Value::asNumber(valleft);
+                res = 0;
+                switch(opcode)
+                {
+                    case AstCompiler::OPCODE_ADD:
+                        {
+                            res = mc_mathutil_add(dnleft, dnright);
+                        }
+                        break;
+                    case AstCompiler::OPCODE_SUB:
+                        {
+                            res = mc_mathutil_sub(dnleft, dnright);
+                        }
+                        break;
+                    case AstCompiler::OPCODE_MUL:
+                        {
+                            res = mc_mathutil_mult(dnleft, dnright);
+                        }
+                        break;
+                    case AstCompiler::OPCODE_DIV:
+                        {
+                            res = mc_mathutil_div(dnleft, dnright);
+                        }
+                        break;
+                    case AstCompiler::OPCODE_MOD:
+                        {
+                            res = mc_mathutil_mod(dnleft, dnright);
+                        }
+                        break;
+                    case AstCompiler::OPCODE_BINOR:
+                        {
+                            res = mc_mathutil_binor(dnleft, dnright);
+                        }
+                        break;
+                    case AstCompiler::OPCODE_BINXOR:
+                        {
+                            res = mc_mathutil_binxor(dnleft, dnright);
+                        }
+                        break;
+                    case AstCompiler::OPCODE_BINAND:
+                        {
+                            res = mc_mathutil_binand(dnleft, dnright);
+                        }
+                        break;
+                    /*
+                    // TODO: shifting, signedness: how does nodejs do it?
+                    // enabling checks for <0 breaks sha1.mc!
+                    */
+                    case AstCompiler::OPCODE_LSHIFT:
+                        {
+                            #if 0
+                            if((dnleft < 0) || (dnright < 0))
+                            {
+                                res = (int64_t)dnleft << (int64_t)dnright;
+                            }
+                            else
+                            #endif
+                            {
+                                res = mc_mathutil_binshiftleft(dnleft, dnright);
+                            }
+                        }
+                        break;
+                    case AstCompiler::OPCODE_RSHIFT:
+                        {
+                            #if 0
+                            if((dnleft < 0) || (dnright < 0))
+                            {
+                                res = (int64_t)dnleft >> (int64_t)dnright;
+                            }
+                            else
+                            #endif
+                            {
+                                res = mc_mathutil_binshiftright(dnleft, dnright);
+                            }
+                        }
+                        break;
+                    default:
+                        {
+                            MC_ASSERT(false);
+                        }
+                        break;
+                }
+                vmStackPush(Value::makeNumber(res));
+                return true;
+            }
+            overloadfound = false;
+            ok = vmTryOverloadOperator(valleft, valright, opcode, &overloadfound);
+            if(!ok)
+            {
+                return false;
+            }
+            if(!overloadfound)
+            {
+                opcodename = AstCompiler::opdefGetName(opcode);
+                lefttypename = Value::getTypename(lefttype);
+                righttypename = Value::getTypename(righttype);
+                pushError(Error::ERRTYP_RUNTIME, m_execstate.currframe->getPosition(), "invalid operand types for %s: got %s and %s",
+                                  opcodename, lefttypename, righttypename);
+                return false;
+            }
+            return true;
+        }
+
+        inline ObjClass* findClassForIntern(Value::Type typ)
+        {
+            (void)typ;
+            switch(typ)
+            {
+                case Value::VALTYP_NUMBER:
+                    {
+                        return m_stdobjectnumber;
+                    }
+                    break;
+                case Value::VALTYP_STRING:
+                    {
+                        return m_stdobjectstring;
+                    }
+                    break;
+                case Value::VALTYP_ARRAY:
+                    {
+                        return m_stdobjectarray;
+                    }
+                    break;
+                case Value::VALTYP_MAP:
+                    {
+                        return m_stdobjectmap;
+                    }
+                    break;
+                case Value::VALTYP_FUNCNATIVE:
+                case Value::VALTYP_FUNCSCRIPT:
+                    {
+                        return m_stdobjectfunction;
+                    }
+                    break;
+                default:
+                    {
+                    }
+                    break;
+            }
+            return m_stdobjectobject;
+        }
+
+        inline ObjClass* vmFindClassFor(Value::Type typ)
+        {
+            ObjClass* cl;
+            cl = findClassForIntern(typ);
+            if(cl != nullptr)
+            {
+                return cl;
+            }
+            return nullptr;
+        }
+
+        inline ObjClass::Field* vmGetClassMember(ObjClass* cl, const char* name)
+        {
+            size_t i;
+            for(i=0; i<cl->m_memberfields.count(); i++)
+            {
+                auto memb = cl->m_memberfields.getp(i);
+                if(strcmp(memb->name, name) == 0)
+                {
+                    return memb;
+                }
+            }
+            if(cl->m_parentclass != nullptr)
+            {
+                return vmGetClassMember(cl->m_parentclass, name);
+            }
+            return nullptr;
+        }
+
+        inline bool vmFindClassmemberValue(Value left, Value index, Value setval)
+        {
+            Value fnval;
+            Value retv;
+            const char* idxname;
+            ObjClass::Field* vdest;
+            (void)left;
+            (void)index;
+            (void)setval;
+            ObjClass* cl;
+            cl = vmFindClassFor(left.getType());
+            if(cl != nullptr)
+            {
+                idxname = mc_value_stringgetdata(index);
+                vdest = vmGetClassMember(cl, idxname);
+                if(vdest == nullptr)
+                {
+                    return false;
+                }
+                else
+                {
+                    fnval = mc_value_makefuncnative(this, vdest->name, vdest->fndest, nullptr);
+                    if(vdest->ispseudo)
+                    {
+                        retv = vmCallNativeFunction(fnval, m_execstate.currframe->getPosition(), left, 0, nullptr);
+                        vmStackPush(retv);
+                        return true;
+                    }
+                    else
+                    {
+                        retv = fnval;
+                        vmStackPush(retv);
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        inline bool vmGetIndexPartial(Value left, Value::Type lefttype, Value index, Value::Type indextype, bool fromdot)
+        {
+            int leftlen;
+            int ix;
+            char resstr[2];
+            const char* str;
+            const char* indextypename;
+            const char* lefttypename;
+            Value res;
+            (void)fromdot;
+            lefttypename = "unknown";
+            if(lefttype == Value::VALTYP_MAP)
+            {
+                if(mc_state_mapgetvaluechecked(left, index, &res))
+                {
+                    goto finished;
+                }
+            }
+            if(index.isString())
+            {
+                if(vmFindClassmemberValue(left, index, Value::makeNull()))
+                {
+                    #if 0
+                    if(callee.isFuncNative())
+                    #endif
+                    {
+                        m_execstate.nativethisstack.push(left);
+                    }
+                    #if 0
+                        m_stderrprinter->format("getindexpartial:left=<");
+                        mc_printer_printvalue(m_stderrprinter, left, true);
+                        m_stderrprinter->format(">\n");
+                    #endif
+                    return true;
+                }
+                else
+                {
+                    if(!left.isMap())
+                    {
+                        res = Value::makeNull();
+                        lefttypename = Value::getTypename(lefttype);
+                        pushError(Error::ERRTYP_RUNTIME, m_execstate.currframe->getPosition(), "object type '%s' has no field '%s'", lefttypename, mc_value_stringgetdata(index));
+                        vmStackPush(res);
+                        return false;
+                    }
+                }
+            }
+            if(lefttype != Value::VALTYP_ARRAY && lefttype != Value::VALTYP_MAP && lefttype != Value::VALTYP_STRING)
+            {
+                pushError(Error::ERRTYP_RUNTIME, m_execstate.currframe->getPosition(), "getindexpartial: type %s is not indexable", lefttypename);
+
+                return false;
+            }
+            res = Value::makeNull();
+            if(lefttype == Value::VALTYP_ARRAY)
+            {
+                if(indextype != Value::VALTYP_NUMBER)
+                {
+                    lefttypename = Value::getTypename(lefttype);
+                    indextypename = Value::getTypename(indextype);
+                    pushError(Error::ERRTYP_RUNTIME, m_execstate.currframe->getPosition(), "cannot get partial index of %s with %s", lefttypename, indextypename);
+                    return false;
+                }
+                ix = (int)Value::asNumber(index);
+                if(ix < 0)
+                {
+                    ix = mc_value_arraygetlength(left) + ix;
+                }
+                if(ix >= 0 && ix < mc_value_arraygetlength(left))
+                {
+                    res = mc_value_arraygetvalue(left, ix);
+                }
+            }
+            else if(lefttype == Value::VALTYP_STRING)
+            {
+                if(indextype != Value::VALTYP_NUMBER)
+                {
+                    lefttypename = Value::getTypename(lefttype);
+                    indextypename = Value::getTypename(indextype);
+                    pushError(Error::ERRTYP_RUNTIME, m_execstate.currframe->getPosition(), "cannot index %s with %s", lefttypename, indextypename);
+                    return false;
+                }
+                str = mc_value_stringgetdata(left);
+                leftlen = mc_value_stringgetlength(left);
+                ix = (int)Value::asNumber(index);
+                if(ix >= 0 && ix < leftlen)
+                {
+                    resstr[0] = str[ix];
+                    res = mc_value_makestringlen(this, resstr, 1);
+                }
+            }
+            finished:
+            vmStackPush(res);
+            return true;
+        }
+
+        inline bool vmGetIndexFull()
+        {
+            Value::Type lefttype;
+            Value::Type indextype;
+            Value left;
+            Value index;
+            index = vmStackPop();
+            left = vmStackPop();
+            lefttype = left.getType();
+            indextype = index.getType();
+            return vmGetIndexPartial(left, lefttype, index, indextype, false);
+        }
+
+        inline bool vmGetDotIndex()
+        {
+            Value::Type lefttype;
+            Value::Type indextype;
+            Value left;
+            Value index;
+            index = vmStackPop();
+            left = vmStackPop();
+            lefttype = left.getType();
+            indextype = index.getType();
+            return vmGetIndexPartial(left, lefttype, index, indextype, true);
+        }
+
+        inline bool setIndexPartial(Value left, Value::Type lefttype, Value index, Value::Type indextype, Value nvalue)
+        {
+            bool ok;
+            int alen;
+            int ix;
+            const char* indextypename;
+            const char* lefttypename;
+            Value oldvalue;
+            (void)ok;
+            if(lefttype != Value::VALTYP_ARRAY && lefttype != Value::VALTYP_MAP)
+            {
+                lefttypename = Value::getTypename(lefttype);
+                #if 0
+                {
+                    int* p = nullptr;
+                    p[5] += 5;
+                }
+                #endif
+                lefttypename = Value::getTypename(lefttype);
+                pushError(Error::ERRTYP_RUNTIME, m_execstate.currframe->getPosition(), "setindexpartial: type %s is not indexable", lefttypename);
+                return false;
+            }
+            if(lefttype == Value::VALTYP_ARRAY)
+            {
+                if(indextype != Value::VALTYP_NUMBER)
+                {
+                    lefttypename = Value::getTypename(lefttype);
+                    indextypename = Value::getTypename(indextype);
+                    pushError(Error::ERRTYP_RUNTIME, m_execstate.currframe->getPosition(), "cannot set index of %s with %s", lefttypename, indextypename);
+                    return false;
+                }
+                ix = (int)Value::asNumber(index);                        
+                ok = mc_value_arraysetvalue(left, ix, nvalue);
+                alen = mc_value_arraygetlength(left);
+                if(!ok)
+                {
+                    pushError(Error::ERRTYP_RUNTIME, m_execstate.currframe->getPosition(), "failed to set array index %d (of %d)", ix, alen);
+                    return false;
+                }
+            }
+            else if(lefttype == Value::VALTYP_MAP)
+            {
+                oldvalue = mc_state_mapgetvalue(left, index);
+                if(!vmCheckAssign(oldvalue, nvalue))
+                {
+                    return false;
+                }
+                ok = mc_state_mapsetvalue(left, index, nvalue);
+                if(!ok)
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        inline bool vmSetIndexFull()
+        {
+            Value index;
+            Value left;
+            Value nvalue;
+            Value::Type lefttype;
+            Value::Type indextype;
+            index = vmStackPop();
+            left = vmStackPop();
+            nvalue = vmStackPop();
+            lefttype = left.getType();
+            indextype = index.getType();
+            return setIndexPartial(left, lefttype, index, indextype, nvalue);
+        }
+
+        inline bool vmGetValueAtFull()
+        {
+            int ix;
+            int leftlen;
+            char resstr[2];
+            const char* lefttypename;
+            const char* indextypename;
+            const char* str;
+            Value::Type lefttype;
+            Value::Type indextype;
+            Value index;
+            Value left;
+            Value res;
+            index = vmStackPop();
+            left = vmStackPop();
+            lefttype = left.getType();
+            indextype= index.getType();
+            if(lefttype != Value::VALTYP_ARRAY && lefttype != Value::VALTYP_MAP && lefttype != Value::VALTYP_STRING)
+            {
+                lefttypename = Value::getTypename(lefttype);
+                pushError(Error::ERRTYP_RUNTIME, m_execstate.currframe->getPosition(), "getvalueatfull: type %s is not indexable", lefttypename);
+                return false;
+            }
+            res = Value::makeNull();
+            if(indextype != Value::VALTYP_NUMBER)
+            {
+                lefttypename = Value::getTypename(lefttype);
+                indextypename = Value::getTypename(indextype);
+                pushError(Error::ERRTYP_RUNTIME, m_execstate.currframe->getPosition(), "cannot get full index %s with %s", lefttypename, indextypename);
+                return false;
+            }
+            ix = (int)Value::asNumber(index);
+            if(lefttype == Value::VALTYP_ARRAY)
+            {
+                res = mc_value_arraygetvalue(left, ix);
+            }
+            else if(lefttype == Value::VALTYP_MAP)
+            {
+                res = mc_state_mapgetkvpairat(this, left, ix);
+            }
+            else if(lefttype == Value::VALTYP_STRING)
+            {
+                str = mc_value_stringgetdata(left);
+                leftlen = mc_value_stringgetlength(left);
+                ix = (int)Value::asNumber(index);
+                if(ix >= 0 && ix < leftlen)
+                {
+                    resstr[0] = str[ix];
+                    res = mc_value_makestringlen(this, resstr, 1);
+                }
+            }
+            vmStackPush(res);
+            return true;
+        }
+
+        // xxhere
+
 
         inline bool hasErrors()
         {
@@ -12333,36 +13007,6 @@ void mc_printer_printvalue(Printer* pr, Value obj, bool accurate)
 
 
 
-Value mc_state_execcode(State* state, const char* code, const char* filename)
-{
-    bool ok;
-    Value res;
-    CompiledProgram* compres;
-    (void)ok;
-    state->reset();
-    compres = state->m_sharedcompiler->compilesource(code, filename);
-    if((compres == nullptr) || state->m_errorlist.count() > 0)
-    {
-        goto err;
-    }
-    ok = state->runExecFunc(compres, state->m_sharedcompiler->getconstants());
-    if(!ok || state->m_errorlist.count() > 0)
-    {
-        goto err;
-    }
-    MC_ASSERT(state->m_execstate.vsposition == 0);
-    res = state->m_execstate.lastpopped;
-    if(res.getType() == Value::VALTYP_NONE)
-    {
-        goto err;
-    }
-    CompiledProgram::destroy(compres);
-    return res;
-err:
-    CompiledProgram::destroy(compres);
-    return Value::makeNull();
-}
-
 #if 1
     bool mc_argcheck_check(State* state, bool generateerror, size_t argc, Value* args, ...)
     {
@@ -12723,24 +13367,6 @@ bool mc_state_gccandatabeputinpool(State* state, Object* data)
     return true;
 }
 
-bool mc_traceback_vmpush(Traceback* traceback, State* state)
-{
-    bool ok;
-    int i;
-    VMFrame* frame;
-    (void)ok;
-    for(i = state->m_execstate.framestack.count() - 1; i >= 0; i--)
-    {
-        frame = state->m_execstate.framestack.getp(i);
-        ok = traceback->push(mc_value_functiongetname(frame->m_function), frame->getPosition());
-        if(!ok)
-        {
-            return false;
-        }
-    }
-    return true;
-}
-
 void mc_vm_setoverloadkey(State* state, AstCompiler::OpCode opc, const char* rawstr)
 {
     Value keyobj;
@@ -12810,667 +13436,6 @@ MC_INLINE void mc_vm_rungc(State* state, GenericList<Value>* constants)
 }
 
 
-MC_FORCEINLINE bool mc_vmdo_callobject(State* state, Value callee, int nargs)
-{
-    bool ok;
-    const char* calleetypename;
-    Value::Type calleetype;
-    VMFrame calleeframe;
-    Value res;
-    Value tmpval;
-    Value selfval;
-    Value* stackpos;
-    Object::ObjFunction* calleefunction;
-    (void)ok;
-    calleetype = callee.getType();
-    selfval = Value::makeNull();
-    if(callee.isFuncNative())
-    {
-        if(!state->m_execstate.nativethisstack.pop(&tmpval))
-        {
-            #if 0
-                state->m_stderrprinter->format("failed to pop native 'this' for = <");
-                mc_printer_printvalue(state->m_stderrprinter, callee, true);
-                state->m_stderrprinter->format(">\n");
-                #if 0
-                    state->m_errorlist.pushFormat(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "failed to pop native 'this'");
-                #endif
-            #endif
-        }
-        selfval = tmpval;
-    }
-    #if 0
-    {
-        state->m_stderrprinter->format("selfval = <<<");
-        mc_printer_printvalue(state->m_stderrprinter, selfval, true);
-        state->m_stderrprinter->format(">>>\n");
-    }
-    #endif
-    if(calleetype == Value::VALTYP_FUNCSCRIPT)
-    {
-        calleefunction = Value::asFunction(callee);
-        if(nargs != calleefunction->m_funcdata.valscriptfunc.numargs)
-        {
-            #if 0
-            state->m_errorlist.pushFormat(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "invalid number of arguments to \"%s\": expected %d, got %d",
-                              mc_value_functiongetname(callee), calleefunction->m_funcdata.valscriptfunc.numargs, nargs);
-            return false;
-            #endif
-        }
-        ok = VMFrame::init(&calleeframe, callee, state->m_execstate.vsposition - nargs);
-        if(!ok)
-        {
-            state->m_errorlist.pushFormat(Error::ERRTYP_RUNTIME, AstLocation::Invalid(), "frame init failed in mc_vmdo_callobject");
-            return false;
-        }
-        ok = state->vmPushFrame(calleeframe);
-        if(!ok)
-        {
-            state->m_errorlist.pushFormat(Error::ERRTYP_RUNTIME, AstLocation::Invalid(), "pushing frame failed in mc_vmdo_callobject");
-            return false;
-        }
-    }
-    else if(calleetype == Value::VALTYP_FUNCNATIVE)
-    {
-        #if 0
-        if(!selfval.isNull())
-        {
-            state->vmStackPop();
-        }
-        #endif
-        stackpos = state->m_execstate.valuestack.data() + state->m_execstate.vsposition - nargs;
-        res = state->vmCallNativeFunction(callee, state->m_execstate.currframe->getPosition(), selfval, nargs, stackpos);
-        if(state->hasErrors())
-        {
-            return false;
-        }
-        state->setStackPos(state->m_execstate.vsposition - nargs - 1);
-        state->vmStackPush(res);
-    }
-    else
-    {
-        calleetypename = Value::getTypename(calleetype);
-        state->m_errorlist.pushFormat(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "%s object is not callable", calleetypename);
-        return false;
-    }
-    return true;
-}
-
-MC_FORCEINLINE bool mc_vmdo_tryoverloadoperator(State* state, Value left, Value right, mcinternopcode_t op, bool* outoverloadfound)
-{
-    int numoper;
-    Value key;
-    Value callee;
-    Value::Type lefttype;
-    Value::Type righttype;
-    *outoverloadfound = false;
-    lefttype = left.getType();
-    righttype = right.getType();
-    if(lefttype != Value::VALTYP_MAP && righttype != Value::VALTYP_MAP)
-    {
-        *outoverloadfound = false;
-        return true;
-    }
-    numoper = 2;
-    if(op == AstCompiler::OPCODE_MINUS || op == AstCompiler::OPCODE_BINNOT || op == AstCompiler::OPCODE_BANG)
-    {
-        numoper = 1;
-    }
-    key = state->m_operoverloadkeys[op];
-    callee = Value::makeNull();
-    if(lefttype == Value::VALTYP_MAP)
-    {
-        callee = mc_state_mapgetvalue(left, key);
-    }
-    if(!callee.isCallable())
-    {
-        if(righttype == Value::VALTYP_MAP)
-        {
-            callee = mc_state_mapgetvalue(right, key);
-        }
-
-        if(!callee.isCallable())
-        {
-            *outoverloadfound = false;
-            return true;
-        }
-    }
-    *outoverloadfound = true;
-    state->vmStackPush(callee);
-    state->vmStackPush(left);
-    if(numoper == 2)
-    {
-        state->vmStackPush(right);
-    }
-    return mc_vmdo_callobject(state, callee, numoper);
-}
-
-
-MC_FORCEINLINE bool mc_vm_checkassign(State* state, Value oldvalue, Value nvalue)
-{
-    return true;
-    Value::Type nvaluetype;
-    Value::Type oldvaluetype;
-    (void)state;
-    oldvaluetype = oldvalue.getType();
-    nvaluetype = nvalue.getType();
-    if(oldvaluetype == Value::VALTYP_NULL || nvaluetype == Value::VALTYP_NULL)
-    {
-        return true;
-    }
-    #if 0
-    if(oldvaluetype != nvaluetype)
-    {
-        state->pushError(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "trying to assign variable of type %s to %s",
-                          Value::getTypename(nvaluetype), Value::getTypename(oldvaluetype));
-        return false;
-    }
-    #endif
-    return true;
-}
-
-
-MC_FORCEINLINE bool mc_vmdo_opaddstring(State* state, Value valleft, Value valright, Value::Type righttype, AstCompiler::OpCode opcode)
-{
-    Value nstring;
-    (void)opcode;
-    (void)righttype;
-    nstring = mc_value_makestrcapacity(state, 0);
-    mc_value_stringappendvalue(nstring, valleft);
-    mc_value_stringappendvalue(nstring, valright);
-    state->vmStackPush(nstring);
-    return true;
-}
-
-MC_FORCEINLINE bool mc_vmdo_math(State* state, AstCompiler::OpCode opcode)
-{
-    bool ok;
-    bool overloadfound;
-    mcfloat_t res;
-    mcfloat_t dnright;
-    mcfloat_t dnleft;
-    const char* opcodename;
-    const char* lefttypename;
-    const char* righttypename;
-    Value valright;
-    Value valleft;
-    Value::Type lefttype;
-    Value::Type righttype;
-    (void)ok;
-    valright = state->vmStackPop();
-    valleft = state->vmStackPop();
-    lefttype = valleft.getType();
-    righttype = valright.getType();
-    if(lefttype == Value::VALTYP_STRING && opcode == AstCompiler::OPCODE_ADD)
-    {
-        if(mc_vmdo_opaddstring(state, valleft, valright, righttype, opcode))
-        {
-            return true;
-        }
-    }
-    else if((valleft.isNumeric() || valleft.isNull()) && (valright.isNumeric() || valright.isNull()))
-    {
-        dnright = Value::asNumber(valright);
-        dnleft = Value::asNumber(valleft);
-        res = 0;
-        switch(opcode)
-        {
-            case AstCompiler::OPCODE_ADD:
-                {
-                    res = mc_mathutil_add(dnleft, dnright);
-                }
-                break;
-            case AstCompiler::OPCODE_SUB:
-                {
-                    res = mc_mathutil_sub(dnleft, dnright);
-                }
-                break;
-            case AstCompiler::OPCODE_MUL:
-                {
-                    res = mc_mathutil_mult(dnleft, dnright);
-                }
-                break;
-            case AstCompiler::OPCODE_DIV:
-                {
-                    res = mc_mathutil_div(dnleft, dnright);
-                }
-                break;
-            case AstCompiler::OPCODE_MOD:
-                {
-                    res = mc_mathutil_mod(dnleft, dnright);
-                }
-                break;
-            case AstCompiler::OPCODE_BINOR:
-                {
-                    res = mc_mathutil_binor(dnleft, dnright);
-                }
-                break;
-            case AstCompiler::OPCODE_BINXOR:
-                {
-                    res = mc_mathutil_binxor(dnleft, dnright);
-                }
-                break;
-            case AstCompiler::OPCODE_BINAND:
-                {
-                    res = mc_mathutil_binand(dnleft, dnright);
-                }
-                break;
-            /*
-            // TODO: shifting, signedness: how does nodejs do it?
-            // enabling checks for <0 breaks sha1.mc!
-            */
-            case AstCompiler::OPCODE_LSHIFT:
-                {
-                    #if 0
-                    if((dnleft < 0) || (dnright < 0))
-                    {
-                        res = (int64_t)dnleft << (int64_t)dnright;
-                    }
-                    else
-                    #endif
-                    {
-                        res = mc_mathutil_binshiftleft(dnleft, dnright);
-                    }
-                }
-                break;
-            case AstCompiler::OPCODE_RSHIFT:
-                {
-                    #if 0
-                    if((dnleft < 0) || (dnright < 0))
-                    {
-                        res = (int64_t)dnleft >> (int64_t)dnright;
-                    }
-                    else
-                    #endif
-                    {
-                        res = mc_mathutil_binshiftright(dnleft, dnright);
-                    }
-                }
-                break;
-            default:
-                {
-                    MC_ASSERT(false);
-                }
-                break;
-        }
-        state->vmStackPush(Value::makeNumber(res));
-        return true;
-    }
-    overloadfound = false;
-    ok = mc_vmdo_tryoverloadoperator(state, valleft, valright, opcode, &overloadfound);
-    if(!ok)
-    {
-        return false;
-    }
-    if(!overloadfound)
-    {
-        opcodename = AstCompiler::opdefGetName(opcode);
-        lefttypename = Value::getTypename(lefttype);
-        righttypename = Value::getTypename(righttype);
-        state->pushError(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "invalid operand types for %s: got %s and %s",
-                          opcodename, lefttypename, righttypename);
-        return false;
-    }
-    return true;
-}
-
-MC_FORCEINLINE ObjClass* mc_vmdo_findclassforintern(State* state, Value::Type typ)
-{
-    (void)state;
-    (void)typ;
-    switch(typ)
-    {
-        case Value::VALTYP_NUMBER:
-            {
-                return state->m_stdobjectnumber;
-            }
-            break;
-        case Value::VALTYP_STRING:
-            {
-                return state->m_stdobjectstring;
-            }
-            break;
-        case Value::VALTYP_ARRAY:
-            {
-                return state->m_stdobjectarray;
-            }
-            break;
-        case Value::VALTYP_MAP:
-            {
-                return state->m_stdobjectmap;
-            }
-            break;
-        case Value::VALTYP_FUNCNATIVE:
-        case Value::VALTYP_FUNCSCRIPT:
-            {
-                return state->m_stdobjectfunction;
-            }
-            break;
-        default:
-            {
-            }
-            break;
-    }
-    return state->m_stdobjectobject;
-}
-
-MC_FORCEINLINE ObjClass* mc_vmdo_findclassfor(State* state, Value::Type typ)
-{
-    ObjClass* cl;
-    cl = mc_vmdo_findclassforintern(state, typ);
-    if(cl != nullptr)
-    {
-        
-    }
-    return cl;
-}
-
-MC_INLINE ObjClass::Field* mc_vmdo_getclassmember(State* state, ObjClass* cl, const char* name)
-{
-    size_t i;
-    (void)state;
-    for(i=0; i<cl->m_memberfields.count(); i++)
-    {
-        auto memb = cl->m_memberfields.getp(i);
-        if(strcmp(memb->name, name) == 0)
-        {
-            return memb;
-        }
-    }
-    if(cl->m_parentclass != nullptr)
-    {
-        return mc_vmdo_getclassmember(state, cl->m_parentclass, name);
-    }
-    return nullptr;
-}
-
-MC_FORCEINLINE bool mc_vmdo_findclassmembervalue(State* state, Value left, Value index, Value setval)
-{
-    Value fnval;
-    Value retv;
-    const char* idxname;
-    ObjClass::Field* vdest;
-    (void)state;
-    (void)left;
-    (void)index;
-    (void)setval;
-    ObjClass* cl;
-    cl = mc_vmdo_findclassfor(state, left.getType());
-    if(cl != nullptr)
-    {
-        idxname = mc_value_stringgetdata(index);
-        vdest = mc_vmdo_getclassmember(state, cl, idxname);
-        if(vdest == nullptr)
-        {
-            return false;
-        }
-        else
-        {
-            fnval = mc_value_makefuncnative(state, vdest->name, vdest->fndest, nullptr);
-            if(vdest->ispseudo)
-            {
-                retv = state->vmCallNativeFunction(fnval, state->m_execstate.currframe->getPosition(), left, 0, nullptr);
-                state->vmStackPush(retv);
-                return true;
-            }
-            else
-            {
-                retv = fnval;
-                state->vmStackPush(retv);
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
-MC_FORCEINLINE bool mc_vmdo_getindexpartial(State* state, Value left, Value::Type lefttype, Value index, Value::Type indextype, bool fromdot)
-{
-    int leftlen;
-    int ix;
-    char resstr[2];
-    const char* str;
-    const char* indextypename;
-    const char* lefttypename;
-    Value res;
-    (void)fromdot;
-    lefttypename = "unknown";
-    if(lefttype == Value::VALTYP_MAP)
-    {
-        if(mc_state_mapgetvaluechecked(left, index, &res))
-        {
-            goto finished;
-        }
-    }
-    if(index.isString())
-    {
-        if(mc_vmdo_findclassmembervalue(state, left, index, Value::makeNull()))
-        {
-            #if 0
-            if(callee.isFuncNative())
-            #endif
-            {
-                state->m_execstate.nativethisstack.push(left);
-            }
-            #if 0
-                state->m_stderrprinter->format("getindexpartial:left=<");
-                mc_printer_printvalue(state->m_stderrprinter, left, true);
-                state->m_stderrprinter->format(">\n");
-            #endif
-            return true;
-        }
-        else
-        {
-            if(!left.isMap())
-            {
-                res = Value::makeNull();
-                lefttypename = Value::getTypename(lefttype);
-                state->pushError(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "object type '%s' has no field '%s'", lefttypename, mc_value_stringgetdata(index));
-                state->vmStackPush(res);
-                return false;
-            }
-        }
-    }
-    if(lefttype != Value::VALTYP_ARRAY && lefttype != Value::VALTYP_MAP && lefttype != Value::VALTYP_STRING)
-    {
-        state->pushError(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "getindexpartial: type %s is not indexable", lefttypename);
-
-        return false;
-    }
-    res = Value::makeNull();
-    if(lefttype == Value::VALTYP_ARRAY)
-    {
-        if(indextype != Value::VALTYP_NUMBER)
-        {
-            lefttypename = Value::getTypename(lefttype);
-            indextypename = Value::getTypename(indextype);
-            state->pushError(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "cannot get partial index of %s with %s", lefttypename, indextypename);
-            return false;
-        }
-        ix = (int)Value::asNumber(index);
-        if(ix < 0)
-        {
-            ix = mc_value_arraygetlength(left) + ix;
-        }
-        if(ix >= 0 && ix < mc_value_arraygetlength(left))
-        {
-            res = mc_value_arraygetvalue(left, ix);
-        }
-    }
-    else if(lefttype == Value::VALTYP_STRING)
-    {
-        if(indextype != Value::VALTYP_NUMBER)
-        {
-            lefttypename = Value::getTypename(lefttype);
-            indextypename = Value::getTypename(indextype);
-            state->pushError(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "cannot index %s with %s", lefttypename, indextypename);
-            return false;
-        }
-        str = mc_value_stringgetdata(left);
-        leftlen = mc_value_stringgetlength(left);
-        ix = (int)Value::asNumber(index);
-        if(ix >= 0 && ix < leftlen)
-        {
-            resstr[0] = str[ix];
-            res = mc_value_makestringlen(state, resstr, 1);
-        }
-    }
-    finished:
-    state->vmStackPush(res);
-    return true;
-}
-
-MC_FORCEINLINE bool mc_vmdo_getindexfull(State* state)
-{
-    Value::Type lefttype;
-    Value::Type indextype;
-    Value left;
-    Value index;
-    index = state->vmStackPop();
-    left = state->vmStackPop();
-    lefttype = left.getType();
-    indextype = index.getType();
-    return mc_vmdo_getindexpartial(state, left, lefttype, index, indextype, false);
-}
-
-MC_FORCEINLINE bool mc_vmdo_getdotindex(State* state)
-{
-    Value::Type lefttype;
-    Value::Type indextype;
-    Value left;
-    Value index;
-    index = state->vmStackPop();
-    left = state->vmStackPop();
-    lefttype = left.getType();
-    indextype = index.getType();
-    return mc_vmdo_getindexpartial(state, left, lefttype, index, indextype, true);
-}
-
-MC_FORCEINLINE bool mc_vmdo_setindexpartial(State* state, Value left, Value::Type lefttype, Value index, Value::Type indextype, Value nvalue)
-{
-    bool ok;
-    int alen;
-    int ix;
-    const char* indextypename;
-    const char* lefttypename;
-    Value oldvalue;
-    (void)ok;
-    if(lefttype != Value::VALTYP_ARRAY && lefttype != Value::VALTYP_MAP)
-    {
-        lefttypename = Value::getTypename(lefttype);
-        #if 0
-        {
-            int* p = nullptr;
-            p[5] += 5;
-        }
-        #endif
-        lefttypename = Value::getTypename(lefttype);
-        state->pushError(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "setindexpartial: type %s is not indexable", lefttypename);
-        return false;
-    }
-    if(lefttype == Value::VALTYP_ARRAY)
-    {
-        if(indextype != Value::VALTYP_NUMBER)
-        {
-            lefttypename = Value::getTypename(lefttype);
-            indextypename = Value::getTypename(indextype);
-            state->pushError(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "cannot set index of %s with %s", lefttypename, indextypename);
-            return false;
-        }
-        ix = (int)Value::asNumber(index);                        
-        ok = mc_value_arraysetvalue(left, ix, nvalue);
-        alen = mc_value_arraygetlength(left);
-        if(!ok)
-        {
-            state->pushError(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "failed to set array index %d (of %d)", ix, alen);
-            return false;
-        }
-    }
-    else if(lefttype == Value::VALTYP_MAP)
-    {
-        oldvalue = mc_state_mapgetvalue(left, index);
-        if(!mc_vm_checkassign(state, oldvalue, nvalue))
-        {
-            return false;
-        }
-        ok = mc_state_mapsetvalue(left, index, nvalue);
-        if(!ok)
-        {
-            return false;
-        }
-    }
-    return true;
-}
-
-MC_FORCEINLINE bool mc_vmdo_setindexfull(State* state)
-{
-    Value index;
-    Value left;
-    Value nvalue;
-    Value::Type lefttype;
-    Value::Type indextype;
-    index = state->vmStackPop();
-    left = state->vmStackPop();
-    nvalue = state->vmStackPop();
-    lefttype = left.getType();
-    indextype = index.getType();
-    return mc_vmdo_setindexpartial(state, left, lefttype, index, indextype, nvalue);
-}
-
-MC_FORCEINLINE bool mc_vmdo_getvalueatfull(State* state)
-{
-    int ix;
-    int leftlen;
-    char resstr[2];
-    const char* lefttypename;
-    const char* indextypename;
-    const char* str;
-    Value::Type lefttype;
-    Value::Type indextype;
-    Value index;
-    Value left;
-    Value res;
-    index = state->vmStackPop();
-    left = state->vmStackPop();
-    lefttype = left.getType();
-    indextype= index.getType();
-    if(lefttype != Value::VALTYP_ARRAY && lefttype != Value::VALTYP_MAP && lefttype != Value::VALTYP_STRING)
-    {
-        lefttypename = Value::getTypename(lefttype);
-        state->pushError(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "getvalueatfull: type %s is not indexable", lefttypename);
-        return false;
-    }
-    res = Value::makeNull();
-    if(indextype != Value::VALTYP_NUMBER)
-    {
-        lefttypename = Value::getTypename(lefttype);
-        indextypename = Value::getTypename(indextype);
-        state->pushError(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "cannot get full index %s with %s", lefttypename, indextypename);
-        return false;
-    }
-    ix = (int)Value::asNumber(index);
-    if(lefttype == Value::VALTYP_ARRAY)
-    {
-        res = mc_value_arraygetvalue(left, ix);
-    }
-    else if(lefttype == Value::VALTYP_MAP)
-    {
-        res = mc_state_mapgetkvpairat(state, left, ix);
-    }
-    else if(lefttype == Value::VALTYP_STRING)
-    {
-        str = mc_value_stringgetdata(left);
-        leftlen = mc_value_stringgetlength(left);
-        ix = (int)Value::asNumber(index);
-        if(ix >= 0 && ix < leftlen)
-        {
-            resstr[0] = str[ix];
-            res = mc_value_makestringlen(state, resstr, 1);
-        }
-    }
-    state->vmStackPush(res);
-    return true;
-}
 
 MC_FORCEINLINE bool mc_vmdo_makefunction(State* state, GenericList<Value>* constants)
 {
@@ -13530,7 +13495,7 @@ MC_FORCEINLINE bool mc_vmdo_docmpvalue(State* state, AstCompiler::OpCode opcode)
     right = state->vmStackPop();
     left = state->vmStackPop();
     isoverloaded = false;
-    ok = mc_vmdo_tryoverloadoperator(state, left, right, AstCompiler::OPCODE_COMPARE, &isoverloaded);
+    ok = state->vmTryOverloadOperator(left, right, AstCompiler::OPCODE_COMPARE, &isoverloaded);
     if(!ok)
     {
         return false;
@@ -13785,7 +13750,7 @@ bool State::execVM(Value function, GenericList<Value>* constants, bool nested)
     #if 0
     if(mc_util_unlikely(m_running))
     {
-        error.pushFormat(Error::ERRTYP_USER, AstLocation::Invalid(), "state is already executing code");
+        pushError(Error::ERRTYP_USER, AstLocation::Invalid(), "state is already executing code");
         return false;
     }
     #endif
@@ -13899,7 +13864,7 @@ bool State::execVM(Value function, GenericList<Value>* constants, bool nested)
             mcvm_case(OPCODE_LSHIFT):
             mcvm_case(OPCODE_RSHIFT):
                 {
-                    if(!mc_vmdo_math(this, (AstCompiler::OpCode)opcode))
+                    if(!vmOpMath((AstCompiler::OpCode)opcode))
                     {
                         goto onexecerror;
                     }
@@ -13959,7 +13924,7 @@ bool State::execVM(Value function, GenericList<Value>* constants, bool nested)
                     else
                     {
                         overloadfound = false;
-                        ok = mc_vmdo_tryoverloadoperator(this, operand, Value::makeNull(), AstCompiler::OPCODE_MINUS, &overloadfound);
+                        ok = vmTryOverloadOperator(operand, Value::makeNull(), AstCompiler::OPCODE_MINUS, &overloadfound);
                         if(!ok)
                         {
                             goto onexecerror;
@@ -13992,7 +13957,7 @@ bool State::execVM(Value function, GenericList<Value>* constants, bool nested)
                     else
                     {
                         overloadfound = false;
-                        ok = mc_vmdo_tryoverloadoperator(this, operand, Value::makeNull(), AstCompiler::OPCODE_BINNOT, &overloadfound);
+                        ok = vmTryOverloadOperator(operand, Value::makeNull(), AstCompiler::OPCODE_BINNOT, &overloadfound);
                         if(!ok)
                         {
                             goto onexecerror;
@@ -14027,7 +13992,7 @@ bool State::execVM(Value function, GenericList<Value>* constants, bool nested)
                     else
                     {
                         overloadfound = false;
-                        ok = mc_vmdo_tryoverloadoperator(this, operand, Value::makeNull(), AstCompiler::OPCODE_BANG, &overloadfound);
+                        ok = vmTryOverloadOperator(operand, Value::makeNull(), AstCompiler::OPCODE_BANG, &overloadfound);
                         if(!ok)
                         {
                             goto onexecerror;
@@ -14093,7 +14058,7 @@ bool State::execVM(Value function, GenericList<Value>* constants, bool nested)
                     ix = frame->readUint16();
                     nvalue = vmStackPop();
                     oldvalue= getGlobalByIndex(ix);
-                    if(!mc_vm_checkassign(this, oldvalue, nvalue))
+                    if(!vmCheckAssign(oldvalue, nvalue))
                     {
                         goto onexecerror;
                     }
@@ -14135,7 +14100,7 @@ bool State::execVM(Value function, GenericList<Value>* constants, bool nested)
                 mc_vmmac_break();
             mcvm_case(OPCODE_GETVALUEAT):
                 {
-                    if(!mc_vmdo_getvalueatfull(this))
+                    if(!vmGetValueAtFull())
                     {
                         goto onexecerror;
                     }
@@ -14147,7 +14112,7 @@ bool State::execVM(Value function, GenericList<Value>* constants, bool nested)
                     Value callee;
                     nargs = frame->readUint8();
                     callee = vmStackGet(nargs);
-                    ok = mc_vmdo_callobject(this, callee, nargs);
+                    ok = vmCallObject(callee, nargs);
                     if(!ok)
                     {
                         goto onexecerror;
@@ -14169,7 +14134,7 @@ bool State::execVM(Value function, GenericList<Value>* constants, bool nested)
                     pos = frame->readUint8();
                     nvalue = vmStackPop();
                     oldvalue = m_execstate.valuestack.get(frame->m_basepointer + pos);
-                    if(!mc_vm_checkassign(this, oldvalue, nvalue))
+                    if(!vmCheckAssign(oldvalue, nvalue))
                     {
                         goto onexecerror;
                     }
@@ -14253,7 +14218,7 @@ bool State::execVM(Value function, GenericList<Value>* constants, bool nested)
                 mc_vmmac_break();
             mcvm_case(OPCODE_GETDOTINDEX):
                 {
-                    if(!mc_vmdo_getdotindex(this))
+                    if(!vmGetDotIndex())
                     {
                         goto onexecerror;
                     }
@@ -14261,7 +14226,7 @@ bool State::execVM(Value function, GenericList<Value>* constants, bool nested)
                 mc_vmmac_break();
             mcvm_case(OPCODE_GETINDEX):
                 {
-                    if(!mc_vmdo_getindexfull(this))
+                    if(!vmGetIndexFull())
                     {
                         goto onexecerror;
                     }
@@ -14269,7 +14234,7 @@ bool State::execVM(Value function, GenericList<Value>* constants, bool nested)
                 mc_vmmac_break();
             mcvm_case(OPCODE_SETINDEX):
                 {
-                    if(!mc_vmdo_setindexfull(this))
+                    if(!vmSetIndexFull())
                     {
                         goto onexecerror;
                     }
@@ -14358,7 +14323,7 @@ bool State::execVM(Value function, GenericList<Value>* constants, bool nested)
                 }
                 if(err->m_traceback != nullptr)
                 {
-                    mc_traceback_vmpush(err->m_traceback, this);
+                    vmTracebackPush(err->m_traceback);
                 }
                 while(m_execstate.framestack.count() > (recoverframeix + 1))
                 {
@@ -14397,7 +14362,7 @@ onexecfinish:
         }
         if(err->m_traceback != nullptr)
         {
-            mc_traceback_vmpush(err->m_traceback, this);
+            vmTracebackPush(err->m_traceback);
         }
     }
     mc_vm_rungc(this, constants);
