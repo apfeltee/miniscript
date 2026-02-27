@@ -2064,10 +2064,21 @@ class AstSymbol
             mc_memory_free(symbol);
         }
 
+        static void destroyHeap(AstSymbol* symbol)
+        {
+            destroy(symbol);
+        }
+
         static AstSymbol* copyHeap(AstSymbol* symbol)
         {
             return Memory::make<AstSymbol>(symbol->m_symname, symbol->m_symtype, symbol->m_symindex, symbol->m_symisassignable);
         }
+
+        static AstSymbol copyStack(AstSymbol* symbol)
+        {
+            return AstSymbol(symbol->m_symname, symbol->m_symtype, symbol->m_symindex, symbol->m_symisassignable);
+        }
+
 
     public:
         Type m_symtype;
@@ -2266,11 +2277,9 @@ class AstSymTable
         AstSymTable* copy()
         {
             AstSymTable* copy;
-            GenericList<AstScopeBlock*> cblocks;
-            GenericList<AstSymbol*> cmods;
-            m_symtbblockscopes.copyToStack(&cblocks, AstScopeBlock::copy, AstScopeBlock::destroy);
-            auto cfrees = m_symtbfreesymbols->copyToHeap(AstSymbol::copyHeap, AstSymbol::destroy);
-            m_symtbmodglobalsymbols.copyToStack(&cmods, AstSymbol::copyHeap, AstSymbol::destroy);
+            auto cblocks = m_symtbblockscopes.copyToStack(AstScopeBlock::copy, AstScopeBlock::destroy);
+            auto cfrees = m_symtbfreesymbols->copyToHeap(AstSymbol::copyHeap, AstSymbol::destroyHeap);
+            auto cmods = m_symtbmodglobalsymbols.copyToStack(AstSymbol::copyHeap, AstSymbol::destroyHeap);
             copy = Memory::make<AstSymTable>(m_symtbouter, m_symtbglobalstore, &cblocks, cfrees, &cmods, m_symtbmodglobaloffset);
             copy->m_symtbmaxnumdefinitions = m_symtbmaxnumdefinitions;
             copy->m_symtbmodglobaloffset = m_symtbmodglobaloffset;
@@ -2993,10 +3002,9 @@ class AstExprData
 
                 static ExprCodeBlock copy(ExprCodeBlock* block)
                 {
-                    GenericList<AstExpression*> statementscopy;
                     auto copyfn = AstExprData::copyExprData<AstExpression>;
                     auto delfn = AstExprData::destroyExprData<AstExpression>;
-                    block->m_blockstatements.copyToStack(&statementscopy, copyfn, delfn);
+                    auto statementscopy = block->m_blockstatements.copyToStack(copyfn, delfn);
                     return ExprCodeBlock(statementscopy);
                 }
 
@@ -3583,7 +3591,6 @@ class AstExpression: public AstExprData
 
                 case EXPR_MAPLITERAL:
                     {
-                        
                         auto keyscopy = expr->m_uexpr.exprlitmap.m_litmapkeys.copyToStack(copyExpression, destroyExpression);
                         auto valuescopy = expr->m_uexpr.exprlitmap.m_litmapvalues.copyToStack(copyExpression, destroyExpression);
                         res = makeAstItemLiteralMap(keyscopy, valuescopy);
@@ -3604,8 +3611,7 @@ class AstExpression: public AstExprData
                     break;
                 case EXPR_FUNCTIONLITERAL:
                     {
-                        GenericList<AstExpression::ExprFuncParam*> pacopy;
-                        expr->m_uexpr.exprlitfunction.funcparamlist.copyToStack(&pacopy, ExprFuncParam::copy, ExprFuncParam::destroy);
+                        auto pacopy = expr->m_uexpr.exprlitfunction.funcparamlist.copyToStack(ExprFuncParam::copy, ExprFuncParam::destroy);
                         auto bodycopy = ExprCodeBlock::copy(&expr->m_uexpr.exprlitfunction.body);
                         auto namecopy = mc_util_strdup(expr->m_uexpr.exprlitfunction.name);
                         res = makeAstItemLiteralFunction(pacopy, bodycopy);
@@ -3657,8 +3663,7 @@ class AstExpression: public AstExprData
                 case EXPR_STMTIF:
                     {
                         ExprCodeBlock alternativecopy;
-                        GenericList<ExprIfCase*> casescopy;
-                        expr->m_uexpr.exprifstmt.m_ifcases.copyToStack(&casescopy, ExprIfCase::copy, ExprIfCase::destroy);
+                        auto casescopy = expr->m_uexpr.exprifstmt.m_ifcases.copyToStack(ExprIfCase::copy, ExprIfCase::destroy);
                         if(expr->m_uexpr.exprifstmt.m_haveifstmtelsestmt)
                         {
                             alternativecopy = ExprCodeBlock::copy(&expr->m_uexpr.exprifstmt.m_ifstmtelsestmt);
@@ -3962,12 +3967,12 @@ class AstSourceFile
             void* item;
             if(file != nullptr)
             {
-                for(i = 0; i < file->m_srclines->count(); i++)
+                for(i = 0; i < file->m_srclines.count(); i++)
                 {
-                    item = (void*)file->m_srclines->get(i);
+                    item = (void*)file->m_srclines.get(i);
                     mc_memory_free(item);
                 }
-                Memory::destroy(file->m_srclines);
+                file->m_srclines.deInit();
                 mc_memory_free(file->m_dirpath);
                 mc_memory_free(file->m_path);
                 mc_memory_free(file);
@@ -3977,7 +3982,7 @@ class AstSourceFile
     public:
         char* m_dirpath;
         char* m_path;
-        GenericList<char*>* m_srclines;
+        GenericList<char*> m_srclines;
 
     public:
         AstSourceFile(const char* strpath)
@@ -3997,7 +4002,6 @@ class AstSourceFile
             MC_ASSERT(m_dirpath);
             m_path = mc_util_strdup(strpath);
             MC_ASSERT(m_path);
-            m_srclines = Memory::make<GenericList<char*>>(0, nullptr);
         }
 
         const char* getDirectory() const
@@ -4028,7 +4032,7 @@ class Traceback
                     {
                         return nullptr;
                     }
-                    auto lines = m_tbpos.m_locfile->m_srclines;
+                    auto lines = &m_tbpos.m_locfile->m_srclines;
                     if((size_t)m_tbpos.m_locline >= (size_t)lines->count())
                     {
                         return nullptr;
@@ -4318,7 +4322,7 @@ class Error
             {
                 return nullptr;
             }
-            auto lines = m_pos.m_locfile->m_srclines;
+            auto lines = &m_pos.m_locfile->m_srclines;
             if(m_pos.m_locline >= (int)lines->count())
             {
                 return nullptr;
@@ -4550,7 +4554,7 @@ class AstLexer: public AstInfo
             lex->m_currentchar = '\0';
             if(file != nullptr)
             {
-                lex->m_line = file->m_srclines->count();
+                lex->m_line = file->m_srclines.count();
             }
             else
             {
@@ -5231,7 +5235,7 @@ class AstLexer: public AstInfo
             {
                 return true;
             }
-            if(m_line < m_file->m_srclines->count())
+            if(m_line < m_file->m_srclines.count())
             {
                 return true;
             }
@@ -5252,7 +5256,7 @@ class AstLexer: public AstInfo
                 m_failed = true;
                 return false;
             }
-            ok = m_file->m_srclines->push(line);
+            ok = m_file->m_srclines.push(line);
             return true;
         }
 };
@@ -7595,21 +7599,21 @@ class Module
             if(module != nullptr)
             {
                 mc_memory_free(module->m_modname);
-                Memory::destroy(module->m_modsymbols, AstSymbol::destroy);
+                module->m_modsymbols.deInit(AstSymbol::destroy);
                 mc_memory_free(module);
             }
         }
 
         static Module* copy(Module* src)
         {
-            auto modsyms = src->m_modsymbols->copyToHeap(AstSymbol::copyHeap, AstSymbol::destroy);
-            return Memory::make<Module>(src->m_modname, modsyms);
+            auto modsyms = src->m_modsymbols.copyToStack(AstSymbol::copyHeap, AstSymbol::destroy);
+            return Memory::make<Module>(src->m_modname, &modsyms);
         }
 
 
     public:
         char* m_modname;
-        GenericList<AstSymbol*>* m_modsymbols;
+        GenericList<AstSymbol*> m_modsymbols;
 
     public:
         Module(const char* nm): Module(nm, nullptr)
@@ -7622,13 +7626,8 @@ class Module
             MC_ASSERT(m_modname);
             if(ms != nullptr)
             {
-                m_modsymbols = ms;
+                m_modsymbols = *ms;
             }
-            else
-            {
-                m_modsymbols = Memory::make<GenericList<AstSymbol*>>(0, nullptr);
-            }
-            MC_ASSERT(m_modsymbols);
         }
 
         bool addSymbol(AstSymbol* symbol)
@@ -7644,7 +7643,7 @@ class Module
             {
                 return false;
             }
-            ok = m_modsymbols->push(modulesymbol);
+            ok = m_modsymbols.push(modulesymbol);
             return true;
         }
 };
@@ -8304,9 +8303,9 @@ class AstCompiler
                 filescopepop();
                 ok = m_modules->set(filepath, module);
             }
-            for(i = 0; i < module->m_modsymbols->count(); i++)
+            for(i = 0; i < module->m_modsymbols.count(); i++)
             {
-                symbol = module->m_modsymbols->get(i);
+                symbol = module->m_modsymbols.get(i);
                 ok = symtab->addModuleSymbol(symbol);
             }
             namecopy = mc_util_strdup(modname);
@@ -10038,14 +10037,23 @@ class State
 
         struct ExecInfo
         {
-            size_t vsposition;
-            VMFrame* currframe;
-            GenericList<Value>* valuestack;
-            GenericList<Value>* valthisstack;
-            GenericList<Value>* nativethisstack;
             size_t thisstpos;
-            GenericList<VMFrame>* framestack;
+            size_t vsposition;
             Value lastpopped;
+            VMFrame* currframe;
+            GenericList<Value> valuestack = GenericList<Value>(MinValstackSize, Value::makeNull());
+            GenericList<Value> valthisstack = GenericList<Value>(MinVMThisstackSize, Value::makeNull());
+            GenericList<Value> nativethisstack = GenericList<Value>(MinNativeThisstackSize, Value::makeNull());
+            GenericList<VMFrame> framestack = GenericList<VMFrame>(MinVMFrames, VMFrame{});
+
+            void deInit()
+            {
+                this->valuestack.deInit();
+                this->framestack.deInit();
+                this->valthisstack.deInit();
+                this->nativethisstack.deInit();
+            }
+
         };
 
     public:
@@ -10070,7 +10078,7 @@ class State
         bool m_hadrecovered;
         bool m_running;
         Value m_operoverloadkeys[MaxOperOverloads];
-        GenericList<AstSourceFile*> m_sharedfilelist = GenericList<AstSourceFile*>(0, nullptr);
+        GenericList<AstSourceFile*> m_sharedfilelist;
         AstCompiler* m_sharedcompiler;
         ExecInfo m_execstate;
         Printer* m_stdoutprinter;
@@ -10086,10 +10094,6 @@ class State
         State()
         {
             setDefaultConfig();
-            m_execstate.valuestack = Memory::make<GenericList<Value>>(MinValstackSize, Value::makeNull());
-            m_execstate.valthisstack = Memory::make<GenericList<Value>>(MinVMThisstackSize, Value::makeNull());
-            m_execstate.nativethisstack = Memory::make<GenericList<Value>>(MinNativeThisstackSize, Value::makeNull());
-            m_execstate.framestack = Memory::make<GenericList<VMFrame>>(MinVMFrames, VMFrame{});
             m_stategcmem = Memory::make<GCMemory>();
             if(m_stategcmem == nullptr)
             {
@@ -10107,7 +10111,6 @@ class State
             MC_ASSERT(false);
         }
 
-
         void deinit()
         {
             Memory::destroy(m_sharedcompiler);
@@ -10117,11 +10120,8 @@ class State
             m_errorlist.destroy();
             Printer::destroy(m_stdoutprinter);
             Printer::destroy(m_stderrprinter);
-            Memory::destroy(m_execstate.valuestack);
             m_globalvalstack.deInit();
-            Memory::destroy(m_execstate.framestack);
-            Memory::destroy(m_execstate.valthisstack);
-            Memory::destroy(m_execstate.nativethisstack);
+            m_execstate.deInit();
             Memory::destroy(m_stdobjectobject);
             Memory::destroy(m_stdobjectnumber);
             Memory::destroy(m_stdobjectstring);
@@ -10170,7 +10170,7 @@ class State
             (void)oldsp;
             oldsp = m_execstate.vsposition;
             oldthissp = m_execstate.thisstpos;
-            oldframescount = m_execstate.framestack->count();
+            oldframescount = m_execstate.framestack.count();
             mainfn = mc_value_makefuncscript(this, "__main__", comp_res, false, 0, 0, 0);
             if(mainfn.isNull())
             {
@@ -10178,7 +10178,7 @@ class State
             }
             vmStackPush(mainfn);
             res = execVM(mainfn, constants, false);
-            while(m_execstate.framestack->count() > oldframescount)
+            while(m_execstate.framestack.count() > oldframescount)
             {
                 vmPopFrame();
             }
@@ -10280,6 +10280,7 @@ class State
             m_execstate.thisstpos = est->thisstpos;
             m_execstate.vsposition = est->vsposition;
             m_execstate.currframe = est->currframe;
+            est->deInit();
         }
 
         inline bool setGlobalByIndex(size_t ix, Value val)
@@ -10308,10 +10309,10 @@ class State
                 /* to avoid gcing freed objects */
                 count = nsp - m_execstate.vsposition;
                 bytescount = (count - 0) * sizeof(Value);
-                for(i=(m_execstate.vsposition - 0); (i != bytescount) && (i < m_execstate.valuestack->m_listcapacity); i++)
+                for(i=(m_execstate.vsposition - 0); (i != bytescount) && (i < m_execstate.valuestack.m_listcapacity); i++)
                 {
-                    //memset(&m_execstate.valuestack->m_listitems[i], 0, sizeof(Value));
-                    m_execstate.valuestack->m_listitems[i].m_valtype = Value::VALTYP_NULL;
+                    //memset(&m_execstate.valuestack.m_listitems[i], 0, sizeof(Value));
+                    m_execstate.valuestack.m_listitems[i].m_valtype = Value::VALTYP_NULL;
                 }
             }
             #endif
@@ -10335,7 +10336,7 @@ class State
                 MC_ASSERT((size_t)m_execstate.vsposition >= (size_t)(frame->m_basepointer + numlocals));
             }
         #endif
-            m_execstate.valuestack->set(m_execstate.vsposition, obj);
+            m_execstate.valuestack.set(m_execstate.vsposition, obj);
             m_execstate.vsposition++;
         }
 
@@ -10364,7 +10365,7 @@ class State
             }
         #endif
             m_execstate.vsposition--;
-            res = m_execstate.valuestack->get(m_execstate.vsposition);
+            res = m_execstate.valuestack.get(m_execstate.vsposition);
             m_execstate.lastpopped = res;
             return res;
         }
@@ -10373,12 +10374,12 @@ class State
         {
             size_t ix;
             ix = m_execstate.vsposition - 1 - nthitem;
-            return m_execstate.valuestack->get(ix);
+            return m_execstate.valuestack.get(ix);
         }
 
         inline void vmStackThisPush(Value obj)
         {
-            m_execstate.valthisstack->set(m_execstate.thisstpos, obj);
+            m_execstate.valthisstack.set(m_execstate.thisstpos, obj);
             m_execstate.thisstpos++;
         }
 
@@ -10393,7 +10394,7 @@ class State
             }
         #endif
             m_execstate.thisstpos--;
-            return m_execstate.valthisstack->get(m_execstate.thisstpos);
+            return m_execstate.valthisstack.get(m_execstate.thisstpos);
         }
 
         inline Value vmStackThisGet(size_t nthitem)
@@ -10403,16 +10404,16 @@ class State
             Value val;
             (void)val;
             ix = m_execstate.thisstpos - 1 - nthitem;
-            cnt = m_execstate.valthisstack->count();
+            cnt = m_execstate.valthisstack.count();
             if((cnt == 0) || (ix > cnt))
             {
                 //val = mc_value_makemap(this);
-                //m_execstate.valthisstack->set(ix, val);
+                //m_execstate.valthisstack.set(ix, val);
                 //return mc_value_makemap(this);
                 return Value::makeNull();
                 //return val;
             }
-            return m_execstate.valthisstack->get(ix);
+            return m_execstate.valthisstack.get(ix);
         }
 
         inline bool vmPushFrame(VMFrame frame)
@@ -10420,10 +10421,10 @@ class State
             int add;
             Object::ObjFunction* framefunction;
             add = 0;
-            m_execstate.framestack->set(m_execstate.framestack->m_listcount, frame);
+            m_execstate.framestack.set(m_execstate.framestack.m_listcount, frame);
             add = 1;
-            m_execstate.currframe = m_execstate.framestack->getp(m_execstate.framestack->m_listcount);
-            m_execstate.framestack->m_listcount += add;
+            m_execstate.currframe = m_execstate.framestack.getp(m_execstate.framestack.m_listcount);
+            m_execstate.framestack.m_listcount += add;
             framefunction = Value::asFunction(frame.m_function);
             setStackPos(frame.m_basepointer + framefunction->m_funcdata.valscriptfunc.numlocals);
             return true;
@@ -10432,19 +10433,19 @@ class State
         inline bool vmPopFrame()
         {
             setStackPos(m_execstate.currframe->m_basepointer - 1);
-            if(m_execstate.framestack->m_listcount <= 0)
+            if(m_execstate.framestack.m_listcount <= 0)
             {
                 MC_ASSERT(false);
                 m_execstate.currframe = NULL;
                 return false;
             }
-            m_execstate.framestack->m_listcount--;
-            if(m_execstate.framestack->m_listcount == 0)
+            m_execstate.framestack.m_listcount--;
+            if(m_execstate.framestack.m_listcount == 0)
             {
                 m_execstate.currframe = NULL;
                 return false;
             }
-            m_execstate.currframe = m_execstate.framestack->getp(m_execstate.framestack->m_listcount - 1);
+            m_execstate.currframe = m_execstate.framestack.getp(m_execstate.framestack.m_listcount - 1);
             return true;
         }
 
@@ -10512,7 +10513,7 @@ class State
                 oldsp = m_execstate.vsposition;
                 oldthissp = m_execstate.thisstpos;
                 vmPushFrame(tempframe);
-                oldframescount = m_execstate.framestack->count();
+                oldframescount = m_execstate.framestack.count();
                 vmStackPush(callee);
                 for(i = 0; i < argc; i++)
                 {
@@ -10525,7 +10526,7 @@ class State
                     return Value::makeNull();
                 }
                 #if 1
-                while(m_execstate.framestack->count() > oldframescount)
+                while(m_execstate.framestack.count() > oldframescount)
                 {
                     vmPopFrame();
                 }
@@ -12728,9 +12729,9 @@ bool mc_traceback_vmpush(Traceback* traceback, State* state)
     int i;
     VMFrame* frame;
     (void)ok;
-    for(i = state->m_execstate.framestack->count() - 1; i >= 0; i--)
+    for(i = state->m_execstate.framestack.count() - 1; i >= 0; i--)
     {
-        frame = state->m_execstate.framestack->getp(i);
+        frame = state->m_execstate.framestack.getp(i);
         ok = traceback->push(mc_value_functiongetname(frame->m_function), frame->getPosition());
         if(!ok)
         {
@@ -12781,7 +12782,7 @@ void mc_vm_reset(State* state)
 {
     state->m_execstate.vsposition = 0;
     state->m_execstate.thisstpos = 0;
-    while(state->m_execstate.framestack->m_listcount > 0)
+    while(state->m_execstate.framestack.m_listcount > 0)
     {
         state->vmPopFrame();
     }
@@ -12796,13 +12797,13 @@ MC_INLINE void mc_vm_rungc(State* state, GenericList<Value>* constants)
     mc_state_gcmarkobjlist(state->m_vmglobalstore->getData(), state->m_vmglobalstore->getCount());
     mc_state_gcmarkobjlist((Value*)constants->data(), constants->count());
     mc_state_gcmarkobjlist(state->m_globalvalstack.data(), state->m_globalvalcount);
-    for(i = 0; i < state->m_execstate.framestack->count(); i++)
+    for(i = 0; i < state->m_execstate.framestack.count(); i++)
     {
-        frame = state->m_execstate.framestack->getp(i);
+        frame = state->m_execstate.framestack.getp(i);
         mc_state_gcmarkobject(frame->m_function);
     }
-    mc_state_gcmarkobjlist(state->m_execstate.valuestack->data(), state->m_execstate.vsposition);
-    mc_state_gcmarkobjlist(state->m_execstate.valthisstack->data(), state->m_execstate.thisstpos);
+    mc_state_gcmarkobjlist(state->m_execstate.valuestack.data(), state->m_execstate.vsposition);
+    mc_state_gcmarkobjlist(state->m_execstate.valthisstack.data(), state->m_execstate.thisstpos);
     mc_state_gcmarkobject(state->m_execstate.lastpopped);
     mc_state_gcmarkobjlist(state->m_operoverloadkeys, State::MaxOperOverloads);
     mc_state_gcsweep(state);
@@ -12825,7 +12826,7 @@ MC_FORCEINLINE bool mc_vmdo_callobject(State* state, Value callee, int nargs)
     selfval = Value::makeNull();
     if(callee.isFuncNative())
     {
-        if(!state->m_execstate.nativethisstack->pop(&tmpval))
+        if(!state->m_execstate.nativethisstack.pop(&tmpval))
         {
             #if 0
                 state->m_stderrprinter->format("failed to pop native 'this' for = <");
@@ -12877,7 +12878,7 @@ MC_FORCEINLINE bool mc_vmdo_callobject(State* state, Value callee, int nargs)
             state->vmStackPop();
         }
         #endif
-        stackpos = state->m_execstate.valuestack->data() + state->m_execstate.vsposition - nargs;
+        stackpos = state->m_execstate.valuestack.data() + state->m_execstate.vsposition - nargs;
         res = state->vmCallNativeFunction(callee, state->m_execstate.currframe->getPosition(), selfval, nargs, stackpos);
         if(state->hasErrors())
         {
@@ -13249,7 +13250,7 @@ MC_FORCEINLINE bool mc_vmdo_getindexpartial(State* state, Value left, Value::Typ
             if(callee.isFuncNative())
             #endif
             {
-                state->m_execstate.nativethisstack->push(left);
+                state->m_execstate.nativethisstack.push(left);
             }
             #if 0
                 state->m_stderrprinter->format("getindexpartial:left=<");
@@ -13507,7 +13508,7 @@ MC_FORCEINLINE bool mc_vmdo_makefunction(State* state, GenericList<Value>* const
     }
     for(i = 0; i < numfree; i++)
     {
-        freeval = state->m_execstate.valuestack->get(state->m_execstate.vsposition - numfree + i);
+        freeval = state->m_execstate.valuestack.get(state->m_execstate.vsposition - numfree + i);
         mc_value_functionsetfreevalat(functionobj, i, freeval);
     }
     state->setStackPos(state->m_execstate.vsposition - numfree);
@@ -13613,7 +13614,7 @@ MC_FORCEINLINE bool mc_vmdo_makearray(State* state)
     {
         return false;
     }
-    items = state->m_execstate.valuestack->data() + state->m_execstate.vsposition - count;
+    items = state->m_execstate.valuestack.data() + state->m_execstate.vsposition - count;
     for(i = 0; i < count; i++)
     {
         item = items[i];
@@ -13658,7 +13659,7 @@ MC_FORCEINLINE bool mc_vmdo_makemapend(State* state)
     kvpcount = state->m_execstate.currframe->readUint16();
     itemscount = kvpcount * 2;
     mapobj = state->vmStackThisPop();
-    kvpairs = state->m_execstate.valuestack->data() + state->m_execstate.vsposition - itemscount;
+    kvpairs = state->m_execstate.valuestack.data() + state->m_execstate.vsposition - itemscount;
     for(i = 0; i < itemscount; i += 2)
     {
         key = kvpairs[i];
@@ -14157,7 +14158,7 @@ bool State::execVM(Value function, GenericList<Value>* constants, bool nested)
                 {
                     uint16_t pos;
                     pos = frame->readUint8();
-                    m_execstate.valuestack->set(frame->m_basepointer + pos, vmStackPop());
+                    m_execstate.valuestack.set(frame->m_basepointer + pos, vmStackPop());
                 }
                 mc_vmmac_break();
             mcvm_case(OPCODE_SETLOCAL):
@@ -14167,12 +14168,12 @@ bool State::execVM(Value function, GenericList<Value>* constants, bool nested)
                     Value oldvalue;
                     pos = frame->readUint8();
                     nvalue = vmStackPop();
-                    oldvalue = m_execstate.valuestack->get(frame->m_basepointer + pos);
+                    oldvalue = m_execstate.valuestack.get(frame->m_basepointer + pos);
                     if(!mc_vm_checkassign(this, oldvalue, nvalue))
                     {
                         goto onexecerror;
                     }
-                    m_execstate.valuestack->set(frame->m_basepointer + pos, nvalue);
+                    m_execstate.valuestack.set(frame->m_basepointer + pos, nvalue);
                 }
                 mc_vmmac_break();
             mcvm_case(OPCODE_GETLOCAL):
@@ -14182,7 +14183,7 @@ bool State::execVM(Value function, GenericList<Value>* constants, bool nested)
                     Value val;
                     pos = frame->readUint8();
                     finalpos = frame->m_basepointer + pos;
-                    val = m_execstate.valuestack->get(finalpos);
+                    val = m_execstate.valuestack.get(finalpos);
                     #if 0
                     {
                         Printer* pr = m_stderrprinter;
@@ -14338,9 +14339,9 @@ bool State::execVM(Value function, GenericList<Value>* constants, bool nested)
             if(err->m_errtype == Error::ERRTYP_RUNTIME && m_errorlist.count() >= 1)
             {
                 recoverframeix = -1;
-                for(fri = m_execstate.framestack->count() - 1; fri >= 0; fri--)
+                for(fri = m_execstate.framestack.count() - 1; fri >= 0; fri--)
                 {
-                    frame = m_execstate.framestack->getp(fri);
+                    frame = m_execstate.framestack.getp(fri);
                     if(frame->m_recoverip >= 0 && !frame->m_isrecovering)
                     {
                         recoverframeix = fri;
@@ -14359,7 +14360,7 @@ bool State::execVM(Value function, GenericList<Value>* constants, bool nested)
                 {
                     mc_traceback_vmpush(err->m_traceback, this);
                 }
-                while(m_execstate.framestack->count() > (recoverframeix + 1))
+                while(m_execstate.framestack.count() > (recoverframeix + 1))
                 {
                     vmPopFrame();
                 }
@@ -15480,10 +15481,10 @@ Value mc_objfnarray_map(State* state, void* data, Value thisval, size_t argc, Va
             vargs[0] = val;        
             #endif
         #endif
-        State::ExecInfo est;
-        state->saveExecInfo(&est);
+        //State::ExecInfo est;
+        //state->saveExecInfo(&est);
         res = state->vmCallValue(state->m_sharedcompiler->getconstants(), callee, thisval, 1, vargs);
-        state->restoreExecInfo(&est);
+        //state->restoreExecInfo(&est);
         nary->push(res);
     }
     return narr;

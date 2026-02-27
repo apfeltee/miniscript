@@ -1,3 +1,6 @@
 #!/bin/sh
 
-grep --color=auto -P 'GenericList<\s*[\w:]+\s*(\s*\*)?>\s*\*\s*\b\w+\b\s*;' main.cpp  -n
+regex='GenericList<\s*[\w:]+\s*(\s*\*)?>\s*\*\s*\b\w+\b\s*;'
+regex='GenericList<\s*[\w:]+\s*\s*\*>\s*\b\w+\b\s*;'
+grep --color=auto -P "$regex" main.cpp  -n
+
