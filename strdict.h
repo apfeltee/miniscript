@@ -1,7 +1,11 @@
+
+template<typename KeyType, typename ValType>
 class StrDict
 {
+    #if 0
     using KeyType = char*;
     using ValType = void*;
+    #endif
     public:
         enum
         {
@@ -25,8 +29,8 @@ class StrDict
             dict->m_funccopyfn = copyfn;
             dict->m_funcdestroyfn = dfn;
             dict->m_gdcells = (unsigned int*)mc_memory_malloc(dict->m_gdcellcapacity * sizeof(*dict->m_gdcells));
-            dict->m_gdkeys = (char**)mc_memory_malloc(dict->m_gditemcapacity * sizeof(KeyType));
-            dict->m_gdvalues = (void**)mc_memory_malloc(dict->m_gditemcapacity * sizeof(ValType));
+            dict->m_gdkeys = (KeyType*)mc_memory_malloc(dict->m_gditemcapacity * sizeof(KeyType));
+            dict->m_gdvalues = (ValType*)mc_memory_malloc(dict->m_gditemcapacity * sizeof(ValType));
             dict->m_gdcellindices = (unsigned int*)mc_memory_malloc(dict->m_gditemcapacity * sizeof(*dict->m_gdcellindices));
             dict->m_gdhashes = (long unsigned int*)mc_memory_malloc(dict->m_gditemcapacity * sizeof(*dict->m_gdhashes));
             if(dict->m_gdcells == nullptr || dict->m_gdkeys == nullptr || dict->m_gdvalues == nullptr || dict->m_gdcellindices == nullptr || dict->m_gdhashes == nullptr)
@@ -85,27 +89,11 @@ class StrDict
             }
         }
 
-        static void destroyItemsAndDict(StrDict* dict)
-        {
-            unsigned int i;
-            if(dict != nullptr)
-            {    
-                if(dict->m_funcdestroyfn != nullptr)
-                {
-                    for(i = 0; i < dict->m_gdcount; i++)
-                    {
-                        dict->m_funcdestroyfn(dict->m_gdvalues[i]);
-                    }
-                }
-                StrDict::destroy(dict);
-            }
-        }
-
     public:
         unsigned int* m_gdcells;
         unsigned long* m_gdhashes;
-        char** m_gdkeys;
-        void** m_gdvalues;
+        KeyType* m_gdkeys;
+        ValType* m_gdvalues;
         unsigned int* m_gdcellindices;
         unsigned int m_gdcount;
         unsigned int m_gditemcapacity;
@@ -134,20 +122,41 @@ class StrDict
             MC_ASSERT(ok);
         }
 
+
+        static void destroyItemsAndDictIntern(StrDict* dict)
+        {
+            unsigned int i;
+            if(dict != nullptr)
+            {    
+                if(dict->m_funcdestroyfn != nullptr)
+                {
+                    for(i = 0; i < dict->m_gdcount; i++)
+                    {
+                        dict->m_funcdestroyfn(dict->m_gdvalues[i]);
+                    }
+                }
+                StrDict::destroy(dict);
+            }
+        }
+
+        void destroyItemsAndDict()
+        {
+            return destroyItemsAndDictIntern(this);
+        }
+
         bool growAndRehash()
         {
             bool ok;
             unsigned int i;
-            char* key;
-            void* value;
+
             size_t ncap;
             (void)ok;
             ncap = MC_UTIL_INCCAPACITY(m_gdcellcapacity);
             StrDict newdict(ncap, m_funccopyfn, m_funcdestroyfn);
             for(i = 0; i < m_gdcount; i++)
             {
-                key = m_gdkeys[i];
-                value = m_gdvalues[i];
+                auto key = m_gdkeys[i];
+                auto value = m_gdvalues[i];
                 ok = newdict.setActual(key, key, value);
             }
             StrDict::deinitValues(this, false);
@@ -155,14 +164,14 @@ class StrDict
             return true;
         }
 
-        unsigned int getCellIndex(const char* key, unsigned long hash, bool* outfound)
+        unsigned int getCellIndex(const void* key, unsigned long hash, bool* outfound)
         {
             unsigned int i;
             unsigned int ix;
             unsigned int cell;
             unsigned int cellix;
             unsigned long hashtocheck;
-            const char* keytocheck;
+            const void* keytocheck;
             *outfound = false;
             cellix = (unsigned int)hash & (m_gdcellcapacity - 1);
             for(i = 0; i < m_gdcellcapacity; i++)
@@ -179,7 +188,7 @@ class StrDict
                     continue;
                 }
                 keytocheck = m_gdkeys[cell];
-                if(strcmp(key, keytocheck) == 0)
+                if(strcmp((const char*)key, (const char*)keytocheck) == 0)
                 {
                     *outfound = true;
                     return ix;
@@ -188,11 +197,11 @@ class StrDict
             return GDInvalidIndex;
         }
 
-        bool setIntern(unsigned int cellix, unsigned long hash, const char* ckey, char* mkey, void* value)
+        bool setIntern(unsigned int cellix, unsigned long hash, const KeyType ckey, KeyType mkey, ValType value)
         {
             bool ok;
             bool found;
-            char* keycopy;
+            KeyType keycopy;
             (void)ok;
             if(m_gdcount >= m_gditemcapacity)
             {
@@ -220,7 +229,7 @@ class StrDict
             return true;
         }
 
-        bool setActual(const char* ckey, char* mkey, void* value)
+        bool setActual(KeyType ckey, KeyType mkey, ValType value)
         {
             bool found;
             unsigned int cellix;
@@ -238,12 +247,13 @@ class StrDict
             return setIntern(cellix, hash, ckey, mkey, value);
         }
 
-        bool set(const char* key, void* value)
+        bool set(KeyType key, ValType value)
         {
             return setActual(key, nullptr, value);
         }
 
-        void* get(const char* key)
+        template<typename InKeyT>
+        ValType get(InKeyT key)
         {
             bool found;
             unsigned int itemix;
@@ -260,7 +270,7 @@ class StrDict
             return m_gdvalues[itemix];
         }
 
-        void* getValueAt(unsigned int ix)
+        ValType getValueAt(unsigned int ix)
         {
             if(ix >= m_gdcount)
             {
@@ -269,7 +279,7 @@ class StrDict
             return m_gdvalues[ix];
         }
 
-        const char* getKeyAt(unsigned int ix)
+        KeyType getKeyAt(unsigned int ix)
         {
             if(ix >= m_gdcount)
             {
@@ -283,7 +293,7 @@ class StrDict
             return m_gdcount;
         }
 
-        bool removeByKey(const char* key)
+        bool removeByKey(const KeyType key)
         {
             bool found;
             unsigned int x;
@@ -338,9 +348,6 @@ class StrDict
         {
             bool ok;
             size_t i;
-            void* item;
-            void* itemcopy;
-            const char* key;
             StrDict* dictcopy;
             (void)ok;
             if((m_funccopyfn == nullptr) || (m_funcdestroyfn == nullptr))
@@ -350,12 +357,12 @@ class StrDict
             dictcopy = Memory::make<StrDict>((mcitemcopyfn_t)m_funccopyfn, (mcitemdestroyfn_t)m_funcdestroyfn);
             for(i = 0; i < count(); i++)
             {
-                key = getKeyAt(i);
-                item = getValueAt(i);
-                itemcopy = dictcopy->m_funccopyfn(item);
+                auto key = getKeyAt(i);
+                auto item = getValueAt(i);
+                auto itemcopy = (ValType)dictcopy->m_funccopyfn(item);
                 if((item != nullptr) && (itemcopy == nullptr))
                 {
-                    StrDict::destroyItemsAndDict(dictcopy);
+                    StrDict::destroyItemsAndDictIntern(dictcopy);
                     return nullptr;
                 }
                 ok = dictcopy->set(key, itemcopy);

@@ -6,6 +6,8 @@ class ValDict
         enum
         {
             VDInvalidIndex = (UINT_MAX),
+            DefaultInitSize = (32),
+
         };
 
     public:
@@ -85,7 +87,7 @@ class ValDict
         mcitemcomparefn_t m_funckeyequalsfn;
 
     public:
-        inline ValDict(): ValDict(StrDict::DefaultInitSize)
+        inline ValDict(): ValDict(DefaultInitSize)
         {
         }
 
