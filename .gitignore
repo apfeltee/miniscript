@@ -133,3 +133,4 @@ build/
 *.tbs
 *.stackdump
 *.core
+.aider*
