@@ -83,8 +83,8 @@ class ValDict
         unsigned int m_vdcount;
         unsigned int m_vditemcapacity;
         unsigned int m_vdcellcapacity;
-        mcitemhashfn_t m_funchashfn;
-        mcitemcomparefn_t m_funckeyequalsfn;
+        CallbackHashItemFN m_funchashfn;
+        CallbackCompareFN m_funckeyequalsfn;
 
     public:
         inline ValDict(): ValDict(DefaultInitSize)
@@ -101,12 +101,12 @@ class ValDict
             MC_ASSERT(ok);
         }
 
-        inline void setHashFunction(mcitemhashfn_t hashfn)
+        inline void setHashFunction(CallbackHashItemFN hashfn)
         {
             m_funchashfn = hashfn;
         }
 
-        inline void setEqualsFunction(mcitemcomparefn_t equalsfn)
+        inline void setEqualsFunction(CallbackCompareFN equalsfn)
         {
             m_funckeyequalsfn = equalsfn;
         }

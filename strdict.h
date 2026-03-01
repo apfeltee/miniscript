@@ -14,7 +14,7 @@ class StrDict
         };
 
     public:
-        static bool initValues(StrDict* dict, unsigned int initialcapacity, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
+        static bool initValues(StrDict* dict, unsigned int initialcapacity, CallbackCopyFN copyfn, CallbackDestroyFN dfn)
         {
             unsigned int i;
             dict->m_gdcells = nullptr;
@@ -98,15 +98,15 @@ class StrDict
         unsigned int m_gdcount;
         unsigned int m_gditemcapacity;
         unsigned int m_gdcellcapacity;
-        mcitemcopyfn_t m_funccopyfn;
-        mcitemdestroyfn_t m_funcdestroyfn;
+        CallbackCopyFN m_funccopyfn;
+        CallbackDestroyFN m_funcdestroyfn;
 
     public:
         StrDict(): StrDict(nullptr, nullptr)
         {
         }
 
-        StrDict(size_t cap, mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
+        StrDict(size_t cap, CallbackCopyFN copyfn, CallbackDestroyFN dfn)
         {
             bool ok;
             (void)ok;
@@ -114,7 +114,7 @@ class StrDict
             MC_ASSERT(ok);
         }
 
-        StrDict(mcitemcopyfn_t copyfn, mcitemdestroyfn_t dfn)
+        StrDict(CallbackCopyFN copyfn, CallbackDestroyFN dfn)
         {
             bool ok;
             (void)ok;
@@ -354,7 +354,7 @@ class StrDict
             {
                 return nullptr;
             }
-            dictcopy = Memory::make<StrDict>((mcitemcopyfn_t)m_funccopyfn, (mcitemdestroyfn_t)m_funcdestroyfn);
+            dictcopy = Memory::make<StrDict>((CallbackCopyFN)m_funccopyfn, (CallbackDestroyFN)m_funcdestroyfn);
             for(i = 0; i < count(); i++)
             {
                 auto key = getKeyAt(i);

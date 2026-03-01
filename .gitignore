@@ -16,6 +16,9 @@ dynamorio/*
 backup
 backup/
 backup/*
+_src
+_src/
+_src/*
 _backup
 _backup/
 _backup/*
