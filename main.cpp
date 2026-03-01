@@ -1,6 +1,7 @@
 
 
 #include <memory>
+#include <functional>
 #include <stdint.h>
 #include <stddef.h>
 #include <assert.h>
@@ -741,401 +742,7 @@ class Printer
         }
 };
 
-template<typename ValType>
-class GenericList
-{
-    public:
-        template<typename OutputT, typename InputT>
-        using DummyCopyFN = OutputT(*)(InputT);
-
-        template<typename InputT>
-        using DummyDestroyFN = void(*)(InputT);
-
-
-    public:
-        static void destroy(GenericList* list)
-        {
-            if(list != nullptr)
-            {
-                list->deInit();
-                mc_memory_free(list);
-                list = nullptr;
-            }
-        }
-
-        template<typename InputT>
-        static MC_INLINE void destroy(GenericList* list, DummyDestroyFN<InputT> dfn)
-        {
-            if(list != nullptr)
-            {    
-                if(dfn != nullptr)
-                {
-                    clearAndDestroy(list, dfn);
-                }
-                list->deInit();
-                mc_memory_free(list);
-            }
-        }
-
-        template<typename InputT>
-        static MC_INLINE void clearAndDestroy(GenericList* list, DummyDestroyFN<InputT> dfn)
-        {
-            size_t i;
-            for(i = 0; i < list->count(); i++)
-            {
-                auto item = list->get(i);
-                if(dfn != nullptr)
-                {
-                    dfn((InputT)item);
-                }
-            }
-            list->clear();
-        }
-
-        template<typename InputT, typename OutputT>
-        MC_INLINE GenericList* copyToHeap(DummyCopyFN<InputT, OutputT> copyfn, DummyDestroyFN<InputT> dfn)
-        {
-            bool ok;
-            size_t i;
-            GenericList* arrcopy;
-            (void)ok;
-            arrcopy = Memory::make<GenericList<ValType>>(m_listcapacity, m_nullvalue);
-            for(i = 0; i < count(); i++)
-            {
-                auto item = (ValType)get(i);
-                if(copyfn)
-                {
-                    auto itemcopy = (ValType)copyfn(item);
-                    if(!arrcopy->push(itemcopy))
-                    {
-                        goto listcopyfailed;
-                    }
-                }
-                else
-                {
-                    if(!arrcopy->push(item))
-                    {
-                        goto listcopyfailed;
-                    }
-                }
-            }
-            return arrcopy;
-        listcopyfailed:
-            Memory::destroy(arrcopy, dfn);
-            return nullptr;
-        }
-
-        MC_INLINE GenericList* copyToHeap()
-        {
-            DummyCopyFN<ValType, ValType> dummycopy = nullptr;
-            DummyDestroyFN<ValType> dummydel = nullptr;
-            return copyToHeap(dummycopy, dummydel);
-        }
-
-        template<typename InputT, typename OutputT>
-        MC_INLINE bool copyToStack(GenericList* dest, DummyCopyFN<InputT, OutputT> copyfn, DummyDestroyFN<InputT> dfn)
-        {
-            bool ok;
-            size_t i;
-            (void)ok;
-            (void)dfn;
-            for(i = 0; i < count(); i++)
-            {
-                auto item = (ValType)get(i);
-                if(copyfn)
-                {
-                    auto itemcopy = (ValType)copyfn(item);
-                    if(!dest->push(itemcopy))
-                    {
-                        goto listcopyfailed;
-                    }
-                }
-                else
-                {
-                    if(!dest->push(item))
-                    {
-                        goto listcopyfailed;
-                    }
-                }
-            }
-            return true;
-        listcopyfailed:
-            return false;
-        }
-
-        MC_INLINE bool copyToStack(GenericList* dest)
-        {
-            DummyCopyFN<ValType, ValType> dummycopy = nullptr;
-            DummyDestroyFN<ValType> dummydel = nullptr;
-            return copyToStack(dest, dummycopy, dummydel);
-        }
-
-        template<typename InputT, typename OutputT>
-        MC_INLINE GenericList copyToStack(DummyCopyFN<InputT, OutputT> copyfn, DummyDestroyFN<InputT> dfn)
-        {
-            GenericList dest;
-            copyToStack(&dest, copyfn, dfn);
-            return dest;
-        }
-
-        MC_INLINE GenericList copyToStack()
-        {
-            GenericList dest;
-            copyToStack(&dest);
-            return dest;
-        }
-
-    public:
-        size_t m_listcapacity;
-        size_t m_listcount;
-        ValType* m_listitems;
-        ValType m_nullvalue;
-
-    private:
-        MC_INLINE bool removeAtIntern(unsigned int ix)
-        {
-            size_t tomovebytes;
-            void* src;
-            void* dest;
-            if(ix == (m_listcount - 1))
-            {
-                m_listcount--;
-                return true;
-            }
-            tomovebytes = (m_listcount - 1 - ix) * sizeof(ValType);
-            dest = m_listitems + (ix * sizeof(ValType));
-            src = m_listitems + ((ix + 1) * sizeof(ValType));
-            memmove(dest, src, tomovebytes);
-            m_listcount--;
-            return true;
-        }
-
-        MC_INLINE void ensureCapacity(size_t needsize, const ValType& fillval, bool first)
-        {
-            size_t i;
-            size_t ncap;
-            size_t oldcap;
-            (void)first;
-            if(m_listcapacity < needsize)
-            {
-                oldcap = m_listcapacity;
-                ncap = MC_UTIL_INCCAPACITY(m_listcapacity + needsize);
-                m_listcapacity = ncap;
-                if(m_listitems == nullptr)
-                {
-                    m_listitems = (ValType*)mc_memory_malloc(sizeof(ValType) * ncap);
-                }
-                else
-                {
-                    m_listitems = (ValType*)mc_memory_realloc(m_listitems, sizeof(ValType) * ncap);
-                }
-                for(i = oldcap; i < ncap; i++)
-                {
-                    m_listitems[i] = fillval;
-                }
-            }
-        }
-
-        template<typename OtherT>
-        MC_INLINE void moveFrom(OtherT* other)
-        {
-            m_listcount = other->m_listcount;
-            m_listcapacity = other->m_listcapacity;
-            m_listitems = other->m_listitems;
-            m_nullvalue = other->m_nullvalue;
-
-        }
-
-    public:
-        MC_INLINE GenericList(): GenericList(0, /*was nullptr*/ ValType{})
-        {
-        }
-
-        MC_INLINE GenericList(GenericList&& other)
-        {
-            moveFrom(&other);
-        }
-
-        MC_INLINE GenericList(const GenericList& other)
-        {
-            moveFrom(&other);
-        }
-
-        MC_INLINE GenericList(size_t initialsize, const ValType& nullval)
-        {
-            m_listcount = 0;
-            m_listcapacity = 0;
-            m_listitems = nullptr;
-            m_nullvalue = nullval;
-            if(initialsize > 0)
-            {
-                ensureCapacity(initialsize, m_nullvalue, true);
-            }
-        }
-
-        MC_INLINE ~GenericList()
-        {
-            //deInit();
-        }
-
-        MC_INLINE GenericList& operator=(const GenericList& other)
-        {
-            moveFrom(&other);
-            return *this;
-        }
-
-        MC_INLINE void orphanData()
-        {
-            m_listcount = 0;
-            m_listcapacity = 0;
-            m_listitems = nullptr;
-        }
-
-        template<typename InputT>
-        MC_INLINE void deInit(DummyDestroyFN<InputT> dfn)
-        {
-            size_t i;
-            for(i=0; i<m_listcount; i++)
-            {
-                auto item = get(i);
-                dfn(item);
-            }
-            deInit();
-        }
-
-        MC_INLINE void deInit()
-        {
-            if(m_listitems != nullptr)
-            {
-                mc_memory_free(m_listitems);
-            }
-            m_listitems = nullptr;
-            m_listcount = 0;
-            m_listcapacity = 0;
-        }
-
-        MC_INLINE void clear()
-        {
-            m_listcount = 0;
-        }
-
-        MC_INLINE size_t count() const
-        {
-            return m_listcount;
-        }
-
-        MC_INLINE ValType* data() const
-        {
-            return m_listitems;
-        }
-
-        MC_INLINE ValType get(size_t idx) const
-        {
-            return m_listitems[idx];
-        }
-
-        MC_INLINE ValType* getp(size_t idx) const
-        {
-            return &m_listitems[idx];
-        }
-
-        MC_INLINE ValType top() const
-        {
-            if(m_listcount == 0)
-            {
-                return m_nullvalue;
-            }
-            return get(m_listcount - 1);
-        }
-
-        MC_INLINE ValType* topp() const
-        {
-            if(m_listcount == 0)
-            {
-                return nullptr;
-            }
-            return getp(m_listcount - 1);
-        }
-
-
-        MC_INLINE ValType* set(size_t idx, const ValType& val)
-        {
-            size_t need;
-            need = idx + 1;
-            if(((idx == 0) || (m_listcapacity == 0)) || (idx >= m_listcapacity))
-            {
-                ensureCapacity(need, m_nullvalue, false);
-            }
-            if(idx > m_listcount)
-            {
-                m_listcount = idx;
-            }
-            m_listitems[idx] = val;
-            return &m_listitems[idx];
-        }
-
-        MC_INLINE bool push(const ValType& value)
-        {
-            size_t oldcap;
-            if(m_listcapacity < m_listcount + 1)
-            {
-                oldcap = m_listcapacity;
-                m_listcapacity = MC_UTIL_INCCAPACITY(oldcap);
-                if(m_listitems == nullptr)
-                {
-                    m_listitems = (ValType*)mc_memory_malloc(sizeof(ValType) * m_listcapacity);
-                }
-                else
-                {
-                    m_listitems = (ValType*)mc_memory_realloc(m_listitems, sizeof(ValType) * m_listcapacity);
-                }
-            }
-            m_listitems[m_listcount] = value;
-            m_listcount++;
-            return true;
-        }
-
-        MC_INLINE bool pop(ValType* dest)
-        {
-            if(m_listcount > 0)
-            {
-                if(dest != nullptr)
-                {
-                    *dest = m_listitems[m_listcount - 1];
-                }
-                m_listcount--;
-                return true;
-            }
-            return false;
-        }
-
-        MC_INLINE bool removeAt(unsigned int ix)
-        {
-            if(ix >= m_listcount)
-            {
-                return false;
-            }
-            if(ix == 0)
-            {
-                m_listitems += sizeof(ValType);
-                m_listcapacity--;
-                m_listcount--;
-                return true;
-            }
-            return removeAtIntern(ix);
-        }
-
-        MC_INLINE void setEmpty()
-        {
-            if((m_listcapacity > 0) && (m_listitems != nullptr))
-            {
-                memset(m_listitems, 0, sizeof(ValType) * m_listcapacity);
-            }
-            m_listcount = 0;
-            m_listcapacity = 0;
-        }
-};
-
+#include "glist.h"
 #include "strdict.h"
 #include "valdict.h"
 
@@ -1595,20 +1202,19 @@ class GCMemory
     public:
         enum
         {
-            MemPoolSize = (16),
+            MinPoolSize = (4),
             SweepInterval = (128),
-
         };
 
         struct DataPool
         {
             public:
-                GenericList<Object*> m_pooldata;
+                GenericList<Object*> m_pooldata = GenericList<Object*>(MinPoolSize);
                 int m_poolitemcount;
         };
 
     public:
-        static void wrapDeallocObjData(Object* data);
+        static void wrapDestroyObjData(Object* data);
 
         static void destroyPool(DataPool* pool)
         {
@@ -1617,7 +1223,7 @@ class GCMemory
             for(j = 0; j < (size_t)pool->m_poolitemcount; j++)
             {
                 data = pool->m_pooldata.get(j);
-                wrapDeallocObjData(data);
+                wrapDestroyObjData(data);
                 mc_memory_free(data);
             }
             pool->m_pooldata.deInit();
@@ -1634,7 +1240,7 @@ class GCMemory
                 for(i = 0; i < m->m_gcobjliststored->count(); i++)
                 {
                     obj = m->m_gcobjliststored->get(i);
-                    wrapDeallocObjData(obj);
+                    wrapDestroyObjData(obj);
                     mc_memory_free(obj);
                 }
                 Memory::destroy(m->m_gcobjliststored);
@@ -1642,14 +1248,12 @@ class GCMemory
                 destroyPool(&m->m_poolmap);
                 destroyPool(&m->m_poolstring);
                 destroyPool(&m->m_poolscriptfuncs);
-
                 for(i = 0; i < (size_t)m->m_poolonlydata.m_poolitemcount; i++)
                 {
                     auto p = m->m_poolonlydata.m_pooldata.get(i);
                     if(p != nullptr)
                     {
                         mc_memory_free(p);
-                        m->m_poolonlydata.m_pooldata.set(i, nullptr);
                     }
                 }
                 m->m_poolonlydata.m_pooldata.deInit();
@@ -1688,7 +1292,7 @@ class GCMemory
         void initPool(DataPool* pool)
         {
             #if 0 
-            pool->m_pooldata = Memory::make<GenericList<Object*>>(MemPoolSize, nullptr);
+            pool->m_pooldata = Memory::make<GenericList<Object*>>(MinPoolSize);
             #endif
             pool->m_poolitemcount = 0;
         }
@@ -1696,9 +1300,9 @@ class GCMemory
     public:
         GCMemory()
         {
-            m_gcobjliststored = Memory::make<GenericList<Object*>>(0, nullptr);
-            m_gcobjlistback = Memory::make<GenericList<Object*>>(0, nullptr);
-            m_gcobjlistremains = Memory::make<GenericList<ValData>>(0, ValData{ValData::VALTYP_NULL, false, {}});
+            m_gcobjliststored = Memory::make<GenericList<Object*>>();
+            m_gcobjlistback = Memory::make<GenericList<Object*>>();
+            m_gcobjlistremains = Memory::make<GenericList<ValData>>(0);
             m_allocssincesweep = 0;
             initPool(&m_poolonlydata);
             initPool(&m_poolarray);
@@ -1785,7 +1389,52 @@ class Object
 
         struct ObjArray
         {
-            GenericList<Value>* actualarray;
+            public:
+                GenericList<Value>* actualarray;
+
+            public:
+                MC_INLINE size_t count()
+                {
+                    return actualarray->m_listcount;
+                }
+
+                template<typename IntT>
+                MC_INLINE auto get(IntT i)
+                {
+                    return actualarray->get(i);
+                }
+
+                template<typename IntT>
+                MC_INLINE auto getp(IntT i)
+                {
+                    return actualarray->getp(i);
+                }
+
+                template<typename IntT, typename VType>
+                MC_INLINE auto set(IntT i, const VType& val)
+                {
+                    return actualarray->set(i, val);
+                }
+
+                template<typename VType>
+                MC_INLINE bool push(const VType& val)
+                {
+                    return actualarray->push(val);
+                }
+
+                template<typename VType>
+                MC_INLINE bool pop(VType* dest)
+                {
+                    return actualarray->pop(dest);
+                }
+
+                template<typename IntT>
+                MC_INLINE bool removeAt(IntT ix)
+                {
+                    return actualarray->removeAt(ix);
+                }
+
+
         };
 
         struct ObjMap
@@ -1816,10 +1465,14 @@ class Object
         };
 
     public:
-        static Object* allocObjData()
+        static Object* makeObjData(ValData::Type typ)
         {
             Object* data;
-            data = nullptr;
+            data = Object::getDataFromPool(typ);
+            if(data != nullptr)
+            {
+                return data;
+            }
             GCMemory::get()->m_allocssincesweep++;
             if(GCMemory::get()->m_poolonlydata.m_poolitemcount > 0)
             {
@@ -1841,8 +1494,7 @@ class Object
             return data;
         }
 
-
-        static void deallocObjData(Object* data)
+        static void destroyObjData(Object* data)
         {
             switch(data->m_odtype)
             {
@@ -1946,8 +1598,11 @@ class Object
 class Value: public ValData
 {
     public:
-        static bool canDataBePutInPool(Object* data)
+        static bool canStoreInPool(Object* data)
         {
+            #if 0
+            return false;
+            #endif
             Value obj;
             GCMemory::DataPool* pool;
             obj = Value::makeDataFrom((Value::Type)data->m_odtype, data);
@@ -1990,7 +1645,7 @@ class Value: public ValData
             }
             #endif
             pool= GCMemory::get()->getPoolForType(data->m_odtype);
-            if(pool == nullptr /*|| pool->m_poolitemcount >= GCMemory::MemPoolSize*/)
+            if(pool == nullptr)
             {
                 return false;
             }
@@ -2587,17 +2242,13 @@ class Value: public ValData
             return o;
         }
 
-        static Value makeStrCapacity(int capacity)
+        static Value makeStrEmptyCapacity(int capacity)
         {
             Object* data;
-            data = Object::getDataFromPool(Value::VALTYP_STRING);
+            data = Object::makeObjData(Value::VALTYP_STRING);
             if(data == nullptr)
             {
-                data = Object::allocObjData();
-                if(data == nullptr)
-                {
-                    return Value::makeNull();
-                }
+                return Value::makeNull();
             }
             data->m_uvobj.valstring.hash = 0;
             data->m_uvobj.valstring.strbuf = Memory::make<StringBuffer>(capacity);
@@ -2605,12 +2256,12 @@ class Value: public ValData
         }
 
         template<typename... ArgsT>
-        static Value makeStrFormat(State* state, const char* fmt, ArgsT&&... args)
+        static Value makeStrFormat(const char* fmt, ArgsT&&... args)
         {
             Value res;
             Object* data;
             data = Object::getDataFromPool(Value::VALTYP_STRING);
-            res = makeStrCapacity(0);
+            res = makeStrEmptyCapacity(0);
             if(res.isNull())
             {
                 return Value::makeNull();
@@ -2622,7 +2273,7 @@ class Value: public ValData
         static Value makeString(const char* string, size_t len)
         {
             Value res;
-            res = makeStrCapacity(len);
+            res = makeStrEmptyCapacity(len);
             if(res.isNull())
             {
                 return res;
@@ -2642,7 +2293,7 @@ class Value: public ValData
         static Value makeFuncScript(const char* name, CompiledProgram* cres, bool ownsdt, int nlocals, int nargs, int fvc)
         {
             Object* data;
-            data = Object::allocObjData();
+            data = Object::makeObjData(Value::VALTYP_FUNCSCRIPT);
             if(data == nullptr)
             {
                 return Value::makeNull();
@@ -2678,7 +2329,7 @@ class Value: public ValData
         static Value makeFuncNative(const char* name, CallbackNativeFN fn, void* data)
         {
             Object* obj;
-            obj = Object::allocObjData();
+            obj = Object::makeObjData(Value::VALTYP_FUNCNATIVE);
             if(obj == nullptr)
             {
                 return Value::makeNull();
@@ -2699,13 +2350,7 @@ class Value: public ValData
         static Value makeArrayFromList(GenericList<Value>* list)
         {
             Object* data;
-            data = Object::getDataFromPool(Value::VALTYP_ARRAY);
-            if(data != nullptr)
-            {
-                data->m_uvobj.valarray->actualarray->setEmpty();
-                return Value::makeDataFrom(Value::VALTYP_ARRAY, data);
-            }
-            data = Object::allocObjData();
+            data = Object::makeObjData(Value::VALTYP_ARRAY);
             if(data == nullptr)
             {
                 return Value::makeNull();
@@ -2726,7 +2371,7 @@ class Value: public ValData
 
         static Value makeArray(size_t capacity)
         {
-            auto arr = Memory::make<GenericList<Value>>(capacity, Value::makeNull());
+            auto arr = Memory::make<GenericList<Value>>(capacity);
             return makeArrayFromList(arr);
         }
 
@@ -2738,13 +2383,7 @@ class Value: public ValData
         static Value makeMap(size_t capacity)
         {
             Object* data;
-            data = Object::getDataFromPool(Value::VALTYP_MAP);
-            if(data != nullptr)
-            {
-                data->m_uvobj.valmap->actualmap->clear();
-                return Value::makeDataFrom(Value::VALTYP_MAP, data);
-            }
-            data = Object::allocObjData();
+            data = Object::makeObjData(Value::VALTYP_MAP);
             if(data == nullptr)
             {
                 return Value::makeNull();
@@ -2763,7 +2402,7 @@ class Value: public ValData
         static Value makeErrorNoCopy(char* error)
         {
             Object* data;
-            data = Object::allocObjData();
+            data = Object::makeObjData(Value::VALTYP_ERROR);
             if(data == nullptr)
             {
                 return Value::makeNull();
@@ -2794,7 +2433,7 @@ class Value: public ValData
         static Value makeUserObj(void* data)
         {
             Object* obj;
-            obj = Object::allocObjData();
+            obj = Object::makeObjData(Value::VALTYP_EXTERNAL);
             if(obj == nullptr)
             {
                 return Value::makeNull();
@@ -2804,7 +2443,6 @@ class Value: public ValData
             obj->m_uvobj.valuserobject.datacopyfn = nullptr;
             return Value::makeDataFrom(Value::VALTYP_EXTERNAL, obj);
         }
-
 
         //xxhere
 
@@ -3020,7 +2658,7 @@ class Value: public ValData
         {
             Value* res;
             MC_ASSERT(object.getType() == Value::VALTYP_ARRAY);
-            auto array = object.getActualArray();
+            auto array = object.asArray();
             if(ix >= array->count())
             {
                 return Value::makeNull();
@@ -3038,7 +2676,7 @@ class Value: public ValData
             size_t len;
             size_t toadd;
             MC_ASSERT(object.getType() == Value::VALTYP_ARRAY);
-            auto array = object.getActualArray();
+            auto array = object.asArray();
             len = array->count();
             if((ix >= len) || (len == 0))
             {
@@ -3058,14 +2696,14 @@ class Value: public ValData
         static bool arrayPush(Value object, Value val)
         {
             MC_ASSERT(object.getType() == Value::VALTYP_ARRAY);
-            auto array = object.getActualArray();
+            auto array = object.asArray();
             return array->push(val);
         }
 
         static int arrayGetLength(Value object)
         {
             MC_ASSERT(object.getType() == Value::VALTYP_ARRAY);
-            auto array = object.getActualArray();
+            auto array = object.asArray();
             return array->count();
         }
 
@@ -3073,7 +2711,7 @@ class Value: public ValData
         {
             Value dest;
             MC_ASSERT(object.getType() == Value::VALTYP_ARRAY);
-            auto array = object.getActualArray();
+            auto array = object.asArray();
             if(array->pop(&dest))
             {
                 return dest;
@@ -3083,7 +2721,7 @@ class Value: public ValData
 
         static bool arrayRemoveAt(Value object, int ix)
         {
-            auto array = object.getActualArray();
+            auto array = object.asArray();
             return array->removeAt(ix);
         }
 
@@ -3265,7 +2903,7 @@ class Value: public ValData
             size_t alen;
             bool prevquot;
             Value iobj;
-            auto actualary = obj.getActualArray();
+            auto actualary = obj.asArray();
             alen = arrayGetLength(obj);
             pr->put("[");
             for(i = 0; i < alen; i++)
@@ -3274,7 +2912,7 @@ class Value: public ValData
                 iobj = arrayGetValue(obj, i);
                 if(iobj.getType() == Value::VALTYP_ARRAY)
                 {
-                    auto otherary = iobj.getActualArray();
+                    auto otherary = iobj.asArray();
                     if(otherary == actualary)
                     {
                         recursion = true;
@@ -3478,16 +3116,16 @@ class Value: public ValData
             return (type == VALTYP_ARRAY);
         }
 
-        GenericList<Value>* getActualArray()
+        Object::ObjArray* asArray()
         {
             auto data = getAllocatedData();
-            return data->m_uvobj.valarray->actualarray;
+            return data->m_uvobj.valarray;
         }
 
-        GenericList<Value>* getActualArray() const
+        Object::ObjArray* asArray() const
         {
             auto data = getAllocatedData();
-            return data->m_uvobj.valarray->actualarray;
+            return data->m_uvobj.valarray;
         }
 
         MC_INLINE char* getStringDataIntern()
@@ -3633,7 +3271,7 @@ class ObjClass
         const char* m_classname;
         ObjClass* m_parentclass;
         Value m_constructor;
-        GenericList<Field> m_memberfields = GenericList<Field>(0, Field{});
+        GenericList<Field> m_memberfields = GenericList<Field>(0);
 
     public:
         ObjClass(const char* name, ObjClass* parclass)
@@ -3740,7 +3378,7 @@ class SymStore
 
     public:
         StrDict<char*, AstSymbol*>* m_storedsymbols;
-        GenericList<Value> m_storedobjects = GenericList<Value>(0, Value::makeNull());
+        GenericList<Value> m_storedobjects = GenericList<Value>(0);
 
     public:
         SymStore()
@@ -3885,7 +3523,7 @@ class AstSymTable
             }
             else
             {
-                m_symtbfreesymbols = Memory::make<GenericList<AstSymbol*>>(0, nullptr);
+                m_symtbfreesymbols = Memory::make<GenericList<AstSymbol*>>(0);
             }
             if(symodglobalsymbols != nullptr)
             {
@@ -3945,9 +3583,7 @@ class AstSymTable
 
         bool addModuleSymbol(AstSymbol* symbol)
         {
-            bool ok;
             AstSymbol* copy;
-            (void)ok;
             if(symbol->m_symtype != AstSymbol::SYMTYP_MODULEGLOBAL)
             {
                 MC_ASSERT(false);
@@ -3963,7 +3599,10 @@ class AstSymTable
             {
                 return false;
             }
-            ok = setSymbol(copy);
+            if(!setSymbol(copy))
+            {
+                return false;
+            }
             return true;
         }
 
@@ -4011,7 +3650,10 @@ class AstSymTable
                 ok = m_symtbmodglobalsymbols.push(globalsymbolcopy);
                 globalsymboladded = true;
             }
-            ok = setSymbol(symbol);
+            if(!setSymbol(symbol))
+            {
+                return nullptr;
+            }
             topscope = m_symtbblockscopes.top();
             topscope->m_blscopenumdefs++;
             definitionscount = getNumDefinitions();
@@ -4037,37 +3679,35 @@ class AstSymTable
 
         AstSymbol* defineFunctionName(const char* name, bool assignable)
         {
-            bool ok;
-            AstSymbol* symbol;
-            (void)ok;
             /* module symbol */
             if(strchr(name, ':') != nullptr)
             {
                 return nullptr;
             }
-            symbol = Memory::make<AstSymbol>(name, AstSymbol::SYMTYP_FUNCTION, 0, assignable);
-            ok = setSymbol(symbol);
+            auto symbol = Memory::make<AstSymbol>(name, AstSymbol::SYMTYP_FUNCTION, 0, assignable);
+            if(!setSymbol(symbol))
+            {
+                return nullptr;
+            }
             return symbol;
         }
 
         AstSymbol* defineThis()
         {
-            bool ok;
-            AstSymbol* symbol;
-            (void)ok;
-            symbol = Memory::make<AstSymbol>("this", AstSymbol::SYMTYP_THIS, 0, false);
-            ok = setSymbol(symbol);
+            auto symbol = Memory::make<AstSymbol>("this", AstSymbol::SYMTYP_THIS, 0, false);
+            if(!setSymbol(symbol))
+            {
+                return nullptr;
+            }
             return symbol;
         }
 
         AstSymbol* resolve(const char* name)
         {
             int i;
-            AstSymbol* symbol;
             AstScopeBlock* scope;
-            symbol = nullptr;
             scope = nullptr;
-            symbol = m_symtbglobalstore->getSymbol(name);
+            auto symbol = m_symtbglobalstore->getSymbol(name);
             if(symbol != nullptr)
             {
                 return symbol;
@@ -4105,27 +3745,21 @@ class AstSymTable
         bool isDefined(const char* name)
         {
             /* todo: rename to something more obvious */
-            AstSymbol* symbol;
-            AstScopeBlock* topscope;
-            symbol = m_symtbglobalstore->getSymbol(name);
+            auto symbol = m_symtbglobalstore->getSymbol(name);
             if(symbol != nullptr)
             {
                 return true;
             }
-            topscope = m_symtbblockscopes.top();
+            auto topscope = m_symtbblockscopes.top();
             symbol = topscope->m_blscopestore->get(name);
             return symbol != nullptr;
         }
 
         bool scopeBlockPush()
         {
-            bool ok;
             int blockscopeoffset;
-            AstScopeBlock* newscope;
-            AstScopeBlock* prevblockscope;
-            (void)ok;
             blockscopeoffset = 0;
-            prevblockscope = m_symtbblockscopes.top();
+            auto prevblockscope = m_symtbblockscopes.top();
             if(prevblockscope != nullptr)
             {
                 blockscopeoffset = m_symtbmodglobaloffset + prevblockscope->m_blscopeoffset + prevblockscope->m_blscopenumdefs;
@@ -4134,23 +3768,21 @@ class AstSymTable
             {
                 blockscopeoffset = m_symtbmodglobaloffset;
             }
-            newscope = Memory::make<AstScopeBlock>(blockscopeoffset);
-            ok = m_symtbblockscopes.push(newscope);
+            auto newscope = Memory::make<AstScopeBlock>(blockscopeoffset);
+            m_symtbblockscopes.push(newscope);
             return true;
         }
 
         void scopeBlockPop()
         {
-            AstScopeBlock* topscope;
-            topscope = m_symtbblockscopes.top();
+            auto topscope = m_symtbblockscopes.top();
             m_symtbblockscopes.pop(nullptr);
             Memory::destroy(topscope);
         }
 
         AstScopeBlock* scopeBlockGet()
         {
-            AstScopeBlock* topscope;
-            topscope = m_symtbblockscopes.top();
+            auto topscope = m_symtbblockscopes.top();
             return topscope;
         }
 
@@ -4195,10 +3827,10 @@ class AstScopeComp
 
     public:
         AstScopeComp* m_outerscope;
-        GenericList<uint16_t> m_scopecompiledbc = GenericList<uint16_t>(0, 0);
-        GenericList<SourceLocation> m_scopesrcposlist = GenericList<SourceLocation>(0, SourceLocation::Invalid());
-        GenericList<int> m_scopeipstackbreak = GenericList<int>(0, 0);
-        GenericList<int> m_scopeipstackcontinue = GenericList<int>(0, 0);
+        GenericList<uint16_t> m_scopecompiledbc = GenericList<uint16_t>(0);
+        GenericList<SourceLocation> m_scopesrcposlist = GenericList<SourceLocation>(0);
+        GenericList<int> m_scopeipstackbreak = GenericList<int>(0);
+        GenericList<int> m_scopeipstackcontinue = GenericList<int>(0);
         OPValCode m_scopelastopcode = 0;
 
     public:
@@ -4209,12 +3841,9 @@ class AstScopeComp
 
         CompiledProgram* orphanResult()
         {
-            uint16_t* bcdata;
-            SourceLocation* astlocdata;
-            CompiledProgram* res;
-            bcdata = m_scopecompiledbc.data();
-            astlocdata = m_scopesrcposlist.data();
-            res = Memory::make<CompiledProgram>(bcdata, astlocdata, m_scopecompiledbc.count());
+            auto bcdata = m_scopecompiledbc.data();
+            auto astlocdata = m_scopesrcposlist.data();
+            auto res = Memory::make<CompiledProgram>(bcdata, astlocdata, m_scopecompiledbc.count());
             m_scopecompiledbc.orphanData();
             m_scopesrcposlist.orphanData();
             return res;
@@ -4570,12 +4199,6 @@ class AstExprData
 
         class ExprShim
         {
-            public:
-                ExprShim* operator->()
-                {
-                    return this;
-                }
-                
         };
 
         class ExprCodeBlock: public ExprShim
@@ -5036,13 +4659,13 @@ class AstExpression: public AstExprData
 
         static AstExpression* makeAstItemInlineCall(AstExpression* expr, const char* fname)
         {
+            GenericList<AstExpression*> args;
             auto fntoken = AstToken(AstToken::TOK_IDENT, fname, mc_util_strlen(fname));
             fntoken.m_tokpos = expr->m_exprpos;
             auto ident = ExprIdent(fntoken);
             ident.m_exprpos = fntoken.m_tokpos;
             auto functionidentexpr = makeAstItemIdent(ident);
             functionidentexpr->m_exprpos = expr->m_exprpos;
-            GenericList<AstExpression*> args(0, nullptr);
             args.push(expr);
             auto ce = makeAstItemCallExpr(functionidentexpr, args);
             ce->m_exprpos = expr->m_exprpos;
@@ -5521,12 +5144,7 @@ class AstExpression: public AstExprData
                 expr = nullptr;
             }
         }
-
-
-    public:
 };
-
-
 
 class Traceback
 {
@@ -5565,7 +5183,7 @@ class Traceback
         };
 
     public:
-        GenericList<Item> m_tbitems = GenericList<Item>(0, Item{});
+        GenericList<Item> m_tbitems = GenericList<Item>(0);
 
     public:
         Traceback()
@@ -7272,9 +6890,9 @@ class AstParser
             AstExpression::ExprIfCase* elif;
             AstExpression::ExprCodeBlock alternative;
             AstExpression::ExprCodeBlock emptyblocktop;
+            GenericList<AstExpression::ExprIfCase*> cases;
             (void)ok;
             havealt = false;
-            GenericList<AstExpression::ExprIfCase*> cases(0, nullptr);
             m_lexer.nextToken();
             if(!m_lexer.expectCurrent(AstToken::TOK_LPAREN))
             {
@@ -7606,6 +7224,7 @@ class AstParser
         {
             bool ok;
             AstExpression* expr;
+            GenericList<AstExpression*> statements;
             (void)ok;
             if(!m_lexer.expectCurrent(AstToken::TOK_LBRACE))
             {
@@ -7613,7 +7232,6 @@ class AstParser
             }
             m_lexer.nextToken();
             m_parsedepth++;
-            GenericList<AstExpression*> statements(0, nullptr);
             while(!m_lexer.currentTokenIs(AstToken::TOK_RBRACE))
             {
                 if(m_lexer.currentTokenIs(AstToken::TOK_EOF))
@@ -7994,13 +7612,13 @@ class AstParser
         {
             bool ok;
             AstExpression::ExprCodeBlock body;
+            GenericList<AstExpression::ExprFuncParam*> params;
             (void)ok;
             m_parsedepth++;
             if(m_lexer.currentTokenIs(AstToken::TOK_FUNCTION))
             {
                 m_lexer.nextToken();
             }
-            GenericList<AstExpression::ExprFuncParam*> params(0, nullptr);
             ok = parseFuncParams(&params);
             if(!ok)
             {
@@ -8265,8 +7883,8 @@ class AstParser
         bool parseCallExpr(AstExpression** res, AstExpression* left)
         {
             AstExpression* function;
+            GenericList<AstExpression*> args;
             function = left;
-            GenericList<AstExpression*> args(0, nullptr);
             if(!parseExprList(&args, AstToken::TOK_LPAREN, AstToken::TOK_RPAREN, false))
             {
                 return false;
@@ -9241,13 +8859,13 @@ class AstCompiler
         ErrList* m_ccerrlist = nullptr;
         GenericList<SourceFile*>* m_files = nullptr;
         SymStore* m_compglobalstore = nullptr;
-        GenericList<Value> m_constants = GenericList<Value>(0, Value::makeNull());
+        GenericList<Value> m_constants = GenericList<Value>(0);
         AstScopeComp* m_compilationscope = nullptr;
-        GenericList<SourceLocation> m_srcposstack = GenericList<SourceLocation>(0, SourceLocation::Invalid());
+        GenericList<SourceLocation> m_srcposstack = GenericList<SourceLocation>(0);
         StrDict<char*, Module*>* m_modules = nullptr;
         StrDict<char*, int*>* m_stringconstposdict = nullptr;
         Printer* m_filestderr = nullptr;
-        GenericList<AstScopeFile> m_filescopelist = GenericList<AstScopeFile>(0, AstScopeFile{});
+        GenericList<AstScopeFile> m_filescopelist = GenericList<AstScopeFile>(0);
 
     public:
         AstCompiler()
@@ -9682,8 +9300,8 @@ class AstCompiler
             int afterelifip;
             int pos;
             uint64_t opbuf[10];
+            GenericList<int> jumptoendips;
             auto ifstmt = &expr->m_uexpr.exprifstmt;
-            auto jumptoendips = Memory::make<GenericList<int>>(0, 0);
             for(i = 0; i < ifstmt->m_ifcases.count(); i++)
             {
                 auto ifcase = ifstmt->m_ifcases.get(i);
@@ -9702,7 +9320,7 @@ class AstCompiler
                 {
                     opbuf[0] = 0xbeef;
                     jumptoendip = emitOpCode(Instruction::OPCODE_JUMP, 1, opbuf);
-                    jumptoendips->push(jumptoendip);
+                    jumptoendips.push(jumptoendip);
                 }
                 afterelifip = getip();
                 changeOperand(nextcasejumpip + 1, afterelifip);
@@ -9715,12 +9333,12 @@ class AstCompiler
                 }
             }
             afteraltip = getip();
-            for(i = 0; i < jumptoendips->count(); i++)
+            for(i = 0; i < jumptoendips.count(); i++)
             {
-                pos = jumptoendips->get(i);
+                pos = jumptoendips.get(i);
                 changeOperand(pos + 1, afteraltip);
             }
-            Memory::destroy(jumptoendips);
+            jumptoendips.deInit();
             return true;
         }
 
@@ -11321,10 +10939,10 @@ class State
                 size_t vsposition;
                 Value lastpopped;
                 VMFrame* currframe;
-                GenericList<Value> valuestack = GenericList<Value>(MinValstackSize, Value::makeNull());
-                GenericList<Value> valthisstack = GenericList<Value>(MinVMThisstackSize, Value::makeNull());
-                GenericList<Value> nativethisstack = GenericList<Value>(MinNativeThisstackSize, Value::makeNull());
-                GenericList<VMFrame> framestack = GenericList<VMFrame>(MinVMFrames, VMFrame{});
+                GenericList<Value> valuestack = GenericList<Value>(MinValstackSize);
+                GenericList<Value> valthisstack = GenericList<Value>(MinVMThisstackSize);
+                GenericList<Value> nativethisstack = GenericList<Value>(MinNativeThisstackSize);
+                GenericList<VMFrame> framestack = GenericList<VMFrame>(MinVMFrames);
 
             public:
                 void deInit()
@@ -11350,7 +10968,7 @@ class State
         RuntimeConfig m_config;
         ErrList m_errorlist;
         SymStore* m_vmglobalstore;
-        GenericList<Value> m_globalvalstack = GenericList<Value>(MinVMGlobals, Value::makeNull());;
+        GenericList<Value> m_globalvalstack = GenericList<Value>(MinVMGlobals);
         size_t m_globalvalcount;
         bool m_hadrecovered;
         bool m_running;
@@ -11378,10 +10996,6 @@ class State
             m_vmglobalstore = Memory::make<SymStore>();
             m_sharedcompiler = Memory::make<AstCompiler>(this, &m_config, GCMemory::get(), &m_errorlist, &m_sharedfilelist, m_vmglobalstore, m_stderrprinter);
             mc_state_makestdclasses(this);
-            return;
-        err:
-            deinit();
-            MC_ASSERT(false);
         }
 
         void deinit()
@@ -11740,7 +11354,8 @@ class State
             Traceback* traceback;
             Object::ObjFunction* nativefun;
             nativefun = Value::asFunction(callee);
-            res = nativefun->m_funcdata.valnativefunc.natptrfn(this, nativefun->m_funcdata.valnativefunc.userpointer, selfval, argc, args);
+            auto uptr = nativefun->m_funcdata.valnativefunc.userpointer;
+            res = nativefun->m_funcdata.valnativefunc.natptrfn(this, uptr, selfval, argc, args);
             if(mc_util_unlikely(m_errorlist.count() > 0))
             {
                 err = m_errorlist.getLast();
@@ -12006,7 +11621,7 @@ class State
             Value nstring;
             (void)opcode;
             (void)righttype;
-            nstring = Value::makeStrCapacity(0);
+            nstring = Value::makeStrEmptyCapacity(0);
             nstring.stringAppendValue(valleft);
             nstring.stringAppendValue(valright);
             vmStackPush(nstring);
@@ -12551,9 +12166,9 @@ class State
 
 // bottom
 GCMemory* GCMemory::m_myself = nullptr;
-void GCMemory::wrapDeallocObjData(Object* data)
+void GCMemory::wrapDestroyObjData(Object* data)
 {
-    Object::deallocObjData(data);
+    Object::destroyObjData(data);
 }
 
 
@@ -13085,7 +12700,7 @@ void mc_state_gcsweep()
         }
         else
         {
-            if(Value::canDataBePutInPool(data))
+            if(Value::canStoreInPool(data))
             {
                 pool = GCMemory::get()->getPoolForType(data->m_odtype);
                 pool->m_pooldata.set(pool->m_poolitemcount, data);
@@ -13093,9 +12708,9 @@ void mc_state_gcsweep()
             }
             else
             {
-                Object::deallocObjData(data);
+                Object::destroyObjData(data);
                 /*
-                if(GCMemory::get()->m_poolonlydata.m_poolitemcount < GCMemory::MemPoolSize)
+                if(GCMemory::get()->m_poolonlydata.m_poolitemcount < GCMemory::MinPoolSize)
                 {
                 */
                     GCMemory::get()->m_poolonlydata.m_pooldata.set(GCMemory::get()->m_poolonlydata.m_poolitemcount, data);
@@ -14274,7 +13889,7 @@ Value mc_scriptfn_reverse(State* state, void* data, Value thisval, size_t argc, 
     {
         inpstr = arg.stringGetData();
         inplen = arg.stringGetLength();
-        res = Value::makeStrCapacity(inplen);
+        res = Value::makeStrEmptyCapacity(inplen);
         if(res.isNull())
         {
             return Value::makeNull();
@@ -15231,8 +14846,8 @@ Value mc_objfnarray_map(State* state, void* data, Value thisval, size_t argc, Va
     (void)argc;
     callee = args[0];
     narr = Value::makeArray();
-    auto nary = narr.getActualArray();
-    auto ary = thisval.getActualArray();
+    auto nary = narr.asArray();
+    auto ary = thisval.asArray();
     len = ary->count();
     for(i=0; i<len; i++)
     {
@@ -15911,7 +15526,7 @@ Value mc_scriptutil_slicestring(State* state, void* data, Value thisval, size_t 
     {
         return Value::makeString("", 0);
     }
-    res = Value::makeStrCapacity(10);
+    res = Value::makeStrEmptyCapacity(10);
     if(res.isNull())
     {
         return Value::makeNull();
