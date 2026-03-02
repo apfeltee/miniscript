@@ -1393,48 +1393,13 @@ class Object
                 GenericList<Value>* actualarray;
 
             public:
-                MC_INLINE size_t count()
-                {
-                    return actualarray->m_listcount;
-                }
-
-                template<typename IntT>
-                MC_INLINE auto get(IntT i)
-                {
-                    return actualarray->get(i);
-                }
-
-                template<typename IntT>
-                MC_INLINE auto getp(IntT i)
-                {
-                    return actualarray->getp(i);
-                }
-
-                template<typename IntT, typename VType>
-                MC_INLINE auto set(IntT i, const VType& val)
-                {
-                    return actualarray->set(i, val);
-                }
-
-                template<typename VType>
-                MC_INLINE bool push(const VType& val)
-                {
-                    return actualarray->push(val);
-                }
-
-                template<typename VType>
-                MC_INLINE bool pop(VType* dest)
-                {
-                    return actualarray->pop(dest);
-                }
-
-                template<typename IntT>
-                MC_INLINE bool removeAt(IntT ix)
-                {
-                    return actualarray->removeAt(ix);
-                }
-
-
+                size_t count();
+                Value get(size_t i);
+                Value* getp(size_t i);
+                Value* set(size_t i, const Value& val);
+                bool push(const Value& val);
+                bool pop(Value* dest);
+                bool removeAt(size_t ix);
         };
 
         struct ObjMap
@@ -8789,7 +8754,7 @@ class AstCompiler
             AstScopeFile* srcfilescope;
             AstScopeFile* copyfilescope;
             (void)ok;
-            ok = copy->initBase(src->m_pstate, src->m_config, src->m_astmem, src->m_ccerrlist, src->m_files, src->m_compglobalstore, src->m_filestderr);
+            ok = copy->initBase(src->m_pstate, src->m_config, src->m_astmem, src->m_ccerrlist, src->m_sourcefiles, src->m_compglobalstore, src->m_filestderr);
             if(!ok)
             {
                 return false;
@@ -8857,7 +8822,7 @@ class AstCompiler
         RuntimeConfig* m_config = nullptr;
         GCMemory* m_astmem = nullptr;
         ErrList* m_ccerrlist = nullptr;
-        GenericList<SourceFile*>* m_files = nullptr;
+        GenericList<SourceFile*>* m_sourcefiles = nullptr;
         SymStore* m_compglobalstore = nullptr;
         GenericList<Value> m_constants = GenericList<Value>(0);
         AstScopeComp* m_compilationscope = nullptr;
@@ -8885,7 +8850,7 @@ class AstCompiler
             m_config = cfg;
             m_astmem = gcmem;
             m_ccerrlist = errors;
-            m_files = files;
+            m_sourcefiles = files;
             m_compglobalstore = gstor;
             m_filestderr = fstderr;
             m_modules = Memory::make<StrDict<char*, Module*>>((CallbackCopyFN)Module::copy, (CallbackDestroyFN)Module::destroy);
@@ -10092,6 +10057,204 @@ class AstCompiler
             return true;
         }
 
+        bool compileIdentExpr(AstExpression* expr)
+        {
+            AstSymTable* symtab;
+            AstSymbol* symbol;
+            AstExpression::ExprIdent* ident;
+            symtab = getsymtable();
+            ident = &expr->m_uexpr.exprident;
+            symbol = symtab->resolve(ident->m_identvalue);
+            if(symbol == nullptr)
+            {
+                if(m_config->strictmode)
+                {
+                    m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, ident->m_exprpos, "compilation: failed to resolve symbol \"%s\"", ident->m_identvalue);
+                    return false;
+                }
+                else
+                {
+                    symbol = doDefineSymbol(ident->m_exprpos, ident->m_identvalue, true, false);
+                }
+            }
+            if(!readsymbol(symbol))
+            {
+                return false;
+            }
+            return true;
+        }
+
+        bool compileCallExpr(AstExpression* expr)
+        {
+            size_t i;
+            AstExpression* argexpr;
+            uint64_t opbuf[10];
+            if(!compileExpression(expr->m_uexpr.exprcall.function))
+            {
+                return false;
+            }
+            for(i = 0; i < expr->m_uexpr.exprcall.m_callargs.count(); i++)
+            {
+                argexpr = expr->m_uexpr.exprcall.m_callargs.get(i);
+                if(!compileExpression(argexpr))
+                {
+                    return false;
+                }
+            }
+            opbuf[0] = expr->m_uexpr.exprcall.m_callargs.count();
+            emitOpCode(Instruction::OPCODE_CALL, 1, opbuf);
+            return true;
+        }
+
+        bool compileLogicalExpr(AstExpression* expr)
+        {
+            int afterrightip;
+            int afterleftjumpip;
+            AstExpression::ExprLogical* logi;
+            uint64_t opbuf[10];
+            logi = &expr->m_uexpr.exprlogical;
+            if(!compileExpression(logi->left))
+            {
+                return false;
+            }
+            emitOpCode(Instruction::OPCODE_DUP, 0, nullptr);
+            afterleftjumpip = 0;
+            if(logi->op == AstExpression::MATHOP_LOGICALAND)
+            {
+                opbuf[0] = 0xbeef;
+                afterleftjumpip = emitOpCode(Instruction::OPCODE_JUMPIFFALSE, 1, opbuf);
+            }
+            else
+            {
+                opbuf[0] = 0xbeef;
+                afterleftjumpip = emitOpCode(Instruction::OPCODE_JUMPIFTRUE, 1, opbuf);
+            }
+            if(afterleftjumpip < 0)
+            {
+                return false;
+            }
+            emitOpCode(Instruction::OPCODE_POP, 0, nullptr);
+            if(!compileExpression(logi->right))
+            {
+                return false;
+            }
+            afterrightip = getip();
+            changeOperand(afterleftjumpip + 1, afterrightip);
+            return true;
+        }
+
+        bool compileTernaryExpr(AstExpression* expr)
+        {
+            int endip;
+            int elseip;
+            int endjumpip;
+            int elsejumpip;
+            AstExpression::ExprTernary* ternary;
+            uint64_t opbuf[10];
+            ternary = &expr->m_uexpr.exprternary;
+            if(!compileExpression(ternary->tercond))
+            {
+                return false;
+            }
+            opbuf[0] = 0xbeef;
+            elsejumpip = emitOpCode(Instruction::OPCODE_JUMPIFFALSE, 1, opbuf);
+            if(!compileExpression(ternary->teriftrue))
+            {
+                return false;
+            }
+            opbuf[0] = 0xbeef;
+            endjumpip = emitOpCode(Instruction::OPCODE_JUMP, 1, opbuf);
+            elseip = getip();
+            changeOperand(elsejumpip + 1, elseip);
+            if(!compileExpression(ternary->teriffalse))
+            {
+                return false;
+            }
+            endip = getip();
+            changeOperand(endjumpip + 1, endip);
+            return true;
+        }
+
+        bool compileForloopStmt(AstExpression* expr)
+        {
+            int afterbodyip;
+            int jumptoafterupdateip;
+            int updateip;
+            int afterupdateip;
+            int aftertestip;
+            int jumptoafterbodyip;
+            uint64_t opbuf[10];
+            auto symtab = getsymtable();
+            auto loop = &expr->m_uexpr.exprforloopstmt;
+            symtab->scopeBlockPush();
+            /* Init */
+            jumptoafterupdateip = 0;
+            if(loop->init != nullptr)
+            {
+                if(!compileExpression(loop->init))
+                {
+                    return false;
+                }
+                opbuf[0] = 0xbeef;
+                jumptoafterupdateip = emitOpCode(Instruction::OPCODE_JUMP, 1, opbuf);
+                if(jumptoafterupdateip < 0)
+                {
+                    return false;
+                }
+            }
+            /* Update */
+            updateip = getip();
+            if(loop->update != nullptr)
+            {
+                if(!compileExpression(loop->update))
+                {
+                    return false;
+                }
+                emitOpCode(Instruction::OPCODE_POP, 0, nullptr);
+            }
+            if(loop->init != nullptr)
+            {
+                afterupdateip = getip();
+                changeOperand(jumptoafterupdateip + 1, afterupdateip);
+            }
+            /* Test */
+            if(loop->loopcond != nullptr)
+            {
+                if(!compileExpression(loop->loopcond))
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                emitOpCode(Instruction::OPCODE_TRUE, 0, nullptr);
+            }
+            aftertestip = getip();
+            opbuf[0] = aftertestip + 6;
+            emitOpCode(Instruction::OPCODE_JUMPIFTRUE, 1, opbuf);
+            opbuf[0] = 0xdead;
+            jumptoafterbodyip = emitOpCode(Instruction::OPCODE_JUMP, 1, opbuf);
+            if(jumptoafterbodyip < 0)
+            {
+                return false;
+            }
+            /* Body */
+            pushcontinueip(updateip);
+            pushbreakip(jumptoafterbodyip);
+            if(!compilecodeblock(&loop->body))
+            {
+                return false;
+            }
+            popbreakip();
+            popcontinueip();
+            opbuf[0] = updateip;
+            emitOpCode(Instruction::OPCODE_JUMP, 1, opbuf);
+            afterbodyip = getip();
+            changeOperand(jumptoafterbodyip + 1, afterbodyip);
+            symtab->scopeBlockPop();
+            return true;
+        }
+
         bool compileExpression(AstExpression* expr)
         {
             bool res;
@@ -10163,25 +10326,7 @@ class AstCompiler
                     break;
                 case AstExpression::EXPR_IDENT:
                     {
-                        AstSymTable* symtab;
-                        AstSymbol* symbol;
-                        AstExpression::ExprIdent* ident;
-                        symtab = getsymtable();
-                        ident = &expr->m_uexpr.exprident;
-                        symbol = symtab->resolve(ident->m_identvalue);
-                        if(symbol == nullptr)
-                        {
-                            if(m_config->strictmode)
-                            {
-                                m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, ident->m_exprpos, "compilation: failed to resolve symbol \"%s\"", ident->m_identvalue);
-                                goto error;
-                            }
-                            else
-                            {
-                                symbol = doDefineSymbol(ident->m_exprpos, ident->m_identvalue, true, false);
-                            }
-                        }
-                        if(!readsymbol(symbol))
+                        if(!compileIdentExpr(expr))
                         {
                             goto error;
                         }
@@ -10205,23 +10350,10 @@ class AstCompiler
                     break;
                 case AstExpression::EXPR_CALL:
                     {
-                        size_t i;
-                        AstExpression* argexpr;
-                        uint64_t opbuf[10];
-                        if(!compileExpression(expr->m_uexpr.exprcall.function))
+                        if(!compileCallExpr(expr))
                         {
                             goto error;
                         }
-                        for(i = 0; i < expr->m_uexpr.exprcall.m_callargs.count(); i++)
-                        {
-                            argexpr = expr->m_uexpr.exprcall.m_callargs.get(i);
-                            if(!compileExpression(argexpr))
-                            {
-                                goto error;
-                            }
-                        }
-                        opbuf[0] = expr->m_uexpr.exprcall.m_callargs.count();
-                        emitOpCode(Instruction::OPCODE_CALL, 1, opbuf);
                     }
                     break;
                 case AstExpression::EXPR_ASSIGN:
@@ -10235,69 +10367,18 @@ class AstCompiler
 
                 case AstExpression::EXPR_LOGICAL:
                     {
-                        int afterrightip;
-                        int afterleftjumpip;
-                        AstExpression::ExprLogical* logi;
-                        uint64_t opbuf[10];
-                        logi = &expr->m_uexpr.exprlogical;
-                        if(!compileExpression(logi->left))
+                        if(!compileLogicalExpr(expr))
                         {
                             goto error;
                         }
-                        emitOpCode(Instruction::OPCODE_DUP, 0, nullptr);
-                        afterleftjumpip = 0;
-                        if(logi->op == AstExpression::MATHOP_LOGICALAND)
-                        {
-                            opbuf[0] = 0xbeef;
-                            afterleftjumpip = emitOpCode(Instruction::OPCODE_JUMPIFFALSE, 1, opbuf);
-                        }
-                        else
-                        {
-                            opbuf[0] = 0xbeef;
-                            afterleftjumpip = emitOpCode(Instruction::OPCODE_JUMPIFTRUE, 1, opbuf);
-                        }
-                        if(afterleftjumpip < 0)
-                        {
-                            goto error;
-                        }
-                        emitOpCode(Instruction::OPCODE_POP, 0, nullptr);
-                        if(!compileExpression(logi->right))
-                        {
-                            goto error;
-                        }
-                        afterrightip = getip();
-                        changeOperand(afterleftjumpip + 1, afterrightip);
                     }
                     break;
                 case AstExpression::EXPR_TERNARY:
                     {
-                        int endip;
-                        int elseip;
-                        int endjumpip;
-                        int elsejumpip;
-                        AstExpression::ExprTernary* ternary;
-                        uint64_t opbuf[10];
-                        ternary = &expr->m_uexpr.exprternary;
-                        if(!compileExpression(ternary->tercond))
+                        if(!compileTernaryExpr(expr))
                         {
                             goto error;
                         }
-                        opbuf[0] = 0xbeef;
-                        elsejumpip = emitOpCode(Instruction::OPCODE_JUMPIFFALSE, 1, opbuf);
-                        if(!compileExpression(ternary->teriftrue))
-                        {
-                            goto error;
-                        }
-                        opbuf[0] = 0xbeef;
-                        endjumpip = emitOpCode(Instruction::OPCODE_JUMP, 1, opbuf);
-                        elseip = getip();
-                        changeOperand(elsejumpip + 1, elseip);
-                        if(!compileExpression(ternary->teriffalse))
-                        {
-                            goto error;
-                        }
-                        endip = getip();
-                        changeOperand(endjumpip + 1, endip);
                     }
                     break;
 
@@ -10369,81 +10450,10 @@ class AstCompiler
                     break;
                 case AstExpression::EXPR_STMTLOOPFORCLASSIC:
                     {
-                        int afterbodyip;
-                        int jumptoafterupdateip;
-                        int updateip;
-                        int afterupdateip;
-                        int aftertestip;
-                        int jumptoafterbodyip;
-                        uint64_t opbuf[10];
-                        auto symtab = getsymtable();
-                        auto loop = &expr->m_uexpr.exprforloopstmt;
-                        symtab->scopeBlockPush();
-                        /* Init */
-                        jumptoafterupdateip = 0;
-                        if(loop->init != nullptr)
-                        {
-                            if(!compileExpression(loop->init))
-                            {
-                                goto error;
-                            }
-                            opbuf[0] = 0xbeef;
-                            jumptoafterupdateip = emitOpCode(Instruction::OPCODE_JUMP, 1, opbuf);
-                            if(jumptoafterupdateip < 0)
-                            {
-                                goto error;
-                            }
-                        }
-                        /* Update */
-                        updateip = getip();
-                        if(loop->update != nullptr)
-                        {
-                            if(!compileExpression(loop->update))
-                            {
-                                goto error;
-                            }
-                            emitOpCode(Instruction::OPCODE_POP, 0, nullptr);
-                        }
-                        if(loop->init != nullptr)
-                        {
-                            afterupdateip = getip();
-                            changeOperand(jumptoafterupdateip + 1, afterupdateip);
-                        }
-                        /* Test */
-                        if(loop->loopcond != nullptr)
-                        {
-                            if(!compileExpression(loop->loopcond))
-                            {
-                                goto error;
-                            }
-                        }
-                        else
-                        {
-                            emitOpCode(Instruction::OPCODE_TRUE, 0, nullptr);
-                        }
-                        aftertestip = getip();
-                        opbuf[0] = aftertestip + 6;
-                        emitOpCode(Instruction::OPCODE_JUMPIFTRUE, 1, opbuf);
-                        opbuf[0] = 0xdead;
-                        jumptoafterbodyip = emitOpCode(Instruction::OPCODE_JUMP, 1, opbuf);
-                        if(jumptoafterbodyip < 0)
+                        if(!compileForloopStmt(expr))
                         {
                             goto error;
                         }
-                        /* Body */
-                        pushcontinueip(updateip);
-                        pushbreakip(jumptoafterbodyip);
-                        if(!compilecodeblock(&loop->body))
-                        {
-                            goto error;
-                        }
-                        popbreakip();
-                        popcontinueip();
-                        opbuf[0] = updateip;
-                        emitOpCode(Instruction::OPCODE_JUMP, 1, opbuf);
-                        afterbodyip = getip();
-                        changeOperand(jumptoafterbodyip + 1, afterbodyip);
-                        symtab->scopeBlockPop();
                     }
                     break;
                 case AstExpression::EXPR_STMTBLOCK:
@@ -10719,7 +10729,7 @@ class AstCompiler
                 prevst = getsymtable();
             }
             file = Memory::make<SourceFile>(filepath);
-            m_files->push(file);
+            m_sourcefiles->push(file);
             AstScopeFile filescope(m_config, m_ccerrlist, file);
             m_filescopelist.push(filescope);
             globaloffset = 0;
@@ -10766,7 +10776,7 @@ class AstCompiler
             m_compilationscope = scope;
         }
 
-        CompiledProgram* compilesource(const char* code, const char* filename)
+        CompiledProgram* compileSource(const char* code, const char* filename)
         {
             AstCompiler compshallowcopy;
             AstScopeComp* compscope;
@@ -11194,10 +11204,9 @@ class State
                 /* to avoid gcing freed objects */
                 count = nsp - m_execstate.vsposition;
                 bytescount = (count - 0) * sizeof(Value);
-                for(i=(m_execstate.vsposition - 0); (i != bytescount) && (i < m_execstate.valuestack.m_listcapacity); i++)
+                for(i=(m_execstate.vsposition - 0); (i != bytescount) && (i < m_execstate.valuestack.capacity()); i++)
                 {
-                    //memset(&m_execstate.valuestack.m_listitems[i], 0, sizeof(Value));
-                    m_execstate.valuestack.m_listitems[i].m_valtype = Value::VALTYP_NULL;
+                    m_execstate.valuestack.getp(i)->m_valtype = Value::VALTYP_NULL;
                 }
             }
             #endif
@@ -11221,7 +11230,11 @@ class State
                 MC_ASSERT((size_t)m_execstate.vsposition >= (size_t)(frame->m_basepointer + numlocals));
             }
         #endif
-            m_execstate.valuestack.set(m_execstate.vsposition, obj);
+            #if 1
+                m_execstate.valuestack.set(m_execstate.vsposition, obj);
+            #else
+                m_execstate.valuestack.push(obj);
+            #endif
             m_execstate.vsposition++;
         }
 
@@ -11306,10 +11319,10 @@ class State
             int add;
             Object::ObjFunction* framefunction;
             add = 0;
-            m_execstate.framestack.set(m_execstate.framestack.m_listcount, frame);
+            m_execstate.framestack.set(m_execstate.framestack.count(), frame);
             add = 1;
-            m_execstate.currframe = m_execstate.framestack.getp(m_execstate.framestack.m_listcount);
-            m_execstate.framestack.m_listcount += add;
+            m_execstate.currframe = m_execstate.framestack.getp(m_execstate.framestack.count());
+            m_execstate.framestack.push(frame);
             framefunction = Value::asFunction(frame.m_function);
             setStackPos(frame.m_basepointer + framefunction->m_funcdata.valscriptfunc.numlocals);
             return true;
@@ -11318,19 +11331,19 @@ class State
         MC_INLINE bool vmPopFrame()
         {
             setStackPos(m_execstate.currframe->m_basepointer - 1);
-            if(m_execstate.framestack.m_listcount <= 0)
+            if(m_execstate.framestack.count() <= 0)
             {
                 MC_ASSERT(false);
                 m_execstate.currframe = NULL;
                 return false;
             }
-            m_execstate.framestack.m_listcount--;
-            if(m_execstate.framestack.m_listcount == 0)
+            m_execstate.framestack.pop(nullptr);
+            if(m_execstate.framestack.count() == 0)
             {
                 m_execstate.currframe = NULL;
                 return false;
             }
-            m_execstate.currframe = m_execstate.framestack.getp(m_execstate.framestack.m_listcount - 1);
+            m_execstate.currframe = m_execstate.framestack.getp(m_execstate.framestack.count() - 1);
             return true;
         }
 
@@ -12146,11 +12159,11 @@ class State
             }
         }
 
-        CompiledProgram* compileSource(const char* code, const char* filename)
+        CompiledProgram* compileToProgram(const char* code, const char* filename)
         {
             CompiledProgram* compres;
             errorsClear();
-            compres = m_sharedcompiler->compilesource(code, filename);
+            compres = m_sharedcompiler->compileSource(code, filename);
             if(m_errorlist.count() > 0)
             {
                 goto err;
@@ -12171,6 +12184,40 @@ void GCMemory::wrapDestroyObjData(Object* data)
     Object::destroyObjData(data);
 }
 
+size_t Object::ObjArray::count()
+{
+    return actualarray->count();
+}
+
+Value Object::ObjArray::get(size_t i)
+{
+    return actualarray->get(i);
+}
+
+Value* Object::ObjArray::getp(size_t i)
+{
+    return actualarray->getp(i);
+}
+
+Value* Object::ObjArray::set(size_t i, const Value& val)
+{
+    return actualarray->set(i, val);
+}
+
+bool Object::ObjArray::push(const Value& val)
+{
+    return actualarray->push(val);
+}
+
+bool Object::ObjArray::pop(Value* dest)
+{
+    return actualarray->pop(dest);
+}
+
+bool Object::ObjArray::removeAt(size_t ix)
+{
+    return actualarray->removeAt(ix);
+}
 
 void Value::valPrintObjError(Printer* pr, const Value& obj)
 {
@@ -12816,7 +12863,7 @@ void mc_vm_reset(State* state)
 {
     state->m_execstate.vsposition = 0;
     state->m_execstate.thisstpos = 0;
-    while(state->m_execstate.framestack.m_listcount > 0)
+    while(state->m_execstate.framestack.count() > 0)
     {
         state->vmPopFrame();
     }
@@ -14134,7 +14181,7 @@ Value mc_scriptfn_print(State* state, void* data, Value thisval, size_t argc, Va
     {
         arg = args[i];
         Value::printValue(pr, arg, false);
-        //state->m_stdoutprinter->flush();
+        state->m_stdoutprinter->flush();
     }
     return Value::makeNull();
 }
@@ -14145,7 +14192,7 @@ Value mc_scriptfn_println(State* state, void* data, Value thisval, size_t argc, 
     (void)thisval;
     o = mc_scriptfn_print(state, data, thisval, argc, args);
     state->m_stdoutprinter->putChar('\n');
-    //state->m_stdoutprinter->flush();
+    state->m_stdoutprinter->flush();
     return o;
 }
 
@@ -16078,7 +16125,7 @@ bool mc_cli_compileandrunsource(State* state, Value* vdest, const char* source, 
     Value tmp;
     CompiledProgram* program;
     ok = false;
-    program = state->compileSource(source, filename);
+    program = state->compileToProgram(source, filename);
     if(state->m_config.exitaftercompiling)
     {
         Memory::destroy(program);

@@ -57,7 +57,9 @@ begin
     fullcmd = []
     # where the magic happens
     if usevalgrind then
-      fullcmd = ["valgrind", "--leak-check=full", *execmd]
+      extraargs = []
+      #extraargs.push("--leak-check=full")
+      fullcmd = ["valgrind", *extraargs, *execmd]
     else
       fullcmd = [*execmd]
     end

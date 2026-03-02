@@ -1,6 +1,4 @@
 
-
-
 template<typename ValType>
 class GenericList
 {
@@ -21,7 +19,7 @@ class GenericList
             }
         }
 
-        static MC_INLINE void destroy(GenericList* list, OnDestroyFN dfn)
+        static void destroy(GenericList* list, OnDestroyFN dfn)
         {
             if(list != nullptr)
             {    
@@ -34,7 +32,7 @@ class GenericList
             }
         }
 
-        static MC_INLINE void clearAndDestroy(GenericList* list, OnDestroyFN dfn)
+        static void clearAndDestroy(GenericList* list, OnDestroyFN dfn)
         {
             size_t i;
             for(i = 0; i < list->count(); i++)
@@ -48,7 +46,7 @@ class GenericList
             list->clear();
         }
 
-        MC_INLINE GenericList* copyToHeap(OnCopyFN copyfn, OnDestroyFN dfn)
+        GenericList* copyToHeap(OnCopyFN copyfn, OnDestroyFN dfn)
         {
             bool ok;
             size_t i;
@@ -80,14 +78,14 @@ class GenericList
             return nullptr;
         }
 
-        MC_INLINE GenericList* copyToHeap()
+        GenericList* copyToHeap()
         {
             OnCopyFN dummycopy = nullptr;
             OnDestroyFN dummydel = nullptr;
             return copyToHeap(dummycopy, dummydel);
         }
 
-        MC_INLINE bool copyToStack(GenericList* dest, OnCopyFN copyfn, OnDestroyFN dfn)
+        bool copyToStack(GenericList* dest, OnCopyFN copyfn, OnDestroyFN dfn)
         {
             bool ok;
             size_t i;
@@ -117,21 +115,21 @@ class GenericList
             return false;
         }
 
-        MC_INLINE bool copyToStack(GenericList* dest)
+        bool copyToStack(GenericList* dest)
         {
             OnCopyFN dummycopy = nullptr;
             OnDestroyFN dummydel = nullptr;
             return copyToStack(dest, dummycopy, dummydel);
         }
 
-        MC_INLINE GenericList copyToStack(OnCopyFN copyfn, OnDestroyFN dfn)
+        GenericList copyToStack(OnCopyFN copyfn, OnDestroyFN dfn)
         {
             GenericList dest;
             copyToStack(&dest, copyfn, dfn);
             return dest;
         }
 
-        MC_INLINE GenericList copyToStack()
+        GenericList copyToStack()
         {
             GenericList dest;
             copyToStack(&dest);
@@ -144,7 +142,7 @@ class GenericList
         ValType* m_listitems;
 
     private:
-        MC_INLINE bool removeAtIntern(unsigned int ix)
+        bool removeAtIntern(unsigned int ix)
         {
             size_t tomovebytes;
             void* src;
@@ -162,7 +160,7 @@ class GenericList
             return true;
         }
 
-        MC_INLINE void ensureCapacity(size_t needsize, const ValType& fillval, bool first)
+        void ensureCapacity(size_t needsize, const ValType& fillval, bool first)
         {
             size_t i;
             size_t ncap;
@@ -189,7 +187,7 @@ class GenericList
         }
 
         template<typename OtherT>
-        MC_INLINE void moveFrom(OtherT* other)
+        void moveFrom(OtherT* other)
         {
             m_listcount = other->m_listcount;
             m_listcapacity = other->m_listcapacity;
@@ -197,21 +195,21 @@ class GenericList
         }
 
     public:
-        MC_INLINE GenericList(): GenericList(0)
+        GenericList(): GenericList(0)
         {
         }
 
-        MC_INLINE GenericList(GenericList&& other)
-        {
-            moveFrom(&other);
-        }
-
-        MC_INLINE GenericList(const GenericList& other)
+        GenericList(GenericList&& other)
         {
             moveFrom(&other);
         }
 
-        MC_INLINE GenericList(size_t initialsize)
+        GenericList(const GenericList& other)
+        {
+            moveFrom(&other);
+        }
+
+        GenericList(size_t initialsize)
         {
             m_listcount = 0;
             m_listcapacity = 0;
@@ -229,25 +227,27 @@ class GenericList
             }
         }
 
-        MC_INLINE ~GenericList()
+        ~GenericList()
         {
             //deInit();
         }
 
-        MC_INLINE GenericList& operator=(const GenericList& other)
+        GenericList& operator=(const GenericList& other)
         {
             moveFrom(&other);
             return *this;
         }
 
-        MC_INLINE void orphanData()
+        void orphanData()
         {
+            #if 1
             m_listcount = 0;
             m_listcapacity = 0;
             m_listitems = nullptr;
+            #endif
         }
 
-        MC_INLINE void deInit(OnDestroyFN dfn)
+        void deInit(OnDestroyFN dfn)
         {
             size_t i;
             for(i=0; i<m_listcount; i++)
@@ -258,7 +258,7 @@ class GenericList
             deInit();
         }
 
-        MC_INLINE void deInit()
+        void deInit()
         {
             if(m_listitems != nullptr)
             {
@@ -269,32 +269,37 @@ class GenericList
             m_listcapacity = 0;
         }
 
-        MC_INLINE void clear()
+        void clear()
         {
             m_listcount = 0;
         }
 
-        MC_INLINE size_t count() const
+        size_t count() const
         {
             return m_listcount;
         }
 
-        MC_INLINE ValType* data() const
+        size_t capacity() const
+        {
+            return m_listcapacity;
+        }
+
+        ValType* data() const
         {
             return m_listitems;
         }
 
-        MC_INLINE ValType get(size_t idx) const
+        ValType get(size_t idx) const
         {
             return m_listitems[idx];
         }
 
-        MC_INLINE ValType* getp(size_t idx) const
+        ValType* getp(size_t idx) const
         {
             return &m_listitems[idx];
         }
 
-        MC_INLINE ValType top() const
+        ValType top() const
         {
             if(m_listcount == 0)
             {
@@ -310,17 +315,22 @@ class GenericList
             return get(m_listcount - 1);
         }
 
-        MC_INLINE ValType* topp() const
+        ValType* topp() const
         {
+            int ofs = 0;
             if(m_listcount == 0)
             {
                 return nullptr;
             }
-            return getp(m_listcount - 1);
+            if(m_listcount > 0)
+            {
+                ofs = m_listcount - 1;
+            }
+            return getp(ofs);
         }
 
 
-        MC_INLINE ValType* set(size_t idx, const ValType& val)
+        ValType* set(size_t idx, const ValType& val)
         {
             size_t need;
             need = idx + 1;
@@ -343,7 +353,7 @@ class GenericList
             return &m_listitems[idx];
         }
 
-        MC_INLINE bool push(const ValType& value)
+        bool push(const ValType& value)
         {
             size_t oldcap;
             if(m_listcapacity < m_listcount + 1)
@@ -364,7 +374,7 @@ class GenericList
             return true;
         }
 
-        MC_INLINE bool pop(ValType* dest)
+        bool pop(ValType* dest)
         {
             if(m_listcount > 0)
             {
@@ -378,7 +388,7 @@ class GenericList
             return false;
         }
 
-        MC_INLINE bool removeAt(unsigned int ix)
+        bool removeAt(unsigned int ix)
         {
             if(ix >= m_listcount)
             {
@@ -394,7 +404,7 @@ class GenericList
             return removeAtIntern(ix);
         }
 
-        MC_INLINE void setEmpty()
+        void setEmpty()
         {
             if((m_listcapacity > 0) && (m_listitems != nullptr))
             {

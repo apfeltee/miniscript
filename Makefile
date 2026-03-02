@@ -33,7 +33,7 @@ WFLAGS = -Wall -Wextra -Wshadow -Wpointer-arith -Wuninitialized -Winit-self  $(a
 #WFLAGS = -w
 
 
-OPTFLAGS = -Og
+OPTFLAGS = -O0
 #OPTFLAGS = -O5 -funroll-loops -flto -ffast-math 
 
 ## empty by default
@@ -54,7 +54,7 @@ EXTRAFLAGS =
 #EXTRAFLAGS += -fdata-sections -ffunction-sections -Wl,--gc-sections -Wl,--print-gc-sections
 
 CXX = g++ -std=c++20 $(WFLAGS) $(EXTRAFLAGS)
-CXX = clang++ -gdwarf-4 -std=c++2c $(WFLAGS) $(EXTRAFLAGS)
+#CXX = clang++ -gdwarf-4 -std=c++2c $(WFLAGS) $(EXTRAFLAGS)
 
 CC = gcc $(WFLAGS) $(EXTRAFLAGS)
 #CC = tcc $(WFLAGS) $(EXTRAFLAGS)
