@@ -1200,7 +1200,6 @@ class ValData
         } m_uval;
 };
 
-
 class GCMemory
 {
     public:
@@ -1210,7 +1209,7 @@ class GCMemory
             SweepInterval = (128),
         };
 
-        struct DataPool
+        class DataPool
         {
             public:
                 GenericList<Object*> m_pooldata = GenericList<Object*>(MinPoolSize);
@@ -1239,7 +1238,7 @@ class GCMemory
             Object* obj;
             if(m != nullptr)
             {
-                Memory::destroy(m->m_gcobjlistremains);
+                m->m_gcobjlistremains.deInit();
                 Memory::destroy(m->m_gcobjlistback);
                 for(i = 0; i < m->m_gcobjliststored->count(); i++)
                 {
@@ -1284,7 +1283,7 @@ class GCMemory
         int m_allocssincesweep;
         GenericList<Object*>* m_gcobjliststored;
         GenericList<Object*>* m_gcobjlistback;
-        GenericList<ValData>* m_gcobjlistremains;
+        GenericList<Value> m_gcobjlistremains;
         DataPool m_poolonlydata;
         DataPool m_poolarray;
         DataPool m_poolmap;
@@ -1303,7 +1302,6 @@ class GCMemory
         {
             m_gcobjliststored = Memory::make<GenericList<Object*>>();
             m_gcobjlistback = Memory::make<GenericList<Object*>>();
-            m_gcobjlistremains = Memory::make<GenericList<ValData>>(0);
             m_allocssincesweep = 0;
             initPool(&m_poolonlydata);
             initPool(&m_poolarray);
@@ -1336,12 +1334,6 @@ class GCMemory
 class Object
 {
     public:
-
-        union ValUnion
-        {
-        };
-
-    public:
         static Object* getDataFromPool(ValData::Type type)
         {
             Object* data;
@@ -1367,7 +1359,6 @@ class Object
         int8_t m_odtype;
         int8_t m_gcmark;
         GCMemory* m_objmem;
-        ValUnion m_uvobj;
 
     public:
         MC_INLINE Object()
@@ -1387,7 +1378,7 @@ class Value: public ValData
             public:
         };
 
-        struct ObjString: public Object
+        class ObjString: public Object
         {
             public:
                 unsigned long m_hashval;
@@ -1397,7 +1388,7 @@ class Value: public ValData
 
         };
 
-        struct ObjFunction: public Object
+        class ObjFunction: public Object
         {
             public:
                 enum
@@ -1473,8 +1464,7 @@ class Value: public ValData
                     return m_actualarray->count();
                 }
 
-                template<typename SizeT>
-                MC_INLINE auto get(SizeT i)
+                MC_INLINE Value get(size_t i)
                 {
                     return m_actualarray->get(i);
                 }
@@ -1484,20 +1474,17 @@ class Value: public ValData
                     return m_actualarray->getp(i);
                 }
 
-                template<typename ValT>
-                MC_INLINE Value* set(size_t i, const ValT& val)
+                MC_INLINE Value* set(size_t i, const Value& val)
                 {
                     return m_actualarray->set(i, val);
                 }
 
-                template<typename ValT>
-                MC_INLINE bool push(const ValT& val)
+                MC_INLINE bool push(const Value& val)
                 {
                     return m_actualarray->push(val);
                 }
 
-                template<typename DestT>
-                MC_INLINE bool pop(DestT* dest)
+                MC_INLINE bool pop(Value* dest)
                 {
                     return m_actualarray->pop(dest);
                 }
@@ -1506,7 +1493,6 @@ class Value: public ValData
                 {
                     return m_actualarray->removeAt(ix);
                 }
-
         };
 
         class ObjMap: public Object
@@ -1546,7 +1532,6 @@ class Value: public ValData
                 {
                     return m_actualmap->setValueAt(ix, value);
                 }
-    
         };
 
     public:
@@ -1652,8 +1637,6 @@ class Value: public ValData
             data->m_odtype = ValData::VALTYP_FREED;
         }
 
-
-
         static bool canStoreInPool(Object* data)
         {
             #if 0
@@ -1688,7 +1671,7 @@ class Value: public ValData
                     {
                         #if 0
                         auto os = (ObjString*)data;
-                        if(!data->isAllocated() || data->m_uvobj.valstring.capacity > 4096)
+                        if(!os->isAllocated() || os->capacity() > 4096)
                         {
                             return false;
                         }
@@ -3238,11 +3221,12 @@ static_assert(sizeof(ValData) == sizeof(Value));
 class ObjClass
 {
     public:
-        struct Field
+        class Field
         {
-            const char* name;
-            bool ispseudo;
-            CallbackNativeFN fndest;
+            public:
+                const char* name;
+                bool ispseudo;
+                CallbackNativeFN fndest;
         };
 
     public:
@@ -4181,48 +4165,135 @@ class AstExprData
             MATHOP_RSHIFT
         };
 
+        class ExprLiteralNull
+        {
+        };
 
-        class ExprCodeBlock
+        class ExprLiteralNumber
+        {
+            public:
+                NumFloat m_exprnumber;
+        };
+
+        class ExprLiteralBool
+        {
+            public:
+                bool m_exprbool;
+        };
+
+        class Identifier
+        {
+            public:
+                char* m_identvalue = nullptr;
+                SourceLocation m_exprpos = SourceLocation::Invalid();
+
+            public:
+                Identifier()
+                {
+                }
+
+                Identifier(AstToken tok)
+                {
+                    m_identvalue = tok.dupLiteralString();
+                    m_exprpos = tok.m_tokpos;
+                }
+
+                static Identifier* copy(Identifier* ident)
+                {
+                    Identifier* res = Memory::make<Identifier>();
+                    res->m_identvalue = mc_util_strdup(ident->m_identvalue);
+                    res->m_exprpos = ident->m_exprpos;
+                    return res;
+                }
+
+                static void destroy(Identifier* ident)
+                {
+                    if(ident != nullptr)
+                    {
+                        mc_memory_free(ident->m_identvalue);
+                        ident->m_identvalue = nullptr;
+                        ident->m_exprpos = SourceLocation::Invalid();
+                        mc_memory_free(ident);
+                    }
+                }
+        };
+
+        class ExprReturnStmt
+        {
+            public:
+                AstExpression* m_exprretvalue;
+        };
+
+
+        class ExprExpression
+        {
+            public:
+                AstExpression* m_exprexprvalue;
+        };
+
+        class ExprBreakStmt
+        {
+        };
+
+        class ExprContinueStmt
+        {
+        };
+
+        class CodeBlock
         {
             public:
                 GenericList<AstExpression*> m_blockstatements;
 
             public:
-                ExprCodeBlock()
-                {
-                }
-
-                ExprCodeBlock(const GenericList<AstExpression*>& stmts)
+                CodeBlock(const GenericList<AstExpression*>& stmts)
                 {
                     m_blockstatements = stmts;
                 }
 
-                ~ExprCodeBlock()
+                static void destroy(CodeBlock* block)
                 {
+                    if(block != nullptr)
+                    {
+                        block->m_blockstatements.deInit(destroyExprData<AstExpression>);
+                        mc_memory_free(block);
+                    }
                 }
 
-                static ExprCodeBlock copy(ExprCodeBlock* block)
+                static CodeBlock* copy(CodeBlock* block)
                 {
+                    if(!block)
+                    {
+                        return nullptr;
+                    }
                     auto copyfn = AstExprData::copyExprData<AstExpression>;
                     auto delfn = AstExprData::destroyExprData<AstExpression>;
                     auto statementscopy = block->m_blockstatements.copyToStack(copyfn, delfn);
-                    return ExprCodeBlock(statementscopy);
-                }
-
-                void deInit()
-                {
-                    m_blockstatements.deInit(destroyExprData<AstExpression>);
+                    auto res = Memory::make<CodeBlock>(statementscopy);
+                    return res;
                 }
         };
+
+        class ExprIdent
+        {
+            public:
+                Identifier* m_expridvalue;
+        };
+
+        class ExprBlock
+        {
+            public:
+                CodeBlock* m_exprblockvalue;
+        };
+
 
         class ExprIfCase
         {
             public:
                 AstExpression* m_ifcond;
-                ExprCodeBlock m_ifthen;
+                CodeBlock* m_ifthen;
 
             public:
-                ExprIfCase(AstExpression* test, const ExprCodeBlock& consq)
+                ExprIfCase(AstExpression* test, CodeBlock* consq)
                 {
                     m_ifcond = test;
                     m_ifthen = consq;
@@ -4230,10 +4301,33 @@ class AstExprData
 
                 static ExprIfCase* copy(ExprIfCase* ifcase)
                 {
-                    auto testcopy = copyExprData(ifcase->m_ifcond);
-                    auto consequencecopy = ExprCodeBlock::copy(&ifcase->m_ifthen);
-                    auto ifcasecopy = Memory::make<ExprIfCase>(testcopy, consequencecopy);
+                    AstExpression* testcopy;
+                    CodeBlock* consequencecopy;
+                    ExprIfCase* ifcasecopy;
+                    testcopy = nullptr;
+                    consequencecopy = nullptr;
+                    ifcasecopy = nullptr;
+                    if(!ifcase)
+                    {
+                        return nullptr;
+                    }
+                    testcopy = copyExprData(ifcase->m_ifcond);
+                    if(!testcopy)
+                    {
+                        goto err;
+                    }
+                    consequencecopy = CodeBlock::copy(ifcase->m_ifthen);
+                    if(!testcopy || !consequencecopy)
+                    {
+                        goto err;
+                    }
+                    ifcasecopy = Memory::make<ExprIfCase>(testcopy, consequencecopy);
                     return ifcasecopy;
+                err:
+                    destroyExprData(testcopy);
+                    Memory::destroy(consequencecopy);
+                    ExprIfCase::destroy(ifcasecopy);
+                    return nullptr;
                 }
 
                 static void destroy(ExprIfCase* cond)
@@ -4241,101 +4335,71 @@ class AstExprData
                     if(cond != nullptr)
                     {
                         destroyExprData(cond->m_ifcond);
-                        cond->m_ifthen.deInit();
+                        Memory::destroy(cond->m_ifthen);
                         mc_memory_free(cond);
                     }
                 }
         };
 
-        struct ExprIfStmt
-        {
-            bool m_haveifstmtelsestmt;
-            GenericList<ExprIfCase*> m_ifcases;
-            ExprCodeBlock m_ifstmtelsestmt;
-        };
-
-        struct ExprLiteralMap
-        {
-            GenericList<AstExpression*> m_litmapkeys;
-            GenericList<AstExpression*> m_litmapvalues;
-        };
-
-        struct ExprLiteralArray
-        {
-            GenericList<AstExpression*> m_litarritems;
-        };
-
-        struct ExprLiteralString
-        {
-            size_t m_strexprlength;
-            char* m_strexprdata;
-        };
-
-        struct ExprPrefix
-        {
-            MathOpType op;
-            AstExpression* right;
-        };
-
-        struct ExprInfix
-        {
-            MathOpType op;
-            AstExpression* left;
-            AstExpression* right;
-        };
-
-        class ExprIdent
+        class ExprIfStmt
         {
             public:
-                char* m_identvalue = nullptr;
-                SourceLocation m_exprpos = SourceLocation::Invalid();
+                GenericList<ExprIfCase*> m_ifcases;
+                CodeBlock* m_ifstmtelsestmt;
+        };
 
+        class ExprLiteralMap
+        {
             public:
-                ExprIdent()
-                {
-                }
+                GenericList<AstExpression*> m_litmapkeys;
+                GenericList<AstExpression*> m_litmapvalues;
+        };
 
-                ExprIdent(AstToken tok)
-                {
-                    m_identvalue = tok.dupLiteralString();
-                    m_exprpos = tok.m_tokpos;
-                }
+        class ExprLiteralArray
+        {
+            public:
+                GenericList<AstExpression*> m_litarritems;
+        };
 
-                static ExprIdent copy(ExprIdent* ident)
-                {
-                    ExprIdent res = ExprIdent();
-                    res.m_identvalue = mc_util_strdup(ident->m_identvalue);
-                    res.m_exprpos = ident->m_exprpos;
-                    return res;
-                }
+        class ExprLiteralString
+        {
+            public:
+                size_t m_strexprlength;
+                char* m_strexprdata;
+        };
 
-                void deInit()
-                {
-                    {
-                        mc_memory_free(m_identvalue);
-                        m_identvalue = nullptr;
-                        m_exprpos = SourceLocation::Invalid();
-                    }
-                }
+        class ExprPrefix
+        {
+            public:
+                MathOpType op;
+                AstExpression* right;
+        };
+
+        class ExprInfix
+        {
+            public:
+                MathOpType op;
+                AstExpression* left;
+                AstExpression* right;
         };
 
         class ExprFuncParam
         {
             public:
-                ExprIdent m_paramident;
+                Identifier* m_paramident;
 
             public:
-                ExprFuncParam(const ExprIdent& idv)
+                ExprFuncParam(Identifier* idv)
                 {
                     m_paramident = idv;
-                    MC_ASSERT(m_paramident.m_identvalue);
+                    MC_ASSERT(m_paramident->m_identvalue);
                 }
 
                 static ExprFuncParam* copy(ExprFuncParam* param)
                 {
                     ExprFuncParam* res;
-                    res = Memory::make<ExprFuncParam>(ExprIdent::copy(&param->m_paramident));
-                    if(res->m_paramident.m_identvalue == nullptr)
+                    res = Memory::make<ExprFuncParam>(Identifier::copy(param->m_paramident));
+                    if(!res->m_paramident->m_identvalue)
                     {
                         mc_memory_free(res);
                         return nullptr;
@@ -4347,90 +4411,103 @@ class AstExprData
                 {
                     if(param != nullptr)
                     {
-                        param->m_paramident.deInit();
+                        Memory::destroy(param->m_paramident);
                         mc_memory_free(param);
                     }
                 }
         };
 
-        struct ExprLiteralFunction
+
+        class ExprLiteralFunction
         {
-            char* name;
-            GenericList<ExprFuncParam*> funcparamlist;
-            ExprCodeBlock body;
+            public:
+                char* name;
+                GenericList<ExprFuncParam*> funcparamlist;
+                CodeBlock* body;
         };
 
-        struct ExprCall
+        class ExprCall
         {
-            AstExpression* function;
-            GenericList<AstExpression*> m_callargs;
+            public:
+                AstExpression* function;
+                GenericList<AstExpression*> m_callargs;
         };
 
-        struct ExprIndex
+        class ExprIndex
         {
-            bool isdot;
-            AstExpression* left;
-            AstExpression* index;
+            public:
+                bool isdot;
+                AstExpression* left;
+                AstExpression* index;
         };
 
-        struct ExprAssign
+        class ExprAssign
         {
-            AstExpression* dest;
-            AstExpression* source;
-            bool is_postfix;
+            public:
+                AstExpression* dest;
+                AstExpression* source;
+                bool is_postfix;
         };
 
-        struct ExprLogical
+        class ExprLogical
         {
-            MathOpType op;
-            AstExpression* left;
-            AstExpression* right;
+            public:
+                MathOpType op;
+                AstExpression* left;
+                AstExpression* right;
         };
 
-        struct ExprTernary
+        class ExprTernary
         {
-            AstExpression* tercond;
-            AstExpression* teriftrue;
-            AstExpression* teriffalse;
+            public:
+                AstExpression* tercond;
+                AstExpression* teriftrue;
+                AstExpression* teriffalse;
         };
 
-        struct ExprDefine
+        class ExprDefine
         {
-            ExprIdent name;
-            AstExpression* value;
-            bool assignable;
+            public:
+                Identifier* name;
+                AstExpression* value;
+                bool assignable;
         };
 
-        struct ExprWhileStmt
+        class ExprWhileStmt
         {
-            AstExpression* loopcond;
-            ExprCodeBlock body;
+            public:
+                AstExpression* loopcond;
+                CodeBlock* body;
         };
 
-        struct ExprForeachStmt
+        class ExprForeachStmt
         {
-            ExprIdent iterator;
-            AstExpression* source;
-            ExprCodeBlock body;
+            public:
+                Identifier* iterator;
+                AstExpression* source;
+                CodeBlock* body;
         };
 
-        struct ExprLoopStmt
+        class ExprLoopStmt
         {
-            AstExpression* init;
-            AstExpression* loopcond;
-            AstExpression* update;
-            ExprCodeBlock body;
+            public:
+                AstExpression* init;
+                AstExpression* loopcond;
+                AstExpression* update;
+                CodeBlock* body;
         };
 
-        struct ExprImportStmt
+        class ExprImportStmt
         {
-            char* path;
+            public:
+                char* path;
         };
 
-        struct ExprRecover
+        class ExprRecover
         {
-            ExprIdent errident;
-            ExprCodeBlock body;
+            public:
+                Identifier* errident;
+                CodeBlock* body;
         };
 
         virtual void destroyInstanceExpression() = 0;
@@ -4455,24 +4532,26 @@ class AstExprData
             return nullptr;
         }
 
-        union DataUnion
+        union UnionExprData
         {
-            DataUnion()
+            UnionExprData()
             {
             }
 
-            ~DataUnion()
+            ~UnionExprData()
             {
             }
 
-            bool exprlitbool;
-            NumFloat exprlitnumber;
+            ExprLiteralBool exprlitbool;
+            ExprLiteralNumber exprlitnumber;
             ExprLiteralArray exprlitarray;
             ExprImportStmt exprimportstmt;
+            //Identifier* exprident;
             ExprIdent exprident;
-            ExprCodeBlock exprblockstmt;
-            AstExpression* exprreturnvalue;
-            AstExpression* exprexpression;
+            //CodeBlock* exprblockstmt;
+            ExprBlock exprblockstmt;
+            ExprReturnStmt exprreturnvalue;
+            ExprExpression exprexpression;
             ExprLoopStmt exprforloopstmt;
             ExprTernary exprternary;
             ExprLogical exprlogical;
@@ -4494,651 +4573,30 @@ class AstExprData
     public:
         ExprType m_exprtype;
         SourceLocation m_exprpos;
-        DataUnion m_uexpr;
-
-    public:
-        AstExprData()
-        {
-        }
+        UnionExprData m_uexpr;
 
 };
+
+AstExpression* AstUtilCopyExpression(AstExpression* expr);
+void AstUtilDestroyExpression(AstExpression* expr);
 
 class AstExpression: public AstExprData
 {
     public:
 
-        static AstExpression* makeAstItemBaseExpression(ExprType type)
-        {
-            auto res = Memory::make<AstExpression>();
-            res->m_exprtype = type;
-            res->m_exprpos = SourceLocation::Invalid();
-            return res;
-        }
-
-        static AstExpression* makeAstItemRecover(const ExprIdent& eid, const ExprCodeBlock& body)
-        {
-            auto res = makeAstItemBaseExpression(EXPR_STMTRECOVER);
-            res->m_uexpr.exprrecoverstmt.errident = eid;
-            res->m_uexpr.exprrecoverstmt.body = body;
-            return res;
-        }
-
-        static AstExpression* makeAstItemLiteralNumber(NumFloat val)
-        {
-            auto res = makeAstItemBaseExpression(EXPR_NUMBERLITERAL);
-            res->m_uexpr.exprlitnumber = val;
-            return res;
-        }
-
-        static AstExpression* makeAstItemLiteralBool(bool val)
-        {
-            auto res = makeAstItemBaseExpression(EXPR_BOOLLITERAL);
-            res->m_uexpr.exprlitbool = val;
-            return res;
-        }
-
-        static AstExpression* makeAstItemLiteralString(char* value, size_t len)
-        {
-            auto res = makeAstItemBaseExpression(EXPR_STRINGLITERAL);
-            res->m_uexpr.exprlitstring.m_strexprdata = value;
-            res->m_uexpr.exprlitstring.m_strexprlength = len;
-            return res;
-        }
-
-        static AstExpression* makeAstItemLiteralNull()
-        {
-            auto res = makeAstItemBaseExpression(EXPR_NULLLITERAL);
-            return res;
-        }
-
-        static AstExpression* makeAstItemIdent(const ExprIdent& ident)
-        {
-            auto res = makeAstItemBaseExpression(EXPR_IDENT);
-            res->m_uexpr.exprident = ident;
-            return res;
-        }
-
-        static AstExpression* makeAstItemLiteralArray(const GenericList<AstExpression*>& values)
-        {
-            auto res = makeAstItemBaseExpression(EXPR_ARRAYLITERAL);
-            res->m_uexpr.exprlitarray.m_litarritems = values;
-            return res;
-        }
-
-        static AstExpression* makeAstItemLiteralMap(const GenericList<AstExpression*>& keys, const GenericList<AstExpression*>& values)
-        {
-            auto res = makeAstItemBaseExpression(EXPR_MAPLITERAL);
-            res->m_uexpr.exprlitmap.m_litmapkeys = keys;
-            res->m_uexpr.exprlitmap.m_litmapvalues = values;
-            return res;
-        }
-
-        static AstExpression* makeAstItemPrefix(MathOpType op, AstExpression* right)
-        {
-            auto res = makeAstItemBaseExpression(EXPR_PREFIX);
-            res->m_uexpr.exprprefix.op = op;
-            res->m_uexpr.exprprefix.right = right;
-            return res;
-        }
-
-        static AstExpression* makeAstItemInfix(MathOpType op, AstExpression* left, AstExpression* right)
-        {
-            auto res = makeAstItemBaseExpression(EXPR_INFIX);
-            res->m_uexpr.exprinfix.op = op;
-            res->m_uexpr.exprinfix.left = left;
-            res->m_uexpr.exprinfix.right = right;
-            return res;
-        }
-
-        static AstExpression* makeAstItemLiteralFunction(const GenericList<AstExpression::ExprFuncParam*>& params, const ExprCodeBlock& body)
-        {
-            auto res = makeAstItemBaseExpression(EXPR_FUNCTIONLITERAL);
-            res->m_uexpr.exprlitfunction.name = nullptr;
-            res->m_uexpr.exprlitfunction.funcparamlist = params;
-            res->m_uexpr.exprlitfunction.body = body;
-            return res;
-        }
-
-        static AstExpression* makeAstItemCallExpr(AstExpression* function, const GenericList<AstExpression*>& args)
-        {
-            auto res = makeAstItemBaseExpression(EXPR_CALL);
-            res->m_uexpr.exprcall.function = function;
-            res->m_uexpr.exprcall.m_callargs = args;
-            return res;
-        }
-
-        static AstExpression* makeAstItemIndex(AstExpression* left, AstExpression* index, bool isdot)
-        {
-            auto res = makeAstItemBaseExpression(EXPR_INDEX);
-            res->m_uexpr.exprindex.isdot = isdot;
-            res->m_uexpr.exprindex.left = left;
-            res->m_uexpr.exprindex.index = index;
-            return res;
-        }
-
-        static AstExpression* makeAstItemAssign(AstExpression* dest, AstExpression* source, bool is_postfix)
-        {
-            auto res = makeAstItemBaseExpression(EXPR_ASSIGN);
-            res->m_uexpr.exprassign.dest = dest;
-            res->m_uexpr.exprassign.source = source;
-            res->m_uexpr.exprassign.is_postfix = is_postfix;
-            return res;
-        }
-
-        static AstExpression* makeAstItemLogical(MathOpType op, AstExpression* left, AstExpression* right)
-        {
-            auto res = makeAstItemBaseExpression(EXPR_LOGICAL);
-            res->m_uexpr.exprlogical.op = op;
-            res->m_uexpr.exprlogical.left = left;
-            res->m_uexpr.exprlogical.right = right;
-            return res;
-        }
-
-        static AstExpression* makeAstItemTernary(AstExpression* test, AstExpression* ift, AstExpression* iffalse)
-        {
-            auto res = makeAstItemBaseExpression(EXPR_TERNARY);
-            res->m_uexpr.exprternary.tercond = test;
-            res->m_uexpr.exprternary.teriftrue = ift;
-            res->m_uexpr.exprternary.teriffalse = iffalse;
-            return res;
-        }
-
-        static AstExpression* makeAstItemInlineCall(AstExpression* expr, const char* fname)
-        {
-            GenericList<AstExpression*> args;
-            auto fntoken = AstToken(AstToken::TOK_IDENT, fname, mc_util_strlen(fname));
-            fntoken.m_tokpos = expr->m_exprpos;
-            auto ident = ExprIdent(fntoken);
-            ident.m_exprpos = fntoken.m_tokpos;
-            auto functionidentexpr = makeAstItemIdent(ident);
-            functionidentexpr->m_exprpos = expr->m_exprpos;
-            args.push(expr);
-            auto ce = makeAstItemCallExpr(functionidentexpr, args);
-            ce->m_exprpos = expr->m_exprpos;
-            return ce;
-        }
-
-        static AstExpression* makeAstItemDefine(const ExprIdent& name, AstExpression* value, bool assignable)
-        {
-            auto res = makeAstItemBaseExpression(EXPR_STMTDEFINE);
-            res->m_uexpr.exprdefine.name = name;
-            res->m_uexpr.exprdefine.value = value;
-            res->m_uexpr.exprdefine.assignable = assignable;
-            return res;
-        }
-
-        static AstExpression* makeAstItemIfStmt(const GenericList<ExprIfCase*>& cases, const ExprCodeBlock& alternative, bool havealt)
-        {
-            auto res = makeAstItemBaseExpression(EXPR_STMTIF);
-            res->m_uexpr.exprifstmt.m_haveifstmtelsestmt = havealt;
-            res->m_uexpr.exprifstmt.m_ifcases = cases;
-            res->m_uexpr.exprifstmt.m_ifstmtelsestmt = alternative;
-            return res;
-        }
-
-        static AstExpression* makeAstItemReturnStmt(AstExpression* value)
-        {
-            auto res = makeAstItemBaseExpression(EXPR_STMTRETURN);
-            res->m_uexpr.exprreturnvalue = value;
-            return res;
-        }
-
-        static AstExpression* makeAstItemExprStmt(AstExpression* value)
-        {
-            auto res = makeAstItemBaseExpression(EXPR_STMTEXPRESSION);
-            res->m_uexpr.exprexpression = value;
-            return res;
-        }
-
-        static AstExpression* makeAstItemWhileStmt(AstExpression* test, const ExprCodeBlock& body)
-        {
-            auto res = makeAstItemBaseExpression(EXPR_STMTLOOPWHILE);
-            res->m_uexpr.exprwhileloopstmt.loopcond = test;
-            res->m_uexpr.exprwhileloopstmt.body = body;
-            return res;
-        }
-
-        static AstExpression* makeAstItemBreakStmt()
-        {
-            auto res = makeAstItemBaseExpression(EXPR_STMTBREAK);
-            return res;
-        }
-
-        static AstExpression* makeAstItemForeachStmt(const ExprIdent& iterator, AstExpression* source, const ExprCodeBlock& body)
-        {
-            auto res = makeAstItemBaseExpression(EXPR_STMTLOOPFOREACH);
-            res->m_uexpr.exprforeachloopstmt.iterator = iterator;
-            res->m_uexpr.exprforeachloopstmt.source = source;
-            res->m_uexpr.exprforeachloopstmt.body = body;
-            return res;
-        }
-
-        static AstExpression* makeAstItemForLoopStmt(AstExpression* init, AstExpression* test, AstExpression* update, const ExprCodeBlock& body)
-        {
-            auto res = makeAstItemBaseExpression(EXPR_STMTLOOPFORCLASSIC);
-            res->m_uexpr.exprforloopstmt.init = init;
-            res->m_uexpr.exprforloopstmt.loopcond = test;
-            res->m_uexpr.exprforloopstmt.update = update;
-            res->m_uexpr.exprforloopstmt.body = body;
-            return res;
-        }
-
-        static AstExpression* makeAstItemContinueStmt()
-        {
-            auto res = makeAstItemBaseExpression(EXPR_STMTCONTINUE);
-            return res;
-        }
-
-        static AstExpression* makeAstItemBlockStmt(const ExprCodeBlock& block)
-        {
-            auto res = makeAstItemBaseExpression(EXPR_STMTBLOCK);
-            res->m_uexpr.exprblockstmt = block;
-            return res;
-        }
-
-        static AstExpression* makeAstItemImportExpr(char* strpath)
-        {
-            auto res = makeAstItemBaseExpression(EXPR_STMTIMPORT);
-            res->m_uexpr.exprimportstmt.path = strpath;
-            return res;
-        }
-
-        static AstExpression* copyExpression(AstExpression* expr)
-        {
-            AstExpression* res;
-            if(expr == nullptr)
-            {
-                return nullptr;
-            }
-            res = nullptr;
-            switch(expr->m_exprtype)
-            {
-                case EXPR_NONE:
-                    {
-                        MC_ASSERT(false);
-                    }
-                    break;
-                case EXPR_IDENT:
-                    {
-                        auto ident = ExprIdent::copy(&expr->m_uexpr.exprident);
-                        res = makeAstItemIdent(ident);
-                    }
-                    break;
-                case EXPR_NUMBERLITERAL:
-                    {
-                        res = makeAstItemLiteralNumber(expr->m_uexpr.exprlitnumber);
-                    }
-                    break;
-                case EXPR_BOOLLITERAL:
-                    {
-                        res = makeAstItemLiteralBool(expr->m_uexpr.exprlitbool);
-                    }
-                    break;
-                case EXPR_STRINGLITERAL:
-                    {
-                        auto stringcopy = mc_util_strndup(expr->m_uexpr.exprlitstring.m_strexprdata, expr->m_uexpr.exprlitstring.m_strexprlength);
-                        res = makeAstItemLiteralString(stringcopy, expr->m_uexpr.exprlitstring.m_strexprlength);
-                    }
-                    break;
-
-                case EXPR_NULLLITERAL:
-                    {
-                        res = makeAstItemLiteralNull();
-                    }
-                    break;
-                case EXPR_ARRAYLITERAL:
-                    {
-                        auto valuescopy = expr->m_uexpr.exprlitarray.m_litarritems.copyToStack(copyExpression, destroyExpression);
-                        res = makeAstItemLiteralArray(valuescopy);
-                    }
-                    break;
-
-                case EXPR_MAPLITERAL:
-                    {
-                        auto keyscopy = expr->m_uexpr.exprlitmap.m_litmapkeys.copyToStack(copyExpression, destroyExpression);
-                        auto valuescopy = expr->m_uexpr.exprlitmap.m_litmapvalues.copyToStack(copyExpression, destroyExpression);
-                        res = makeAstItemLiteralMap(keyscopy, valuescopy);
-                    }
-                    break;
-                case EXPR_PREFIX:
-                    {
-                        auto rightcopy = copyExpression(expr->m_uexpr.exprprefix.right);
-                        res = makeAstItemPrefix(expr->m_uexpr.exprprefix.op, rightcopy);
-                    }
-                    break;
-                case EXPR_INFIX:
-                    {
-                        auto leftcopy = copyExpression(expr->m_uexpr.exprinfix.left);
-                        auto rightcopy = copyExpression(expr->m_uexpr.exprinfix.right);
-                        res = makeAstItemInfix(expr->m_uexpr.exprinfix.op, leftcopy, rightcopy);
-                    }
-                    break;
-                case EXPR_FUNCTIONLITERAL:
-                    {
-                        auto pacopy = expr->m_uexpr.exprlitfunction.funcparamlist.copyToStack(ExprFuncParam::copy, ExprFuncParam::destroy);
-                        auto bodycopy = ExprCodeBlock::copy(&expr->m_uexpr.exprlitfunction.body);
-                        auto namecopy = mc_util_strdup(expr->m_uexpr.exprlitfunction.name);
-                        res = makeAstItemLiteralFunction(pacopy, bodycopy);
-                        res->m_uexpr.exprlitfunction.name = namecopy;
-                    }
-                    break;
-                case EXPR_CALL:
-                    {
-                        auto fcopy = copyExpression(expr->m_uexpr.exprcall.function);
-                        auto argscopy = expr->m_uexpr.exprcall.m_callargs.copyToStack(copyExpression, destroyExpression);
-                        res = makeAstItemCallExpr(fcopy, argscopy);
-                    }
-                    break;
-                case EXPR_INDEX:
-                    {
-                        auto leftcopy = copyExpression(expr->m_uexpr.exprindex.left);
-                        auto indexcopy = copyExpression(expr->m_uexpr.exprindex.index);
-                        res = makeAstItemIndex(leftcopy, indexcopy, false);
-                    }
-                    break;
-                case EXPR_ASSIGN:
-                    {
-                        auto destcopy = copyExpression(expr->m_uexpr.exprassign.dest);
-                        auto sourcecopy = copyExpression(expr->m_uexpr.exprassign.source);
-                        res = makeAstItemAssign(destcopy, sourcecopy, expr->m_uexpr.exprassign.is_postfix);
-                    }
-                    break;
-                case EXPR_LOGICAL:
-                    {
-                        auto leftcopy = copyExpression(expr->m_uexpr.exprlogical.left);
-                        auto rightcopy = copyExpression(expr->m_uexpr.exprlogical.right);
-                        res = makeAstItemLogical(expr->m_uexpr.exprlogical.op, leftcopy, rightcopy);
-                    }
-                    break;
-                case EXPR_TERNARY:
-                    {
-                        auto testcopy = copyExpression(expr->m_uexpr.exprternary.tercond);
-                        auto iftruecopy = copyExpression(expr->m_uexpr.exprternary.teriftrue);
-                        auto iffalsecopy = copyExpression(expr->m_uexpr.exprternary.teriffalse);
-                        res = makeAstItemTernary(testcopy, iftruecopy, iffalsecopy);
-                    }
-                    break;
-                case EXPR_STMTDEFINE:
-                    {
-                        auto valuecopy = copyExpression(expr->m_uexpr.exprdefine.value);
-                        res = makeAstItemDefine(ExprIdent::copy(&expr->m_uexpr.exprdefine.name), valuecopy, expr->m_uexpr.exprdefine.assignable);
-                    }
-                    break;
-                case EXPR_STMTIF:
-                    {
-                        ExprCodeBlock alternativecopy;
-                        auto casescopy = expr->m_uexpr.exprifstmt.m_ifcases.copyToStack(ExprIfCase::copy, ExprIfCase::destroy);
-                        if(expr->m_uexpr.exprifstmt.m_haveifstmtelsestmt)
-                        {
-                            alternativecopy = ExprCodeBlock::copy(&expr->m_uexpr.exprifstmt.m_ifstmtelsestmt);
-                        }
-                        res = makeAstItemIfStmt(casescopy, alternativecopy, expr->m_uexpr.exprifstmt.m_haveifstmtelsestmt);
-                    }
-                    break;
-                case EXPR_STMTRETURN:
-                    {
-                        auto valuecopy = copyExpression(expr->m_uexpr.exprreturnvalue);
-                        res = makeAstItemReturnStmt(valuecopy);
-                    }
-                    break;
-                case EXPR_STMTEXPRESSION:
-                    {
-                        auto valuecopy = copyExpression(expr->m_uexpr.exprexpression);
-                        res = makeAstItemExprStmt(valuecopy);
-                    }
-                    break;
-                case EXPR_STMTLOOPWHILE:
-                    {
-                        auto testcopy = copyExpression(expr->m_uexpr.exprwhileloopstmt.loopcond);
-                        auto bodycopy = ExprCodeBlock::copy(&expr->m_uexpr.exprwhileloopstmt.body);
-                        res = makeAstItemWhileStmt(testcopy, bodycopy);
-                    }
-                    break;
-                case EXPR_STMTBREAK:
-                    {
-                        res = makeAstItemBreakStmt();
-                    }
-                    break;
-                case EXPR_STMTCONTINUE:
-                    {
-                        res = makeAstItemContinueStmt();
-                    }
-                    break;
-                case EXPR_STMTLOOPFOREACH:
-                    {
-                        auto sourcecopy = copyExpression(expr->m_uexpr.exprforeachloopstmt.source);
-                        auto bodycopy = ExprCodeBlock::copy(&expr->m_uexpr.exprforeachloopstmt.body);
-                        res = makeAstItemForeachStmt(ExprIdent::copy(&expr->m_uexpr.exprforeachloopstmt.iterator), sourcecopy, bodycopy);
-                    }
-                    break;
-                case EXPR_STMTLOOPFORCLASSIC:
-                    {
-                        auto initcopy = copyExpression(expr->m_uexpr.exprforloopstmt.init);
-                        auto testcopy = copyExpression(expr->m_uexpr.exprforloopstmt.loopcond);
-                        auto updatecopy = copyExpression(expr->m_uexpr.exprforloopstmt.update);
-                        auto bodycopy = ExprCodeBlock::copy(&expr->m_uexpr.exprforloopstmt.body);
-                        res = makeAstItemForLoopStmt(initcopy, testcopy, updatecopy, bodycopy);
-                    }
-                    break;
-                case EXPR_STMTBLOCK:
-                    {
-                        auto blockcopy = ExprCodeBlock::copy(&expr->m_uexpr.exprblockstmt);
-                        res = makeAstItemBlockStmt(blockcopy);
-                    }
-                    break;
-                case EXPR_STMTIMPORT:
-                    {
-                        auto pathcopy = mc_util_strdup(expr->m_uexpr.exprimportstmt.path);
-                        res = makeAstItemImportExpr(pathcopy);
-                    }
-                    break;
-                case EXPR_STMTRECOVER:
-                    {
-                        auto bodycopy = ExprCodeBlock::copy(&expr->m_uexpr.exprrecoverstmt.body);
-                        auto erroridentcopy = ExprIdent::copy(&expr->m_uexpr.exprrecoverstmt.errident);
-                        res = makeAstItemRecover(erroridentcopy, bodycopy);
-                    }
-                    break;
-                default:
-                    {
-                    }
-                    break;
-            }
-            if(res == nullptr)
-            {
-                return nullptr;
-            }
-            res->m_exprpos = expr->m_exprpos;
-            return res;
-        }
-
         void destroyInstanceExpression()
         {
-            destroyExpression(this);
+            AstUtilDestroyExpression(this);
         }
 
         AstExpression* copyInstanceExpression()
         {
-            return copyExpression(this);
-        }
-
-        static void destroyExpression(AstExpression* expr)
-        {
-            if(expr != nullptr)
-            {
-                switch(expr->m_exprtype)
-                {
-                    case EXPR_NONE:
-                        {
-                            MC_ASSERT(false);
-                        }
-                        break;
-                    case EXPR_IDENT:
-                        {
-                            expr->m_uexpr.exprident.deInit();
-                        }
-                        break;
-                    case EXPR_NUMBERLITERAL:
-                    case EXPR_BOOLLITERAL:
-                        {
-                        }
-                        break;
-                    case EXPR_STRINGLITERAL:
-                        {
-                            mc_memory_free(expr->m_uexpr.exprlitstring.m_strexprdata);
-                        }
-                        break;
-                    case EXPR_NULLLITERAL:
-                        {
-                        }
-                        break;
-                    case EXPR_ARRAYLITERAL:
-                        {
-                            expr->m_uexpr.exprlitarray.m_litarritems.deInit(destroyExpression);
-                        }
-                        break;
-                    case EXPR_MAPLITERAL:
-                        {
-                            expr->m_uexpr.exprlitmap.m_litmapkeys.deInit(destroyExpression);
-                            expr->m_uexpr.exprlitmap.m_litmapvalues.deInit(destroyExpression);
-                        }
-                        break;
-                    case EXPR_PREFIX:
-                        {
-                            destroyExpression(expr->m_uexpr.exprprefix.right);
-                        }
-                        break;
-                    case EXPR_INFIX:
-                        {
-                            destroyExpression(expr->m_uexpr.exprinfix.left);
-                            destroyExpression(expr->m_uexpr.exprinfix.right);
-                        }
-                        break;
-                    case EXPR_FUNCTIONLITERAL:
-                        {
-                            ExprLiteralFunction* fn;
-                            fn = &expr->m_uexpr.exprlitfunction;
-                            mc_memory_free(fn->name);
-                            fn->funcparamlist.deInit(ExprFuncParam::destroy);
-                            fn->body.deInit();
-                        }
-                        break;
-                    case EXPR_CALL:
-                        {
-                            expr->m_uexpr.exprcall.m_callargs.deInit(destroyExpression);
-                            destroyExpression(expr->m_uexpr.exprcall.function);
-                        }
-                        break;
-                    case EXPR_INDEX:
-                        {
-                            destroyExpression(expr->m_uexpr.exprindex.left);
-                            destroyExpression(expr->m_uexpr.exprindex.index);
-                        }
-                        break;
-                    case EXPR_ASSIGN:
-                        {
-                            destroyExpression(expr->m_uexpr.exprassign.dest);
-                            destroyExpression(expr->m_uexpr.exprassign.source);
-                        }
-                        break;
-                    case EXPR_LOGICAL:
-                        {
-                            destroyExpression(expr->m_uexpr.exprlogical.left);
-                            destroyExpression(expr->m_uexpr.exprlogical.right);
-                        }
-                        break;
-                    case EXPR_TERNARY:
-                        {
-                            destroyExpression(expr->m_uexpr.exprternary.tercond);
-                            destroyExpression(expr->m_uexpr.exprternary.teriftrue);
-                            destroyExpression(expr->m_uexpr.exprternary.teriffalse);
-                        }
-                        break;
-                    case EXPR_STMTDEFINE:
-                        {
-                            expr->m_uexpr.exprdefine.name.deInit();
-                            destroyExpression(expr->m_uexpr.exprdefine.value);
-                        }
-                        break;
-                    case EXPR_STMTIF:
-                        {
-                            expr->m_uexpr.exprifstmt.m_ifcases.deInit(ExprIfCase::destroy);
-                            expr->m_uexpr.exprifstmt.m_ifstmtelsestmt.deInit();
-                        }
-                        break;
-                    case EXPR_STMTRETURN:
-                        {
-                            destroyExpression(expr->m_uexpr.exprreturnvalue);
-                        }
-                        break;
-                    case EXPR_STMTEXPRESSION:
-                        {
-                            destroyExpression(expr->m_uexpr.exprexpression);
-                        }
-                        break;
-                    case EXPR_STMTLOOPWHILE:
-                        {
-                            destroyExpression(expr->m_uexpr.exprwhileloopstmt.loopcond);
-                            expr->m_uexpr.exprwhileloopstmt.body.deInit();
-                        }
-                        break;
-                    case EXPR_STMTBREAK:
-                        {
-                        }
-                        break;
-                    case EXPR_STMTCONTINUE:
-                        {
-                        }
-                        break;
-                    case EXPR_STMTLOOPFOREACH:
-                        {
-                            expr->m_uexpr.exprforeachloopstmt.iterator.deInit();
-                            destroyExpression(expr->m_uexpr.exprforeachloopstmt.source);
-                            expr->m_uexpr.exprforeachloopstmt.body.deInit();
-                        }
-                        break;
-                    case EXPR_STMTLOOPFORCLASSIC:
-                        {
-                            destroyExpression(expr->m_uexpr.exprforloopstmt.init);
-                            destroyExpression(expr->m_uexpr.exprforloopstmt.loopcond);
-                            destroyExpression(expr->m_uexpr.exprforloopstmt.update);
-                            expr->m_uexpr.exprforloopstmt.body.deInit();
-                        }
-                        break;
-                    case EXPR_STMTBLOCK:
-                        {
-                            expr->m_uexpr.exprblockstmt.deInit();
-                        }
-                        break;
-                    case EXPR_STMTIMPORT:
-                        {
-                            mc_memory_free(expr->m_uexpr.exprimportstmt.path);
-                        }
-                        break;
-                    case EXPR_STMTRECOVER:
-                        {
-                            expr->m_uexpr.exprrecoverstmt.body.deInit();
-                            expr->m_uexpr.exprrecoverstmt.errident.deInit();
-                        }
-                        break;
-                    default:
-                        {
-                        }
-                        break;
-                }
-                Memory::destroy(expr);
-            }
+            return AstUtilCopyExpression(this);
         }
 
     public:
-        AstExpression()
-        {
-        }
-
-        AstExpression(const AstExpression& other) = delete;
-        AstExpression& operator=(const AstExpression& other) = delete;
-
 };
+
 
 class Traceback
 {
@@ -6425,6 +5883,259 @@ class AstParser
         };
 
     public:
+
+        template<typename TargetTyp>
+        static AstExpression* makeAstItemBaseExpression(AstExpression::ExprType type)
+        {
+            /*
+struct A {};
+struct B : A {};
+
+int main() {
+    A* a = new A();
+    A* b = new B();
+  std::cout << std::boolalpha;
+  std::cout << "A, B: " << std::is_base_of<A,B>::value << std::endl;
+  
+            */
+            #if 0
+            assert((std::is_base_of<AstExpression, TargetTyp>::value));
+            #endif
+            auto res = Memory::make<AstExpression>();
+            res->m_exprtype = type;
+            res->m_exprpos = SourceLocation::Invalid();
+            return res;
+        }
+
+        static AstExpression* makeAstItemRecover(AstExpression::Identifier* eid, AstExpression::CodeBlock* body)
+        {
+            auto res = makeAstItemBaseExpression<AstExpression::ExprRecover>(AstExpression::EXPR_STMTRECOVER);
+            res->m_uexpr.exprrecoverstmt.errident = eid;
+            res->m_uexpr.exprrecoverstmt.body = body;
+            return res;
+        }
+
+        static AstExpression* makeAstItemLiteralNumber(NumFloat val)
+        {
+            auto res = makeAstItemBaseExpression<AstExpression::ExprLiteralNumber>(AstExpression::EXPR_NUMBERLITERAL);
+            res->m_uexpr.exprlitnumber.m_exprnumber = val;
+            return res;
+        }
+
+        static AstExpression* makeAstItemLiteralBool(bool val)
+        {
+            auto res = makeAstItemBaseExpression<AstExpression::ExprLiteralBool>(AstExpression::EXPR_BOOLLITERAL);
+            res->m_uexpr.exprlitbool.m_exprbool = val;
+            return res;
+        }
+
+        static AstExpression* makeAstItemLiteralString(char* value, size_t len)
+        {
+            auto res = makeAstItemBaseExpression<AstExpression::ExprLiteralString>(AstExpression::EXPR_STRINGLITERAL);
+            res->m_uexpr.exprlitstring.m_strexprdata = value;
+            res->m_uexpr.exprlitstring.m_strexprlength = len;
+            return res;
+        }
+
+        static AstExpression* makeAstItemLiteralNull()
+        {
+            auto res = makeAstItemBaseExpression<AstExpression::ExprLiteralNull>(AstExpression::EXPR_NULLLITERAL);
+            return res;
+        }
+
+        static AstExpression* makeAstItemIdent(AstExpression::Identifier* ident)
+        {
+            auto res = makeAstItemBaseExpression<AstExpression::ExprIdent>(AstExpression::EXPR_IDENT);
+            res->m_uexpr.exprident.m_expridvalue = ident;
+            return res;
+        }
+
+        static AstExpression* makeAstItemLiteralArray(const GenericList<AstExpression*>& values)
+        {
+            auto res = makeAstItemBaseExpression<AstExpression::ExprLiteralArray>(AstExpression::EXPR_ARRAYLITERAL);
+            res->m_uexpr.exprlitarray.m_litarritems = values;
+            return res;
+        }
+
+        static AstExpression* makeAstItemLiteralMap(const GenericList<AstExpression*>& keys, const GenericList<AstExpression*>& values)
+        {
+            auto res = makeAstItemBaseExpression<AstExpression::ExprLiteralMap>(AstExpression::EXPR_MAPLITERAL);
+            res->m_uexpr.exprlitmap.m_litmapkeys = keys;
+            res->m_uexpr.exprlitmap.m_litmapvalues = values;
+            return res;
+        }
+
+        static AstExpression* makeAstItemPrefix(AstExpression::MathOpType op, AstExpression* right)
+        {
+            auto res = makeAstItemBaseExpression<AstExpression::ExprPrefix>(AstExpression::EXPR_PREFIX);
+            res->m_uexpr.exprprefix.op = op;
+            res->m_uexpr.exprprefix.right = right;
+            return res;
+        }
+
+        static AstExpression* makeAstItemInfix(AstExpression::MathOpType op, AstExpression* left, AstExpression* right)
+        {
+            auto res = makeAstItemBaseExpression<AstExpression::ExprInfix>(AstExpression::EXPR_INFIX);
+            res->m_uexpr.exprinfix.op = op;
+            res->m_uexpr.exprinfix.left = left;
+            res->m_uexpr.exprinfix.right = right;
+            return res;
+        }
+
+        static AstExpression* makeAstItemLiteralFunction(const GenericList<AstExpression::AstExpression::ExprFuncParam*>& params, AstExpression::CodeBlock* body)
+        {
+            auto res = makeAstItemBaseExpression<AstExpression::ExprLiteralFunction>(AstExpression::EXPR_FUNCTIONLITERAL);
+            res->m_uexpr.exprlitfunction.name = nullptr;
+            res->m_uexpr.exprlitfunction.funcparamlist = params;
+            res->m_uexpr.exprlitfunction.body = body;
+            return res;
+        }
+
+        static AstExpression* makeAstItemCallExpr(AstExpression* function, const GenericList<AstExpression*>& args)
+        {
+            auto res = makeAstItemBaseExpression<AstExpression::ExprCall>(AstExpression::EXPR_CALL);
+            res->m_uexpr.exprcall.function = function;
+            res->m_uexpr.exprcall.m_callargs = args;
+            return res;
+        }
+
+        static AstExpression* makeAstItemIndex(AstExpression* left, AstExpression* index, bool isdot)
+        {
+            auto res = makeAstItemBaseExpression<AstExpression::ExprIndex>(AstExpression::EXPR_INDEX);
+            res->m_uexpr.exprindex.isdot = isdot;
+            res->m_uexpr.exprindex.left = left;
+            res->m_uexpr.exprindex.index = index;
+            return res;
+        }
+
+        static AstExpression* makeAstItemAssign(AstExpression* dest, AstExpression* source, bool is_postfix)
+        {
+            auto res = makeAstItemBaseExpression<AstExpression::ExprAssign>(AstExpression::EXPR_ASSIGN);
+            res->m_uexpr.exprassign.dest = dest;
+            res->m_uexpr.exprassign.source = source;
+            res->m_uexpr.exprassign.is_postfix = is_postfix;
+            return res;
+        }
+
+        static AstExpression* makeAstItemLogical(AstExpression::MathOpType op, AstExpression* left, AstExpression* right)
+        {
+            auto res = makeAstItemBaseExpression<AstExpression::ExprLogical>(AstExpression::EXPR_LOGICAL);
+            res->m_uexpr.exprlogical.op = op;
+            res->m_uexpr.exprlogical.left = left;
+            res->m_uexpr.exprlogical.right = right;
+            return res;
+        }
+
+        static AstExpression* makeAstItemTernary(AstExpression* test, AstExpression* ift, AstExpression* iffalse)
+        {
+            auto res = makeAstItemBaseExpression<AstExpression::ExprTernary>(AstExpression::EXPR_TERNARY);
+            res->m_uexpr.exprternary.tercond = test;
+            res->m_uexpr.exprternary.teriftrue = ift;
+            res->m_uexpr.exprternary.teriffalse = iffalse;
+            return res;
+        }
+
+        static AstExpression* makeAstItemInlineCall(AstExpression* expr, const char* fname)
+        {
+            auto fntoken = AstToken(AstToken::TOK_IDENT, fname, mc_util_strlen(fname));
+            fntoken.m_tokpos = expr->m_exprpos;
+            auto ident = Memory::make<AstExpression::Identifier>(fntoken);
+            ident->m_exprpos = fntoken.m_tokpos;
+            auto functionidentexpr = makeAstItemIdent(ident);
+            functionidentexpr->m_exprpos = expr->m_exprpos;
+            ident = nullptr;
+            GenericList<AstExpression*> args(0);
+            args.push(expr);
+            auto ce = makeAstItemCallExpr(functionidentexpr, args);
+            ce->m_exprpos = expr->m_exprpos;
+            return ce;
+        }
+
+        static AstExpression* makeAstItemDefine(AstExpression::Identifier* name, AstExpression* value, bool assignable)
+        {
+            auto res = makeAstItemBaseExpression<AstExpression::ExprDefine>(AstExpression::EXPR_STMTDEFINE);
+            res->m_uexpr.exprdefine.name = name;
+            res->m_uexpr.exprdefine.value = value;
+            res->m_uexpr.exprdefine.assignable = assignable;
+            return res;
+        }
+
+        static AstExpression* makeAstItemIfStmt(const GenericList<AstExpression::ExprIfCase*>& cases, AstExpression::CodeBlock* alternative)
+        {
+            auto res = makeAstItemBaseExpression<AstExpression::ExprIfStmt>(AstExpression::EXPR_STMTIF);
+            res->m_uexpr.exprifstmt.m_ifcases = cases;
+            res->m_uexpr.exprifstmt.m_ifstmtelsestmt = alternative;
+            return res;
+        }
+
+        static AstExpression* makeAstItemReturnStmt(AstExpression* value)
+        {
+            auto res = makeAstItemBaseExpression<AstExpression::ExprReturnStmt>(AstExpression::EXPR_STMTRETURN);
+            res->m_uexpr.exprreturnvalue.m_exprretvalue = value;
+            return res;
+        }
+
+        static AstExpression* makeAstItemExprStmt(AstExpression* value)
+        {
+            auto res = makeAstItemBaseExpression<AstExpression::ExprExpression>(AstExpression::EXPR_STMTEXPRESSION);
+            res->m_uexpr.exprexpression.m_exprexprvalue = value;
+            return res;
+        }
+
+        static AstExpression* makeAstItemWhileStmt(AstExpression* test, AstExpression::CodeBlock* body)
+        {
+            auto res = makeAstItemBaseExpression<AstExpression::ExprWhileStmt>(AstExpression::EXPR_STMTLOOPWHILE);
+            res->m_uexpr.exprwhileloopstmt.loopcond = test;
+            res->m_uexpr.exprwhileloopstmt.body = body;
+            return res;
+        }
+
+        static AstExpression* makeAstItemBreakStmt()
+        {
+            auto res = makeAstItemBaseExpression<AstExpression::ExprBreakStmt>(AstExpression::EXPR_STMTBREAK);
+            return res;
+        }
+
+        static AstExpression* makeAstItemForeachStmt(AstExpression::Identifier* iterator, AstExpression* source, AstExpression::CodeBlock* body)
+        {
+            auto res = makeAstItemBaseExpression<AstExpression::ExprForeachStmt>(AstExpression::EXPR_STMTLOOPFOREACH);
+            res->m_uexpr.exprforeachloopstmt.iterator = iterator;
+            res->m_uexpr.exprforeachloopstmt.source = source;
+            res->m_uexpr.exprforeachloopstmt.body = body;
+            return res;
+        }
+
+        static AstExpression* makeAstItemForLoopStmt(AstExpression* init, AstExpression* test, AstExpression* update, AstExpression::CodeBlock* body)
+        {
+            auto res = makeAstItemBaseExpression<AstExpression::ExprLoopStmt>(AstExpression::EXPR_STMTLOOPFORCLASSIC);
+            res->m_uexpr.exprforloopstmt.init = init;
+            res->m_uexpr.exprforloopstmt.loopcond = test;
+            res->m_uexpr.exprforloopstmt.update = update;
+            res->m_uexpr.exprforloopstmt.body = body;
+            return res;
+        }
+
+        static AstExpression* makeAstItemContinueStmt()
+        {
+            auto res = makeAstItemBaseExpression<AstExpression::ExprContinueStmt>(AstExpression::EXPR_STMTCONTINUE);
+            return res;
+        }
+
+        static AstExpression* makeAstItemBlockStmt(AstExpression::CodeBlock* block)
+        {
+            auto res = makeAstItemBaseExpression<AstExpression::ExprBlock>(AstExpression::EXPR_STMTBLOCK);
+            res->m_uexpr.exprblockstmt.m_exprblockvalue = block;
+            return res;
+        }
+
+        static AstExpression* makeAstItemImportExpr(char* strpath)
+        {
+            auto res = makeAstItemBaseExpression<AstExpression::ExprImportStmt>(AstExpression::EXPR_STMTIMPORT);
+            res->m_uexpr.exprimportstmt.path = strpath;
+            return res;
+        }
+
+
         static Precedence getPrecedence(AstToken::Type tk)
         {
             switch(tk)
@@ -6846,11 +6557,11 @@ class AstParser
             {
                 return false;
             }
-            auto nameident = AstExpression::ExprIdent(m_lexer.m_currtoken);
+            auto nameident = Memory::make<AstExpression::Identifier>(m_lexer.m_currtoken);
             m_lexer.nextToken();
             if(!m_lexer.currentTokenIs(AstToken::TOK_ASSIGN))
             {
-                value = AstExpression::makeAstItemLiteralNull();
+                value = makeAstItemLiteralNull();
                 goto finish;
             }
             m_lexer.nextToken();
@@ -6860,18 +6571,18 @@ class AstParser
             }
             if(value->m_exprtype == AstExpression::EXPR_FUNCTIONLITERAL)
             {
-                value->m_uexpr.exprlitfunction.name = mc_util_strdup(nameident.m_identvalue);
+                value->m_uexpr.exprlitfunction.name = mc_util_strdup(nameident->m_identvalue);
                 if(value->m_uexpr.exprlitfunction.name == nullptr)
                 {
                     goto err;
                 }
             }
             finish:
-            *res = AstExpression::makeAstItemDefine(nameident, value, assignable);
+            *res = makeAstItemDefine(nameident, value, assignable);
             return true;
         err:
-            AstExpression::destroyExpression(value);
-            nameident.deInit();
+            AstUtilDestroyExpression(value);
+            Memory::destroy(nameident);
             return false;
         }
 
@@ -6881,11 +6592,12 @@ class AstParser
             bool havealt;
             AstExpression::ExprIfCase* cond;
             AstExpression::ExprIfCase* elif;
-            AstExpression::ExprCodeBlock alternative;
-            AstExpression::ExprCodeBlock emptyblocktop;
+            AstExpression::CodeBlock* alternative;
+            AstExpression::CodeBlock* emptyblocktop = nullptr;
             GenericList<AstExpression::ExprIfCase*> cases;
             (void)ok;
             havealt = false;
+            alternative = nullptr;
             m_lexer.nextToken();
             if(!m_lexer.expectCurrent(AstToken::TOK_LPAREN))
             {
@@ -6909,7 +6621,7 @@ class AstParser
             }
             while(m_lexer.currentTokenIs(AstToken::TOK_ELSE))
             {
-                AstExpression::ExprCodeBlock emptyblockinner;
+                AstExpression::CodeBlock* emptyblockinner = nullptr;
                 m_lexer.nextToken();
                 if(m_lexer.currentTokenIs(AstToken::TOK_IF))
                 {
@@ -6937,6 +6649,7 @@ class AstParser
                 }
                 else
                 {
+                    
                     if(!parseCodeBlock(&alternative))
                     {
                         goto err;
@@ -6944,11 +6657,11 @@ class AstParser
                     havealt = true;
                 }
             }
-            *res = AstExpression::makeAstItemIfStmt(cases, alternative, havealt);
+            *res = makeAstItemIfStmt(cases, alternative);
             return true;
         err:
             cases.deInit(AstExpression::ExprIfCase::destroy);
-            alternative.deInit();
+            Memory::destroy(alternative);
             return false;
         }
 
@@ -6964,7 +6677,7 @@ class AstParser
                     return false;
                 }
             }
-            *res = AstExpression::makeAstItemReturnStmt(expr);
+            *res = makeAstItemReturnStmt(expr);
             return true;
         }
 
@@ -6978,14 +6691,14 @@ class AstParser
             if((expr != nullptr) && (!m_config->replmode || m_parsedepth > 0))
             {
             }
-            *res = AstExpression::makeAstItemExprStmt(expr);
+            *res = makeAstItemExprStmt(expr);
             return true;
         }
 
         bool parseLoopWhileStmt(AstExpression** res)
         {
             AstExpression* test;
-            AstExpression::ExprCodeBlock body;
+            AstExpression::CodeBlock* body;
             test = nullptr;
             m_lexer.nextToken();
             if(!m_lexer.expectCurrent(AstToken::TOK_LPAREN))
@@ -7006,18 +6719,18 @@ class AstParser
             {
                 goto err;
             }
-            *res = AstExpression::makeAstItemWhileStmt(test, body);
+            *res = makeAstItemWhileStmt(test, body);
             return true;
         err:
-            body.deInit();
-            AstExpression::destroyExpression(test);
+            Memory::destroy(body);
+            AstUtilDestroyExpression(test);
             return false;
         }
 
         bool parseBreakStmt(AstExpression** res)
         {
             m_lexer.nextToken();
-            auto expr = AstExpression::makeAstItemBreakStmt();
+            auto expr = makeAstItemBreakStmt();
             if(expr == nullptr)
             {
                 return false;
@@ -7029,7 +6742,7 @@ class AstParser
         bool parseContinueStmt(AstExpression** res)
         {
             m_lexer.nextToken();
-            auto expr = AstExpression::makeAstItemContinueStmt();
+            auto expr = makeAstItemContinueStmt();
             if(expr == nullptr)
             {
                 return false;
@@ -7040,12 +6753,12 @@ class AstParser
 
         bool parseBlockStmt(AstExpression** res)
         {
-            AstExpression::ExprCodeBlock block;
+            AstExpression::CodeBlock* block;
             if(!parseCodeBlock(&block))
             {
                 return false;
             }
-            *res = AstExpression::makeAstItemBlockStmt(block);
+            *res = makeAstItemBlockStmt(block);
             return true;
         }
 
@@ -7064,13 +6777,14 @@ class AstParser
                 return false;
             }
             m_lexer.nextToken();
-            *res = AstExpression::makeAstItemImportExpr(processedname);
+            *res = makeAstItemImportExpr(processedname);
             return true;
         }
 
         bool parseRecoverStmt(AstExpression** res)
         {
-            AstExpression::ExprCodeBlock body;
+            AstExpression::CodeBlock* body;
+            body = nullptr;
             m_lexer.nextToken();
             if(!m_lexer.expectCurrent(AstToken::TOK_LPAREN))
             {
@@ -7081,7 +6795,7 @@ class AstParser
             {
                 return false;
             }
-            auto eid = AstExpression::ExprIdent(m_lexer.m_currtoken);
+            auto eid = Memory::make<AstExpression::Identifier>(m_lexer.m_currtoken);
             m_lexer.nextToken();
             if(!m_lexer.expectCurrent(AstToken::TOK_RPAREN))
             {
@@ -7092,11 +6806,11 @@ class AstParser
             {
                 goto err;
             }
-            *res = AstExpression::makeAstItemRecover(eid, body);
+            *res = makeAstItemRecover(eid, body);
             return true;
         err:
-            body.deInit();
-            eid.deInit();
+            Memory::destroy(body);
+            Memory::destroy(eid);
             return false;
         }
 
@@ -7118,9 +6832,10 @@ class AstParser
         bool parseLoopForeachStmt(AstExpression** res)
         {
             AstExpression* source;
-            AstExpression::ExprCodeBlock body;
+            AstExpression::CodeBlock* body;
+            body = nullptr;
             source = nullptr;
-            auto iteratorident = AstExpression::ExprIdent(m_lexer.m_currtoken);
+            auto iteratorident = Memory::make<AstExpression::Identifier>(m_lexer.m_currtoken);
             m_lexer.nextToken();
             if(!m_lexer.expectCurrent(AstToken::TOK_IN))
             {
@@ -7140,12 +6855,12 @@ class AstParser
             {
                 goto err;
             }
-            *res = AstExpression::makeAstItemForeachStmt(iteratorident, source, body);
+            *res = makeAstItemForeachStmt(iteratorident, source, body);
             return true;
         err:
-            body.deInit();
-            iteratorident.deInit();
-            AstExpression::destroyExpression(source);
+            Memory::destroy(body);
+            Memory::destroy(iteratorident);
+            AstUtilDestroyExpression(source);
             return false;
         }
 
@@ -7154,7 +6869,7 @@ class AstParser
             AstExpression* init;
             AstExpression* test;
             AstExpression* update;
-            AstExpression::ExprCodeBlock body;
+            AstExpression::CodeBlock* body;
             init = nullptr;
             test = nullptr;
             update = nullptr;
@@ -7203,22 +6918,23 @@ class AstParser
             {
                 goto err;
             }
-            *res = AstExpression::makeAstItemForLoopStmt(init, test, update, body);
+            *res = makeAstItemForLoopStmt(init, test, update, body);
             return true;
         err:
-            AstExpression::destroyExpression(init);
-            AstExpression::destroyExpression(test);
-            AstExpression::destroyExpression(update);
-            body.deInit();
+            AstUtilDestroyExpression(init);
+            AstUtilDestroyExpression(test);
+            AstUtilDestroyExpression(update);
+            Memory::destroy(body);
             return false;
         }
 
-        bool parseCodeBlock(AstExpression::ExprCodeBlock* res)
+        bool parseCodeBlock(AstExpression::CodeBlock** res)
         {
             bool ok;
             AstExpression* expr;
             GenericList<AstExpression*> statements;
             (void)ok;
+            expr = nullptr;
             if(!m_lexer.expectCurrent(AstToken::TOK_LBRACE))
             {
                 return false;
@@ -7245,11 +6961,11 @@ class AstParser
             }
             m_lexer.nextToken();
             m_parsedepth--;
-            *res = AstExpression::ExprCodeBlock(statements);
+            *res = Memory::make<AstExpression::CodeBlock>(statements);
             return true;
         err:
             m_parsedepth--;
-            statements.deInit(AstExpression::destroyExpression);
+            statements.deInit(AstUtilDestroyExpression);
             return false;
         }
 
@@ -7291,7 +7007,7 @@ class AstParser
                 pos = m_lexer.m_currtoken.m_tokpos;
                 if(!parseleftassoc(this, &newleftexpr, leftexpr))
                 {
-                    AstExpression::destroyExpression(leftexpr);
+                    AstUtilDestroyExpression(leftexpr);
                     return false;
                 }
                 newleftexpr->m_exprpos = pos;
@@ -7308,7 +7024,7 @@ class AstParser
             m_lexer.nextToken();
             if(!parseExpression(&expr, MC_ASTPREC_LOWEST) || !m_lexer.expectCurrent(AstToken::TOK_RPAREN))
             {
-                AstExpression::destroyExpression(expr);
+                AstUtilDestroyExpression(expr);
                 return false;
             }
             m_lexer.nextToken();
@@ -7334,7 +7050,7 @@ class AstParser
             {
                 return false;
             }
-            auto ident = AstExpression::ExprIdent(m_lexer.m_currtoken);
+            auto ident = Memory::make<AstExpression::Identifier>(m_lexer.m_currtoken);
             auto param = Memory::make<AstExpression::ExprFuncParam>(ident);
             ok = outparams->push(param);
             m_lexer.nextToken();
@@ -7345,7 +7061,7 @@ class AstParser
                 {
                     return false;
                 }
-                ident = AstExpression::ExprIdent(m_lexer.m_currtoken);
+                ident = Memory::make<AstExpression::Identifier>(m_lexer.m_currtoken);
                 param = Memory::make<AstExpression::ExprFuncParam>(ident);
                 ok = outparams->push(param);
                 m_lexer.nextToken();
@@ -7369,23 +7085,23 @@ class AstParser
             {
                 return false;
             }
-            auto nameident = AstExpression::ExprIdent(m_lexer.m_currtoken);
+            auto nameident = Memory::make<AstExpression::Identifier>(m_lexer.m_currtoken);
             m_lexer.nextToken();
             if(!callback_parseliteralfunction(this, &value))
             {
                 goto err;
             }
             value->m_exprpos = pos;
-            value->m_uexpr.exprlitfunction.name = mc_util_strdup(nameident.m_identvalue);
+            value->m_uexpr.exprlitfunction.name = mc_util_strdup(nameident->m_identvalue);
             if(value->m_uexpr.exprlitfunction.name == nullptr)
             {
                 goto err;
             }
-            *res = AstExpression::makeAstItemDefine(nameident, value, false);
+            *res = makeAstItemDefine(nameident, value, false);
             return true;
         err:
-            AstExpression::destroyExpression(value);
-            nameident.deInit();
+            AstUtilDestroyExpression(value);
+            Memory::destroy(nameident);
             return false;
         }
 
@@ -7400,16 +7116,16 @@ class AstParser
             }
             if(!m_lexer.expectCurrent(AstToken::TOK_COLON))
             {
-                AstExpression::destroyExpression(ift);
+                AstUtilDestroyExpression(ift);
                 return false;
             }
             m_lexer.nextToken();
             if(!parseExpression(&iffalse, MC_ASTPREC_LOWEST))
             {
-                AstExpression::destroyExpression(ift);
+                AstUtilDestroyExpression(ift);
                 return false;
             }
-            *res = AstExpression::makeAstItemTernary(left, ift, iffalse);
+            *res = makeAstItemTernary(left, ift, iffalse);
             return true;
         }
 
@@ -7425,7 +7141,7 @@ class AstParser
             {
                 return false;
             }
-            *res = AstExpression::makeAstItemLogical(op, left, right);
+            *res = makeAstItemLogical(op, left, right);
             return true;
         }
 
@@ -7439,11 +7155,11 @@ class AstParser
             }
             if(!m_lexer.expectCurrent(AstToken::TOK_RBRACKET))
             {
-                AstExpression::destroyExpression(index);
+                AstUtilDestroyExpression(index);
                 return false;
             }
             m_lexer.nextToken();
-            *res = AstExpression::makeAstItemIndex(left, index, false);
+            *res = makeAstItemIndex(left, index, false);
             return true;
         }
 
@@ -7476,13 +7192,13 @@ class AstParser
                 case AstToken::TOK_ASSIGNRSHIFT:
                     {
                         op = tokenToMathOP(assigntype);
-                        leftcopy = AstExpression::copyExpression(left);
+                        leftcopy = AstUtilCopyExpression(left);
                         if(leftcopy == nullptr)
                         {
                             goto err;
                         }
                         pos = source->m_exprpos;
-                        newsource = AstExpression::makeAstItemInfix(op, leftcopy, source);
+                        newsource = makeAstItemInfix(op, leftcopy, source);
                         newsource->m_exprpos = pos;
                         source = newsource;
                     }
@@ -7497,10 +7213,10 @@ class AstParser
                     }
                     break;
             }
-            *res = AstExpression::makeAstItemAssign(left, source, false);
+            *res = makeAstItemAssign(left, source, false);
             return true;
         err:
-            AstExpression::destroyExpression(source);
+            AstUtilDestroyExpression(source);
             return false;
         }
 
@@ -7523,21 +7239,21 @@ class AstParser
             {
                 goto err;
             }
-            oneliteral = AstExpression::makeAstItemLiteralNumber(1);
+            oneliteral = makeAstItemLiteralNumber(1);
             oneliteral->m_exprpos = pos;
-            destcopy = AstExpression::copyExpression(dest);
+            destcopy = AstUtilCopyExpression(dest);
             if(destcopy == nullptr)
             {
-                AstExpression::destroyExpression(oneliteral);
-                AstExpression::destroyExpression(dest);
+                AstUtilDestroyExpression(oneliteral);
+                AstUtilDestroyExpression(dest);
                 goto err;
             }
-            operation = AstExpression::makeAstItemInfix(op, destcopy, oneliteral);
+            operation = makeAstItemInfix(op, destcopy, oneliteral);
             operation->m_exprpos = pos;
-            *res = AstExpression::makeAstItemAssign(dest, operation, false);
+            *res = makeAstItemAssign(dest, operation, false);
             return true;
         err:
-            AstExpression::destroyExpression(source);
+            AstUtilDestroyExpression(source);
             return false;
         }
 
@@ -7555,19 +7271,19 @@ class AstParser
             pos = m_lexer.m_currtoken.m_tokpos;
             m_lexer.nextToken();
             op = tokenToMathOP(operationtype);
-            leftcopy = AstExpression::copyExpression(left);
+            leftcopy = AstUtilCopyExpression(left);
             if(leftcopy == nullptr)
             {
                 goto err;
             }
-            oneliteral = AstExpression::makeAstItemLiteralNumber(1);
+            oneliteral = makeAstItemLiteralNumber(1);
             oneliteral->m_exprpos = pos;
-            operation = AstExpression::makeAstItemInfix(op, leftcopy, oneliteral);
+            operation = makeAstItemInfix(op, leftcopy, oneliteral);
             operation->m_exprpos = pos;
-            *res = AstExpression::makeAstItemAssign(left, operation, true);
+            *res = makeAstItemAssign(left, operation, true);
             return true;
         err:
-            AstExpression::destroyExpression(source);
+            AstUtilDestroyExpression(source);
             return false;
         }
 
@@ -7581,7 +7297,7 @@ class AstParser
             {
                 return false;
             }
-            *res = AstExpression::makeAstItemPrefix(op, right);
+            *res = makeAstItemPrefix(op, right);
             return true;
         }
 
@@ -7597,17 +7313,18 @@ class AstParser
             {
                 return false;
             }
-            *res = AstExpression::makeAstItemInfix(op, left, right);
+            *res = makeAstItemInfix(op, left, right);
             return true;
         }
 
         bool parseLiteralFunction(AstExpression** res)
         {
             bool ok;
-            AstExpression::ExprCodeBlock body;
+            AstExpression::CodeBlock* body;
             GenericList<AstExpression::ExprFuncParam*> params;
             (void)ok;
             m_parsedepth++;
+            body = nullptr;
             if(m_lexer.currentTokenIs(AstToken::TOK_FUNCTION))
             {
                 m_lexer.nextToken();
@@ -7621,11 +7338,11 @@ class AstParser
             {
                 goto err;
             }
-            *res = AstExpression::makeAstItemLiteralFunction(params, body);
+            *res = makeAstItemLiteralFunction(params, body);
             m_parsedepth -= 1;
             return true;
         err:
-            body.deInit();
+            Memory::destroy(body);
             params.deInit(AstExpression::ExprFuncParam::destroy);
             m_parsedepth -= 1;
             return false;
@@ -7638,7 +7355,7 @@ class AstParser
             {
                 return false;
             }
-            *res = AstExpression::makeAstItemLiteralArray(array);
+            *res = makeAstItemLiteralArray(array);
             return true;
         }
 
@@ -7660,7 +7377,7 @@ class AstParser
                 {
                     str = m_lexer.m_currtoken.dupLiteralString();
                     len = mc_util_strlen(str);
-                    key = AstExpression::makeAstItemLiteralString(str, len);
+                    key = makeAstItemLiteralString(str, len);
                     key->m_exprpos = m_lexer.m_currtoken.m_tokpos;
                     m_lexer.nextToken();
                 }
@@ -7681,7 +7398,7 @@ class AstParser
                         default:
                             {
                                 m_prserrlist->pushFormat(Error::ERRTYP_PARSING, key->m_exprpos, "can only use primitive types as literal 'map' object keys");
-                                AstExpression::destroyExpression(key);
+                                AstUtilDestroyExpression(key);
                                 goto err;
                             }
                             break;
@@ -7709,11 +7426,11 @@ class AstParser
                 m_lexer.nextToken();
             }
             m_lexer.nextToken();
-            *res = AstExpression::makeAstItemLiteralMap(keys, values);
+            *res = makeAstItemLiteralMap(keys, values);
             return true;
         err:
-            keys.deInit(AstExpression::destroyExpression);
-            values.deInit(AstExpression::destroyExpression);
+            keys.deInit(AstUtilDestroyExpression);
+            values.deInit(AstUtilDestroyExpression);
             return false;
         }
 
@@ -7749,7 +7466,7 @@ class AstParser
             m_lexer.nextToken();
             pos = m_lexer.m_currtoken.m_tokpos;
             len = mc_util_strlen(processedliteral);
-            leftstringexpr = AstExpression::makeAstItemLiteralString(processedliteral, len);
+            leftstringexpr = makeAstItemLiteralString(processedliteral, len);
             leftstringexpr->m_exprpos = pos;
             processedliteral = nullptr;
             pos = m_lexer.m_currtoken.m_tokpos;
@@ -7757,10 +7474,10 @@ class AstParser
             {
                 goto err;
             }
-            tostrcallexpr = AstExpression::makeAstItemInlineCall(templateexpr, "tostring");
+            tostrcallexpr = makeAstItemInlineCall(templateexpr, "tostring");
             tostrcallexpr->m_exprpos = pos;
             templateexpr = nullptr;
-            leftaddexpr = AstExpression::makeAstItemInfix(AstExpression::MATHOP_PLUS, leftstringexpr, tostrcallexpr);
+            leftaddexpr = makeAstItemInfix(AstExpression::MATHOP_PLUS, leftstringexpr, tostrcallexpr);
             leftaddexpr->m_exprpos = pos;
             leftstringexpr = nullptr;
             tostrcallexpr = nullptr;
@@ -7777,19 +7494,19 @@ class AstParser
             {
                 goto err;
             }
-            rightaddexpr = AstExpression::makeAstItemInfix(AstExpression::MATHOP_PLUS, leftaddexpr, rightexpr);
+            rightaddexpr = makeAstItemInfix(AstExpression::MATHOP_PLUS, leftaddexpr, rightexpr);
             rightaddexpr->m_exprpos = pos;
             leftaddexpr = nullptr;
             rightexpr = nullptr;
             *res = rightaddexpr;
             return true;
         err:
-            AstExpression::destroyExpression(rightaddexpr);
-            AstExpression::destroyExpression(rightexpr);
-            AstExpression::destroyExpression(leftaddexpr);
-            AstExpression::destroyExpression(tostrcallexpr);
-            AstExpression::destroyExpression(templateexpr);
-            AstExpression::destroyExpression(leftstringexpr);
+            AstUtilDestroyExpression(rightaddexpr);
+            AstUtilDestroyExpression(rightexpr);
+            AstUtilDestroyExpression(leftaddexpr);
+            AstUtilDestroyExpression(tostrcallexpr);
+            AstUtilDestroyExpression(templateexpr);
+            AstUtilDestroyExpression(leftstringexpr);
             mc_memory_free(processedliteral);
             return false;
         }
@@ -7806,20 +7523,20 @@ class AstParser
             }
             m_lexer.nextToken();
             len = mc_util_strlen(processedliteral);
-            *res = AstExpression::makeAstItemLiteralString(processedliteral, len);
+            *res = makeAstItemLiteralString(processedliteral, len);
             return true;
         }
 
         bool parseLiteralNull(AstExpression** res)
         {
             m_lexer.nextToken();
-            *res = AstExpression::makeAstItemLiteralNull();
+            *res = makeAstItemLiteralNull();
             return true;
         }
 
         bool parseLiteralBool(AstExpression** res)
         {
-            *res = AstExpression::makeAstItemLiteralBool(m_lexer.m_currtoken.m_toktype == AstToken::TOK_TRUE);
+            *res = makeAstItemLiteralBool(m_lexer.m_currtoken.m_toktype == AstToken::TOK_TRUE);
             m_lexer.nextToken();
             return true;
         }
@@ -7842,7 +7559,7 @@ class AstParser
                 return false;
             }    
             m_lexer.nextToken();
-            *res = AstExpression::makeAstItemLiteralNumber(number);
+            *res = makeAstItemLiteralNumber(number);
             return true;
         }
 
@@ -7858,17 +7575,17 @@ class AstParser
             }
             str = m_lexer.m_currtoken.dupLiteralString();
             len = mc_util_strlen(str);
-            index = AstExpression::makeAstItemLiteralString(str, len);
+            index = makeAstItemLiteralString(str, len);
             index->m_exprpos = m_lexer.m_currtoken.m_tokpos;
             m_lexer.nextToken();
-            *res = AstExpression::makeAstItemIndex(left, index, true);
+            *res = makeAstItemIndex(left, index, true);
             return true;
         }
         
         bool parseIdent(AstExpression** res)
         {
-            auto ident = AstExpression::ExprIdent(m_lexer.m_currtoken);
-            *res = AstExpression::makeAstItemIdent(ident);
+            auto ident = Memory::make<AstExpression::Identifier>(m_lexer.m_currtoken);
+            *res = makeAstItemIdent(ident);
             m_lexer.nextToken();
             return true;
         }
@@ -7882,7 +7599,7 @@ class AstParser
             {
                 return false;
             }
-            *res = AstExpression::makeAstItemCallExpr(function, args);
+            *res = makeAstItemCallExpr(function, args);
             return true;
         }
 
@@ -7926,7 +7643,7 @@ class AstParser
             m_lexer.nextToken();
             return true;
         err:
-            //Memory::destroy(res, AstExpression::destroyExpression);
+            //Memory::destroy(res, AstUtilDestroyExpression);
             return false;
         }
 
@@ -8070,6 +7787,7 @@ class AstParser
             AstExpression* expr;
             (void)ok;
             m_parsedepth = 0;
+            expr = nullptr;
             ok = AstLexer::init(&m_lexer, m_prserrlist, input, file);
             if(!ok)
             {
@@ -8096,7 +7814,7 @@ class AstParser
             }
             return true;
         err:
-            statements->deInit(AstExpression::destroyExpression);
+            statements->deInit(AstUtilDestroyExpression);
             return false;
         }
 };
@@ -8230,14 +7948,14 @@ class AstPrinter
             for(i = 0; i < ex->funcparamlist.count(); i++)
             {
                 auto param = ex->funcparamlist.get(i);
-                put(param->m_paramident.m_identvalue);
+                put(param->m_paramident->m_identvalue);
                 if(i < (ex->funcparamlist.count() - 1))
                 {
                     put(", ");
                 }
             }
             put(") ");
-            printCodeblock(&ex->body);
+            printCodeblock(ex->body);
         }
 
         void printCall(AstExpression* astexpr)
@@ -8398,7 +8116,7 @@ class AstPrinter
             {
                 put("const ");
             }
-            put(ex->name.m_identvalue);
+            put(ex->name->m_identvalue);
             put(" = ");
             if(ex->value != nullptr)
             {
@@ -8414,19 +8132,19 @@ class AstPrinter
             put("if (");
             printExpression(ifcase->m_ifcond);
             put(") ");
-            printCodeblock(&ifcase->m_ifthen);
+            printCodeblock(ifcase->m_ifthen);
             for(i = 1; i < ex->m_ifcases.count(); i++)
             {
                 auto elifcase = ex->m_ifcases.get(i);
                 put(" elif (");
                 printExpression(elifcase->m_ifcond);
                 put(") ");
-                printCodeblock(&elifcase->m_ifthen);
+                printCodeblock(elifcase->m_ifthen);
             }
-            if(ex->m_haveifstmtelsestmt)
+            if(ex->m_ifstmtelsestmt != nullptr)
             {
                 put(" else ");
-                printCodeblock(&ex->m_ifstmtelsestmt);
+                printCodeblock(ex->m_ifstmtelsestmt);
             }
         }
 
@@ -8436,7 +8154,7 @@ class AstPrinter
             put("while (");
             printExpression(ex->loopcond);
             put(")");
-            printCodeblock(&ex->body);
+            printCodeblock(ex->body);
         }
 
         void printForClassic(AstExpression* astexpr)
@@ -8466,18 +8184,18 @@ class AstPrinter
                 printExpression(ex->update);
             }
             put(")");
-            printCodeblock(&ex->body);
+            printCodeblock(ex->body);
         }
 
         void printForeach(AstExpression* astexpr)
         {
             auto ex = &astexpr->m_uexpr.exprforeachloopstmt;
             put("for (");
-            putfmt("%s", ex->iterator.m_identvalue);
+            putfmt("%s", ex->iterator->m_identvalue);
             put(" in ");
             printExpression(ex->source);
             put(")");
-            printCodeblock(&ex->body);
+            printCodeblock(ex->body);
         }
 
         void printImport(AstExpression* astexpr)
@@ -8489,11 +8207,11 @@ class AstPrinter
         void printRecover(AstExpression* astexpr)
         {
             auto ex = &astexpr->m_uexpr.exprrecoverstmt;
-            putfmt("recover (%s)", ex->errident.m_identvalue);
-            printCodeblock(&ex->body);
+            putfmt("recover (%s)", ex->errident->m_identvalue);
+            printCodeblock(ex->body);
         }
 
-        void printCodeblock(AstExpression::ExprCodeBlock* blockexpr)
+        void printCodeblock(AstExpression::CodeBlock* blockexpr)
         {
             size_t i;
             size_t cnt;
@@ -8514,19 +8232,19 @@ class AstPrinter
             {
                 case AstExpression::EXPR_IDENT:
                     {
-                        auto ex = &astexpr->m_uexpr.exprident;
+                        auto ex = astexpr->m_uexpr.exprident.m_expridvalue;
                         put(ex->m_identvalue);
                     }
                     break;
                 case AstExpression::EXPR_NUMBERLITERAL:
                     {
-                        auto fl = astexpr->m_uexpr.exprlitnumber;
+                        auto fl = astexpr->m_uexpr.exprlitnumber.m_exprnumber;
                         putfmt("%1.17g", fl);
                     }
                     break;
                 case AstExpression::EXPR_BOOLLITERAL:
                     {
-                        auto bl = astexpr->m_uexpr.exprlitbool;
+                        auto bl = astexpr->m_uexpr.exprlitbool.m_exprbool;
                         putfmt("%s", bl ? "true" : "false");
                     }
                     break;
@@ -8602,7 +8320,7 @@ class AstPrinter
                     break;
                 case AstExpression::EXPR_STMTRETURN:
                     {
-                        auto ex = astexpr->m_uexpr.exprreturnvalue;
+                        auto ex = astexpr->m_uexpr.exprreturnvalue.m_exprretvalue;
                         if(ex != nullptr)
                         {
                             put("return ");
@@ -8617,7 +8335,7 @@ class AstPrinter
                     break;
                 case AstExpression::EXPR_STMTEXPRESSION:
                     {
-                        auto ex = astexpr->m_uexpr.exprexpression;
+                        auto ex = astexpr->m_uexpr.exprexpression.m_exprexprvalue;
                         if(ex != nullptr)
                         {
                             printExpression(ex);
@@ -8641,8 +8359,8 @@ class AstPrinter
                     break;
                 case AstExpression::EXPR_STMTBLOCK:
                     {
-                        AstExpression::ExprCodeBlock* ex;
-                        ex = &astexpr->m_uexpr.exprblockstmt;
+                        AstExpression::CodeBlock* ex;
+                        ex = astexpr->m_uexpr.exprblockstmt.m_exprblockvalue;
                         printCodeblock(ex);
                     }
                     break;
@@ -9097,11 +8815,11 @@ class AstCompiler
             }
             if(m_config->exitafterastdump)
             {
-                statements.deInit(AstExpression::destroyExpression);
+                statements.deInit(AstUtilDestroyExpression);
                 return false;
             }
             compileStmtList(&statements);
-            statements.deInit(AstExpression::destroyExpression);
+            statements.deInit(AstUtilDestroyExpression);
             if(m_config->dumpbytecode)
             {
                 Instruction::bcPrintByteCodeTo(m_filestderr,
@@ -9273,7 +8991,7 @@ class AstCompiler
             {
                 return false;
             }
-            symbol = doDefineSymbol(expr->m_uexpr.exprdefine.name.m_exprpos, expr->m_uexpr.exprdefine.name.m_identvalue, expr->m_uexpr.exprdefine.assignable, false);
+            symbol = doDefineSymbol(expr->m_uexpr.exprdefine.name->m_exprpos, expr->m_uexpr.exprdefine.name->m_identvalue, expr->m_uexpr.exprdefine.assignable, false);
             if(symbol == nullptr)
             {
                 return false;
@@ -9305,12 +9023,12 @@ class AstCompiler
                 }
                 opbuf[0] = 0xbeef;
                 nextcasejumpip = emitOpCode(Instruction::OPCODE_JUMPIFFALSE, 1, opbuf);
-                if(!compilecodeblock(&ifcase->m_ifthen))
+                if(!compilecodeblock(ifcase->m_ifthen))
                 {
                     return false;
                 }
                 /* don't emit jump for the last statement */
-                if(i < (ifstmt->m_ifcases.count() - 1) || ifstmt->m_haveifstmtelsestmt)
+                if(i < (ifstmt->m_ifcases.count() - 1) || (ifstmt->m_ifstmtelsestmt != nullptr))
                 {
                     opbuf[0] = 0xbeef;
                     jumptoendip = emitOpCode(Instruction::OPCODE_JUMP, 1, opbuf);
@@ -9319,9 +9037,9 @@ class AstCompiler
                 afterelifip = getip();
                 changeOperand(nextcasejumpip + 1, afterelifip);
             }
-            if(ifstmt->m_haveifstmtelsestmt)
+            if(ifstmt->m_ifstmtelsestmt != nullptr)
             {
-                if(!compilecodeblock(&ifstmt->m_ifstmtelsestmt))
+                if(!compilecodeblock(ifstmt->m_ifstmtelsestmt))
                 {
                     return false;
                 }
@@ -9344,9 +9062,9 @@ class AstCompiler
                 m_ccerrlist->pushFormat( Error::ERRTYP_COMPILING, expr->m_exprpos, "nothing to return from");
                 return false;
             }
-            if(expr->m_uexpr.exprreturnvalue != nullptr)
+            if(expr->m_uexpr.exprreturnvalue.m_exprretvalue != nullptr)
             {
-                if(!compileExpression(expr->m_uexpr.exprreturnvalue))
+                if(!compileExpression(expr->m_uexpr.exprreturnvalue.m_exprretvalue))
                 {
                     return false;
                 }
@@ -9386,7 +9104,7 @@ class AstCompiler
                 {
                     pushbreakip(jumptoafterbodyip);
                     {
-                        if(!compilecodeblock(&loop->body))
+                        if(!compilecodeblock(loop->body))
                         {
                             return false;
                         }
@@ -9469,13 +9187,13 @@ class AstCompiler
             for(i = 0; i < expr->m_uexpr.exprlitfunction.funcparamlist.count(); i++)
             {
                 param = expr->m_uexpr.exprlitfunction.funcparamlist.get(i);
-                paramsymbol = doDefineSymbol(param->m_paramident.m_exprpos, param->m_paramident.m_identvalue, true, false);
+                paramsymbol = doDefineSymbol(param->m_paramident->m_exprpos, param->m_paramident->m_identvalue, true, false);
                 if(paramsymbol == nullptr)
                 {
                     return false;
                 }
             }
-            if(!compileStmtList(&fn->body.m_blockstatements))
+            if(!compileStmtList(&fn->body->m_blockstatements))
             {
                 return false;
             }
@@ -9763,7 +9481,7 @@ class AstCompiler
             afterjumptorecoverip = getip();
             changeOperand(recip + 1, afterjumptorecoverip);
             symtab->scopeBlockPush();
-            errorsymbol = doDefineSymbol(recover->errident.m_exprpos, recover->errident.m_identvalue, false, false);
+            errorsymbol = doDefineSymbol(recover->errident->m_exprpos, recover->errident->m_identvalue, false, false);
             if(errorsymbol == nullptr)
             {
                 return false;
@@ -9772,7 +9490,7 @@ class AstCompiler
             {
                 return false;
             }
-            if(!compilecodeblock(&recover->body))
+            if(!compilecodeblock(recover->body))
             {
                 return false;
             }
@@ -9790,7 +9508,7 @@ class AstCompiler
         {
             NumFloat number;
             uint64_t opbuf[10];
-            number = expr->m_uexpr.exprlitnumber;
+            number = expr->m_uexpr.exprlitnumber.m_exprnumber;
             opbuf[0] = mc_util_doubletouint64(number);
             emitOpCode(Instruction::OPCODE_NUMBER, 1, opbuf);
             return true;
@@ -9854,7 +9572,7 @@ class AstCompiler
             AstSymTable* symtab;
             AstExpression::ExprIndex* index;
             AstExpression::ExprAssign* assign;
-            AstExpression::ExprIdent* ident;
+            AstExpression::Identifier* ident;
             AstSymbol* symbol;
             symtab = getsymtable();
             assign = &expr->m_uexpr.exprassign;
@@ -9878,7 +9596,7 @@ class AstCompiler
             m_srcposstack.push(assign->dest->m_exprpos);
             if(assign->dest->m_exprtype == AstExpression::EXPR_IDENT)
             {
-                ident = &assign->dest->m_uexpr.exprident;
+                ident = assign->dest->m_uexpr.exprident.m_expridvalue;
                 symbol = symtab->resolve(ident->m_identvalue);
                 if(symbol == nullptr)
                 {
@@ -9978,10 +9696,10 @@ class AstCompiler
             sourcesymbol = nullptr;
             if(foreach->source->m_exprtype == AstExpression::EXPR_IDENT)
             {
-                sourcesymbol = symtab->resolve(foreach->source->m_uexpr.exprident.m_identvalue);
+                sourcesymbol = symtab->resolve(foreach->source->m_uexpr.exprident.m_expridvalue->m_identvalue);
                 if(sourcesymbol == nullptr)
                 {
-                    m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, foreach->source->m_exprpos, "symbol \"%s\" could not be resolved", foreach->source->m_uexpr.exprident.m_identvalue);
+                    m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, foreach->source->m_exprpos, "symbol \"%s\" could not be resolved", foreach->source->m_uexpr.exprident.m_expridvalue->m_identvalue);
                     return false;
                 }
             }
@@ -10054,7 +9772,7 @@ class AstCompiler
                 return false;
             }
             emitOpCode(Instruction::OPCODE_GETVALUEAT, 0, nullptr);
-            auto itersymbol = doDefineSymbol(foreach->iterator.m_exprpos, foreach->iterator.m_identvalue, false, false);
+            auto itersymbol = doDefineSymbol(foreach->iterator->m_exprpos, foreach->iterator->m_identvalue, false, false);
             if(itersymbol == nullptr)
             {
                 return false;
@@ -10069,7 +9787,7 @@ class AstCompiler
                 {
                     pushbreakip(jumptoafterbodyip);
                     {
-                        if(!compilecodeblock(&foreach->body))
+                        if(!compilecodeblock(foreach->body))
                         {
                             return false;
                         }
@@ -10090,9 +9808,9 @@ class AstCompiler
         {
             AstSymTable* symtab;
             AstSymbol* symbol;
-            AstExpression::ExprIdent* ident;
+            AstExpression::Identifier* ident;
             symtab = getsymtable();
-            ident = &expr->m_uexpr.exprident;
+            ident = expr->m_uexpr.exprident.m_expridvalue;
             symbol = symtab->resolve(ident->m_identvalue);
             if(symbol == nullptr)
             {
@@ -10270,7 +9988,7 @@ class AstCompiler
             /* Body */
             pushcontinueip(updateip);
             pushbreakip(jumptoafterbodyip);
-            if(!compilecodeblock(&loop->body))
+            if(!compilecodeblock(loop->body))
             {
                 return false;
             }
@@ -10326,7 +10044,7 @@ class AstCompiler
                     break;
                 case AstExpression::EXPR_BOOLLITERAL:
                     {
-                        emitOpCode(expr->m_uexpr.exprlitbool ? Instruction::OPCODE_TRUE : Instruction::OPCODE_FALSE, 0, nullptr);
+                        emitOpCode(expr->m_uexpr.exprlitbool.m_exprbool ? Instruction::OPCODE_TRUE : Instruction::OPCODE_FALSE, 0, nullptr);
                     }
                     break;
                 case AstExpression::EXPR_ARRAYLITERAL:
@@ -10413,7 +10131,7 @@ class AstCompiler
 
                 case AstExpression::EXPR_STMTEXPRESSION:
                     {
-                        if(!compileExpression(expr->m_uexpr.exprexpression))
+                        if(!compileExpression(expr->m_uexpr.exprexpression.m_exprexprvalue))
                         {
                             goto error;
                         }
@@ -10487,7 +10205,7 @@ class AstCompiler
                     break;
                 case AstExpression::EXPR_STMTBLOCK:
                     {
-                        if(!compilecodeblock(&expr->m_uexpr.exprblockstmt))
+                        if(!compilecodeblock(expr->m_uexpr.exprblockstmt.m_exprblockvalue))
                         {
                             goto error;
                         }
@@ -10524,7 +10242,7 @@ class AstCompiler
             return res;
         }
 
-        bool compilecodeblock(AstExpression::ExprCodeBlock* block)
+        bool compilecodeblock(AstExpression::CodeBlock* block)
         {
             size_t i;
             AstSymTable* symtab;
@@ -10971,7 +10689,7 @@ class State
             MinVMFrames = (4),
         };
 
-        struct ExecInfo
+        class ExecInfo
         {
             public:
                 size_t thisstpos;
@@ -12208,6 +11926,415 @@ void Value::valPrintObjError(Printer* pr, const Value& obj)
     Error::printUserError(pr, obj);
 }
 
+AstExpression* AstUtilCopyExpression(AstExpression* expr)
+{
+    AstExpression* res;
+    if(!expr)
+    {
+        return nullptr;
+    }
+    res = nullptr;
+    switch(expr->m_exprtype)
+    {
+        case AstExpression::EXPR_NONE:
+            {
+                MC_ASSERT(false);
+            }
+            break;
+        case AstExpression::EXPR_IDENT:
+            {
+                AstExpression::Identifier* ident;
+                ident = AstExpression::Identifier::copy(expr->m_uexpr.exprident.m_expridvalue);
+                res = AstParser::makeAstItemIdent(ident);
+            }
+            break;
+        case AstExpression::EXPR_NUMBERLITERAL:
+            {
+                res = AstParser::makeAstItemLiteralNumber(expr->m_uexpr.exprlitnumber.m_exprnumber);
+            }
+            break;
+        case AstExpression::EXPR_BOOLLITERAL:
+            {
+                res = AstParser::makeAstItemLiteralBool(expr->m_uexpr.exprlitbool.m_exprbool);
+            }
+            break;
+        case AstExpression::EXPR_STRINGLITERAL:
+            {
+                char* stringcopy;
+                stringcopy = mc_util_strndup(expr->m_uexpr.exprlitstring.m_strexprdata, expr->m_uexpr.exprlitstring.m_strexprlength);
+                res = AstParser::makeAstItemLiteralString(stringcopy, expr->m_uexpr.exprlitstring.m_strexprlength);
+            }
+            break;
+
+        case AstExpression::EXPR_NULLLITERAL:
+            {
+                res = AstParser::makeAstItemLiteralNull();
+            }
+            break;
+        case AstExpression::EXPR_ARRAYLITERAL:
+            {
+                auto valuescopy = expr->m_uexpr.exprlitarray.m_litarritems.copyToStack(AstUtilCopyExpression, AstUtilDestroyExpression);
+                res = AstParser::makeAstItemLiteralArray(valuescopy);
+            }
+            break;
+
+        case AstExpression::EXPR_MAPLITERAL:
+            {
+                auto keyscopy = expr->m_uexpr.exprlitmap.m_litmapkeys.copyToStack(AstUtilCopyExpression, AstUtilDestroyExpression);
+                auto valuescopy = expr->m_uexpr.exprlitmap.m_litmapvalues.copyToStack(AstUtilCopyExpression, AstUtilDestroyExpression);
+                res = AstParser::makeAstItemLiteralMap(keyscopy, valuescopy);
+            }
+            break;
+        case AstExpression::EXPR_PREFIX:
+            {
+                AstExpression* rightcopy;
+                rightcopy = AstUtilCopyExpression(expr->m_uexpr.exprprefix.right);
+                res = AstParser::makeAstItemPrefix(expr->m_uexpr.exprprefix.op, rightcopy);
+            }
+            break;
+        case AstExpression::EXPR_INFIX:
+            {
+                AstExpression* leftcopy;
+                AstExpression* rightcopy;
+                leftcopy = AstUtilCopyExpression(expr->m_uexpr.exprinfix.left);
+                rightcopy = AstUtilCopyExpression(expr->m_uexpr.exprinfix.right);
+                res = AstParser::makeAstItemInfix(expr->m_uexpr.exprinfix.op, leftcopy, rightcopy);
+            }
+            break;
+        case AstExpression::EXPR_FUNCTIONLITERAL:
+            {
+                char* namecopy;
+                AstExpression::CodeBlock* bodycopy;
+                auto pacopy = expr->m_uexpr.exprlitfunction.funcparamlist.copyToStack(AstExpression::ExprFuncParam::copy, AstExpression::ExprFuncParam::destroy);
+                bodycopy = AstExpression::CodeBlock::copy(expr->m_uexpr.exprlitfunction.body);
+                namecopy = mc_util_strdup(expr->m_uexpr.exprlitfunction.name);
+                res = AstParser::makeAstItemLiteralFunction(pacopy, bodycopy);
+                res->m_uexpr.exprlitfunction.name = namecopy;
+            }
+            break;
+        case AstExpression::EXPR_CALL:
+            {
+                AstExpression* fcopy;
+                fcopy = AstUtilCopyExpression(expr->m_uexpr.exprcall.function);
+                auto argscopy = expr->m_uexpr.exprcall.m_callargs.copyToStack(AstUtilCopyExpression, AstUtilDestroyExpression);
+                res = AstParser::makeAstItemCallExpr(fcopy, argscopy);
+            }
+            break;
+        case AstExpression::EXPR_INDEX:
+            {
+                AstExpression* leftcopy;
+                AstExpression* indexcopy;
+                leftcopy = AstUtilCopyExpression(expr->m_uexpr.exprindex.left);
+                indexcopy = AstUtilCopyExpression(expr->m_uexpr.exprindex.index);
+                res = AstParser::makeAstItemIndex(leftcopy, indexcopy, false);
+            }
+            break;
+        case AstExpression::EXPR_ASSIGN:
+            {
+                AstExpression* destcopy;
+                AstExpression* sourcecopy;
+                destcopy = AstUtilCopyExpression(expr->m_uexpr.exprassign.dest);
+                sourcecopy = AstUtilCopyExpression(expr->m_uexpr.exprassign.source);
+                res = AstParser::makeAstItemAssign(destcopy, sourcecopy, expr->m_uexpr.exprassign.is_postfix);
+            }
+            break;
+        case AstExpression::EXPR_LOGICAL:
+            {
+                AstExpression* leftcopy;
+                AstExpression* rightcopy;
+                leftcopy = AstUtilCopyExpression(expr->m_uexpr.exprlogical.left);
+                rightcopy = AstUtilCopyExpression(expr->m_uexpr.exprlogical.right);
+                res = AstParser::makeAstItemLogical(expr->m_uexpr.exprlogical.op, leftcopy, rightcopy);
+            }
+            break;
+        case AstExpression::EXPR_TERNARY:
+            {
+                AstExpression* testcopy;
+                AstExpression* iftruecopy;
+                AstExpression* iffalsecopy;
+                testcopy = AstUtilCopyExpression(expr->m_uexpr.exprternary.tercond);
+                iftruecopy = AstUtilCopyExpression(expr->m_uexpr.exprternary.teriftrue);
+                iffalsecopy = AstUtilCopyExpression(expr->m_uexpr.exprternary.teriffalse);
+                res = AstParser::makeAstItemTernary(testcopy, iftruecopy, iffalsecopy);
+            }
+            break;
+        case AstExpression::EXPR_STMTDEFINE:
+            {
+                AstExpression* valuecopy;
+                valuecopy = AstUtilCopyExpression(expr->m_uexpr.exprdefine.value);
+                res = AstParser::makeAstItemDefine(AstExpression::Identifier::copy(expr->m_uexpr.exprdefine.name), valuecopy, expr->m_uexpr.exprdefine.assignable);
+            }
+            break;
+        case AstExpression::EXPR_STMTIF:
+            {
+                AstExpression::CodeBlock* alternativecopy;
+                auto casescopy = expr->m_uexpr.exprifstmt.m_ifcases.copyToStack(AstExpression::ExprIfCase::copy, AstExpression::ExprIfCase::destroy);
+                alternativecopy = AstExpression::CodeBlock::copy(expr->m_uexpr.exprifstmt.m_ifstmtelsestmt);
+                res = AstParser::makeAstItemIfStmt(casescopy, alternativecopy);
+            }
+            break;
+        case AstExpression::EXPR_STMTRETURN:
+            {
+                AstExpression* valuecopy;
+                valuecopy = AstUtilCopyExpression(expr->m_uexpr.exprreturnvalue.m_exprretvalue);
+                res = AstParser::makeAstItemReturnStmt(valuecopy);
+            }
+            break;
+        case AstExpression::EXPR_STMTEXPRESSION:
+            {
+                AstExpression* valuecopy;
+                valuecopy = AstUtilCopyExpression(expr->m_uexpr.exprexpression.m_exprexprvalue);
+                res = AstParser::makeAstItemExprStmt(valuecopy);
+            }
+            break;
+        case AstExpression::EXPR_STMTLOOPWHILE:
+            {
+                AstExpression* testcopy;
+                AstExpression::CodeBlock* bodycopy;
+                testcopy = AstUtilCopyExpression(expr->m_uexpr.exprwhileloopstmt.loopcond);
+                bodycopy = AstExpression::CodeBlock::copy(expr->m_uexpr.exprwhileloopstmt.body);
+                res = AstParser::makeAstItemWhileStmt(testcopy, bodycopy);
+            }
+            break;
+        case AstExpression::EXPR_STMTBREAK:
+            {
+                res = AstParser::makeAstItemBreakStmt();
+            }
+            break;
+        case AstExpression::EXPR_STMTCONTINUE:
+            {
+                res = AstParser::makeAstItemContinueStmt();
+            }
+            break;
+        case AstExpression::EXPR_STMTLOOPFOREACH:
+            {
+                AstExpression* sourcecopy;
+                AstExpression::CodeBlock* bodycopy;
+                sourcecopy = AstUtilCopyExpression(expr->m_uexpr.exprforeachloopstmt.source);
+                bodycopy = AstExpression::CodeBlock::copy(expr->m_uexpr.exprforeachloopstmt.body);
+                res = AstParser::makeAstItemForeachStmt(AstExpression::Identifier::copy(expr->m_uexpr.exprforeachloopstmt.iterator), sourcecopy, bodycopy);
+            }
+            break;
+        case AstExpression::EXPR_STMTLOOPFORCLASSIC:
+            {
+                AstExpression* initcopy;
+                AstExpression* testcopy;
+                AstExpression* updatecopy;
+                AstExpression::CodeBlock* bodycopy;
+                initcopy= AstUtilCopyExpression(expr->m_uexpr.exprforloopstmt.init);
+                testcopy = AstUtilCopyExpression(expr->m_uexpr.exprforloopstmt.loopcond);
+                updatecopy = AstUtilCopyExpression(expr->m_uexpr.exprforloopstmt.update);
+                bodycopy = AstExpression::CodeBlock::copy(expr->m_uexpr.exprforloopstmt.body);
+                res = AstParser::makeAstItemForLoopStmt(initcopy, testcopy, updatecopy, bodycopy);
+            }
+            break;
+        case AstExpression::EXPR_STMTBLOCK:
+            {
+                AstExpression::CodeBlock* blockcopy;
+                blockcopy = AstExpression::CodeBlock::copy(expr->m_uexpr.exprblockstmt.m_exprblockvalue);
+                res = AstParser::makeAstItemBlockStmt(blockcopy);
+            }
+            break;
+        case AstExpression::EXPR_STMTIMPORT:
+            {
+                char* pathcopy;
+                pathcopy = mc_util_strdup(expr->m_uexpr.exprimportstmt.path);
+                res = AstParser::makeAstItemImportExpr(pathcopy);
+            }
+            break;
+        case AstExpression::EXPR_STMTRECOVER:
+            {
+                AstExpression::CodeBlock* bodycopy;
+                AstExpression::Identifier* erroridentcopy;
+                bodycopy = AstExpression::CodeBlock::copy(expr->m_uexpr.exprrecoverstmt.body);
+                erroridentcopy = AstExpression::Identifier::copy(expr->m_uexpr.exprrecoverstmt.errident);
+                res = AstParser::makeAstItemRecover(erroridentcopy, bodycopy);
+            }
+            break;
+        default:
+            {
+            }
+            break;
+    }
+    if(!res)
+    {
+        return nullptr;
+    }
+    res->m_exprpos = expr->m_exprpos;
+    return res;
+}
+
+void AstUtilDestroyExpression(AstExpression* expr)
+{
+    if(expr != nullptr)
+    {
+        switch(expr->m_exprtype)
+        {
+            case AstExpression::EXPR_NONE:
+                {
+                    MC_ASSERT(false);
+                }
+                break;
+            case AstExpression::EXPR_IDENT:
+                {
+                    Memory::destroy(expr->m_uexpr.exprident.m_expridvalue);
+                }
+                break;
+            case AstExpression::EXPR_NUMBERLITERAL:
+            case AstExpression::EXPR_BOOLLITERAL:
+                {
+                }
+                break;
+            case AstExpression::EXPR_STRINGLITERAL:
+                {
+                    mc_memory_free(expr->m_uexpr.exprlitstring.m_strexprdata);
+                }
+                break;
+            case AstExpression::EXPR_NULLLITERAL:
+                {
+                }
+                break;
+            case AstExpression::EXPR_ARRAYLITERAL:
+                {
+                    expr->m_uexpr.exprlitarray.m_litarritems.deInit(AstUtilDestroyExpression);
+                }
+                break;
+            case AstExpression::EXPR_MAPLITERAL:
+                {
+                    expr->m_uexpr.exprlitmap.m_litmapkeys.deInit(AstUtilDestroyExpression);
+                    expr->m_uexpr.exprlitmap.m_litmapvalues.deInit(AstUtilDestroyExpression);
+                }
+                break;
+            case AstExpression::EXPR_PREFIX:
+                {
+                    AstUtilDestroyExpression(expr->m_uexpr.exprprefix.right);
+                }
+                break;
+            case AstExpression::EXPR_INFIX:
+                {
+                    AstUtilDestroyExpression(expr->m_uexpr.exprinfix.left);
+                    AstUtilDestroyExpression(expr->m_uexpr.exprinfix.right);
+                }
+                break;
+            case AstExpression::EXPR_FUNCTIONLITERAL:
+                {
+                    AstExpression::ExprLiteralFunction* fn;
+                    fn = &expr->m_uexpr.exprlitfunction;
+                    mc_memory_free(fn->name);
+                    fn->funcparamlist.deInit(AstExpression::ExprFuncParam::destroy);
+                    Memory::destroy(fn->body);
+                }
+                break;
+            case AstExpression::EXPR_CALL:
+                {
+                    expr->m_uexpr.exprcall.m_callargs.deInit(AstUtilDestroyExpression);
+                    AstUtilDestroyExpression(expr->m_uexpr.exprcall.function);
+                }
+                break;
+            case AstExpression::EXPR_INDEX:
+                {
+                    AstUtilDestroyExpression(expr->m_uexpr.exprindex.left);
+                    AstUtilDestroyExpression(expr->m_uexpr.exprindex.index);
+                }
+                break;
+            case AstExpression::EXPR_ASSIGN:
+                {
+                    AstUtilDestroyExpression(expr->m_uexpr.exprassign.dest);
+                    AstUtilDestroyExpression(expr->m_uexpr.exprassign.source);
+                }
+                break;
+            case AstExpression::EXPR_LOGICAL:
+                {
+                    AstUtilDestroyExpression(expr->m_uexpr.exprlogical.left);
+                    AstUtilDestroyExpression(expr->m_uexpr.exprlogical.right);
+                }
+                break;
+            case AstExpression::EXPR_TERNARY:
+                {
+                    AstUtilDestroyExpression(expr->m_uexpr.exprternary.tercond);
+                    AstUtilDestroyExpression(expr->m_uexpr.exprternary.teriftrue);
+                    AstUtilDestroyExpression(expr->m_uexpr.exprternary.teriffalse);
+                }
+                break;
+            case AstExpression::EXPR_STMTDEFINE:
+                {
+                    Memory::destroy(expr->m_uexpr.exprdefine.name);
+                    AstUtilDestroyExpression(expr->m_uexpr.exprdefine.value);
+                }
+                break;
+            case AstExpression::EXPR_STMTIF:
+                {
+                    expr->m_uexpr.exprifstmt.m_ifcases.deInit(AstExpression::ExprIfCase::destroy);
+                    Memory::destroy(expr->m_uexpr.exprifstmt.m_ifstmtelsestmt);
+                }
+                break;
+            case AstExpression::EXPR_STMTRETURN:
+                {
+                    AstUtilDestroyExpression(expr->m_uexpr.exprreturnvalue.m_exprretvalue);
+                }
+                break;
+            case AstExpression::EXPR_STMTEXPRESSION:
+                {
+                    AstUtilDestroyExpression(expr->m_uexpr.exprexpression.m_exprexprvalue);
+                }
+                break;
+            case AstExpression::EXPR_STMTLOOPWHILE:
+                {
+                    AstUtilDestroyExpression(expr->m_uexpr.exprwhileloopstmt.loopcond);
+                    Memory::destroy(expr->m_uexpr.exprwhileloopstmt.body);
+                }
+                break;
+            case AstExpression::EXPR_STMTBREAK:
+                {
+                }
+                break;
+            case AstExpression::EXPR_STMTCONTINUE:
+                {
+                }
+                break;
+            case AstExpression::EXPR_STMTLOOPFOREACH:
+                {
+                    Memory::destroy(expr->m_uexpr.exprforeachloopstmt.iterator);
+                    AstUtilDestroyExpression(expr->m_uexpr.exprforeachloopstmt.source);
+                    Memory::destroy(expr->m_uexpr.exprforeachloopstmt.body);
+                }
+                break;
+            case AstExpression::EXPR_STMTLOOPFORCLASSIC:
+                {
+                    AstUtilDestroyExpression(expr->m_uexpr.exprforloopstmt.init);
+                    AstUtilDestroyExpression(expr->m_uexpr.exprforloopstmt.loopcond);
+                    AstUtilDestroyExpression(expr->m_uexpr.exprforloopstmt.update);
+                    Memory::destroy(expr->m_uexpr.exprforloopstmt.body);
+                }
+                break;
+            case AstExpression::EXPR_STMTBLOCK:
+                {
+                    Memory::destroy(expr->m_uexpr.exprblockstmt.m_exprblockvalue);
+                }
+                break;
+            case AstExpression::EXPR_STMTIMPORT:
+                {
+                    mc_memory_free(expr->m_uexpr.exprimportstmt.path);
+                }
+                break;
+            case AstExpression::EXPR_STMTRECOVER:
+                {
+                    Memory::destroy(expr->m_uexpr.exprrecoverstmt.body);
+                    Memory::destroy(expr->m_uexpr.exprrecoverstmt.errident);
+                }
+                break;
+            default:
+                {
+                }
+                break;
+        }
+        Memory::destroy(expr);
+        expr = nullptr;
+    }
+}
+
+
+
 char* mc_util_readhandle(FILE* hnd, size_t* dlen)
 {
     long rawtold;
@@ -12713,8 +12840,8 @@ void mc_state_gcsweep()
     size_t i;
     Object* data;
     GCMemory::DataPool* pool;
-    auto vd = GCMemory::get()->m_gcobjlistremains->data();
-    auto cnt = GCMemory::get()->m_gcobjlistremains->count();
+    auto vd = GCMemory::get()->m_gcobjlistremains.data();
+    auto cnt = GCMemory::get()->m_gcobjlistremains.count();
     mc_state_gcmarkobjlist(static_cast<Value*>(vd), cnt);
     MC_ASSERT(GCMemory::get()->m_gcobjlistback->count() >= GCMemory::get()->m_gcobjliststored->count());
     GCMemory::get()->m_gcobjlistback->clear();
@@ -12779,11 +12906,11 @@ bool mc_state_gcdisablefor(Value obj)
         return false;
     }
     data = obj.getAllocatedData<Object>();
-    if(data->m_objmem->m_gcobjlistremains->contains(&obj))
+    if(data->m_objmem->m_gcobjlistremains.contains(&obj))
     {
         return false;
     }
-    return data->m_objmem->m_gcobjlistremains->push(obj);
+    return data->m_objmem->m_gcobjlistremains.push(obj);
     #endif
     return false;
 }
@@ -12798,7 +12925,7 @@ void mc_state_gcenablefor(Value obj)
     if(obj.isAllocated())
     {
         data = obj.getAllocatedData<Object>();
-        data->m_objmem->m_gcobjlistremains->removeItem(&obj);
+        data->m_objmem->m_gcobjlistremains.removeItem(&obj);
     }
     #endif
 }
@@ -16197,7 +16324,7 @@ void mc_cli_printtypesizes()
     printtypesize(AstSymbol);
     printtypesize(SourceLocation);
     printtypesize(AstToken);
-    printtypesize(AstExpression::ExprCodeBlock);
+    printtypesize(AstExpression::CodeBlock);
     printtypesize(AstExpression::ExprLiteralMap);
     printtypesize(AstExpression::ExprLiteralArray);
     printtypesize(AstExpression::ExprLiteralString);
@@ -16210,7 +16337,7 @@ void mc_cli_printtypesizes()
     printtypesize(AstExpression::ExprAssign);
     printtypesize(AstExpression::ExprLogical);
     printtypesize(AstExpression::ExprTernary);
-    printtypesize(AstExpression::ExprIdent);
+    printtypesize(AstExpression::Identifier);
     printtypesize(AstExpression::ExprFuncParam);
     printtypesize(AstExpression::ExprDefine);
     printtypesize(AstExpression::ExprIfStmt);
