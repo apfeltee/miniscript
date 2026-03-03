@@ -1336,14 +1336,76 @@ class GCMemory
 class Object
 {
     public:
-        enum
+
+        union ValUnion
         {
-            MaxFreeVal = (2),
         };
 
-        struct ObjFunction
+    public:
+        static Object* getDataFromPool(ValData::Type type)
+        {
+            Object* data;
+            GCMemory::DataPool* pool;
+            pool = GCMemory::get()->getPoolForType(type);
+            if((pool == nullptr) || pool->m_poolitemcount <= 0)
+            {
+                return nullptr;
+            }
+            data = pool->m_pooldata.get(pool->m_poolitemcount - 1);
+            MC_ASSERT(GCMemory::get()->m_gcobjlistback->count() >= GCMemory::get()->m_gcobjliststored->count());
+            /*
+            * we want to make sure that appending to m_gcobjlistback never fails in sweep
+            * so this only reserves space there.
+            */
+            GCMemory::get()->m_gcobjlistback->push(data);
+            GCMemory::get()->m_gcobjliststored->push(data);
+            pool->m_poolitemcount--;
+            return data;
+        }
+
+    public:
+        int8_t m_odtype;
+        int8_t m_gcmark;
+        GCMemory* m_objmem;
+        ValUnion m_uvobj;
+
+    public:
+        MC_INLINE Object()
+        {
+        }
+};
+
+class Value: public ValData
+{
+    public:
+        class ObjError: public Object
         {
             public:
+                char* message;
+                Traceback* traceback;
+
+            public:
+        };
+
+        struct ObjString: public Object
+        {
+            public:
+                unsigned long m_hashval;
+                StringBuffer* m_strbuf;
+
+            public:
+
+        };
+
+        struct ObjFunction: public Object
+        {
+            public:
+                enum
+                {
+                    MaxFreeVal = (2),
+                };
+
+
                 union
                 {
                     struct
@@ -1381,7 +1443,8 @@ class Object
                 }
         };
 
-        class ObjUserdata
+
+        class ObjUserdata: public Object
         {
             public:
                 void* data;
@@ -1389,7 +1452,7 @@ class Object
                 CallbackCopyFN datacopyfn;
         };
 
-        class ObjArray
+        class ObjArray: public Object
         {
             public:
                 GenericList<Value>* m_actualarray;
@@ -1446,7 +1509,7 @@ class Object
 
         };
 
-        class ObjMap
+        class ObjMap: public Object
         {
             public:
                 ValDict<Value, Value>* m_actualmap;
@@ -1486,53 +1549,25 @@ class Object
     
         };
 
-        struct ObjString
-        {
-            public:
-                unsigned long m_hashval;
-                StringBuffer* m_strbuf;
-
-            public:
-
-        };
-
-        class ObjError
-        {
-            public:
-                char* message;
-                Traceback* traceback;
-
-            public:
-        };
-
-        union ValUnion
-        {
-            ObjString valstring;
-            ObjError valerror;
-            ObjArray* valarray;
-            ObjMap* valmap;
-            ObjFunction valfunc;
-            ObjUserdata valuserobject;
-        };
-
     public:
-        static Object* makeObjData(ValData::Type typ)
+        template<typename DerivTyp>
+        static DerivTyp* makeObjData(ValData::Type typ)
         {
             Object* data;
             data = Object::getDataFromPool(typ);
             if(data != nullptr)
             {
-                return data;
+                return (DerivTyp*)data;
             }
             GCMemory::get()->m_allocssincesweep++;
             if(GCMemory::get()->m_poolonlydata.m_poolitemcount > 0)
             {
-                data = GCMemory::get()->m_poolonlydata.m_pooldata.get(GCMemory::get()->m_poolonlydata.m_poolitemcount - 1);
+                data = (DerivTyp*)GCMemory::get()->m_poolonlydata.m_pooldata.get(GCMemory::get()->m_poolonlydata.m_poolitemcount - 1);
                 GCMemory::get()->m_poolonlydata.m_poolitemcount--;
             }
             else
             {
-                data = Memory::make<Object>();
+                data = Memory::make<DerivTyp>();
             }
             MC_ASSERT(GCMemory::get()->m_gcobjlistback->count() >= GCMemory::get()->m_gcobjliststored->count());
             /*
@@ -1542,7 +1577,7 @@ class Object
             GCMemory::get()->m_gcobjlistback->push(data);
             GCMemory::get()->m_gcobjliststored->push(data);
             data->m_objmem = GCMemory::get();
-            return data;
+            return (DerivTyp*)data;
         }
 
         static void destroyObjData(Object* data)
@@ -1556,51 +1591,57 @@ class Object
                     break;
                 case ValData::VALTYP_STRING:
                     {
-                        StringBuffer::destroy(data->m_uvobj.valstring.m_strbuf);
+                        StringBuffer::destroy(((ObjString*)data)->m_strbuf);
                     }
                     break;
                 case ValData::VALTYP_FUNCSCRIPT:
                     {
-                        if(data->m_uvobj.valfunc.m_funcdata.valscriptfunc.ownsdata)
+                        auto fn = (ObjFunction*)data;
+                        if(fn->m_funcdata.valscriptfunc.ownsdata)
                         {
-                            mc_memory_free(data->m_uvobj.valfunc.m_funcdata.valscriptfunc.unamev.fallocname);
-                            CompiledProgram::destroy(data->m_uvobj.valfunc.m_funcdata.valscriptfunc.compiledprogcode);
+                            mc_memory_free(fn->m_funcdata.valscriptfunc.unamev.fallocname);
+                            CompiledProgram::destroy(fn->m_funcdata.valscriptfunc.compiledprogcode);
                         }
-                        if(data->m_uvobj.valfunc.freeValuesAreAllocated())
+                        if(fn->freeValuesAreAllocated())
                         {
-                            mc_memory_free(data->m_uvobj.valfunc.m_funcdata.valscriptfunc.ufv.freevalsallocated);
+                            mc_memory_free(fn->m_funcdata.valscriptfunc.ufv.freevalsallocated);
                         }
                     }
                     break;
                 case ValData::VALTYP_ARRAY:
                     {
-                        Memory::destroy(data->m_uvobj.valarray->m_actualarray);
-                        Memory::destroy(data->m_uvobj.valarray);
+                        auto arr = (ObjArray*)data;
+                        Memory::destroy(arr->m_actualarray);
+                        //Memory::destroy(arr);
                     }
                     break;
                 case ValData::VALTYP_MAP:
                     {
-                        Memory::destroy(data->m_uvobj.valmap->m_actualmap);
-                        Memory::destroy(data->m_uvobj.valmap);
+                        auto m = (ObjMap*)data;
+                        Memory::destroy(m->m_actualmap);
+                        //Memory::destroy(m);
                     }
                     break;
                 case ValData::VALTYP_FUNCNATIVE:
                     {
-                        mc_memory_free(data->m_uvobj.valfunc.m_funcdata.valnativefunc.natfnname);
+                        auto fn = (ObjFunction*)data;
+                        mc_memory_free(fn->m_funcdata.valnativefunc.natfnname);
                     }
                     break;
                 case ValData::VALTYP_EXTERNAL:
                     {
-                        if(data->m_uvobj.valuserobject.datadestroyfn != nullptr)
+                        auto ud = (ObjUserdata*)data;
+                        if(ud->datadestroyfn != nullptr)
                         {
-                            data->m_uvobj.valuserobject.datadestroyfn(data->m_uvobj.valuserobject.data);
+                            ud->datadestroyfn(ud->data);
                         }
                     }
                     break;
                 case ValData::VALTYP_ERROR:
                     {
-                        mc_memory_free(data->m_uvobj.valerror.message);
-                        Memory::destroy(data->m_uvobj.valerror.traceback);
+                        auto e = (ObjError*)data;
+                        mc_memory_free(e->message);
+                        Memory::destroy(e->traceback);
                     }
                     break;
                 default:
@@ -1611,44 +1652,8 @@ class Object
             data->m_odtype = ValData::VALTYP_FREED;
         }
 
-        static Object* getDataFromPool(ValData::Type type)
-        {
-            Object* data;
-            GCMemory::DataPool* pool;
-            pool = GCMemory::get()->getPoolForType(type);
-            if((pool == nullptr) || pool->m_poolitemcount <= 0)
-            {
-                return nullptr;
-            }
-            data = pool->m_pooldata.get(pool->m_poolitemcount - 1);
-            MC_ASSERT(GCMemory::get()->m_gcobjlistback->count() >= GCMemory::get()->m_gcobjliststored->count());
-            /*
-            * we want to make sure that appending to m_gcobjlistback never fails in sweep
-            * so this only reserves space there.
-            */
-            GCMemory::get()->m_gcobjlistback->push(data);
-            GCMemory::get()->m_gcobjliststored->push(data);
-            pool->m_poolitemcount--;
-            return data;
-        }
-
-    public:
-        int8_t m_odtype;
-        int8_t m_gcmark;
-        GCMemory* m_objmem;
-        ValUnion m_uvobj;
-
-    public:
-        MC_INLINE Object()
-        {
-        }
 
 
-};
-
-class Value: public ValData
-{
-    public:
         static bool canStoreInPool(Object* data)
         {
             #if 0
@@ -1682,7 +1687,8 @@ class Value: public ValData
                 case Value::VALTYP_STRING:
                     {
                         #if 0
-                        if(!data->m_uvobj.valstring.isAllocated() || data->m_uvobj.valstring.capacity > 4096)
+                        auto os = (ObjString*)data;
+                        if(!data->isAllocated() || data->m_uvobj.valstring.capacity > 4096)
                         {
                             return false;
                         }
@@ -1855,8 +1861,8 @@ class Value: public ValData
             }
             if((a.isAllocated() || a.isNull()) && (b.isAllocated() || b.isNull()))
             {
-                adataval = (intptr_t)a.getAllocatedData();
-                bdataval = (intptr_t)b.getAllocatedData();
+                adataval = (intptr_t)a.getAllocatedData<Object>();
+                bdataval = (intptr_t)b.getAllocatedData<Object>();
                 cres->result = (NumFloat)(adataval - bdataval);
                 return true;
             }
@@ -2226,7 +2232,7 @@ class Value: public ValData
                 case VALTYP_EXTERNAL:
                     {
                         void* datacopy;
-                        Object::ObjUserdata* objext;
+                        Value::ObjUserdata* objext;
                         copy = makeUserObj(nullptr);
                         if(copy.isNull())
                         {
@@ -2295,14 +2301,13 @@ class Value: public ValData
 
         static Value makeStrEmptyCapacity(int capacity)
         {
-            Object* data;
-            data = Object::makeObjData(Value::VALTYP_STRING);
+            auto data = makeObjData<ObjString>(Value::VALTYP_STRING);
             if(data == nullptr)
             {
                 return Value::makeNull();
             }
-            data->m_uvobj.valstring.m_hashval = 0;
-            data->m_uvobj.valstring.m_strbuf = Memory::make<StringBuffer>(capacity);
+            data->m_hashval = 0;
+            data->m_strbuf = Memory::make<StringBuffer>(capacity);
             return Value::makeDataFrom(Value::VALTYP_STRING, data);
         }
 
@@ -2310,14 +2315,13 @@ class Value: public ValData
         static Value makeStrFormat(const char* fmt, ArgsT&&... args)
         {
             Value res;
-            Object* data;
-            data = Object::getDataFromPool(Value::VALTYP_STRING);
+            auto data = (ObjString*)Object::getDataFromPool(Value::VALTYP_STRING);
             res = makeStrEmptyCapacity(0);
             if(res.isNull())
             {
                 return Value::makeNull();
             }
-            data->m_uvobj.valstring.m_strbuf->appendFormat(fmt, args...);
+            data->m_strbuf->appendFormat(fmt, args...);
             return res;
         }
 
@@ -2343,72 +2347,69 @@ class Value: public ValData
 
         static Value makeFuncScript(const char* name, CompiledProgram* cres, bool ownsdt, int nlocals, int nargs, int fvc)
         {
-            Object* data;
-            data = Object::makeObjData(Value::VALTYP_FUNCSCRIPT);
+            auto data = makeObjData<ObjFunction>(Value::VALTYP_FUNCSCRIPT);
             if(data == nullptr)
             {
                 return Value::makeNull();
             }
             if(ownsdt)
             {
-                data->m_uvobj.valfunc.m_funcdata.valscriptfunc.unamev.fallocname = (name != nullptr) ? mc_util_strdup(name) : mc_util_strdup("anonymous");
-                if(data->m_uvobj.valfunc.m_funcdata.valscriptfunc.unamev.fallocname == nullptr)
+                
+                data->m_funcdata.valscriptfunc.unamev.fallocname = (name != nullptr) ? mc_util_strdup(name) : mc_util_strdup("anonymous");
+                if(data->m_funcdata.valscriptfunc.unamev.fallocname == nullptr)
                 {
                     return Value::makeNull();
                 }
             }
             else
             {
-                data->m_uvobj.valfunc.m_funcdata.valscriptfunc.unamev.fconstname = (name != nullptr) ? name : "anonymous";
+                data->m_funcdata.valscriptfunc.unamev.fconstname = (name != nullptr) ? name : "anonymous";
             }
-            data->m_uvobj.valfunc.m_funcdata.valscriptfunc.compiledprogcode = cres;
-            data->m_uvobj.valfunc.m_funcdata.valscriptfunc.ownsdata = ownsdt;
-            data->m_uvobj.valfunc.m_funcdata.valscriptfunc.numlocals = nlocals;
-            data->m_uvobj.valfunc.m_funcdata.valscriptfunc.numargs = nargs;
-            if(fvc >= Object::MaxFreeVal)
+            data->m_funcdata.valscriptfunc.compiledprogcode = cres;
+            data->m_funcdata.valscriptfunc.ownsdata = ownsdt;
+            data->m_funcdata.valscriptfunc.numlocals = nlocals;
+            data->m_funcdata.valscriptfunc.numargs = nargs;
+            if(fvc >= ObjFunction::MaxFreeVal)
             {
-                data->m_uvobj.valfunc.m_funcdata.valscriptfunc.ufv.freevalsallocated = (Value*)mc_memory_malloc(sizeof(Value) * fvc);
-                if(data->m_uvobj.valfunc.m_funcdata.valscriptfunc.ufv.freevalsallocated == nullptr)
+                data->m_funcdata.valscriptfunc.ufv.freevalsallocated = (Value*)mc_memory_malloc(sizeof(Value) * fvc);
+                if(data->m_funcdata.valscriptfunc.ufv.freevalsallocated == nullptr)
                 {
                     return Value::makeNull();
                 }
             }
-            data->m_uvobj.valfunc.m_funcdata.valscriptfunc.freevalscount = fvc;
+            data->m_funcdata.valscriptfunc.freevalscount = fvc;
             return Value::makeDataFrom(Value::VALTYP_FUNCSCRIPT, data);
         }
 
         static Value makeFuncNative(const char* name, CallbackNativeFN fn, void* data)
         {
-            Object* obj;
-            obj = Object::makeObjData(Value::VALTYP_FUNCNATIVE);
+            auto obj = makeObjData<ObjFunction>(Value::VALTYP_FUNCNATIVE);
             if(obj == nullptr)
             {
                 return Value::makeNull();
             }
-            obj->m_uvobj.valfunc.m_funcdata.valnativefunc.natfnname = mc_util_strdup(name);
-            if(obj->m_uvobj.valfunc.m_funcdata.valnativefunc.natfnname == nullptr)
+            obj->m_funcdata.valnativefunc.natfnname = mc_util_strdup(name);
+            if(obj->m_funcdata.valnativefunc.natfnname == nullptr)
             {
                 return Value::makeNull();
             }
-            obj->m_uvobj.valfunc.m_funcdata.valnativefunc.natptrfn = fn;
+            obj->m_funcdata.valnativefunc.natptrfn = fn;
             if(data != nullptr)
             {
-                obj->m_uvobj.valfunc.m_funcdata.valnativefunc.userpointer = data;
+                obj->m_funcdata.valnativefunc.userpointer = data;
             }
             return Value::makeDataFrom(Value::VALTYP_FUNCNATIVE, obj);
         }
 
         static Value makeArrayFromList(GenericList<Value>* list)
         {
-            Object* data;
-            data = Object::makeObjData(Value::VALTYP_ARRAY);
+            auto data = makeObjData<ObjArray>(Value::VALTYP_ARRAY);
             if(data == nullptr)
             {
                 return Value::makeNull();
             }
-            data->m_uvobj.valarray = Memory::make<Object::ObjArray>();
-            data->m_uvobj.valarray->m_actualarray = list;
-            if(data->m_uvobj.valarray->m_actualarray == nullptr)
+            data->m_actualarray = list;
+            if(data->m_actualarray == nullptr)
             {
                 return Value::makeNull();
             }
@@ -2433,33 +2434,30 @@ class Value: public ValData
 
         static Value makeMap(size_t capacity)
         {
-            Object* data;
-            data = Object::makeObjData(Value::VALTYP_MAP);
+            auto data = makeObjData<ObjMap>(Value::VALTYP_MAP);
             if(data == nullptr)
             {
                 return Value::makeNull();
             }
-            data->m_uvobj.valmap = Memory::make<Object::ObjMap>();
-            data->m_uvobj.valmap->m_actualmap = Memory::make<ValDict<Value, Value>>(capacity);
-            if(data->m_uvobj.valmap->m_actualmap == nullptr)
+            data->m_actualmap = Memory::make<ValDict<Value, Value>>(capacity);
+            if(data->m_actualmap == nullptr)
             {
                 return Value::makeNull();
             }
-            data->m_uvobj.valmap->m_actualmap->setHashFunction((CallbackHashItemFN)Value::callbackHash);
-            data->m_uvobj.valmap->m_actualmap->setEqualsFunction((CallbackCompareFN)Value::callbackEqualsTo);
+            data->m_actualmap->setHashFunction((CallbackHashItemFN)Value::callbackHash);
+            data->m_actualmap->setEqualsFunction((CallbackCompareFN)Value::callbackEqualsTo);
             return Value::makeDataFrom(Value::VALTYP_MAP, data);
         }
 
         static Value makeErrorNoCopy(char* error)
         {
-            Object* data;
-            data = Object::makeObjData(Value::VALTYP_ERROR);
+            auto data = makeObjData<ObjError>(Value::VALTYP_ERROR);
             if(data == nullptr)
             {
                 return Value::makeNull();
             }
-            data->m_uvobj.valerror.message = error;
-            data->m_uvobj.valerror.traceback = nullptr;
+            data->message = error;
+            data->traceback = nullptr;
             return Value::makeDataFrom(Value::VALTYP_ERROR, data);
         }
 
@@ -2483,15 +2481,14 @@ class Value: public ValData
 
         static Value makeUserObj(void* data)
         {
-            Object* obj;
-            obj = Object::makeObjData(Value::VALTYP_EXTERNAL);
+            auto obj = makeObjData<ObjUserdata>(Value::VALTYP_EXTERNAL);
             if(obj == nullptr)
             {
                 return Value::makeNull();
             }
-            obj->m_uvobj.valuserobject.data = data;
-            obj->m_uvobj.valuserobject.datadestroyfn = nullptr;
-            obj->m_uvobj.valuserobject.datacopyfn = nullptr;
+            obj->data = data;
+            obj->datadestroyfn = nullptr;
+            obj->datacopyfn = nullptr;
             return Value::makeDataFrom(Value::VALTYP_EXTERNAL, obj);
         }
 
@@ -2519,19 +2516,14 @@ class Value: public ValData
             return selfval.m_uval.valnumber;
         }
 
-        static MC_INLINE Object::ObjFunction* asFunction(const Value& val)
+        static MC_INLINE ObjFunction* asFunction(const Value& val)
         {
-            Object* data;
-            data = val.getAllocatedData();
-            return &data->m_uvobj.valfunc;
+            return val.getAllocatedData<ObjFunction>();
         }
 
-        static Object::ObjUserdata* userdataGetData(const Value& val)
+        static ObjUserdata* userdataGetData(const Value& val)
         {
-            Object* data;
-            MC_ASSERT(val.getType() == VALTYP_EXTERNAL);
-            data = val.getAllocatedData();
-            return &data->m_uvobj.valuserobject;
+            return val.getAllocatedData<ObjUserdata>();
         }
 
         static void valPrintObjString(Printer* pr, const Value& val)
@@ -2552,7 +2544,7 @@ class Value: public ValData
 
         static bool userdataSetData(Value selfval, void* extdata)
         {
-            Object::ObjUserdata* data;
+            ObjUserdata* data;
             MC_ASSERT(selfval.getType() == Value::VALTYP_EXTERNAL);
             data = Value::userdataGetData(selfval);
             if(data == nullptr)
@@ -2565,7 +2557,7 @@ class Value: public ValData
 
         static bool userdataSetDestroyFunc(Value selfval, CallbackDestroyFN dfn)
         {
-            Object::ObjUserdata* data;
+            ObjUserdata* data;
             MC_ASSERT(selfval.getType() == Value::VALTYP_EXTERNAL);
             data = Value::userdataGetData(selfval);
             if(data == nullptr)
@@ -2578,7 +2570,7 @@ class Value: public ValData
 
         static bool userdataSetCopyFunc(Value selfval, CallbackCopyFN copyfn)
         {
-            Object::ObjUserdata* data;
+            ObjUserdata* data;
             MC_ASSERT(selfval.getType() == Value::VALTYP_EXTERNAL);
             data = Value::userdataGetData(selfval);
             if(data == nullptr)
@@ -2591,33 +2583,22 @@ class Value: public ValData
 
         static const char* functionGetName(Value selfval)
         {
-            Object* data;
-            MC_ASSERT(selfval.getType() == Value::VALTYP_FUNCSCRIPT);
-            data = selfval.getAllocatedData();
+            auto data = selfval.getAllocatedData<ObjFunction>();
             MC_ASSERT(data);
             if(data == nullptr)
             {
                 return nullptr;
             }
-            if(data->m_uvobj.valfunc.m_funcdata.valscriptfunc.ownsdata)
+            if(data->m_funcdata.valscriptfunc.ownsdata)
             {
-                return data->m_uvobj.valfunc.m_funcdata.valscriptfunc.unamev.fallocname;
+                return data->m_funcdata.valscriptfunc.unamev.fallocname;
             }
-            return data->m_uvobj.valfunc.m_funcdata.valscriptfunc.unamev.fconstname;
+            return data->m_funcdata.valscriptfunc.unamev.fconstname;
         }
 
         static Value functionGetFreeValAt(Value selfval, int ix)
         {
-            Object* data;
-            Object::ObjFunction* fun;
-            MC_ASSERT(selfval.getType() == Value::VALTYP_FUNCSCRIPT);
-            data = selfval.getAllocatedData();
-            MC_ASSERT(data);
-            if(data == nullptr)
-            {
-                return Value::makeNull();
-            }
-            fun = &data->m_uvobj.valfunc;
+            auto fun = selfval.getAllocatedData<ObjFunction>();
             MC_ASSERT(ix >= 0 && ix < fun->m_funcdata.valscriptfunc.freevalscount);
             if(ix < 0 || ix >= fun->m_funcdata.valscriptfunc.freevalscount)
             {
@@ -2632,44 +2613,27 @@ class Value: public ValData
 
         static void functionSetFreeValAt(Value selfval, int ix, Value val)
         {
-            Object* data;
-            Object::ObjFunction* fun;
-            MC_ASSERT(selfval.getType() == Value::VALTYP_FUNCSCRIPT);
-            data = selfval.getAllocatedData();
-            MC_ASSERT(data);
-            if(data != nullptr)
+            auto fun = selfval.getAllocatedData<ObjFunction>();
+            MC_ASSERT(ix >= 0 && ix < fun->m_funcdata.valscriptfunc.freevalscount);
+            if(ix < 0 || ix >= fun->m_funcdata.valscriptfunc.freevalscount)
             {
-                fun = &data->m_uvobj.valfunc;
-                MC_ASSERT(ix >= 0 && ix < fun->m_funcdata.valscriptfunc.freevalscount);
-                if(ix < 0 || ix >= fun->m_funcdata.valscriptfunc.freevalscount)
+            }
+            else
+            {
+                if(fun->freeValuesAreAllocated())
                 {
+                    fun->m_funcdata.valscriptfunc.ufv.freevalsallocated[ix] = val;
                 }
                 else
                 {
-                    if(fun->freeValuesAreAllocated())
-                    {
-                        fun->m_funcdata.valscriptfunc.ufv.freevalsallocated[ix] = val;
-                    }
-                    else
-                    {
-                        fun->m_funcdata.valscriptfunc.ufv.freevalsstack[ix] = val;
-                    }
+                    fun->m_funcdata.valscriptfunc.ufv.freevalsstack[ix] = val;
                 }
             }
         }
 
         static Value* functionGetFreeVals(Value selfval)
         {
-            Object* data;
-            Object::ObjFunction* fun;
-            MC_ASSERT(selfval.getType() == Value::VALTYP_FUNCSCRIPT);
-            data = selfval.getAllocatedData();
-            MC_ASSERT(data);
-            if(data == nullptr)
-            {
-                return nullptr;
-            }
-            fun = &data->m_uvobj.valfunc;
+            auto fun = selfval.getAllocatedData<ObjFunction>();
             if(fun->freeValuesAreAllocated())
             {
                 return fun->m_funcdata.valscriptfunc.ufv.freevalsallocated;
@@ -2679,30 +2643,21 @@ class Value: public ValData
 
         static const char* errorGetMessage(Value selfval)
         {
-            Object* data;
-            MC_ASSERT(selfval.getType() == Value::VALTYP_ERROR);
-            data = selfval.getAllocatedData();
-            return data->m_uvobj.valerror.message;
+            auto data = selfval.getAllocatedData<ObjError>();
+            return data->message;
         }
 
         static void errorSetTraceback(Value selfval, Traceback* traceback)
         {
-            Object* data;
-            MC_ASSERT(selfval.getType() == Value::VALTYP_ERROR);
-            if(selfval.getType() == Value::VALTYP_ERROR)
-            {
-                data = selfval.getAllocatedData();
-                MC_ASSERT(data->m_uvobj.valerror.traceback == nullptr);
-                data->m_uvobj.valerror.traceback = traceback;
-            }
+            auto data = selfval.getAllocatedData<ObjError>();
+            MC_ASSERT(data->traceback == nullptr);
+            data->traceback = traceback;
         }
 
         static Traceback* errorGetTraceback(Value selfval)
         {
-            Object* data;
-            MC_ASSERT(selfval.getType() == Value::VALTYP_ERROR);
-            data = selfval.getAllocatedData();
-            return data->m_uvobj.valerror.traceback;
+            auto data = selfval.getAllocatedData<ObjError>();
+            return data->traceback;
         }
 
         static Value arrayGetValue(Value selfval, size_t ix)
@@ -2892,8 +2847,7 @@ class Value: public ValData
         static void valPrintObjFuncScript(Printer* pr, const Value& val)
         {
             const char* fname;
-            Object::ObjFunction* fn;
-            fn = Value::asFunction(val);
+            auto fn = Value::asFunction(val);
             fname = functionGetName(val);
             auto numlocals = fn->m_funcdata.valscriptfunc.numlocals;
             auto numargs = fn->m_funcdata.valscriptfunc.numargs;
@@ -3069,14 +3023,16 @@ class Value: public ValData
             return m_valtype;
         }
 
-        MC_INLINE Object* getAllocatedData()
+        template<typename ActualT>
+        MC_INLINE ActualT* getAllocatedData()
         {
-            return m_uval.odata;
+            return static_cast<ActualT*>(m_uval.odata);
         }
 
-        MC_INLINE Object* getAllocatedData() const
+        template<typename ActualT>
+        MC_INLINE ActualT* getAllocatedData() const
         {
-            return m_uval.odata;
+            return static_cast<ActualT*>(m_uval.odata);
         }
 
         MC_INLINE bool isAllocated() const
@@ -3141,40 +3097,37 @@ class Value: public ValData
             return (type == VALTYP_ARRAY);
         }
 
-        MC_INLINE Object::ObjArray* asArray()
+        MC_INLINE ObjArray* asArray()
         {
-            auto data = getAllocatedData();
-            return data->m_uvobj.valarray;
+            return getAllocatedData<ObjArray>();
         }
 
-        MC_INLINE Object::ObjArray* asArray() const
+        MC_INLINE ObjArray* asArray() const
         {
-            auto data = getAllocatedData();
-            return data->m_uvobj.valarray;
+            auto data = getAllocatedData<ObjArray>();
+            return data;
         }
 
-        MC_INLINE Object::ObjMap* asMap()
+        MC_INLINE ObjMap* asMap()
         {
-            auto data = getAllocatedData();
-            return data->m_uvobj.valmap;
+            return getAllocatedData<ObjMap>();
         }
 
-        MC_INLINE Object::ObjMap* asMap() const
+        MC_INLINE ObjMap* asMap() const
         {
-            auto data = getAllocatedData();
-            return data->m_uvobj.valmap;
+            return getAllocatedData<ObjMap>();
         }
 
         MC_INLINE char* getStringDataIntern()
         {
-            auto data = getAllocatedData();
-            return data->m_uvobj.valstring.m_strbuf->data();
+            auto data = getAllocatedData<ObjString>();
+            return data->m_strbuf->data();
         }
 
         MC_INLINE char* getStringDataIntern() const
         {
-            auto data = getAllocatedData();
-            return data->m_uvobj.valstring.m_strbuf->data();
+            auto data = getAllocatedData<ObjString>();
+            return data->m_strbuf->data();
         }
 
         MC_INLINE const char* stringGetData() const
@@ -3184,14 +3137,14 @@ class Value: public ValData
 
         MC_INLINE int stringGetLength() const
         {
-            auto data = getAllocatedData();
-            return data->m_uvobj.valstring.m_strbuf->length();
+            auto data = getAllocatedData<ObjString>();
+            return data->m_strbuf->length();
         }
 
         MC_INLINE void stringSetLength(int len)
         {
-            auto data = getAllocatedData();
-            data->m_uvobj.valstring.m_strbuf->setLength(len);
+            auto data = getAllocatedData<ObjString>();
+            data->m_strbuf->setLength(len);
             this->stringRehash();
         }
 
@@ -3202,8 +3155,7 @@ class Value: public ValData
 
         MC_INLINE bool stringAppend(const char* src, size_t len)
         {
-            auto data = getAllocatedData();
-            auto string = &data->m_uvobj.valstring;
+            auto string = getAllocatedData<ObjString>();
             string->m_strbuf->append(src, len);
             this->stringRehash();
             return true;
@@ -3217,8 +3169,7 @@ class Value: public ValData
         template<typename... ArgsT>
         MC_INLINE bool stringAppendFmt(const char* fmt, ArgsT&&... args)
         {
-            auto data = getAllocatedData();
-            auto string = &data->m_uvobj.valstring;
+            auto string = getAllocatedData<ObjString>();
             string->m_strbuf->appendFormat(fmt, args...);
             this->stringRehash();
             return true;
@@ -3256,24 +3207,24 @@ class Value: public ValData
         {
             size_t len;
             const char* str;
-            auto data = getAllocatedData();
-            if(data->m_uvobj.valstring.m_hashval == 0)
+            auto data = getAllocatedData<ObjString>();
+            if(data->m_hashval == 0)
             {
                 len = this->stringGetLength();
                 str = this->stringGetData();
-                data->m_uvobj.valstring.m_hashval = mc_util_hashdata(str, len);
+                data->m_hashval = mc_util_hashdata(str, len);
             }
-            return data->m_uvobj.valstring.m_hashval;
+            return data->m_hashval;
         }
 
         MC_INLINE bool stringRehash()
         {
             size_t len;
             const char* str;
-            auto data = getAllocatedData();
+            auto data = getAllocatedData<ObjString>();
             len = this->stringGetLength();
             str = this->stringGetData();
-            data->m_uvobj.valstring.m_hashval = mc_util_hashdata(str, len);
+            data->m_hashval = mc_util_hashdata(str, len);
             return true;
         }
 };
@@ -10940,12 +10891,11 @@ class VMFrame
     public:
         static MC_INLINE bool init(VMFrame* frame, Value functionobj, int64_t baseptr)
         {
-            Object::ObjFunction* function;
             if(functionobj.getType() != Value::VALTYP_FUNCSCRIPT)
             {
                 return false;
             }
-            function = Value::asFunction(functionobj);
+            auto function = Value::asFunction(functionobj);
             frame->m_function = functionobj;
             frame->m_bcposition = 0;
             frame->m_basepointer = baseptr;
@@ -11297,11 +11247,10 @@ class State
         #if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
             int numlocals;
             VMFrame* frame;
-            Object::ObjFunction* currentfunction;
             if(m_execstate.currframe)
             {
                 frame = m_execstate.currframe;
-                currentfunction = Value::asFunction(frame->m_function);
+                auto currentfunction = Value::asFunction(frame->m_function);
                 numlocals = currentfunction->m_funcdata.valscriptfunc.numlocals;
                 MC_ASSERT((size_t)m_execstate.vsposition >= (size_t)(frame->m_basepointer + numlocals));
             }
@@ -11320,7 +11269,6 @@ class State
         #if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
             int numlocals;
             VMFrame* frame;
-            Object::ObjFunction* currentfunction;
             if(m_execstate.vsposition == 0)
             {
                 m_errorlist.pushFormat(Error::ERRTYP_RUNTIME, m_execstate.currframe->getPosition(), "stack underflow");
@@ -11330,7 +11278,7 @@ class State
             if(m_execstate.currframe)
             {
                 frame = m_execstate.currframe;
-                currentfunction = Value::asFunction(frame->m_function);
+                auto currentfunction = Value::asFunction(frame->m_function);
                 numlocals = currentfunction->m_funcdata.valscriptfunc.numlocals;
                 MC_ASSERT((m_execstate.vsposition - 1) >= (frame->m_basepointer + numlocals));
             }
@@ -11390,13 +11338,12 @@ class State
         MC_INLINE bool vmPushFrame(const VMFrame& frame)
         {
             int add;
-            Object::ObjFunction* framefunction;
             add = 0;
             m_execstate.framestack.set(m_execstate.framestack.count(), frame);
             add = 1;
             m_execstate.currframe = m_execstate.framestack.getp(m_execstate.framestack.count());
             m_execstate.framestack.push(frame);
-            framefunction = Value::asFunction(frame.m_function);
+            auto framefunction = Value::asFunction(frame.m_function);
             setStackPos(frame.m_basepointer + framefunction->m_funcdata.valscriptfunc.numlocals);
             return true;
         }
@@ -11438,8 +11385,7 @@ class State
             Value res;
             Error* err; 
             Traceback* traceback;
-            Object::ObjFunction* nativefun;
-            nativefun = Value::asFunction(callee);
+            auto nativefun = Value::asFunction(callee);
             auto uptr = nativefun->m_funcdata.valnativefunc.userpointer;
             res = nativefun->m_funcdata.valnativefunc.natptrfn(this, uptr, selfval, argc, args);
             if(mc_util_unlikely(m_errorlist.count() > 0))
@@ -11535,7 +11481,6 @@ class State
             Value tmpval;
             Value selfval;
             Value* stackpos;
-            Object::ObjFunction* calleefunction;
             calleetype = callee.getType();
             selfval = Value::makeNull();
             if(callee.isFuncNative())
@@ -11562,7 +11507,7 @@ class State
             #endif
             if(calleetype == Value::VALTYP_FUNCSCRIPT)
             {
-                calleefunction = Value::asFunction(callee);
+                auto calleefunction = Value::asFunction(callee);
                 if(nargs != calleefunction->m_funcdata.valscriptfunc.numargs)
                 {
                     #if 0
@@ -12254,7 +12199,7 @@ class State
 GCMemory* GCMemory::m_myself = nullptr;
 void GCMemory::wrapDestroyObjData(Object* data)
 {
-    Object::destroyObjData(data);
+    Value::destroyObjData(data);
 }
 
 
@@ -12684,10 +12629,9 @@ void mc_state_gcmarkobject(Value obj)
     Object* valdata;
     Object* keydata;
     Object* freevaldata;
-    Object::ObjFunction* function;
     if(obj.isAllocated())
     {
-        data = obj.getAllocatedData();
+        data = obj.getAllocatedData<Object>();
         if(data->m_gcmark == 0)
         {
             data->m_gcmark = 1;
@@ -12701,7 +12645,7 @@ void mc_state_gcmarkobject(Value obj)
                             key = Value::mapGetKeyAt(obj, i);
                             if(key.isAllocated())
                             {
-                                keydata = key.getAllocatedData();
+                                keydata = key.getAllocatedData<Object>();
                                 if(keydata->m_gcmark == 0)
                                 {
                                     mc_state_gcmarkobject(key);
@@ -12710,7 +12654,7 @@ void mc_state_gcmarkobject(Value obj)
                             val = Value::mapGetValueAt(obj, i);
                             if(val.isAllocated())
                             {
-                                valdata = val.getAllocatedData();
+                                valdata = val.getAllocatedData<Object>();
                                 if(valdata->m_gcmark == 0)
                                 {
                                     mc_state_gcmarkobject(val);
@@ -12727,7 +12671,7 @@ void mc_state_gcmarkobject(Value obj)
                             val = Value::arrayGetValue(obj, i);
                             if(val.isAllocated())
                             {
-                                valdata = val.getAllocatedData();
+                                valdata = val.getAllocatedData<Object>();
                                 if(valdata->m_gcmark == 0)
                                 {
                                     mc_state_gcmarkobject(val);
@@ -12739,14 +12683,14 @@ void mc_state_gcmarkobject(Value obj)
                 case Value::VALTYP_FUNCSCRIPT:
                     {
                         break;
-                        function = Value::asFunction(obj);
+                        auto function = Value::asFunction(obj);
                         for(i = 0; i < function->m_funcdata.valscriptfunc.freevalscount; i++)
                         {
                             freeval = Value::functionGetFreeValAt(obj, i);
                             mc_state_gcmarkobject(freeval);
                             if(freeval.isAllocated())
                             {
-                                freevaldata = freeval.getAllocatedData();
+                                freevaldata = freeval.getAllocatedData<Object>();
                                 if(freevaldata->m_gcmark == 0)
                                 {
                                     mc_state_gcmarkobject(freeval);
@@ -12794,7 +12738,7 @@ void mc_state_gcsweep()
             }
             else
             {
-                Object::destroyObjData(data);
+                Value::destroyObjData(data);
                 /*
                 if(GCMemory::get()->m_poolonlydata.m_poolitemcount < GCMemory::MinPoolSize)
                 {
@@ -12834,7 +12778,7 @@ bool mc_state_gcdisablefor(Value obj)
     {
         return false;
     }
-    data = obj.getAllocatedData();
+    data = obj.getAllocatedData<Object>();
     if(data->m_objmem->m_gcobjlistremains->contains(&obj))
     {
         return false;
@@ -12853,7 +12797,7 @@ void mc_state_gcenablefor(Value obj)
     Object* data;
     if(obj.isAllocated())
     {
-        data = obj.getAllocatedData();
+        data = obj.getAllocatedData<Object>();
         data->m_objmem->m_gcobjlistremains->removeItem(&obj);
     }
     #endif
@@ -12940,7 +12884,6 @@ static MC_INLINE bool mc_vmdo_makefunction(State* state, GenericList<Value>* con
     Value freeval;
     Value functionobj;
     Value* constant;
-    Object::ObjFunction* constfun;
     constantix = state->m_execstate.currframe->readUint16();
     numfree = state->m_execstate.currframe->readUint8();
     constant = constants->getp(constantix);
@@ -12956,7 +12899,7 @@ static MC_INLINE bool mc_vmdo_makefunction(State* state, GenericList<Value>* con
         state->pushError(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "%s is not a function", tname);
         return false;
     }
-    constfun = Value::asFunction(*constant);
+    auto constfun = Value::asFunction(*constant);
     fname = Value::functionGetName(*constant);
     functionobj = Value::makeFuncScript(fname, constfun->m_funcdata.valscriptfunc.compiledprogcode, false, constfun->m_funcdata.valscriptfunc.numlocals, constfun->m_funcdata.valscriptfunc.numargs, numfree);
     if(functionobj.isNull())
@@ -13165,7 +13108,7 @@ bool State::execVM(const Value& function, GenericList<Value>* constants, bool ne
     VMFrame* frame;
     Error* err;
     const char* oname;
-    Object::ObjFunction* targetfunction;
+    Value::ObjFunction* targetfunction;
     opcode = 0;
     (void)oname;
     (void)prevcode;
@@ -14841,7 +14784,7 @@ Value mc_objfnstring_tolower(State* state, void* data, Value thisval, size_t arg
     inpstr = inpval.stringGetData();
     inplen = inpval.stringGetLength();
     resstr = Value::makeString(inpstr, inplen);
-    resstr.getAllocatedData()->m_uvobj.valstring.m_strbuf->toLowercase();
+    resstr.getAllocatedData<Value::ObjString>()->m_strbuf->toLowercase();
     return resstr;
 }
 
@@ -14860,7 +14803,7 @@ Value mc_objfnstring_toupper(State* state, void* data, Value thisval, size_t arg
     inpstr = inpval.stringGetData();
     inplen = inpval.stringGetLength();
     resstr = Value::makeString(inpstr, inplen);
-    resstr.getAllocatedData()->m_uvobj.valstring.m_strbuf->toUppercase();
+    resstr.getAllocatedData<Value::ObjString>()->m_strbuf->toUppercase();
 
     return resstr;    
 }
@@ -16226,6 +16169,13 @@ void mc_cli_printtypesize(const char* name, size_t sz)
 
 void mc_cli_printtypesizes()
 {
+    printtypesize(Object);    
+    printtypesize(Value);
+    printtypesize(Value::ObjFunction);
+    printtypesize(Value::ObjUserdata);
+    printtypesize(Value::ObjError);
+    printtypesize(Value::ObjString);
+    printtypesize(Value::CompareResult);
     printtypesize(StrDict<char*, int>);
     printtypesize(ValDict<Value, Value>);
     printtypesize(Printer::Config);
@@ -16245,8 +16195,6 @@ void mc_cli_printtypesizes()
     printtypesize(AstSymTable);
     printtypesize(AstCompiler);
     printtypesize(AstSymbol);
-    printtypesize(Value);
-    printtypesize(Value::CompareResult);
     printtypesize(SourceLocation);
     printtypesize(AstToken);
     printtypesize(AstExpression::ExprCodeBlock);
@@ -16271,10 +16219,7 @@ void mc_cli_printtypesizes()
     printtypesize(AstExpression::ExprLoopStmt);
     printtypesize(AstExpression::ExprImportStmt);
     printtypesize(AstExpression::ExprRecover);
-    printtypesize(Object::ObjFunction);
-    printtypesize(Object::ObjUserdata);
-    printtypesize(Object::ObjError);
-    printtypesize(Object::ObjString);
+
     printtypesize(Instruction::Definition);
     printtypesize(AstScopeBlock);
     printtypesize(AstScopeFile);
