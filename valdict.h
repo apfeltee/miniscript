@@ -120,6 +120,7 @@ class ValDict
             if(m_vdcount >= m_vditemcapacity)
             {
                 ok = growAndRehash();
+                MC_ASSERT(ok);
                 cellix = getCellIndex(key, hash, &found);
             }
             lastix = m_vdcount;

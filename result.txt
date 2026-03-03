@@ -1,0 +1,3030 @@
+Checking main.cpp ...
+main.cpp:3:0: information: Include file: <memory> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <memory>
+^
+main.cpp:4:0: information: Include file: <functional> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <functional>
+^
+main.cpp:5:0: information: Include file: <stdint.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <stdint.h>
+^
+main.cpp:6:0: information: Include file: <stddef.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <stddef.h>
+^
+main.cpp:7:0: information: Include file: <assert.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <assert.h>
+^
+main.cpp:8:0: information: Include file: <string.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <string.h>
+^
+main.cpp:9:0: information: Include file: <float.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <float.h>
+^
+main.cpp:10:0: information: Include file: <math.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <math.h>
+^
+main.cpp:11:0: information: Include file: <stdio.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <stdio.h>
+^
+main.cpp:12:0: information: Include file: <stdlib.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <stdlib.h>
+^
+main.cpp:13:0: information: Include file: <stdarg.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <stdarg.h>
+^
+main.cpp:14:0: information: Include file: <errno.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <errno.h>
+^
+main.cpp:15:0: information: Include file: <limits.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <limits.h>
+^
+main.cpp:16:0: information: Include file: <inttypes.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <inttypes.h>
+^
+main.cpp:17:0: information: Include file: <ctype.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <ctype.h>
+^
+main.cpp:18:0: information: Include file: <sys/types.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <sys/types.h>
+^
+main.cpp:19:0: information: Include file: <sys/stat.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <sys/stat.h>
+^
+main.cpp:20:0: information: Include file: <new> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <new>
+^
+mem.h:16:0: information: Include file: <stdint.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <stdint.h>
+^
+mem.h:17:0: information: Include file: <string.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <string.h>
+^
+mem.h:18:0: information: Include file: <stdlib.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <stdlib.h>
+^
+mem.h:19:0: information: Include file: <iostream> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <iostream>
+^
+mem.h:20:0: information: Include file: <type_traits> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <type_traits>
+^
+mem.h:21:0: information: Include file: <concepts> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <concepts>
+^
+optparse.h:46:0: information: Include file: <stdio.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <stdio.h>
+^
+optparse.h:47:0: information: Include file: <stdlib.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <stdlib.h>
+^
+strbuf.h:14:0: information: Include file: <stdbool.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <stdbool.h>
+^
+strbuf.h:15:0: information: Include file: <stdint.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <stdint.h>
+^
+strbuf.h:16:0: information: Include file: <stddef.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <stddef.h>
+^
+strbuf.h:17:0: information: Include file: <stdarg.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <stdarg.h>
+^
+strbuf.h:18:0: information: Include file: <stdlib.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <stdlib.h>
+^
+strbuf.h:19:0: information: Include file: <string.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <string.h>
+^
+strbuf.h:20:0: information: Include file: <stdio.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <stdio.h>
+^
+strbuf.h:21:0: information: Include file: <errno.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <errno.h>
+^
+strbuf.h:22:0: information: Include file: <signal.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <signal.h>
+^
+strbuf.h:23:0: information: Include file: <ctype.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <ctype.h>
+^
+strbuf.h:24:0: information: Include file: <new> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <new>
+^
+strbuf.h:25:0: information: Include file: <cassert> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <cassert>
+^
+utilos.h:9:0: information: Include file: <stdbool.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <stdbool.h>
+^
+utilos.h:10:0: information: Include file: <stddef.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <stddef.h>
+^
+utilos.h:11:0: information: Include file: <stdio.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <stdio.h>
+^
+utilos.h:12:0: information: Include file: <stdlib.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <stdlib.h>
+^
+utilos.h:13:0: information: Include file: <limits.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <limits.h>
+^
+utilos.h:14:0: information: Include file: <string.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <string.h>
+^
+utilos.h:15:0: information: Include file: <sys/stat.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <sys/stat.h>
+^
+utilos.h:16:0: information: Include file: <time.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <time.h>
+^
+utilos.h:17:0: information: Include file: <fcntl.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <fcntl.h>
+^
+fnmatch.h:33:0: information: Include file: <stdbool.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <stdbool.h>
+^
+fnmatch.h:34:0: information: Include file: <stdlib.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <stdlib.h>
+^
+fnmatch.h:35:0: information: Include file: <string.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <string.h>
+^
+fnmatch.h:36:0: information: Include file: <wctype.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <wctype.h>
+^
+stod.h:4:0: information: Include file: <stddef.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <stddef.h>
+^
+stod.h:5:0: information: Include file: <stdint.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <stdint.h>
+^
+stod.h:6:0: information: Include file: <limits.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <limits.h>
+^
+stod.h:7:0: information: Include file: <math.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <math.h>
+^
+Checking main.cpp: __CPPCHECK__=1...
+strbuf.h:172:20: warning: Assert statement calls a function which may have desired side effects: 'fromPtr'. [assertWithSideEffect]
+            assert(fromPtr(this, len));
+                   ^
+main.cpp:3409:17: warning: Assignment of function parameter has no effect outside the function. Did you forget dereferencing it? [uselessAssignmentPtrArg]
+                store = nullptr;
+                ^
+main.cpp:3479:13: warning: Assignment of function parameter has no effect outside the function. Did you forget dereferencing it? [uselessAssignmentPtrArg]
+            scope = nullptr;
+            ^
+main.cpp:3530:17: warning: Assignment of function parameter has no effect outside the function. Did you forget dereferencing it? [uselessAssignmentPtrArg]
+                table = nullptr;
+                ^
+main.cpp:5182:17: warning: Assignment of function parameter has no effect outside the function. Did you forget dereferencing it? [uselessAssignmentPtrArg]
+                expr = nullptr;
+                ^
+main.cpp:5253:17: warning: Assignment of function parameter has no effect outside the function. Did you forget dereferencing it? [uselessAssignmentPtrArg]
+                traceback = nullptr;
+                ^
+glist.h.old.h:18:17: warning: Assignment of function parameter has no effect outside the function. Did you forget dereferencing it? [uselessAssignmentPtrArg]
+                list = nullptr;
+                ^
+main.cpp:6664:24: style: Array index 'ini' is used before limits check. [arrayIndexThenCheck]
+            while(input[ini] != '\0' && ini < len)
+                       ^
+main.cpp:2257:13: portability: Using memset() on union which contains a floating point number. [memsetClassFloat]
+            memset(&vrt, 0, sizeof(Value));
+            ^
+glist.h.old.h:411:17: portability: Using memset() on union which contains a floating point number. [memsetClassFloat]
+                memset(m_listitems, 0, sizeof(ValType) * m_listcapacity);
+                ^
+optparse.h:211:9: warning: Member variable 'OptParser::m_optopt' is not initialized in the constructor. [uninitMemberVar]
+        OptParser(int argc, char** argv)
+        ^
+main.cpp:179:28: warning: Member variable 'StrView::m_strdata' is not assigned a value in 'StrView::operator='. [operatorEqVarError]
+        MC_INLINE StrView& operator=(const StrView& other)
+                           ^
+main.cpp:179:28: warning: Member variable 'StrView::m_strlength' is not assigned a value in 'StrView::operator='. [operatorEqVarError]
+        MC_INLINE StrView& operator=(const StrView& other)
+                           ^
+main.cpp:6885:9: warning: Member variable 'AstParser::m_lexer' is not initialized in the constructor. [uninitMemberVar]
+        AstParser(RuntimeConfig* config, ErrList* errors)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < char * >::m_listcapacity' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < char * >::m_listcount' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < char * >::m_listitems' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < char * >::m_listcapacity' is not assigned a value in 'GenericList < char * >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < char * >::m_listcount' is not assigned a value in 'GenericList < char * >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < char * >::m_listitems' is not assigned a value in 'GenericList < char * >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < Object * >::m_listcapacity' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < Object * >::m_listcount' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < Object * >::m_listitems' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < Object * >::m_listcapacity' is not assigned a value in 'GenericList < Object * >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < Object * >::m_listcount' is not assigned a value in 'GenericList < Object * >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < Object * >::m_listitems' is not assigned a value in 'GenericList < Object * >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < ValData >::m_listcapacity' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < ValData >::m_listcount' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < ValData >::m_listitems' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < ValData >::m_listcapacity' is not assigned a value in 'GenericList < ValData >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < ValData >::m_listcount' is not assigned a value in 'GenericList < ValData >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < ValData >::m_listitems' is not assigned a value in 'GenericList < ValData >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < Value >::m_listcapacity' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < Value >::m_listcount' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < Value >::m_listitems' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < Value >::m_listcapacity' is not assigned a value in 'GenericList < Value >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < Value >::m_listcount' is not assigned a value in 'GenericList < Value >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < Value >::m_listitems' is not assigned a value in 'GenericList < Value >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < Field >::m_listcapacity' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < Field >::m_listcount' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < Field >::m_listitems' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < Field >::m_listcapacity' is not assigned a value in 'GenericList < Field >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < Field >::m_listcount' is not assigned a value in 'GenericList < Field >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < Field >::m_listitems' is not assigned a value in 'GenericList < Field >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < AstScopeBlock * >::m_listcapacity' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < AstScopeBlock * >::m_listcount' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < AstScopeBlock * >::m_listitems' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < AstScopeBlock * >::m_listcapacity' is not assigned a value in 'GenericList < AstScopeBlock * >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < AstScopeBlock * >::m_listcount' is not assigned a value in 'GenericList < AstScopeBlock * >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < AstScopeBlock * >::m_listitems' is not assigned a value in 'GenericList < AstScopeBlock * >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < AstSymbol * >::m_listcapacity' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < AstSymbol * >::m_listcount' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < AstSymbol * >::m_listitems' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < AstSymbol * >::m_listcapacity' is not assigned a value in 'GenericList < AstSymbol * >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < AstSymbol * >::m_listcount' is not assigned a value in 'GenericList < AstSymbol * >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < AstSymbol * >::m_listitems' is not assigned a value in 'GenericList < AstSymbol * >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < uint16_t >::m_listcapacity' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < uint16_t >::m_listcount' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < uint16_t >::m_listitems' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < uint16_t >::m_listcapacity' is not assigned a value in 'GenericList < uint16_t >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < uint16_t >::m_listcount' is not assigned a value in 'GenericList < uint16_t >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < uint16_t >::m_listitems' is not assigned a value in 'GenericList < uint16_t >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < SourceLocation >::m_listcapacity' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < SourceLocation >::m_listcount' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < SourceLocation >::m_listitems' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < SourceLocation >::m_listcapacity' is not assigned a value in 'GenericList < SourceLocation >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < SourceLocation >::m_listcount' is not assigned a value in 'GenericList < SourceLocation >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < SourceLocation >::m_listitems' is not assigned a value in 'GenericList < SourceLocation >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < int >::m_listcapacity' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < int >::m_listcount' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < int >::m_listitems' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < int >::m_listcapacity' is not assigned a value in 'GenericList < int >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < int >::m_listcount' is not assigned a value in 'GenericList < int >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < int >::m_listitems' is not assigned a value in 'GenericList < int >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < AstExpression * >::m_listcapacity' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < AstExpression * >::m_listcount' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < AstExpression * >::m_listitems' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < AstExpression * >::m_listcapacity' is not assigned a value in 'GenericList < AstExpression * >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < AstExpression * >::m_listcount' is not assigned a value in 'GenericList < AstExpression * >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < AstExpression * >::m_listitems' is not assigned a value in 'GenericList < AstExpression * >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < ExprIfCase * >::m_listcapacity' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < ExprIfCase * >::m_listcount' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < ExprIfCase * >::m_listitems' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < ExprIfCase * >::m_listcapacity' is not assigned a value in 'GenericList < ExprIfCase * >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < ExprIfCase * >::m_listcount' is not assigned a value in 'GenericList < ExprIfCase * >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < ExprIfCase * >::m_listitems' is not assigned a value in 'GenericList < ExprIfCase * >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < ExprFuncParam * >::m_listcapacity' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < ExprFuncParam * >::m_listcount' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < ExprFuncParam * >::m_listitems' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < ExprFuncParam * >::m_listcapacity' is not assigned a value in 'GenericList < ExprFuncParam * >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < ExprFuncParam * >::m_listcount' is not assigned a value in 'GenericList < ExprFuncParam * >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < ExprFuncParam * >::m_listitems' is not assigned a value in 'GenericList < ExprFuncParam * >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < AstExpression :: ExprFuncParam * >::m_listcapacity' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < AstExpression :: ExprFuncParam * >::m_listcount' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < AstExpression :: ExprFuncParam * >::m_listitems' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < AstExpression :: ExprFuncParam * >::m_listcapacity' is not assigned a value in 'GenericList < AstExpression :: ExprFuncParam * >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < AstExpression :: ExprFuncParam * >::m_listcount' is not assigned a value in 'GenericList < AstExpression :: ExprFuncParam * >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < AstExpression :: ExprFuncParam * >::m_listitems' is not assigned a value in 'GenericList < AstExpression :: ExprFuncParam * >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < Item >::m_listcapacity' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < Item >::m_listcount' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < Item >::m_listitems' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < Item >::m_listcapacity' is not assigned a value in 'GenericList < Item >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < Item >::m_listcount' is not assigned a value in 'GenericList < Item >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < Item >::m_listitems' is not assigned a value in 'GenericList < Item >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < AstExpression :: ExprIfCase * >::m_listcapacity' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < AstExpression :: ExprIfCase * >::m_listcount' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < AstExpression :: ExprIfCase * >::m_listitems' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < AstExpression :: ExprIfCase * >::m_listcapacity' is not assigned a value in 'GenericList < AstExpression :: ExprIfCase * >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < AstExpression :: ExprIfCase * >::m_listcount' is not assigned a value in 'GenericList < AstExpression :: ExprIfCase * >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < AstExpression :: ExprIfCase * >::m_listitems' is not assigned a value in 'GenericList < AstExpression :: ExprIfCase * >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < SourceFile * >::m_listcapacity' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < SourceFile * >::m_listcount' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < SourceFile * >::m_listitems' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < SourceFile * >::m_listcapacity' is not assigned a value in 'GenericList < SourceFile * >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < SourceFile * >::m_listcount' is not assigned a value in 'GenericList < SourceFile * >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < SourceFile * >::m_listitems' is not assigned a value in 'GenericList < SourceFile * >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < AstScopeFile >::m_listcapacity' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < AstScopeFile >::m_listcount' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < AstScopeFile >::m_listitems' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < AstScopeFile >::m_listcapacity' is not assigned a value in 'GenericList < AstScopeFile >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < AstScopeFile >::m_listcount' is not assigned a value in 'GenericList < AstScopeFile >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < AstScopeFile >::m_listitems' is not assigned a value in 'GenericList < AstScopeFile >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < VMFrame >::m_listcapacity' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < VMFrame >::m_listcount' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < VMFrame >::m_listitems' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < VMFrame >::m_listcapacity' is not assigned a value in 'GenericList < VMFrame >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < VMFrame >::m_listcount' is not assigned a value in 'GenericList < VMFrame >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < VMFrame >::m_listitems' is not assigned a value in 'GenericList < VMFrame >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < StrView >::m_listcapacity' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < StrView >::m_listcount' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:207:9: warning: Member variable 'GenericList < StrView >::m_listitems' is not initialized in the copy constructor. [uninitMemberVar]
+        GenericList(const GenericList& other)
+        ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < StrView >::m_listcapacity' is not assigned a value in 'GenericList < StrView >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < StrView >::m_listcount' is not assigned a value in 'GenericList < StrView >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+glist.h.old.h:235:22: warning: Member variable 'GenericList < StrView >::m_listitems' is not assigned a value in 'GenericList < StrView >::operator='. [operatorEqVarError]
+        GenericList& operator=(const GenericList& other)
+                     ^
+main.cpp:3315:13: performance: Variable 'm_constructor' is assigned in constructor body. Consider performing initialization in initialization list. [useInitializationList]
+            m_constructor = Value::makeNull();
+            ^
+main.cpp:4249:21: performance: Variable 'm_blockstatements' is assigned in constructor body. Consider performing initialization in initialization list. [useInitializationList]
+                    m_blockstatements = stmts;
+                    ^
+main.cpp:4280:21: performance: Variable 'm_ifthen' is assigned in constructor body. Consider performing initialization in initialization list. [useInitializationList]
+                    m_ifthen = consq;
+                    ^
+main.cpp:4382:21: performance: Variable 'm_paramident' is assigned in constructor body. Consider performing initialization in initialization list. [useInitializationList]
+                    m_paramident = idv;
+                    ^
+strbuf.h:167:9: style: Class 'StringBuffer' has a constructor with 1 argument that is not explicit. [noExplicitConstructor]
+        StringBuffer(size_t len)
+        ^
+main.cpp:173:19: style: Class 'StrView' has a constructor with 1 argument that is not explicit. [noExplicitConstructor]
+        MC_INLINE StrView(const char (&str)[len])
+                  ^
+main.cpp:401:13: style: Class 'Color' has a constructor with 1 argument that is not explicit. [noExplicitConstructor]
+            Color(int fd)
+            ^
+main.cpp:534:9: style: Class 'Printer' has a constructor with 1 argument that is not explicit. [noExplicitConstructor]
+        Printer(FILE* ofh)
+        ^
+main.cpp:779:9: style: Class 'SourceFile' has a constructor with 1 argument that is not explicit. [noExplicitConstructor]
+        SourceFile(const char* strpath)
+        ^
+main.cpp:3496:9: style: Class 'AstScopeBlock' has a constructor with 1 argument that is not explicit. [noExplicitConstructor]
+        AstScopeBlock(int ofs): AstScopeBlock(ofs, nullptr)
+        ^
+main.cpp:3873:9: style: Class 'AstScopeComp' has a constructor with 1 argument that is not explicit. [noExplicitConstructor]
+        AstScopeComp(AstScopeComp* ou)
+        ^
+main.cpp:4247:17: style: Class 'ExprCodeBlock' has a constructor with 1 argument that is not explicit. [noExplicitConstructor]
+                ExprCodeBlock(const GenericList<AstExpression*>& stmts)
+                ^
+main.cpp:4350:17: style: Class 'ExprIdent' has a constructor with 1 argument that is not explicit. [noExplicitConstructor]
+                ExprIdent(AstToken tok)
+                ^
+main.cpp:4380:17: style: Class 'ExprFuncParam' has a constructor with 1 argument that is not explicit. [noExplicitConstructor]
+                ExprFuncParam(const ExprIdent& idv)
+                ^
+main.cpp:8219:9: style: Class 'AstPrinter' has a constructor with 1 argument that is not explicit. [noExplicitConstructor]
+        AstPrinter(Printer* pr)
+        ^
+main.cpp:8776:9: style: Class 'Module' has a constructor with 1 argument that is not explicit. [noExplicitConstructor]
+        Module(const char* nm): Module(nm, nullptr)
+        ^
+valdict.h:94:16: style: Class 'ValDict < Value , Value >' has a constructor with 1 argument that is not explicit. [noExplicitConstructor]
+        inline ValDict(unsigned int mincapacity)
+               ^
+glist.h.old.h:212:9: style: Class 'GenericList < char * >' has a constructor with 1 argument that is not explicit. [noExplicitConstructor]
+        GenericList(size_t initialsize)
+        ^
+glist.h.old.h:212:9: style: Class 'GenericList < Object * >' has a constructor with 1 argument that is not explicit. [noExplicitConstructor]
+        GenericList(size_t initialsize)
+        ^
+glist.h.old.h:212:9: style: Class 'GenericList < ValData >' has a constructor with 1 argument that is not explicit. [noExplicitConstructor]
+        GenericList(size_t initialsize)
+        ^
+glist.h.old.h:212:9: style: Class 'GenericList < Value >' has a constructor with 1 argument that is not explicit. [noExplicitConstructor]
+        GenericList(size_t initialsize)
+        ^
+glist.h.old.h:212:9: style: Class 'GenericList < Field >' has a constructor with 1 argument that is not explicit. [noExplicitConstructor]
+        GenericList(size_t initialsize)
+        ^
+glist.h.old.h:212:9: style: Class 'GenericList < AstScopeBlock * >' has a constructor with 1 argument that is not explicit. [noExplicitConstructor]
+        GenericList(size_t initialsize)
+        ^
+glist.h.old.h:212:9: style: Class 'GenericList < AstSymbol * >' has a constructor with 1 argument that is not explicit. [noExplicitConstructor]
+        GenericList(size_t initialsize)
+        ^
+glist.h.old.h:212:9: style: Class 'GenericList < uint16_t >' has a constructor with 1 argument that is not explicit. [noExplicitConstructor]
+        GenericList(size_t initialsize)
+        ^
+glist.h.old.h:212:9: style: Class 'GenericList < SourceLocation >' has a constructor with 1 argument that is not explicit. [noExplicitConstructor]
+        GenericList(size_t initialsize)
+        ^
+glist.h.old.h:212:9: style: Class 'GenericList < int >' has a constructor with 1 argument that is not explicit. [noExplicitConstructor]
+        GenericList(size_t initialsize)
+        ^
+glist.h.old.h:212:9: style: Class 'GenericList < AstExpression * >' has a constructor with 1 argument that is not explicit. [noExplicitConstructor]
+        GenericList(size_t initialsize)
+        ^
+glist.h.old.h:212:9: style: Class 'GenericList < ExprIfCase * >' has a constructor with 1 argument that is not explicit. [noExplicitConstructor]
+        GenericList(size_t initialsize)
+        ^
+glist.h.old.h:212:9: style: Class 'GenericList < ExprFuncParam * >' has a constructor with 1 argument that is not explicit. [noExplicitConstructor]
+        GenericList(size_t initialsize)
+        ^
+glist.h.old.h:212:9: style: Class 'GenericList < AstExpression :: ExprFuncParam * >' has a constructor with 1 argument that is not explicit. [noExplicitConstructor]
+        GenericList(size_t initialsize)
+        ^
+glist.h.old.h:212:9: style: Class 'GenericList < Item >' has a constructor with 1 argument that is not explicit. [noExplicitConstructor]
+        GenericList(size_t initialsize)
+        ^
+glist.h.old.h:212:9: style: Class 'GenericList < AstExpression :: ExprIfCase * >' has a constructor with 1 argument that is not explicit. [noExplicitConstructor]
+        GenericList(size_t initialsize)
+        ^
+glist.h.old.h:212:9: style: Class 'GenericList < SourceFile * >' has a constructor with 1 argument that is not explicit. [noExplicitConstructor]
+        GenericList(size_t initialsize)
+        ^
+glist.h.old.h:212:9: style: Class 'GenericList < AstScopeFile >' has a constructor with 1 argument that is not explicit. [noExplicitConstructor]
+        GenericList(size_t initialsize)
+        ^
+glist.h.old.h:212:9: style: Class 'GenericList < VMFrame >' has a constructor with 1 argument that is not explicit. [noExplicitConstructor]
+        GenericList(size_t initialsize)
+        ^
+glist.h.old.h:212:9: style: Class 'GenericList < StrView >' has a constructor with 1 argument that is not explicit. [noExplicitConstructor]
+        GenericList(size_t initialsize)
+        ^
+main.cpp:5007:14: style: The function 'destroyInstanceExpression' overrides a function in a base class but is not marked with a 'override' specifier. [missingOverride]
+        void destroyInstanceExpression()
+             ^
+main.cpp:4488:22: note: Virtual function in base class
+        virtual void destroyInstanceExpression() = 0;
+                     ^
+main.cpp:5007:14: note: Function in derived class
+        void destroyInstanceExpression()
+             ^
+main.cpp:5012:24: style: The function 'copyInstanceExpression' overrides a function in a base class but is not marked with a 'override' specifier. [missingOverride]
+        AstExpression* copyInstanceExpression()
+                       ^
+main.cpp:4489:32: note: Virtual function in base class
+        virtual AstExpression* copyInstanceExpression() = 0;
+                               ^
+main.cpp:5012:24: note: Function in derived class
+        AstExpression* copyInstanceExpression()
+                       ^
+main.cpp:1043:47: style: Operator '|' with one operand equal to zero is redundant. [badBitmaskCheck]
+                            operand = operand | ((uint64_t)instr[offset] << 8);
+                                              ^
+main.cpp:1051:47: style: Operator '|' with one operand equal to zero is redundant. [badBitmaskCheck]
+                            operand = operand | ((uint64_t)instr[offset + 0] << 24);
+                                              ^
+main.cpp:1061:47: style: Operator '|' with one operand equal to zero is redundant. [badBitmaskCheck]
+                            operand = operand | ((uint64_t)instr[offset + 0] << 56);
+                                              ^
+strbuf.h:913:22: style: Return value 'sb->append(str,strlen(str))' is always true [knownConditionTrueFalse]
+    return sb->append(str, strlen(str));
+                     ^
+strbuf.h:913:22: note: Calling function 'append' returns 1
+    return sb->append(str, strlen(str));
+                     ^
+strbuf.h:913:22: note: Return value 'sb->append(str,strlen(str))' is always true
+    return sb->append(str, strlen(str));
+                     ^
+strbuf.h:918:23: style: Return value 'sb1->append(sb2->m_data,sb2->m_length)' is always true [knownConditionTrueFalse]
+    return sb1->append(sb2->m_data, sb2->m_length);
+                      ^
+strbuf.h:918:23: note: Calling function 'append' returns 1
+    return sb1->append(sb2->m_data, sb2->m_length);
+                      ^
+strbuf.h:918:23: note: Return value 'sb1->append(sb2->m_data,sb2->m_length)' is always true
+    return sb1->append(sb2->m_data, sb2->m_length);
+                      ^
+main.cpp:1433:47: style: Return value 'm_actualarray->push(val)' is always true [knownConditionTrueFalse]
+                    return m_actualarray->push(val);
+                                              ^
+main.cpp:1433:47: note: Calling function 'push' returns 1
+                    return m_actualarray->push(val);
+                                              ^
+main.cpp:1433:47: note: Return value 'm_actualarray->push(val)' is always true
+                    return m_actualarray->push(val);
+                                              ^
+main.cpp:1478:46: style: Return value 'm_actualmap->setKV(key,value)' is always true [knownConditionTrueFalse]
+                    return m_actualmap->setKV(key, value);
+                                             ^
+main.cpp:1478:46: note: Calling function 'setKV' returns 1
+                    return m_actualmap->setKV(key, value);
+                                             ^
+main.cpp:1478:46: note: Return value 'm_actualmap->setKV(key,value)' is always true
+                    return m_actualmap->setKV(key, value);
+                                             ^
+main.cpp:2201:32: style: Condition '!ok' is always false [knownConditionTrueFalse]
+                            if(!ok)
+                               ^
+main.cpp:1433:47: note: Calling function 'push' returns 1
+                    return m_actualarray->push(val);
+                                              ^
+main.cpp:2749:43: note: Calling function 'push' returns 1
+            return selfval.asArray()->push(val);
+                                          ^
+main.cpp:2200:50: note: Calling function 'arrayPush' returns 1
+                            ok = Value::arrayPush(copy, item);
+                                                 ^
+main.cpp:2200:50: note: Assignment 'ok=Value::arrayPush(copy,item)', assigned value is 1
+                            ok = Value::arrayPush(copy, item);
+                                                 ^
+main.cpp:2201:32: note: Condition '!ok' is always false
+                            if(!ok)
+                               ^
+main.cpp:2332:16: style: Condition '!res.stringAppend(string,len)' is always false [knownConditionTrueFalse]
+            if(!res.stringAppend(string, len))
+               ^
+main.cpp:2332:33: note: Calling function 'stringAppend' returns 1
+            if(!res.stringAppend(string, len))
+                                ^
+main.cpp:2332:16: note: Condition '!res.stringAppend(string,len)' is always false
+            if(!res.stringAppend(string, len))
+               ^
+main.cpp:2749:43: style: Return value 'selfval.asArray()->push(val)' is always true [knownConditionTrueFalse]
+            return selfval.asArray()->push(val);
+                                          ^
+main.cpp:1433:47: note: Calling function 'push' returns 1
+                    return m_actualarray->push(val);
+                                              ^
+main.cpp:2749:43: note: Calling function 'push' returns 1
+            return selfval.asArray()->push(val);
+                                          ^
+main.cpp:2749:43: note: Return value 'selfval.asArray()->push(val)' is always true
+            return selfval.asArray()->push(val);
+                                          ^
+main.cpp:3214:38: style: Return value 'this->stringAppend(src,strlen(src))' is always true [knownConditionTrueFalse]
+            return this->stringAppend(src, strlen(src));
+                                     ^
+main.cpp:3214:38: note: Calling function 'stringAppend' returns 1
+            return this->stringAppend(src, strlen(src));
+                                     ^
+main.cpp:3214:38: note: Return value 'this->stringAppend(src,strlen(src))' is always true
+            return this->stringAppend(src, strlen(src));
+                                     ^
+main.cpp:3243:20: style: Condition '!ok' is always false [knownConditionTrueFalse]
+                if(!ok)
+                   ^
+main.cpp:3242:40: note: Calling function 'stringAppend' returns 1
+                ok = this->stringAppend(vstr, vlen);
+                                       ^
+main.cpp:3242:40: note: Assignment 'ok=this->stringAppend(vstr,vlen)', assigned value is 1
+                ok = this->stringAppend(vstr, vlen);
+                                       ^
+main.cpp:3243:20: note: Condition '!ok' is always false
+                if(!ok)
+                   ^
+main.cpp:6691:33: style: Return value 'p->parseIdent(res)' is always true [knownConditionTrueFalse]
+            return p->parseIdent(res);
+                                ^
+main.cpp:6691:33: note: Calling function 'parseIdent' returns 1
+            return p->parseIdent(res);
+                                ^
+main.cpp:6691:33: note: Return value 'p->parseIdent(res)' is always true
+            return p->parseIdent(res);
+                                ^
+main.cpp:6701:39: style: Return value 'p->parseLiteralBool(res)' is always true [knownConditionTrueFalse]
+            return p->parseLiteralBool(res);
+                                      ^
+main.cpp:6701:39: note: Calling function 'parseLiteralBool' returns 1
+            return p->parseLiteralBool(res);
+                                      ^
+main.cpp:6701:39: note: Return value 'p->parseLiteralBool(res)' is always true
+            return p->parseLiteralBool(res);
+                                      ^
+main.cpp:6716:39: style: Return value 'p->parseLiteralNull(res)' is always true [knownConditionTrueFalse]
+            return p->parseLiteralNull(res);
+                                      ^
+main.cpp:6716:39: note: Calling function 'parseLiteralNull' returns 1
+            return p->parseLiteralNull(res);
+                                      ^
+main.cpp:6716:39: note: Return value 'p->parseLiteralNull(res)' is always true
+            return p->parseLiteralNull(res);
+                                      ^
+main.cpp:8840:16: style: Condition '!ok' is always false [knownConditionTrueFalse]
+            if(!ok)
+               ^
+main.cpp:8839:32: note: Calling function 'initBase' returns 1
+            ok = copy->initBase(src->m_pstate, src->m_config, src->m_astmem, src->m_ccerrlist, src->m_sourcefiles, src->m_compglobalstore, src->m_filestderr);
+                               ^
+main.cpp:8839:32: note: Assignment 'ok=copy->initBase(src->m_pstate,src->m_config,src->m_astmem,src->m_ccerrlist,src->m_sourcefiles,src->m_compglobalstore,src->m_filestderr)', assigned value is 1
+            ok = copy->initBase(src->m_pstate, src->m_config, src->m_astmem, src->m_ccerrlist, src->m_sourcefiles, src->m_compglobalstore, src->m_filestderr);
+                               ^
+main.cpp:8840:16: note: Condition '!ok' is always false
+            if(!ok)
+               ^
+main.cpp:10357:28: style: Condition '!compileNumberLiteral(expr)' is always false [knownConditionTrueFalse]
+                        if(!compileNumberLiteral(expr))
+                           ^
+main.cpp:10357:49: note: Calling function 'compileNumberLiteral' returns 1
+                        if(!compileNumberLiteral(expr))
+                                                ^
+main.cpp:10357:28: note: Condition '!compileNumberLiteral(expr)' is always false
+                        if(!compileNumberLiteral(expr))
+                           ^
+main.cpp:10374:28: style: Condition '!compileNullLiteral(expr)' is always false [knownConditionTrueFalse]
+                        if(!compileNullLiteral(expr))
+                           ^
+main.cpp:10374:47: note: Calling function 'compileNullLiteral' returns 1
+                        if(!compileNullLiteral(expr))
+                                              ^
+main.cpp:10374:28: note: Condition '!compileNullLiteral(expr)' is always false
+                        if(!compileNullLiteral(expr))
+                           ^
+main.cpp:10723:55: style: Return value 'compscope->m_scopeipstackbreak.push(ip)' is always true [knownConditionTrueFalse]
+            return compscope->m_scopeipstackbreak.push(ip);
+                                                      ^
+main.cpp:10723:55: note: Calling function 'push' returns 1
+            return compscope->m_scopeipstackbreak.push(ip);
+                                                      ^
+main.cpp:10723:55: note: Return value 'compscope->m_scopeipstackbreak.push(ip)' is always true
+            return compscope->m_scopeipstackbreak.push(ip);
+                                                      ^
+main.cpp:10753:58: style: Return value 'compscope->m_scopeipstackcontinue.push(ip)' is always true [knownConditionTrueFalse]
+            return compscope->m_scopeipstackcontinue.push(ip);
+                                                         ^
+main.cpp:10753:58: note: Calling function 'push' returns 1
+            return compscope->m_scopeipstackcontinue.push(ip);
+                                                         ^
+main.cpp:10753:58: note: Return value 'compscope->m_scopeipstackcontinue.push(ip)' is always true
+            return compscope->m_scopeipstackcontinue.push(ip);
+                                                         ^
+main.cpp:11588:20: style: Condition '!vmPushFrame(calleeframe)' is always false [knownConditionTrueFalse]
+                if(!vmPushFrame(calleeframe))
+                   ^
+main.cpp:11588:32: note: Calling function 'vmPushFrame' returns 1
+                if(!vmPushFrame(calleeframe))
+                               ^
+main.cpp:11588:20: note: Condition '!vmPushFrame(calleeframe)' is always false
+                if(!vmPushFrame(calleeframe))
+                   ^
+main.cpp:11745:33: style: Condition 'vmOpAddString(valleft,valright,righttype,opcode)' is always true [knownConditionTrueFalse]
+                if(vmOpAddString(valleft, valright, righttype, opcode))
+                                ^
+main.cpp:11745:33: note: Calling function 'vmOpAddString' returns 1
+                if(vmOpAddString(valleft, valright, righttype, opcode))
+                                ^
+main.cpp:11745:33: note: Condition 'vmOpAddString(valleft,valright,righttype,opcode)' is always true
+                if(vmOpAddString(valleft, valright, righttype, opcode))
+                                ^
+main.cpp:12126:20: style: Condition '!vmCheckAssign(oldvalue,nvalue)' is always false [knownConditionTrueFalse]
+                if(!vmCheckAssign(oldvalue, nvalue))
+                   ^
+main.cpp:12126:34: note: Calling function 'vmCheckAssign' returns 1
+                if(!vmCheckAssign(oldvalue, nvalue))
+                                 ^
+main.cpp:12126:20: note: Condition '!vmCheckAssign(oldvalue,nvalue)' is always false
+                if(!vmCheckAssign(oldvalue, nvalue))
+                   ^
+main.cpp:13253:8: style: Condition '!vmPushFrame(createdframe)' is always false [knownConditionTrueFalse]
+    if(!vmPushFrame(createdframe))
+       ^
+main.cpp:13253:20: note: Calling function 'vmPushFrame' returns 1
+    if(!vmPushFrame(createdframe))
+                   ^
+main.cpp:13253:8: note: Condition '!vmPushFrame(createdframe)' is always false
+    if(!vmPushFrame(createdframe))
+       ^
+main.cpp:13388:24: style: Condition '!mc_vmdo_docmpvalgreater(this,(Instruction::Code)opcode)' is always false [knownConditionTrueFalse]
+                    if(!mc_vmdo_docmpvalgreater(this, (Instruction::Code)opcode))
+                       ^
+main.cpp:13388:48: note: Calling function 'mc_vmdo_docmpvalgreater' returns 1
+                    if(!mc_vmdo_docmpvalgreater(this, (Instruction::Code)opcode))
+                                               ^
+main.cpp:13388:24: note: Condition '!mc_vmdo_docmpvalgreater(this,(Instruction::Code)opcode)' is always false
+                    if(!mc_vmdo_docmpvalgreater(this, (Instruction::Code)opcode))
+                       ^
+main.cpp:13544:24: style: Condition '!vmCheckAssign(oldvalue,nvalue)' is always false [knownConditionTrueFalse]
+                    if(!vmCheckAssign(oldvalue, nvalue))
+                       ^
+main.cpp:13544:38: note: Calling function 'vmCheckAssign' returns 1
+                    if(!vmCheckAssign(oldvalue, nvalue))
+                                     ^
+main.cpp:13544:24: note: Condition '!vmCheckAssign(oldvalue,nvalue)' is always false
+                    if(!vmCheckAssign(oldvalue, nvalue))
+                       ^
+main.cpp:13619:24: style: Condition '!vmCheckAssign(oldvalue,nvalue)' is always false [knownConditionTrueFalse]
+                    if(!vmCheckAssign(oldvalue, nvalue))
+                       ^
+main.cpp:13619:38: note: Calling function 'vmCheckAssign' returns 1
+                    if(!vmCheckAssign(oldvalue, nvalue))
+                                     ^
+main.cpp:13619:24: note: Condition '!vmCheckAssign(oldvalue,nvalue)' is always false
+                    if(!vmCheckAssign(oldvalue, nvalue))
+                       ^
+main.cpp:13869:8: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_ANY)' is always false [knownConditionTrueFalse]
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ANY))
+       ^
+main.cpp:13869:26: note: Calling function 'mc_argcheck_check' returns 1
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ANY))
+                         ^
+main.cpp:13869:8: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_ANY)' is always false
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ANY))
+       ^
+main.cpp:13886:8: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_ARRAY)' is always false [knownConditionTrueFalse]
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ARRAY))
+       ^
+main.cpp:13886:26: note: Calling function 'mc_argcheck_check' returns 1
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ARRAY))
+                         ^
+main.cpp:13886:8: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_ARRAY)' is always false
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ARRAY))
+       ^
+main.cpp:13902:8: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_ARRAY)' is always false [knownConditionTrueFalse]
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ARRAY))
+       ^
+main.cpp:13902:26: note: Calling function 'mc_argcheck_check' returns 1
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ARRAY))
+                         ^
+main.cpp:13902:8: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_ARRAY)' is always false
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ARRAY))
+       ^
+main.cpp:13922:8: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_ARRAY)' is always false [knownConditionTrueFalse]
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ARRAY))
+       ^
+main.cpp:13922:26: note: Calling function 'mc_argcheck_check' returns 1
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ARRAY))
+                         ^
+main.cpp:13922:8: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_ARRAY)' is always false
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ARRAY))
+       ^
+main.cpp:13959:8: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_ARRAY|Value::VALTYP_STRING)' is always false [knownConditionTrueFalse]
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ARRAY | Value::VALTYP_STRING))
+       ^
+main.cpp:13959:26: note: Calling function 'mc_argcheck_check' returns 1
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ARRAY | Value::VALTYP_STRING))
+                         ^
+main.cpp:13959:8: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_ARRAY|Value::VALTYP_STRING)' is always false
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ARRAY | Value::VALTYP_STRING))
+       ^
+main.cpp:14016:12: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_NUMBER)' is always false [knownConditionTrueFalse]
+        if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+           ^
+main.cpp:14016:30: note: Calling function 'mc_argcheck_check' returns 1
+        if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+                             ^
+main.cpp:14016:12: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_NUMBER)' is always false
+        if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+           ^
+main.cpp:14029:16: style: Condition '!Value::arrayPush(res,objnull)' is always false [knownConditionTrueFalse]
+            if(!Value::arrayPush(res, objnull))
+               ^
+main.cpp:1433:47: note: Calling function 'push' returns 1
+                    return m_actualarray->push(val);
+                                              ^
+main.cpp:2749:43: note: Calling function 'push' returns 1
+            return selfval.asArray()->push(val);
+                                          ^
+main.cpp:14029:33: note: Calling function 'arrayPush' returns 1
+            if(!Value::arrayPush(res, objnull))
+                                ^
+main.cpp:14029:16: note: Condition '!Value::arrayPush(res,objnull)' is always false
+            if(!Value::arrayPush(res, objnull))
+               ^
+main.cpp:14038:12: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_NUMBER,Value::VALTYP_ANY)' is always false [knownConditionTrueFalse]
+        if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER, Value::VALTYP_ANY))
+           ^
+main.cpp:14038:30: note: Calling function 'mc_argcheck_check' returns 1
+        if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER, Value::VALTYP_ANY))
+                             ^
+main.cpp:14038:12: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_NUMBER,Value::VALTYP_ANY)' is always false
+        if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER, Value::VALTYP_ANY))
+           ^
+main.cpp:14050:16: style: Condition '!Value::arrayPush(res,args[1])' is always false [knownConditionTrueFalse]
+            if(!Value::arrayPush(res, args[1]))
+               ^
+main.cpp:1433:47: note: Calling function 'push' returns 1
+                    return m_actualarray->push(val);
+                                              ^
+main.cpp:2749:43: note: Calling function 'push' returns 1
+            return selfval.asArray()->push(val);
+                                          ^
+main.cpp:14050:33: note: Calling function 'arrayPush' returns 1
+            if(!Value::arrayPush(res, args[1]))
+                                ^
+main.cpp:14050:16: note: Condition '!Value::arrayPush(res,args[1])' is always false
+            if(!Value::arrayPush(res, args[1]))
+               ^
+main.cpp:14086:9: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_MAP,Value::VALTYP_MAP)' is always false [knownConditionTrueFalse]
+    if (!mc_argcheck_check(state, true, argc, args, Value::VALTYP_MAP, Value::VALTYP_MAP))
+        ^
+main.cpp:14086:27: note: Calling function 'mc_argcheck_check' returns 1
+    if (!mc_argcheck_check(state, true, argc, args, Value::VALTYP_MAP, Value::VALTYP_MAP))
+                          ^
+main.cpp:14086:9: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_MAP,Value::VALTYP_MAP)' is always false
+    if (!mc_argcheck_check(state, true, argc, args, Value::VALTYP_MAP, Value::VALTYP_MAP))
+        ^
+main.cpp:14119:9: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_MAP,Value::VALTYP_MAP)' is always false [knownConditionTrueFalse]
+    if (!mc_argcheck_check(state, true, argc, args, Value::VALTYP_MAP, Value::VALTYP_MAP))
+        ^
+main.cpp:14119:27: note: Calling function 'mc_argcheck_check' returns 1
+    if (!mc_argcheck_check(state, true, argc, args, Value::VALTYP_MAP, Value::VALTYP_MAP))
+                          ^
+main.cpp:14119:9: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_MAP,Value::VALTYP_MAP)' is always false
+    if (!mc_argcheck_check(state, true, argc, args, Value::VALTYP_MAP, Value::VALTYP_MAP))
+        ^
+main.cpp:14142:9: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_NUMBER,Value::VALTYP_ARRAY|Value::VALTYP_MAP,Value::VALTYP_MAP,Value::VALTYP_STRING,Value::VALTYP_NUMBER|Value::VALTYP_BOOL,Value::VALTYP_FUNCSCRIPT|Value::VALTYP_FUNCNATIVE,Value::VALTYP_ANY)' is always false [knownConditionTrueFalse]
+    if (!mc_argcheck_check(state, true, argc, args,
+        ^
+main.cpp:14142:27: note: Calling function 'mc_argcheck_check' returns 1
+    if (!mc_argcheck_check(state, true, argc, args,
+                          ^
+main.cpp:14142:9: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_NUMBER,Value::VALTYP_ARRAY|Value::VALTYP_MAP,Value::VALTYP_MAP,Value::VALTYP_STRING,Value::VALTYP_NUMBER|Value::VALTYP_BOOL,Value::VALTYP_FUNCSCRIPT|Value::VALTYP_FUNCNATIVE,Value::VALTYP_ANY)' is always false
+    if (!mc_argcheck_check(state, true, argc, args,
+        ^
+main.cpp:14978:8: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_ARRAY,Value::VALTYP_ANY)' is always false [knownConditionTrueFalse]
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ARRAY, Value::VALTYP_ANY))
+       ^
+main.cpp:14978:26: note: Calling function 'mc_argcheck_check' returns 1
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ARRAY, Value::VALTYP_ANY))
+                         ^
+main.cpp:14978:8: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_ARRAY,Value::VALTYP_ANY)' is always false
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ARRAY, Value::VALTYP_ANY))
+       ^
+main.cpp:14984:12: style: Condition '!Value::arrayPush(thisval,args[i])' is always false [knownConditionTrueFalse]
+        if(!Value::arrayPush(thisval, args[i]))
+           ^
+main.cpp:1433:47: note: Calling function 'push' returns 1
+                    return m_actualarray->push(val);
+                                              ^
+main.cpp:2749:43: note: Calling function 'push' returns 1
+            return selfval.asArray()->push(val);
+                                          ^
+main.cpp:14984:29: note: Calling function 'arrayPush' returns 1
+        if(!Value::arrayPush(thisval, args[i]))
+                            ^
+main.cpp:14984:12: note: Condition '!Value::arrayPush(thisval,args[i])' is always false
+        if(!Value::arrayPush(thisval, args[i]))
+           ^
+main.cpp:15000:8: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_ARRAY,Value::VALTYP_ANY)' is always false [knownConditionTrueFalse]
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ARRAY, Value::VALTYP_ANY))
+       ^
+main.cpp:15000:26: note: Calling function 'mc_argcheck_check' returns 1
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ARRAY, Value::VALTYP_ANY))
+                         ^
+main.cpp:15000:8: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_ARRAY,Value::VALTYP_ANY)' is always false
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ARRAY, Value::VALTYP_ANY))
+       ^
+main.cpp:15025:8: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_ARRAY,Value::VALTYP_ANY)' is always false [knownConditionTrueFalse]
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ARRAY, Value::VALTYP_ANY))
+       ^
+main.cpp:15025:26: note: Calling function 'mc_argcheck_check' returns 1
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ARRAY, Value::VALTYP_ANY))
+                         ^
+main.cpp:15025:8: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_ARRAY,Value::VALTYP_ANY)' is always false
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ARRAY, Value::VALTYP_ANY))
+       ^
+main.cpp:15226:8: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_NUMBER)' is always false [knownConditionTrueFalse]
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+       ^
+main.cpp:15226:26: note: Calling function 'mc_argcheck_check' returns 1
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+                         ^
+main.cpp:15226:8: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_NUMBER)' is always false
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+       ^
+main.cpp:15300:12: style: Condition '!Value::arrayPush(res,item)' is always false [knownConditionTrueFalse]
+        if(!Value::arrayPush(res, item))
+           ^
+main.cpp:1433:47: note: Calling function 'push' returns 1
+                    return m_actualarray->push(val);
+                                              ^
+main.cpp:2749:43: note: Calling function 'push' returns 1
+            return selfval.asArray()->push(val);
+                                          ^
+main.cpp:15300:29: note: Calling function 'arrayPush' returns 1
+        if(!Value::arrayPush(res, item))
+                            ^
+main.cpp:15300:12: note: Condition '!Value::arrayPush(res,item)' is always false
+        if(!Value::arrayPush(res, item))
+           ^
+main.cpp:15319:8: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_MAP)' is always false [knownConditionTrueFalse]
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_MAP))
+       ^
+main.cpp:15319:26: note: Calling function 'mc_argcheck_check' returns 1
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_MAP))
+                         ^
+main.cpp:15319:8: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_MAP)' is always false
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_MAP))
+       ^
+main.cpp:15333:12: style: Condition '!Value::arrayPush(res,key)' is always false [knownConditionTrueFalse]
+        if(!Value::arrayPush(res, key))
+           ^
+main.cpp:1433:47: note: Calling function 'push' returns 1
+                    return m_actualarray->push(val);
+                                              ^
+main.cpp:2749:43: note: Calling function 'push' returns 1
+            return selfval.asArray()->push(val);
+                                          ^
+main.cpp:15333:29: note: Calling function 'arrayPush' returns 1
+        if(!Value::arrayPush(res, key))
+                            ^
+main.cpp:15333:12: note: Condition '!Value::arrayPush(res,key)' is always false
+        if(!Value::arrayPush(res, key))
+           ^
+main.cpp:15352:8: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_MAP)' is always false [knownConditionTrueFalse]
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_MAP))
+       ^
+main.cpp:15352:26: note: Calling function 'mc_argcheck_check' returns 1
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_MAP))
+                         ^
+main.cpp:15352:8: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_MAP)' is always false
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_MAP))
+       ^
+main.cpp:15366:12: style: Condition '!Value::arrayPush(res,key)' is always false [knownConditionTrueFalse]
+        if(!Value::arrayPush(res, key))
+           ^
+main.cpp:1433:47: note: Calling function 'push' returns 1
+                    return m_actualarray->push(val);
+                                              ^
+main.cpp:2749:43: note: Calling function 'push' returns 1
+            return selfval.asArray()->push(val);
+                                          ^
+main.cpp:15366:29: note: Calling function 'arrayPush' returns 1
+        if(!Value::arrayPush(res, key))
+                            ^
+main.cpp:15366:12: note: Condition '!Value::arrayPush(res,key)' is always false
+        if(!Value::arrayPush(res, key))
+           ^
+main.cpp:15380:8: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_ANY)' is always false [knownConditionTrueFalse]
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ANY))
+       ^
+main.cpp:15380:26: note: Calling function 'mc_argcheck_check' returns 1
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ANY))
+                         ^
+main.cpp:15380:8: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_ANY)' is always false
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ANY))
+       ^
+main.cpp:15393:8: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_ANY)' is always false [knownConditionTrueFalse]
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ANY))
+       ^
+main.cpp:15393:26: note: Calling function 'mc_argcheck_check' returns 1
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ANY))
+                         ^
+main.cpp:15393:8: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_ANY)' is always false
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ANY))
+       ^
+main.cpp:15410:8: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_ARRAY,Value::VALTYP_ANY)' is always false [knownConditionTrueFalse]
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ARRAY, Value::VALTYP_ANY))
+       ^
+main.cpp:15410:26: note: Calling function 'mc_argcheck_check' returns 1
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ARRAY, Value::VALTYP_ANY))
+                         ^
+main.cpp:15410:8: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_ARRAY,Value::VALTYP_ANY)' is always false
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ARRAY, Value::VALTYP_ANY))
+       ^
+main.cpp:15441:8: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_ARRAY,Value::VALTYP_NUMBER)' is always false [knownConditionTrueFalse]
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ARRAY, Value::VALTYP_NUMBER))
+       ^
+main.cpp:15441:26: note: Calling function 'mc_argcheck_check' returns 1
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ARRAY, Value::VALTYP_NUMBER))
+                         ^
+main.cpp:15441:8: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_ARRAY,Value::VALTYP_NUMBER)' is always false
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ARRAY, Value::VALTYP_NUMBER))
+       ^
+main.cpp:15496:8: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_BOOL)' is always false [knownConditionTrueFalse]
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_BOOL))
+       ^
+main.cpp:15496:26: note: Calling function 'mc_argcheck_check' returns 1
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_BOOL))
+                         ^
+main.cpp:15496:8: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_BOOL)' is always false
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_BOOL))
+       ^
+main.cpp:15515:8: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_NUMBER)' is always false [knownConditionTrueFalse]
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+       ^
+main.cpp:15515:26: note: Calling function 'mc_argcheck_check' returns 1
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+                         ^
+main.cpp:15515:8: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_NUMBER)' is always false
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+       ^
+main.cpp:15541:12: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_NUMBER,Value::VALTYP_NUMBER)' is always false [knownConditionTrueFalse]
+        if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER, Value::VALTYP_NUMBER))
+           ^
+main.cpp:15541:30: note: Calling function 'mc_argcheck_check' returns 1
+        if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER, Value::VALTYP_NUMBER))
+                             ^
+main.cpp:15541:12: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_NUMBER,Value::VALTYP_NUMBER)' is always false
+        if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER, Value::VALTYP_NUMBER))
+           ^
+main.cpp:15589:12: style: Condition '!Value::arrayPush(res,item)' is always false [knownConditionTrueFalse]
+        if(!Value::arrayPush(res, item))
+           ^
+main.cpp:1433:47: note: Calling function 'push' returns 1
+                    return m_actualarray->push(val);
+                                              ^
+main.cpp:2749:43: note: Calling function 'push' returns 1
+            return selfval.asArray()->push(val);
+                                          ^
+main.cpp:15589:29: note: Calling function 'arrayPush' returns 1
+        if(!Value::arrayPush(res, item))
+                            ^
+main.cpp:15589:12: note: Condition '!Value::arrayPush(res,item)' is always false
+        if(!Value::arrayPush(res, item))
+           ^
+main.cpp:15645:8: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_STRING|Value::VALTYP_ARRAY,Value::VALTYP_NUMBER)' is always false [knownConditionTrueFalse]
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_STRING | Value::VALTYP_ARRAY, Value::VALTYP_NUMBER))
+       ^
+main.cpp:15645:26: note: Calling function 'mc_argcheck_check' returns 1
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_STRING | Value::VALTYP_ARRAY, Value::VALTYP_NUMBER))
+                         ^
+main.cpp:15645:8: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_STRING|Value::VALTYP_ARRAY,Value::VALTYP_NUMBER)' is always false
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_STRING | Value::VALTYP_ARRAY, Value::VALTYP_NUMBER))
+       ^
+main.cpp:15671:8: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_NUMBER)' is always false [knownConditionTrueFalse]
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+       ^
+main.cpp:15671:26: note: Calling function 'mc_argcheck_check' returns 1
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+                         ^
+main.cpp:15671:8: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_NUMBER)' is always false
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+       ^
+main.cpp:15689:8: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_NUMBER,Value::VALTYP_NUMBER)' is always false [knownConditionTrueFalse]
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER, Value::VALTYP_NUMBER))
+       ^
+main.cpp:15689:26: note: Calling function 'mc_argcheck_check' returns 1
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER, Value::VALTYP_NUMBER))
+                         ^
+main.cpp:15689:8: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_NUMBER,Value::VALTYP_NUMBER)' is always false
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER, Value::VALTYP_NUMBER))
+       ^
+main.cpp:15707:8: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_NUMBER)' is always false [knownConditionTrueFalse]
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+       ^
+main.cpp:15707:26: note: Calling function 'mc_argcheck_check' returns 1
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+                         ^
+main.cpp:15707:8: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_NUMBER)' is always false
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+       ^
+main.cpp:15724:8: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_NUMBER)' is always false [knownConditionTrueFalse]
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+       ^
+main.cpp:15724:26: note: Calling function 'mc_argcheck_check' returns 1
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+                         ^
+main.cpp:15724:8: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_NUMBER)' is always false
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+       ^
+main.cpp:15741:8: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_NUMBER)' is always false [knownConditionTrueFalse]
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+       ^
+main.cpp:15741:26: note: Calling function 'mc_argcheck_check' returns 1
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+                         ^
+main.cpp:15741:8: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_NUMBER)' is always false
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+       ^
+main.cpp:15758:8: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_NUMBER)' is always false [knownConditionTrueFalse]
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+       ^
+main.cpp:15758:26: note: Calling function 'mc_argcheck_check' returns 1
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+                         ^
+main.cpp:15758:8: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_NUMBER)' is always false
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+       ^
+main.cpp:15775:8: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_NUMBER)' is always false [knownConditionTrueFalse]
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+       ^
+main.cpp:15775:26: note: Calling function 'mc_argcheck_check' returns 1
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+                         ^
+main.cpp:15775:8: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_NUMBER)' is always false
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+       ^
+main.cpp:15792:8: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_NUMBER)' is always false [knownConditionTrueFalse]
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+       ^
+main.cpp:15792:26: note: Calling function 'mc_argcheck_check' returns 1
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+                         ^
+main.cpp:15792:8: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_NUMBER)' is always false
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+       ^
+main.cpp:15809:8: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_NUMBER)' is always false [knownConditionTrueFalse]
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+       ^
+main.cpp:15809:26: note: Calling function 'mc_argcheck_check' returns 1
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+                         ^
+main.cpp:15809:8: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_NUMBER)' is always false
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+       ^
+main.cpp:15827:8: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_NUMBER,Value::VALTYP_NUMBER)' is always false [knownConditionTrueFalse]
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER, Value::VALTYP_NUMBER))
+       ^
+main.cpp:15827:26: note: Calling function 'mc_argcheck_check' returns 1
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER, Value::VALTYP_NUMBER))
+                         ^
+main.cpp:15827:8: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_NUMBER,Value::VALTYP_NUMBER)' is always false
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER, Value::VALTYP_NUMBER))
+       ^
+main.cpp:15847:8: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_STRING,Value::VALTYP_STRING)' is always false [knownConditionTrueFalse]
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_STRING, Value::VALTYP_STRING))
+       ^
+main.cpp:15847:26: note: Calling function 'mc_argcheck_check' returns 1
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_STRING, Value::VALTYP_STRING))
+                         ^
+main.cpp:15847:8: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_STRING,Value::VALTYP_STRING)' is always false
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_STRING, Value::VALTYP_STRING))
+       ^
+main.cpp:15868:8: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_STRING)' is always false [knownConditionTrueFalse]
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_STRING))
+       ^
+main.cpp:15868:26: note: Calling function 'mc_argcheck_check' returns 1
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_STRING))
+                         ^
+main.cpp:15868:8: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_STRING)' is always false
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_STRING))
+       ^
+main.cpp:15912:8: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_STRING)' is always false [knownConditionTrueFalse]
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_STRING))
+       ^
+main.cpp:15912:26: note: Calling function 'mc_argcheck_check' returns 1
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_STRING))
+                         ^
+main.cpp:15912:8: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_STRING)' is always false
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_STRING))
+       ^
+main.cpp:15927:8: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_STRING)' is always false [knownConditionTrueFalse]
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_STRING))
+       ^
+main.cpp:15927:26: note: Calling function 'mc_argcheck_check' returns 1
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_STRING))
+                         ^
+main.cpp:15927:8: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_STRING)' is always false
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_STRING))
+       ^
+main.cpp:15946:8: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_STRING)' is always false [knownConditionTrueFalse]
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_STRING))
+       ^
+main.cpp:15946:26: note: Calling function 'mc_argcheck_check' returns 1
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_STRING))
+                         ^
+main.cpp:15946:8: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_STRING)' is always false
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_STRING))
+       ^
+main.cpp:15985:8: style: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_STRING,Value::VALTYP_BOOL)' is always false [knownConditionTrueFalse]
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_STRING, Value::VALTYP_BOOL))
+       ^
+main.cpp:15985:26: note: Calling function 'mc_argcheck_check' returns 1
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_STRING, Value::VALTYP_BOOL))
+                         ^
+main.cpp:15985:8: note: Condition '!mc_argcheck_check(state,true,argc,args,Value::VALTYP_STRING,Value::VALTYP_BOOL)' is always false
+    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_STRING, Value::VALTYP_BOOL))
+       ^
+glist.h.old.h:62:24: style: Condition '!arrcopy->push(itemcopy)' is always false [knownConditionTrueFalse]
+                    if(!arrcopy->push(itemcopy))
+                       ^
+glist.h.old.h:62:38: note: Calling function 'push' returns 1
+                    if(!arrcopy->push(itemcopy))
+                                     ^
+glist.h.old.h:62:24: note: Condition '!arrcopy->push(itemcopy)' is always false
+                    if(!arrcopy->push(itemcopy))
+                       ^
+glist.h.old.h:69:24: style: Condition '!arrcopy->push(item)' is always false [knownConditionTrueFalse]
+                    if(!arrcopy->push(item))
+                       ^
+glist.h.old.h:69:38: note: Calling function 'push' returns 1
+                    if(!arrcopy->push(item))
+                                     ^
+glist.h.old.h:69:24: note: Condition '!arrcopy->push(item)' is always false
+                    if(!arrcopy->push(item))
+                       ^
+glist.h.old.h:100:24: style: Condition '!dest->push(itemcopy)' is always false [knownConditionTrueFalse]
+                    if(!dest->push(itemcopy))
+                       ^
+glist.h.old.h:100:35: note: Calling function 'push' returns 1
+                    if(!dest->push(itemcopy))
+                                  ^
+glist.h.old.h:100:24: note: Condition '!dest->push(itemcopy)' is always false
+                    if(!dest->push(itemcopy))
+                       ^
+glist.h.old.h:107:24: style: Condition '!dest->push(item)' is always false [knownConditionTrueFalse]
+                    if(!dest->push(item))
+                       ^
+glist.h.old.h:107:35: note: Calling function 'push' returns 1
+                    if(!dest->push(item))
+                                  ^
+glist.h.old.h:107:24: note: Condition '!dest->push(item)' is always false
+                    if(!dest->push(item))
+                       ^
+glist.h.old.h:325:28: style: Condition 'm_listcount>0' is always true [knownConditionTrueFalse]
+            if(m_listcount > 0)
+                           ^
+glist.h.old.h:321:28: note: Assuming that condition 'm_listcount==0' is not redundant
+            if(m_listcount == 0)
+                           ^
+glist.h.old.h:325:28: note: Condition 'm_listcount>0' is always true
+            if(m_listcount > 0)
+                           ^
+strbuf.h:140:17: portability: %ld in format string (no. 1) requires 'long' but the argument type is 'size_t {aka unsigned long}'. [invalidPrintfArgType_sint]
+                fprintf(stderr, "StringBuffer: out of bounds error [index: %ld, num_of_bits: %ld]\n", pos, this->m_length);
+                ^
+strbuf.h:140:17: portability: %ld in format string (no. 2) requires 'long' but the argument type is 'size_t {aka unsigned long}'. [invalidPrintfArgType_sint]
+                fprintf(stderr, "StringBuffer: out of bounds error [index: %ld, num_of_bits: %ld]\n", pos, this->m_length);
+                ^
+strbuf.h:153:17: portability: %ld in format string (no. 1) requires 'long' but the argument type is 'size_t {aka unsigned long}'. [invalidPrintfArgType_sint]
+                fprintf(stderr,"StringBuffer: out of bounds error [start: %ld; length: %ld; strlen: %ld; buf:%.*s%s]\n", start, len, this->m_length, (int)STRBUF_MIN(5, this->m_length), this->m_data, endstr);
+                ^
+strbuf.h:153:17: portability: %ld in format string (no. 2) requires 'long' but the argument type is 'size_t {aka unsigned long}'. [invalidPrintfArgType_sint]
+                fprintf(stderr,"StringBuffer: out of bounds error [start: %ld; length: %ld; strlen: %ld; buf:%.*s%s]\n", start, len, this->m_length, (int)STRBUF_MIN(5, this->m_length), this->m_data, endstr);
+                ^
+strbuf.h:153:17: portability: %ld in format string (no. 3) requires 'long' but the argument type is 'size_t {aka unsigned long}'. [invalidPrintfArgType_sint]
+                fprintf(stderr,"StringBuffer: out of bounds error [start: %ld; length: %ld; strlen: %ld; buf:%.*s%s]\n", start, len, this->m_length, (int)STRBUF_MIN(5, this->m_length), this->m_data, endstr);
+                ^
+strbuf.h:224:21: portability: %ld in format string (no. 3) requires 'long' but the argument type is 'size_t {aka unsigned long}'. [invalidPrintfArgType_sint]
+                    fprintf(stderr,
+                    ^
+strbuf.h:224:21: portability: %ld in format string (no. 4) requires 'long' but the argument type is 'size_t {aka unsigned long}'. [invalidPrintfArgType_sint]
+                    fprintf(stderr,
+                    ^
+main.cpp:16233:5: portability: %ld in format string (no. 1) requires 'long' but the argument type is 'size_t {aka unsigned long}'. [invalidPrintfArgType_sint]
+    printf("%ld\t%s\n", sz, name);
+    ^
+main.cpp:10846:13: warning: Either the condition 'scope==nullptr' is redundant or there is possible null pointer dereference: scope. [nullPointerRedundantCheck]
+            scope->deInit();
+            ^
+main.cpp:10842:22: note: Assuming that condition 'scope==nullptr' is not redundant
+            if(scope == nullptr)
+                     ^
+main.cpp:10846:13: note: Null pointer dereference
+            scope->deInit();
+            ^
+main.cpp:10921:13: warning: Either the condition 'filescope==nullptr' is redundant or there is possible null pointer dereference: filescope. [nullPointerRedundantCheck]
+            filescope->m_scopefilesymtab = table;
+            ^
+main.cpp:10917:26: note: Assuming that condition 'filescope==nullptr' is not redundant
+            if(filescope == nullptr)
+                         ^
+main.cpp:10921:13: note: Null pointer dereference
+            filescope->m_scopefilesymtab = table;
+            ^
+main.cpp:12301:12: warning: Either the condition 'buf!=nullptr' is redundant or there is possible null pointer dereference: buf. [nullPointerRedundantCheck]
+    memset(buf, 0, toldlen+1);
+           ^
+main.cpp:12302:12: note: Assuming that condition 'buf!=nullptr' is not redundant
+    if(buf != nullptr)
+           ^
+main.cpp:12301:12: note: Null pointer dereference
+    memset(buf, 0, toldlen+1);
+           ^
+main.cpp:14374:49: warning: Possible null pointer dereference: searchstr [nullPointer]
+    result = (char*)strstr(inpstr + startindex, searchstr);
+                                                ^
+main.cpp:14357:17: note: Assignment 'searchstr=nullptr', assigned value is 0
+    searchstr = nullptr;
+                ^
+main.cpp:14362:19: note: Assuming condition is true
+    if(searchtype == Value::VALTYP_NUMBER)
+                  ^
+main.cpp:14374:49: note: Null pointer dereference
+    result = (char*)strstr(inpstr + startindex, searchstr);
+                                                ^
+strbuf.h:79:20: style: C-style pointer casting [cstyleCast]
+        if((*buf = (char*)mc_memory_realloc(*buf, *sizeptr)) == NULL)
+                   ^
+strbuf.h:101:28: style: C-style pointer casting [cstyleCast]
+            sbuf->m_data = (char*)mc_memory_malloc(sbuf->m_capacity);
+                           ^
+strbuf.h:190:22: style: C-style pointer casting [cstyleCast]
+            newbuf = (char*)mc_memory_realloc(this->m_data, cap * sizeof(char));
+                     ^
+strbuf.h:556:19: style: C-style pointer casting [cstyleCast]
+            arr = (char**)mc_memory_malloc(txtlen * sizeof(char*));
+                  ^
+strbuf.h:559:26: style: C-style pointer casting [cstyleCast]
+                arr[i] = (char*)mc_memory_malloc(2 * sizeof(char));
+                         ^
+strbuf.h:574:11: style: C-style pointer casting [cstyleCast]
+    arr = (char**)mc_memory_malloc(count * sizeof(char*));
+          ^
+strbuf.h:580:22: style: C-style pointer casting [cstyleCast]
+        arr[count] = (char*)mc_memory_malloc((slen + 1) * sizeof(char));
+                     ^
+strbuf.h:588:18: style: C-style pointer casting [cstyleCast]
+    arr[count] = (char*)mc_memory_malloc((slen + 1) * sizeof(char));
+                 ^
+strbuf.h:685:21: style: C-style pointer casting [cstyleCast]
+        if (strstr((const char *)&temp[i], findstr) == &temp[i])
+                    ^
+strbuf.h:691:12: style: C-style pointer casting [cstyleCast]
+    buff = (char*)mc_memory_calloc((i + oldcount * (sublen - findlen) + 1), sizeof(char));
+           ^
+strbuf.h:713:12: style: C-style pointer casting [cstyleCast]
+    *str = (char*)mc_memory_calloc(i + 1, sizeof(char));
+           ^
+strbuf.h:720:36: style: C-style pointer casting [cstyleCast]
+    dyn_strutil_faststrncat(*str, (const char *)buff, &i);
+                                   ^
+strbuf.h:1124:14: style: C-style pointer casting [cstyleCast]
+    newstr = (char*)mc_memory_malloc((len + 1) * sizeof(char));
+             ^
+utilos.h:195:31: style: C-style pointer casting [cstyleCast]
+                itempattern = (char*)mc_memory_malloc(msz);
+                              ^
+main.cpp:248:11: style: C-style pointer casting [cstyleCast]
+    res = (char*)mc_memory_malloc(needsz + 1);
+          ^
+main.cpp:1934:33: style: C-style pointer casting [cstyleCast]
+            auto bytecodecopy = (OPValCode*)mc_memory_malloc(sizeof(OPValCode) * bccnt);
+                                ^
+main.cpp:1940:37: style: C-style pointer casting [cstyleCast]
+            auto srcpositionscopy = (SourceLocation*)mc_memory_malloc(sizeof(SourceLocation) * bccnt);
+                                    ^
+main.cpp:1973:80: style: C-style pointer casting [cstyleCast]
+                functioncopy->m_funcdata.valscriptfunc.ufv.freevalsallocated = (Value*)mc_memory_malloc(sizeof(Value) * fvcnt);
+                                                                               ^
+main.cpp:2370:88: style: C-style pointer casting [cstyleCast]
+                data->m_uvobj.valfunc.m_funcdata.valscriptfunc.ufv.freevalsallocated = (Value*)mc_memory_malloc(sizeof(Value) * fvc);
+                                                                                       ^
+main.cpp:2448:64: style: C-style pointer casting [cstyleCast]
+            data->m_uvobj.valmap->m_actualmap->setHashFunction((CallbackHashItemFN)Value::callbackHash);
+                                                               ^
+main.cpp:2449:66: style: C-style pointer casting [cstyleCast]
+            data->m_uvobj.valmap->m_actualmap->setEqualsFunction((CallbackCompareFN)Value::callbackEqualsTo);
+                                                                 ^
+main.cpp:3420:72: style: C-style pointer casting [cstyleCast]
+            m_storedsymbols = Memory::make<StrDict<char*, AstSymbol*>>((CallbackCopyFN)AstSymbol::copyHeap, (CallbackDestroyFN)AstSymbol::destroy);
+                                                                       ^
+main.cpp:3444:39: style: C-style pointer casting [cstyleCast]
+            ok = m_storedsymbols->set((char*)name, symbol);
+                                      ^
+main.cpp:3508:75: style: C-style pointer casting [cstyleCast]
+                m_blscopestore = Memory::make<StrDict<char*, AstSymbol*>>((CallbackCopyFN)AstSymbol::copyHeap, (CallbackDestroyFN)AstSymbol::destroy);
+                                                                          ^
+main.cpp:4496:18: style: C-style pointer casting [cstyleCast]
+                ((AstExprData*)expr)->destroyInstanceExpression();
+                 ^
+main.cpp:4505:25: style: C-style pointer casting [cstyleCast]
+                return ((AstExprData*)expr)->copyInstanceExpression();
+                        ^
+main.cpp:5218:29: style: C-style pointer casting [cstyleCast]
+                    line = (const char*)lines->get(m_tbpos.m_locline);
+                            ^
+main.cpp:5508:21: style: C-style pointer casting [cstyleCast]
+            line = (const char*)lines->get(m_pos.m_locline);
+                    ^
+main.cpp:6657:22: style: C-style pointer casting [cstyleCast]
+            output = (char*)mc_memory_malloc(len + 1);
+                     ^
+main.cpp:8873:27: style: C-style pointer casting [cstyleCast]
+                valcopy = (int*)mc_memory_malloc(sizeof(int));
+                          ^
+main.cpp:8879:49: style: C-style pointer casting [cstyleCast]
+                copy->m_stringconstposdict->set((char*)key, valcopy);
+                                                ^
+main.cpp:8887:31: style: C-style pointer casting [cstyleCast]
+                loadedname = (const char*)srcloadedmodulenames->get(i);
+                              ^
+main.cpp:8938:63: style: C-style pointer casting [cstyleCast]
+            m_modules = Memory::make<StrDict<char*, Module*>>((CallbackCopyFN)Module::copy, (CallbackDestroyFN)Module::destroy);
+                                                              ^
+main.cpp:8943:29: style: C-style pointer casting [cstyleCast]
+                filename = (const char*)files->top();
+                            ^
+main.cpp:9771:26: style: C-style pointer casting [cstyleCast]
+                posval = (int*)mc_memory_malloc(sizeof(int));
+                         ^
+main.cpp:12300:11: style: C-style pointer casting [cstyleCast]
+    buf = (char*)mc_memory_malloc(toldlen + 1);
+          ^
+main.cpp:12373:20: style: C-style pointer casting [cstyleCast]
+    outputstring = (char*)mc_memory_malloc(n + 1);
+                   ^
+main.cpp:12526:11: style: C-style pointer casting [cstyleCast]
+    up = (const uint8_t*)ptr;
+          ^
+main.cpp:12541:14: style: C-style pointer casting [cstyleCast]
+    valptr = (uint32_t*)&val;
+             ^
+main.cpp:12564:10: style: C-style pointer casting [cstyleCast]
+    p = (const unsigned char*)str;
+         ^
+main.cpp:12565:12: style: C-style pointer casting [cstyleCast]
+    end = (const unsigned char*)str + slen;
+           ^
+main.cpp:12572:19: style: C-style pointer casting [cstyleCast]
+        *endptr = (char*)end;
+                  ^
+main.cpp:14068:12: style: C-style pointer casting [cstyleCast]
+    test = (int*)data;
+           ^
+main.cpp:14374:14: style: C-style pointer casting [cstyleCast]
+    result = (char*)strstr(inpstr + startindex, searchstr);
+             ^
+main.cpp:14536:18: style: C-style pointer casting [cstyleCast]
+        result = (char*)mc_memory_malloc(startpos + 1);
+                 ^
+main.cpp:14586:18: style: C-style pointer casting [cstyleCast]
+        result = (char*)mc_memory_malloc(startpos + 1);
+                 ^
+main.cpp:14651:18: style: C-style pointer casting [cstyleCast]
+        result = (char*)mc_memory_malloc(newlen);
+                 ^
+main.cpp:14721:18: style: C-style pointer casting [cstyleCast]
+        result = (char*)mc_memory_malloc(newlen + 1);
+                 ^
+main.cpp:14767:14: style: C-style pointer casting [cstyleCast]
+    result = (char*)mc_memory_malloc(inplen + 1);
+             ^
+main.cpp:16396:20: style: C-style pointer casting [cstyleCast]
+        nargv[0] = (char*)"<-e>";
+                   ^
+valdict.h:27:31: style: C-style pointer casting [cstyleCast]
+            dict->m_vdcells = (unsigned int*)mc_memory_malloc(dict->m_vdcellcapacity * sizeof(unsigned int));
+                              ^
+valdict.h:28:30: style: C-style pointer casting [cstyleCast]
+            dict->m_vdkeys = (char**)mc_memory_malloc(dict->m_vditemcapacity * sizeof(KeyType));
+                             ^
+valdict.h:29:32: style: C-style pointer casting [cstyleCast]
+            dict->m_vdvalues = (void**)mc_memory_malloc(dict->m_vditemcapacity * sizeof(ValType));
+                               ^
+valdict.h:30:37: style: C-style pointer casting [cstyleCast]
+            dict->m_vdcellindices = (unsigned int*)mc_memory_malloc(dict->m_vditemcapacity * sizeof(unsigned int));
+                                    ^
+valdict.h:31:32: style: C-style pointer casting [cstyleCast]
+            dict->m_vdhashes = (long unsigned int*)mc_memory_malloc(dict->m_vditemcapacity * sizeof(unsigned long));
+                               ^
+valdict.h:180:31: style: C-style pointer casting [cstyleCast]
+            return (KeyType*)((char*)m_vdkeys + (sizeof(KeyType) * ix));
+                              ^
+valdict.h:189:31: style: C-style pointer casting [cstyleCast]
+            return (ValType*)((char*)m_vdvalues + (sizeof(ValType) * ix));
+                              ^
+valdict.h:206:20: style: C-style pointer casting [cstyleCast]
+            memcpy((char*)m_vdvalues + offset, value, sizeof(ValType));
+                   ^
+valdict.h:328:23: style: C-style pointer casting [cstyleCast]
+                key = (char*)getKeyAt(i);
+                      ^
+valdict.h:346:20: style: C-style pointer casting [cstyleCast]
+            memcpy((char*)m_vdkeys + offset, key, sizeof(KeyType));
+                   ^
+strdict.h:31:31: style: C-style pointer casting [cstyleCast]
+            dict->m_gdcells = (unsigned int*)mc_memory_malloc(dict->m_gdcellcapacity * sizeof(*dict->m_gdcells));
+                              ^
+strdict.h:32:30: style: C-style pointer casting [cstyleCast]
+            dict->m_gdkeys = (KeyType*)mc_memory_malloc(dict->m_gditemcapacity * sizeof(KeyType));
+                             ^
+strdict.h:33:32: style: C-style pointer casting [cstyleCast]
+            dict->m_gdvalues = (ValType*)mc_memory_malloc(dict->m_gditemcapacity * sizeof(ValType));
+                               ^
+strdict.h:34:37: style: C-style pointer casting [cstyleCast]
+            dict->m_gdcellindices = (unsigned int*)mc_memory_malloc(dict->m_gditemcapacity * sizeof(*dict->m_gdcellindices));
+                                    ^
+strdict.h:35:32: style: C-style pointer casting [cstyleCast]
+            dict->m_gdhashes = (long unsigned int*)mc_memory_malloc(dict->m_gditemcapacity * sizeof(*dict->m_gdhashes));
+                               ^
+strdict.h:191:28: style: C-style pointer casting [cstyleCast]
+                if(strcmp((const char*)key, (const char*)keytocheck) == 0)
+                           ^
+strdict.h:357:46: style: C-style pointer casting [cstyleCast]
+            dictcopy = Memory::make<StrDict>((CallbackCopyFN)m_funccopyfn, (CallbackDestroyFN)m_funcdestroyfn);
+                                             ^
+strdict.h:362:33: style: C-style pointer casting [cstyleCast]
+                auto itemcopy = (ValType)dictcopy->m_funccopyfn(item);
+                                ^
+glist.h.old.h:58:29: style: C-style pointer casting [cstyleCast]
+                auto item = (ValType)get(i);
+                            ^
+glist.h.old.h:61:37: style: C-style pointer casting [cstyleCast]
+                    auto itemcopy = (ValType)copyfn(item);
+                                    ^
+glist.h.old.h:96:29: style: C-style pointer casting [cstyleCast]
+                auto item = (ValType)get(i);
+                            ^
+glist.h.old.h:99:37: style: C-style pointer casting [cstyleCast]
+                    auto itemcopy = (ValType)copyfn(item);
+                                    ^
+glist.h.old.h:176:35: style: C-style pointer casting [cstyleCast]
+                    m_listitems = (ValType*)mc_memory_malloc(sizeof(ValType) * ncap);
+                                  ^
+glist.h.old.h:180:35: style: C-style pointer casting [cstyleCast]
+                    m_listitems = (ValType*)mc_memory_realloc(m_listitems, sizeof(ValType) * ncap);
+                                  ^
+glist.h.old.h:365:35: style: C-style pointer casting [cstyleCast]
+                    m_listitems = (ValType*)mc_memory_malloc(sizeof(ValType) * m_listcapacity);
+                                  ^
+glist.h.old.h:369:35: style: C-style pointer casting [cstyleCast]
+                    m_listitems = (ValType*)mc_memory_realloc(m_listitems, sizeof(ValType) * m_listcapacity);
+                                  ^
+mem.h:144:19: style: C-style pointer casting [cstyleCast]
+            tmp = (ClassT*)mc_memory_malloc(sizeof(ClassT));
+                  ^
+main.cpp:12541:14: portability: Casting from double * to unsigned int * is not portable due to different binary data representations on different platforms. [invalidPointerCast]
+    valptr = (uint32_t*)&val;
+             ^
+main.cpp:3444:16: style: Variable 'ok' is reassigned a value before the old one has been used. [redundantAssignment]
+            ok = m_storedsymbols->set((char*)name, symbol);
+               ^
+main.cpp:3442:16: note: ok is assigned
+            ok = m_storedobjects.push(val);
+               ^
+main.cpp:3444:16: note: ok is overwritten
+            ok = m_storedsymbols->set((char*)name, symbol);
+               ^
+main.cpp:3712:16: style: Variable 'ok' is reassigned a value before the old one has been used. [redundantAssignment]
+            ok = setSymbol(symbol);
+               ^
+main.cpp:3710:16: note: ok is assigned
+            ok = m_symtbfreesymbols->push(copy);
+               ^
+main.cpp:3712:16: note: ok is overwritten
+            ok = setSymbol(symbol);
+               ^
+main.cpp:8802:16: style: Variable 'ok' is reassigned a value before the old one has been used. [redundantAssignment]
+            ok = m_modsymbols.push(modulesymbol);
+               ^
+main.cpp:8795:16: note: ok is assigned
+            ok = namebuf.format("%s::%s", m_modname, symbol->m_symname);
+               ^
+main.cpp:8802:16: note: ok is overwritten
+            ok = m_modsymbols.push(modulesymbol);
+               ^
+main.cpp:9291:20: style: Variable 'result' is reassigned a value before the old one has been used. [redundantAssignment]
+            result = true;
+                   ^
+main.cpp:9203:20: note: result is assigned
+            result = false;
+                   ^
+main.cpp:9291:20: note: result is overwritten
+            result = true;
+                   ^
+main.cpp:12101:30: style: Variable 'lefttypename' is reassigned a value before the old one has been used. [redundantAssignment]
+                lefttypename = Value::getTypename(lefttype);
+                             ^
+main.cpp:12094:30: note: lefttypename is assigned
+                lefttypename = Value::getTypename(lefttype);
+                             ^
+main.cpp:12101:30: note: lefttypename is overwritten
+                lefttypename = Value::getTypename(lefttype);
+                             ^
+main.cpp:14480:12: style: Variable 'string' is reassigned a value before the old one has been used. [redundantAssignment]
+    string = thisval.stringGetData();
+           ^
+main.cpp:14478:12: note: string is assigned
+    string = "";
+           ^
+main.cpp:14480:12: note: string is overwritten
+    string = thisval.stringGetData();
+           ^
+strbuf.h:142:17: style: Statements following noreturn function 'abort()' will never be executed. [unreachableCode]
+                dyn_strbuf_exitonerror();
+                ^
+strbuf.h:155:17: style: Statements following noreturn function 'abort()' will never be executed. [unreachableCode]
+                dyn_strbuf_exitonerror();
+                ^
+strbuf.h:228:21: style: Statements following noreturn function 'abort()' will never be executed. [unreachableCode]
+                    dyn_strbuf_exitonerror();
+                    ^
+strbuf.h:302:17: style: Statements following noreturn function 'abort()' will never be executed. [unreachableCode]
+                dyn_strbuf_exitonerror();
+                ^
+strbuf.h:313:17: style: Statements following noreturn function 'abort()' will never be executed. [unreachableCode]
+                dyn_strbuf_exitonerror();
+                ^
+strbuf.h:327:21: style: Statements following noreturn function 'abort()' will never be executed. [unreachableCode]
+                    dyn_strbuf_exitonerror();
+                    ^
+main.cpp:542:13: style: Statements following 'return' will never be executed. [unreachableCode]
+            if(m_prdestrfile != nullptr)
+            ^
+main.cpp:11695:13: style: Statements following 'return' will never be executed. [unreachableCode]
+            Value::Type nvaluetype;
+            ^
+main.cpp:12751:25: style: Statements following 'break' will never be executed. [unreachableCode]
+                        function = Value::asFunction(obj);
+                        ^
+optparse.h:247:17: style: The scope of the variable 'i' can be reduced. [variableScope]
+            int i;
+                ^
+optparse.h:399:25: style: The scope of the variable 'name' can be reduced. [variableScope]
+            const char* name;
+                        ^
+optparse.h:532:10: style: The scope of the variable 'needval' can be reduced. [variableScope]
+    bool needval;
+         ^
+optparse.h:533:10: style: The scope of the variable 'maybeval' can be reduced. [variableScope]
+    bool maybeval;
+         ^
+optparse.h:534:10: style: The scope of the variable 'hadshort' can be reduced. [variableScope]
+    bool hadshort;
+         ^
+strbuf.h:149:25: style: The scope of the variable 'endstr' can be reduced. [variableScope]
+            const char* endstr;
+                        ^
+strbuf.h:216:20: style: The scope of the variable 'oldcap' can be reduced. [variableScope]
+            size_t oldcap;
+                   ^
+strbuf.h:217:19: style: The scope of the variable 'oldbuf' can be reduced. [variableScope]
+            char* oldbuf;
+                  ^
+strbuf.h:448:10: style: The scope of the variable 'tmp' can be reduced. [variableScope]
+    char tmp;
+         ^
+strbuf.h:535:12: style: The scope of the variable 'i' can be reduced. [variableScope]
+    size_t i;
+           ^
+strbuf.h:990:12: style: The scope of the variable 'v' can be reduced. [variableScope]
+    size_t v;
+           ^
+strbuf.h:1137:12: style: The scope of the variable 'newlen' can be reduced. [variableScope]
+    size_t newlen;
+           ^
+strbuf.h:1164:11: style: The scope of the variable 'insert' can be reduced. [variableScope]
+    char* insert;
+          ^
+strbuf.h:1223:12: style: The scope of the variable 'len' can be reduced. [variableScope]
+    size_t len;
+           ^
+strbuf.h:1224:12: style: The scope of the variable 'newlen' can be reduced. [variableScope]
+    size_t newlen;
+           ^
+strbuf.h:1225:11: style: The scope of the variable 'tgt' can be reduced. [variableScope]
+    char* tgt;
+          ^
+strbuf.h:1226:11: style: The scope of the variable 'end' can be reduced. [variableScope]
+    char* end;
+          ^
+strbuf.h:1304:12: style: The scope of the variable 'start' can be reduced. [variableScope]
+    size_t start;
+           ^
+fnmatch.h:75:9: style: The scope of the variable 'k' can be reduced. [variableScope]
+    int k;
+        ^
+fnmatch.h:549:9: style: The scope of the variable 'c' can be reduced. [variableScope]
+    int c;
+        ^
+stod.h:232:19: style: The scope of the variable 'd' can be reduced. [variableScope]
+    unsigned char d;
+                  ^
+stod.h:387:9: style: The scope of the variable 'adj_exp' can be reduced. [variableScope]
+    int adj_exp;
+        ^
+stod.h:389:9: style: The scope of the variable 'shift' can be reduced. [variableScope]
+    int shift;
+        ^
+main.cpp:283:13: style: The scope of the variable 'sileft' can be reduced. [variableScope]
+    int64_t sileft;
+            ^
+main.cpp:284:13: style: The scope of the variable 'siright' can be reduced. [variableScope]
+    int64_t siright;
+            ^
+main.cpp:301:13: style: The scope of the variable 'sileft' can be reduced. [variableScope]
+    int64_t sileft;
+            ^
+main.cpp:302:13: style: The scope of the variable 'siright' can be reduced. [variableScope]
+    int64_t siright;
+            ^
+main.cpp:403:24: style: The scope of the variable 'i' can be reduced. [variableScope]
+                size_t i;
+                       ^
+main.cpp:664:17: style: The scope of the variable 'ch' can be reduced. [variableScope]
+            int ch;
+                ^
+main.cpp:758:20: style: The scope of the variable 'i' can be reduced. [variableScope]
+            size_t i;
+                   ^
+main.cpp:781:20: style: The scope of the variable 'len' can be reduced. [variableScope]
+            size_t len;
+                   ^
+main.cpp:1027:17: style: The scope of the variable 'operandwidth' can be reduced. [variableScope]
+            int operandwidth;
+                ^
+main.cpp:1086:17: style: The scope of the variable 'i' can be reduced. [variableScope]
+            int i;
+                ^
+main.cpp:1087:22: style: The scope of the variable 'dval' can be reduced. [variableScope]
+            NumFloat dval;
+                     ^
+main.cpp:1140:23: style: The scope of the variable 'op' can be reduced. [variableScope]
+            OPValCode op;
+                      ^
+main.cpp:1226:21: style: The scope of the variable 'data' can be reduced. [variableScope]
+            Object* data;
+                    ^
+main.cpp:1238:20: style: The scope of the variable 'i' can be reduced. [variableScope]
+            size_t i;
+                   ^
+main.cpp:1239:21: style: The scope of the variable 'obj' can be reduced. [variableScope]
+            Object* obj;
+                    ^
+main.cpp:1795:25: style: The scope of the variable 'astring' can be reduced. [variableScope]
+            const char* astring;
+                        ^
+main.cpp:1796:25: style: The scope of the variable 'bstring' can be reduced. [variableScope]
+            const char* bstring;
+                        ^
+main.cpp:1797:17: style: The scope of the variable 'alen' can be reduced. [variableScope]
+            int alen;
+                ^
+main.cpp:1798:17: style: The scope of the variable 'blen' can be reduced. [variableScope]
+            int blen;
+                ^
+main.cpp:1799:22: style: The scope of the variable 'adataval' can be reduced. [variableScope]
+            intptr_t adataval;
+                     ^
+main.cpp:1800:22: style: The scope of the variable 'bdataval' can be reduced. [variableScope]
+            intptr_t bdataval;
+                     ^
+main.cpp:1801:22: style: The scope of the variable 'dnleft' can be reduced. [variableScope]
+            NumFloat dnleft;
+                     ^
+main.cpp:1802:22: style: The scope of the variable 'dnright' can be reduced. [variableScope]
+            NumFloat dnright;
+                     ^
+main.cpp:1803:20: style: The scope of the variable 'ahash' can be reduced. [variableScope]
+            size_t ahash;
+                   ^
+main.cpp:1804:20: style: The scope of the variable 'bhash' can be reduced. [variableScope]
+            size_t bhash;
+                   ^
+main.cpp:1894:18: style: The scope of the variable 'bval' can be reduced. [variableScope]
+            bool bval;
+                 ^
+main.cpp:1895:22: style: The scope of the variable 'dval' can be reduced. [variableScope]
+            NumFloat dval;
+                     ^
+main.cpp:2636:34: style: The scope of the variable 'fun' can be reduced. [variableScope]
+            Object::ObjFunction* fun;
+                                 ^
+main.cpp:2690:21: style: The scope of the variable 'data' can be reduced. [variableScope]
+            Object* data;
+                    ^
+main.cpp:2921:18: style: The scope of the variable 'recursion' can be reduced. [variableScope]
+            bool recursion;
+                 ^
+main.cpp:2924:18: style: The scope of the variable 'prevquot' can be reduced. [variableScope]
+            bool prevquot;
+                 ^
+main.cpp:2962:18: style: The scope of the variable 'prevquot' can be reduced. [variableScope]
+            bool prevquot;
+                 ^
+main.cpp:3257:20: style: The scope of the variable 'len' can be reduced. [variableScope]
+            size_t len;
+                   ^
+main.cpp:3258:25: style: The scope of the variable 'str' can be reduced. [variableScope]
+            const char* str;
+                        ^
+main.cpp:3609:28: style: The scope of the variable 'scope' can be reduced. [variableScope]
+            AstScopeBlock* scope;
+                           ^
+main.cpp:3655:24: style: The scope of the variable 'globalsymbolcopy' can be reduced. [variableScope]
+            AstSymbol* globalsymbolcopy;
+                       ^
+main.cpp:5242:20: style: The scope of the variable 'i' can be reduced. [variableScope]
+            size_t i;
+                   ^
+main.cpp:5339:25: style: The scope of the variable 'filename' can be reduced. [variableScope]
+            const char* filename;
+                        ^
+main.cpp:5428:17: style: The scope of the variable 'j' can be reduced. [variableScope]
+            int j;
+                ^
+main.cpp:5601:20: style: The scope of the variable 'error' can be reduced. [variableScope]
+            Error* error;
+                   ^
+main.cpp:5615:17: style: The scope of the variable 'len' can be reduced. [variableScope]
+            int len;
+                ^
+main.cpp:5616:17: style: The scope of the variable 'tocopy' can be reduced. [variableScope]
+            int tocopy;
+                ^
+main.cpp:5811:18: style: The scope of the variable 'c' can be reduced. [variableScope]
+            char c;
+                 ^
+main.cpp:6178:41: style: The scope of the variable 'ident' can be reduced. [variableScope]
+                            const char* ident;
+                                        ^
+main.cpp:6179:41: style: The scope of the variable 'number' can be reduced. [variableScope]
+                            const char* number;
+                                        ^
+main.cpp:6354:17: style: The scope of the variable 'klen' can be reduced. [variableScope]
+            int klen;
+                ^
+main.cpp:6404:20: style: The scope of the variable 'linelen' can be reduced. [variableScope]
+            size_t linelen;
+                   ^
+main.cpp:7312:19: style: The scope of the variable 'literal' can be reduced. [variableScope]
+            char* literal;
+                  ^
+main.cpp:7314:30: style: The scope of the variable 'parseleftassoc' can be reduced. [variableScope]
+            AssocParseLeftFN parseleftassoc;
+                             ^
+main.cpp:7886:19: style: The scope of the variable 'literal' can be reduced. [variableScope]
+            char* literal;
+                  ^
+main.cpp:8395:18: style: The scope of the variable 'prevquot' can be reduced. [variableScope]
+            bool prevquot;
+                 ^
+main.cpp:8982:17: style: The scope of the variable 'width' can be reduced. [variableScope]
+            int width;
+                ^
+main.cpp:9171:28: style: The scope of the variable 'expr' can be reduced. [variableScope]
+            AstExpression* expr;
+                           ^
+main.cpp:9301:24: style: The scope of the variable 'currentsymbol' can be reduced. [variableScope]
+            AstSymbol* currentsymbol;
+                       ^
+main.cpp:9345:17: style: The scope of the variable 'nextcasejumpip' can be reduced. [variableScope]
+            int nextcasejumpip;
+                ^
+main.cpp:9347:17: style: The scope of the variable 'afterelifip' can be reduced. [variableScope]
+            int afterelifip;
+                ^
+main.cpp:9348:17: style: The scope of the variable 'pos' can be reduced. [variableScope]
+            int pos;
+                ^
+main.cpp:9496:24: style: The scope of the variable 'symbol' can be reduced. [variableScope]
+            AstSymbol* symbol;
+                       ^
+main.cpp:9497:24: style: The scope of the variable 'fnsymbol' can be reduced. [variableScope]
+            AstSymbol* fnsymbol;
+                       ^
+main.cpp:9499:24: style: The scope of the variable 'paramsymbol' can be reduced. [variableScope]
+            AstSymbol* paramsymbol;
+                       ^
+main.cpp:9749:18: style: The scope of the variable 'posval' can be reduced. [variableScope]
+            int* posval;
+                 ^
+main.cpp:9879:28: style: The scope of the variable 'key' can be reduced. [variableScope]
+            AstExpression* key;
+                           ^
+main.cpp:9880:28: style: The scope of the variable 'val' can be reduced. [variableScope]
+            AstExpression* val;
+                           ^
+main.cpp:9911:24: style: The scope of the variable 'symbol' can be reduced. [variableScope]
+            AstSymbol* symbol;
+                       ^
+main.cpp:10172:28: style: The scope of the variable 'argexpr' can be reduced. [variableScope]
+            AstExpression* argexpr;
+                           ^
+main.cpp:10265:17: style: The scope of the variable 'afterupdateip' can be reduced. [variableScope]
+            int afterupdateip;
+                ^
+main.cpp:10584:28: style: The scope of the variable 'expr' can be reduced. [variableScope]
+            AstExpression* expr;
+                           ^
+main.cpp:10618:23: style: The scope of the variable 'hi' can be reduced. [variableScope]
+            OPValCode hi;
+                      ^
+main.cpp:10619:23: style: The scope of the variable 'lo' can be reduced. [variableScope]
+            OPValCode lo;
+                      ^
+main.cpp:10832:28: style: The scope of the variable 'currentsttopscope' can be reduced. [variableScope]
+            AstScopeBlock* currentsttopscope;
+                           ^
+main.cpp:11281:20: style: The scope of the variable 'i' can be reduced. [variableScope]
+            size_t i;
+                   ^
+main.cpp:11282:20: style: The scope of the variable 'count' can be reduced. [variableScope]
+            size_t count;
+                   ^
+main.cpp:11283:20: style: The scope of the variable 'bytescount' can be reduced. [variableScope]
+            size_t bytescount;
+                   ^
+main.cpp:11448:20: style: The scope of the variable 'err' can be reduced. [variableScope]
+            Error* err;
+                   ^
+main.cpp:11449:24: style: The scope of the variable 'traceback' can be reduced. [variableScope]
+            Traceback* traceback;
+                       ^
+main.cpp:11928:30: style: The scope of the variable 'vdest' can be reduced. [variableScope]
+            ObjClass::Field* vdest;
+                             ^
+main.cpp:12159:25: style: The scope of the variable 'indextypename' can be reduced. [variableScope]
+            const char* indextypename;
+                        ^
+main.cpp:12235:20: style: The scope of the variable 'err' can be reduced. [variableScope]
+            Error* err;
+                   ^
+main.cpp:12285:12: style: The scope of the variable 'actuallen' can be reduced. [variableScope]
+    size_t actuallen;
+           ^
+main.cpp:12524:13: style: The scope of the variable 'val' can be reduced. [variableScope]
+    uint8_t val;
+            ^
+main.cpp:12666:13: style: The scope of the variable 'data' can be reduced. [variableScope]
+    Object* data;
+            ^
+main.cpp:12687:9: style: The scope of the variable 'i' can be reduced. [variableScope]
+    int i;
+        ^
+main.cpp:12688:9: style: The scope of the variable 'len' can be reduced. [variableScope]
+    int len;
+        ^
+main.cpp:12692:13: style: The scope of the variable 'data' can be reduced. [variableScope]
+    Object* data;
+            ^
+main.cpp:12693:13: style: The scope of the variable 'valdata' can be reduced. [variableScope]
+    Object* valdata;
+            ^
+main.cpp:12694:13: style: The scope of the variable 'keydata' can be reduced. [variableScope]
+    Object* keydata;
+            ^
+main.cpp:12695:13: style: The scope of the variable 'freevaldata' can be reduced. [variableScope]
+    Object* freevaldata;
+            ^
+main.cpp:12696:26: style: The scope of the variable 'function' can be reduced. [variableScope]
+    Object::ObjFunction* function;
+                         ^
+main.cpp:12924:14: style: The scope of the variable 'frame' can be reduced. [variableScope]
+    VMFrame* frame;
+             ^
+main.cpp:12947:17: style: The scope of the variable 'tname' can be reduced. [variableScope]
+    const char* tname;
+                ^
+main.cpp:13949:11: style: The scope of the variable 'resbuf' can be reduced. [variableScope]
+    char* resbuf;
+          ^
+main.cpp:14160:9: style: The scope of the variable 'blen' can be reduced. [variableScope]
+    int blen;
+        ^
+main.cpp:14165:17: style: The scope of the variable 'tname' can be reduced. [variableScope]
+    const char *tname;
+                ^
+main.cpp:14199:14: style: The scope of the variable 'num' can be reduced. [variableScope]
+    NumFloat num;
+             ^
+main.cpp:14512:9: style: The scope of the variable 'inplen' can be reduced. [variableScope]
+    int inplen;
+        ^
+main.cpp:14513:9: style: The scope of the variable 'startpos' can be reduced. [variableScope]
+    int startpos;
+        ^
+main.cpp:14514:11: style: The scope of the variable 'result' can be reduced. [variableScope]
+    char* result;
+          ^
+main.cpp:14515:17: style: The scope of the variable 'inpstr' can be reduced. [variableScope]
+    const char* inpstr;
+                ^
+main.cpp:14560:9: style: The scope of the variable 'inplen' can be reduced. [variableScope]
+    int inplen;
+        ^
+main.cpp:14561:9: style: The scope of the variable 'startpos' can be reduced. [variableScope]
+    int startpos;
+        ^
+main.cpp:14562:9: style: The scope of the variable 'strlength' can be reduced. [variableScope]
+    int strlength;
+        ^
+main.cpp:14563:11: style: The scope of the variable 'result' can be reduced. [variableScope]
+    char* result;
+          ^
+main.cpp:14564:17: style: The scope of the variable 'inpstr' can be reduced. [variableScope]
+    const char* inpstr;
+                ^
+main.cpp:14611:12: style: The scope of the variable 'len' can be reduced. [variableScope]
+    size_t len;
+           ^
+main.cpp:14612:12: style: The scope of the variable 'newlen' can be reduced. [variableScope]
+    size_t newlen;
+           ^
+main.cpp:14613:12: style: The scope of the variable 'inplen' can be reduced. [variableScope]
+    size_t inplen;
+           ^
+main.cpp:14614:12: style: The scope of the variable 'searchlen' can be reduced. [variableScope]
+    size_t searchlen;
+           ^
+main.cpp:14615:12: style: The scope of the variable 'replacelen' can be reduced. [variableScope]
+    size_t replacelen;
+           ^
+main.cpp:14616:12: style: The scope of the variable 'count' can be reduced. [variableScope]
+    size_t count;
+           ^
+main.cpp:14617:11: style: The scope of the variable 'ptr' can be reduced. [variableScope]
+    char* ptr;
+          ^
+main.cpp:14622:17: style: The scope of the variable 'replacestr' can be reduced. [variableScope]
+    const char* replacestr;
+                ^
+main.cpp:14686:12: style: The scope of the variable 'len' can be reduced. [variableScope]
+    size_t len;
+           ^
+main.cpp:14687:12: style: The scope of the variable 'newlen' can be reduced. [variableScope]
+    size_t newlen;
+           ^
+main.cpp:14688:12: style: The scope of the variable 'inplen' can be reduced. [variableScope]
+    size_t inplen;
+           ^
+main.cpp:14689:12: style: The scope of the variable 'searchlen' can be reduced. [variableScope]
+    size_t searchlen;
+           ^
+main.cpp:14690:12: style: The scope of the variable 'replacelen' can be reduced. [variableScope]
+    size_t replacelen;
+           ^
+main.cpp:14694:17: style: The scope of the variable 'replacestr' can be reduced. [variableScope]
+    const char* replacestr;
+                ^
+main.cpp:14695:11: style: The scope of the variable 'result' can be reduced. [variableScope]
+    char* result;
+          ^
+main.cpp:15434:10: style: The scope of the variable 'res' can be reduced. [variableScope]
+    bool res;
+         ^
+main.cpp:15526:14: style: The scope of the variable 'min' can be reduced. [variableScope]
+    NumFloat min;
+             ^
+main.cpp:15527:14: style: The scope of the variable 'max' can be reduced. [variableScope]
+    NumFloat max;
+             ^
+main.cpp:15529:14: style: The scope of the variable 'range' can be reduced. [variableScope]
+    NumFloat range;
+             ^
+main.cpp:15939:17: style: The scope of the variable 'fullpath' can be reduced. [variableScope]
+    const char* fullpath;
+                ^
+main.cpp:15970:10: style: The scope of the variable 'isdot' can be reduced. [variableScope]
+    bool isdot;
+         ^
+valdict.h:140:26: style: The scope of the variable 'itemix' can be reduced. [variableScope]
+            unsigned int itemix;
+                         ^
+valdict.h:219:26: style: The scope of the variable 'k' can be reduced. [variableScope]
+            unsigned int k;
+                         ^
+valdict.h:226:19: style: The scope of the variable 'lastkey' can be reduced. [variableScope]
+            void* lastkey;
+                  ^
+valdict.h:227:19: style: The scope of the variable 'lastvalue' can be reduced. [variableScope]
+            void* lastvalue;
+                  ^
+valdict.h:283:26: style: The scope of the variable 'ix' can be reduced. [variableScope]
+            unsigned int ix;
+                         ^
+valdict.h:284:26: style: The scope of the variable 'cell' can be reduced. [variableScope]
+            unsigned int cell;
+                         ^
+valdict.h:286:27: style: The scope of the variable 'hashtocheck' can be reduced. [variableScope]
+            unsigned long hashtocheck;
+                          ^
+valdict.h:319:19: style: The scope of the variable 'key' can be reduced. [variableScope]
+            char* key;
+                  ^
+valdict.h:320:19: style: The scope of the variable 'value' can be reduced. [variableScope]
+            void* value;
+                  ^
+strdict.h:56:26: style: The scope of the variable 'i' can be reduced. [variableScope]
+            unsigned int i;
+                         ^
+strdict.h:128:26: style: The scope of the variable 'i' can be reduced. [variableScope]
+            unsigned int i;
+                         ^
+strdict.h:170:26: style: The scope of the variable 'ix' can be reduced. [variableScope]
+            unsigned int ix;
+                         ^
+strdict.h:171:26: style: The scope of the variable 'cell' can be reduced. [variableScope]
+            unsigned int cell;
+                         ^
+strdict.h:173:27: style: The scope of the variable 'hashtocheck' can be reduced. [variableScope]
+            unsigned long hashtocheck;
+                          ^
+strdict.h:236:26: style: The scope of the variable 'itemix' can be reduced. [variableScope]
+            unsigned int itemix;
+                         ^
+strdict.h:300:26: style: The scope of the variable 'k' can be reduced. [variableScope]
+            unsigned int k;
+                         ^
+glist.h.old.h:40:22: style: The scope of the variable 'item' can be reduced. [variableScope]
+                auto item = list->get(i);
+                     ^
+glist.h.old.h:165:20: style: The scope of the variable 'i' can be reduced. [variableScope]
+            size_t i;
+                   ^
+glist.h.old.h:166:20: style: The scope of the variable 'ncap' can be reduced. [variableScope]
+            size_t ncap;
+                   ^
+glist.h.old.h:167:20: style: The scope of the variable 'oldcap' can be reduced. [variableScope]
+            size_t oldcap;
+                   ^
+glist.h.old.h:358:20: style: The scope of the variable 'oldcap' can be reduced. [variableScope]
+            size_t oldcap;
+                   ^
+main.cpp:11416:47: style: Checking if unsigned expression 'm_execstate.framestack.count()' is less than zero. [unsignedLessThanZero]
+            if(m_execstate.framestack.count() <= 0)
+                                              ^
+main.cpp:3622:24: style: Local variable 'copy' shadows outer function [shadowFunction]
+            AstSymbol* copy;
+                       ^
+main.cpp:3571:22: note: Shadowed declaration
+        AstSymTable* copy()
+                     ^
+main.cpp:3622:24: note: Shadow variable
+            AstSymbol* copy;
+                       ^
+main.cpp:3706:24: style: Local variable 'copy' shadows outer function [shadowFunction]
+            AstSymbol* copy;
+                       ^
+main.cpp:3571:22: note: Shadowed declaration
+        AstSymTable* copy()
+                     ^
+main.cpp:3706:24: note: Shadow variable
+            AstSymbol* copy;
+                       ^
+optparse.h:535:27: style: Variable 'flag' can be declared as pointer to const [constVariablePointer]
+    OptParser::LongFlags* flag;
+                          ^
+optparse.h:569:30: style: Parameter 'argv' can be declared as const array [constParameter]
+void optprs_printusage(char* argv[], OptParser::LongFlags* flags, bool fail)
+                             ^
+strbuf.h:258:19: style: Variable 'end' can be declared as pointer to const [constVariablePointer]
+            char* end;
+                  ^
+strbuf.h:269:19: style: Variable 'end' can be declared as pointer to const [constVariablePointer]
+            char* end;
+                  ^
+strbuf.h:648:44: style: Parameter 'sb' can be declared as pointer to const [constParameterPointer]
+bool dyn_strbuf_containschar(StringBuffer* sb, char ch)
+                                           ^
+strbuf.h:1226:11: style: Variable 'end' can be declared as pointer to const [constVariablePointer]
+    char* end;
+          ^
+main.cpp:140:41: style: Parameter 'other' can be declared as pointer to const [constParameterPointer]
+        MC_INLINE void copyFrom(InputT* other)
+                                        ^
+main.cpp:1084:116: style: Parameter 'sposlist' can be declared as pointer to const [constParameterPointer]
+        static void bcPrintOneInstruction(Printer* pr, OPValCode* code, OPValCode op, size_t* pos, SourceLocation* sposlist, bool simple)
+                                                                                                                   ^
+main.cpp:1084:67: style: Parameter 'code' can be declared as pointer to const [constParameterPointer]
+        static void bcPrintOneInstruction(Printer* pr, OPValCode* code, OPValCode op, size_t* pos, SourceLocation* sposlist, bool simple)
+                                                                  ^
+main.cpp:1658:33: style: Variable 'pool' can be declared as pointer to const [constVariablePointer]
+            GCMemory::DataPool* pool;
+                                ^
+main.cpp:1883:45: style: Parameter 'aptr' can be declared as pointer to const. However it seems that 'callbackEqualsTo' is a callback function, if 'aptr' is declared with const you might also need to cast function pointer(s). [constParameterCallback]
+        static bool callbackEqualsTo(Value* aptr, Value* bptr)
+                                            ^
+main.cpp:2449:92: note: You might need to cast the function pointer here
+            data->m_uvobj.valmap->m_actualmap->setEqualsFunction((CallbackCompareFN)Value::callbackEqualsTo);
+                                                                                           ^
+main.cpp:1883:45: note: Parameter 'aptr' can be declared as pointer to const
+        static bool callbackEqualsTo(Value* aptr, Value* bptr)
+                                            ^
+main.cpp:1883:58: style: Parameter 'bptr' can be declared as pointer to const. However it seems that 'callbackEqualsTo' is a callback function, if 'bptr' is declared with const you might also need to cast function pointer(s). [constParameterCallback]
+        static bool callbackEqualsTo(Value* aptr, Value* bptr)
+                                                         ^
+main.cpp:2449:92: note: You might need to cast the function pointer here
+            data->m_uvobj.valmap->m_actualmap->setEqualsFunction((CallbackCompareFN)Value::callbackEqualsTo);
+                                                                                           ^
+main.cpp:1883:58: note: Parameter 'bptr' can be declared as pointer to const
+        static bool callbackEqualsTo(Value* aptr, Value* bptr)
+                                                         ^
+main.cpp:1892:43: style: Parameter 'objptr' can be declared as pointer to const. However it seems that 'callbackHash' is a callback function, if 'objptr' is declared with const you might also need to cast function pointer(s). [constParameterCallback]
+        static size_t callbackHash(Value* objptr)
+                                          ^
+main.cpp:2448:91: note: You might need to cast the function pointer here
+            data->m_uvobj.valmap->m_actualmap->setHashFunction((CallbackHashItemFN)Value::callbackHash);
+                                                                                          ^
+main.cpp:1892:43: note: Parameter 'objptr' can be declared as pointer to const
+        static size_t callbackHash(Value* objptr)
+                                          ^
+main.cpp:1946:18: style: Variable 'poslist' can be declared as pointer to const [constVariablePointer]
+            auto poslist = function->m_funcdata.valscriptfunc.compiledprogcode->m_progsrcposlist;
+                 ^
+main.cpp:2710:20: style: Variable 'res' can be declared as pointer to const [constVariablePointer]
+            Value* res;
+                   ^
+main.cpp:2781:20: style: Variable 'res' can be declared as pointer to const [constVariablePointer]
+            Value* res;
+                   ^
+main.cpp:2792:20: style: Variable 'res' can be declared as pointer to const [constVariablePointer]
+            Value* res;
+                   ^
+main.cpp:2863:20: style: Variable 'res' can be declared as pointer to const [constVariablePointer]
+            Value* res;
+                   ^
+main.cpp:2874:20: style: Variable 'res' can be declared as pointer to const [constVariablePointer]
+            Value* res;
+                   ^
+main.cpp:2887:20: style: Variable 'res' can be declared as pointer to const [constVariablePointer]
+            Value* res;
+                   ^
+main.cpp:2926:18: style: Variable 'actualary' can be declared as pointer to const [constVariablePointer]
+            auto actualary = val.asArray();
+                 ^
+main.cpp:2935:26: style: Variable 'otherary' can be declared as pointer to const [constVariablePointer]
+                    auto otherary = iobj.asArray();
+                         ^
+main.cpp:3370:47: style: Parameter 'symbol' can be declared as pointer to const [constParameterPointer]
+        static AstSymbol copyStack(AstSymbol* symbol)
+                                              ^
+main.cpp:3433:24: style: Variable 'existingsymbol' can be declared as pointer to const [constVariablePointer]
+            AstSymbol* existingsymbol;
+                       ^
+main.cpp:3450:20: style: Variable 'res' can be declared as pointer to const [constVariablePointer]
+            Value* res;
+                   ^
+main.cpp:3544:92: style: Parameter 'syblockscopes' can be declared as pointer to const [constParameterPointer]
+        AstSymTable(AstSymTable* syouter, SymStore* sygstore, GenericList<AstScopeBlock*>* syblockscopes, GenericList<AstSymbol*>* syfreesyms, GenericList<AstSymbol*>* symodglobalsymbols, int mgo)
+                                                                                           ^
+main.cpp:3544:169: style: Parameter 'symodglobalsymbols' can be declared as pointer to const [constParameterPointer]
+        AstSymTable(AstSymTable* syouter, SymStore* sygstore, GenericList<AstScopeBlock*>* syblockscopes, GenericList<AstSymbol*>* syfreesyms, GenericList<AstSymbol*>* symodglobalsymbols, int mgo)
+                                                                                                                                                                        ^
+main.cpp:3599:28: style: Variable 'topscope' can be declared as pointer to const [constVariablePointer]
+            AstScopeBlock* topscope;
+                           ^
+main.cpp:3609:28: style: Variable 'scope' can be declared as pointer to const [constVariablePointer]
+            AstScopeBlock* scope;
+                           ^
+main.cpp:3654:24: style: Variable 'globalsymbol' can be declared as pointer to const [constVariablePointer]
+            AstSymbol* globalsymbol;
+                       ^
+main.cpp:3784:18: style: Variable 'symbol' can be declared as pointer to const [constVariablePointer]
+            auto symbol = m_symtbglobalstore->getSymbol(name);
+                 ^
+main.cpp:3798:18: style: Variable 'prevblockscope' can be declared as pointer to const [constVariablePointer]
+            auto prevblockscope = m_symtbblockscopes.top();
+                 ^
+main.cpp:4356:50: style: Parameter 'ident' can be declared as pointer to const [constParameterPointer]
+                static ExprIdent copy(ExprIdent* ident)
+                                                 ^
+main.cpp:5213:26: style: Variable 'lines' can be declared as pointer to const [constVariablePointer]
+                    auto lines = &m_tbpos.m_locfile->m_srclines;
+                         ^
+main.cpp:5323:19: style: Variable 'item' can be declared as pointer to const [constVariablePointer]
+            Item* item;
+                  ^
+main.cpp:5503:18: style: Variable 'lines' can be declared as pointer to const [constVariablePointer]
+            auto lines = &m_pos.m_locfile->m_srclines;
+                 ^
+main.cpp:8256:57: style: Parameter 'statements' can be declared as pointer to const [constParameterPointer]
+        void printStmtList(GenericList<AstExpression*>* statements)
+                                                        ^
+main.cpp:8320:18: style: Variable 'vl' can be declared as pointer to const [constVariablePointer]
+            auto vl = &ex->m_litarritems;
+                 ^
+main.cpp:8571:30: style: Variable 'ex' can be declared as pointer to const [constVariablePointer]
+                        auto ex = &astexpr->m_uexpr.exprident;
+                             ^
+main.cpp:8780:57: style: Parameter 'ms' can be declared as pointer to const [constParameterPointer]
+        Module(const char* nm, GenericList<AstSymbol*>* ms)
+                                                        ^
+main.cpp:8824:18: style: Variable 'val' can be declared as pointer to const [constVariablePointer]
+            int* val;
+                 ^
+main.cpp:8831:33: style: Variable 'srcloadedmodulenames' can be declared as pointer to const [constVariablePointer]
+            GenericList<char*>* srcloadedmodulenames;
+                                ^
+main.cpp:9046:65: style: Parameter 'operands' can be declared as pointer to const [constParameterPointer]
+        int emitOpCode(OpTypeT op, int operandscount, uint64_t* operands)
+                                                                ^
+main.cpp:9130:27: style: Variable 'currentscope' can be declared as pointer to const [constVariablePointer]
+            AstScopeComp* currentscope;
+                          ^
+main.cpp:9168:59: style: Parameter 'statements' can be declared as pointer to const [constParameterPointer]
+        bool compileStmtList(GenericList<AstExpression*>* statements)
+                                                          ^
+main.cpp:9301:24: style: Variable 'currentsymbol' can be declared as pointer to const [constVariablePointer]
+            AstSymbol* currentsymbol;
+                       ^
+main.cpp:9394:18: style: Variable 'compscope' can be declared as pointer to const [constVariablePointer]
+            auto compscope = getCompilationScope();
+                 ^
+main.cpp:9458:46: style: Parameter 'expr' can be declared as pointer to const [constParameterPointer]
+        bool compilebreakstmt(AstExpression* expr)
+                                             ^
+main.cpp:9473:49: style: Parameter 'expr' can be declared as pointer to const [constParameterPointer]
+        bool compilecontinuestmt(AstExpression* expr)
+                                                ^
+main.cpp:9497:24: style: Variable 'fnsymbol' can be declared as pointer to const [constVariablePointer]
+            AstSymbol* fnsymbol;
+                       ^
+main.cpp:9498:24: style: Variable 'thissymbol' can be declared as pointer to const [constVariablePointer]
+            AstSymbol* thissymbol;
+                       ^
+main.cpp:9500:43: style: Variable 'param' can be declared as pointer to const [constVariablePointer]
+            AstExpression::ExprFuncParam* param;
+                                          ^
+main.cpp:9499:24: style: Variable 'paramsymbol' can be declared as pointer to const [constVariablePointer]
+            AstSymbol* paramsymbol;
+                       ^
+main.cpp:9750:18: style: Variable 'currentpos' can be declared as pointer to const [constVariablePointer]
+            int* currentpos;
+                 ^
+main.cpp:10640:36: style: Parameter 'symbol' can be declared as pointer to const [constParameterPointer]
+        bool readsymbol(AstSymbol* symbol)
+                                   ^
+main.cpp:10680:37: style: Parameter 'symbol' can be declared as pointer to const [constParameterPointer]
+        bool storesymbol(AstSymbol* symbol, bool define)
+                                    ^
+main.cpp:10805:28: style: Variable 'prevsttopscope' can be declared as pointer to const [constVariablePointer]
+            AstScopeBlock* prevsttopscope;
+                           ^
+main.cpp:10833:28: style: Variable 'poppedsttopscope' can be declared as pointer to const [constVariablePointer]
+            AstScopeBlock* poppedsttopscope;
+                           ^
+main.cpp:10905:18: style: Variable 'filescope' can be declared as pointer to const [constVariablePointer]
+            auto filescope = m_filescopelist.topp();
+                 ^
+main.cpp:10974:24: style: Variable 'data' can be declared as pointer to const [constVariablePointer]
+            OPValCode* data;
+                       ^
+main.cpp:11402:34: style: Variable 'framefunction' can be declared as pointer to const [constVariablePointer]
+            Object::ObjFunction* framefunction;
+                                 ^
+main.cpp:11547:34: style: Variable 'calleefunction' can be declared as pointer to const [constVariablePointer]
+            Object::ObjFunction* calleefunction;
+                                 ^
+main.cpp:12451:53: style: Parameter 'items' can be declared as pointer to const [constParameterPointer]
+char* mc_util_joinstringarray(GenericList<StrView>* items, const char* joinee, size_t jlen)
+                                                    ^
+main.cpp:12540:15: style: Variable 'valptr' can be declared as pointer to const [constVariablePointer]
+    uint32_t* valptr;
+              ^
+main.cpp:12621:84: style: Parameter 'args' can be declared as pointer to const [constParameterPointer]
+bool mc_argcheck_checkactual(State* state, bool generateerror, size_t argc, Value* args, size_t expectedargc, const Value::Type* expectedtypes)
+                                                                                   ^
+main.cpp:12674:36: style: Parameter 'objects' can be declared as pointer to const [constParameterPointer]
+void mc_state_gcmarkobjlist(Value* objects, size_t count)
+                                   ^
+main.cpp:12694:13: style: Variable 'keydata' can be declared as pointer to const [constVariablePointer]
+    Object* keydata;
+            ^
+main.cpp:12693:13: style: Variable 'valdata' can be declared as pointer to const [constVariablePointer]
+    Object* valdata;
+            ^
+main.cpp:12696:26: style: Variable 'function' can be declared as pointer to const [constVariablePointer]
+    Object::ObjFunction* function;
+                         ^
+main.cpp:12695:13: style: Variable 'freevaldata' can be declared as pointer to const [constVariablePointer]
+    Object* freevaldata;
+            ^
+main.cpp:12921:62: style: Parameter 'constants' can be declared as pointer to const [constParameterPointer]
+MC_INLINE void mc_vm_rungc(State* state, GenericList<Value>* constants)
+                                                             ^
+main.cpp:12924:14: style: Variable 'frame' can be declared as pointer to const [constVariablePointer]
+    VMFrame* frame;
+             ^
+main.cpp:12941:78: style: Parameter 'constants' can be declared as pointer to const [constParameterPointer]
+static MC_INLINE bool mc_vmdo_makefunction(State* state, GenericList<Value>* constants)
+                                                                             ^
+main.cpp:13072:12: style: Variable 'items' can be declared as pointer to const [constVariablePointer]
+    Value* items;
+           ^
+main.cpp:13114:12: style: Variable 'kvpairs' can be declared as pointer to const [constVariablePointer]
+    Value* kvpairs;
+           ^
+main.cpp:13157:30: style: Variable 'def' can be declared as pointer to const [constVariablePointer]
+    Instruction::Definition* def;
+                             ^
+main.cpp:13177:26: style: Variable 'targetfunction' can be declared as pointer to const [constVariablePointer]
+    Object::ObjFunction* targetfunction;
+                         ^
+main.cpp:13331:28: style: Variable 'constant' can be declared as pointer to const [constVariablePointer]
+                    Value* constant;
+                           ^
+main.cpp:14219:86: style: Parameter 'args' can be declared as pointer to const [constParameterPointer]
+Value mc_scriptfn_print(State* state, void* data, Value thisval, size_t argc, Value* args)
+                                                                                     ^
+main.cpp:14247:89: style: Parameter 'args' can be declared as pointer to const [constParameterPointer]
+Value mc_scriptfn_tostring(State* state, void* data, Value thisval, size_t argc, Value* args)
+                                                                                        ^
+main.cpp:14273:90: style: Parameter 'args' can be declared as pointer to const. However it seems that 'mc_nsfnjson_stringify' is a callback function, if 'args' is declared with const you might also need to cast function pointer(s). [constParameterCallback]
+Value mc_nsfnjson_stringify(State* state, void* data, Value thisval, size_t argc, Value* args)
+                                                                                         ^
+main.cpp:16088:45: note: You might need to cast the function pointer here
+    Value::mapSetStrFunc(jmap, "stringify", mc_nsfnjson_stringify);
+                                            ^
+main.cpp:14273:90: note: Parameter 'args' can be declared as pointer to const
+Value mc_nsfnjson_stringify(State* state, void* data, Value thisval, size_t argc, Value* args)
+                                                                                         ^
+main.cpp:14334:91: style: Parameter 'args' can be declared as pointer to const. However it seems that 'mc_objfnstring_indexof' is a callback function, if 'args' is declared with const you might also need to cast function pointer(s). [constParameterCallback]
+Value mc_objfnstring_indexof(State* state, void* data, Value thisval, size_t argc, Value* args)
+                                                                                          ^
+main.cpp:15187:56: note: You might need to cast the function pointer here
+        state->m_stdobjectstring->addMember("indexOf", mc_objfnstring_indexof);
+                                                       ^
+main.cpp:14334:91: note: Parameter 'args' can be declared as pointer to const
+Value mc_objfnstring_indexof(State* state, void* data, Value thisval, size_t argc, Value* args)
+                                                                                          ^
+main.cpp:14340:11: style: Variable 'result' can be declared as pointer to const [constVariablePointer]
+    char* result;
+          ^
+main.cpp:14931:86: style: Parameter 'args' can be declared as pointer to const. However it seems that 'mc_objfnarray_map' is a callback function, if 'args' is declared with const you might also need to cast function pointer(s). [constParameterCallback]
+Value mc_objfnarray_map(State* state, void* data, Value thisval, size_t argc, Value* args)
+                                                                                     ^
+main.cpp:15206:51: note: You might need to cast the function pointer here
+        state->m_stdobjectarray->addMember("map", mc_objfnarray_map);
+                                                  ^
+main.cpp:14931:86: note: Parameter 'args' can be declared as pointer to const
+Value mc_objfnarray_map(State* state, void* data, Value thisval, size_t argc, Value* args)
+                                                                                     ^
+main.cpp:15560:93: style: Parameter 'args' can be declared as pointer to const [constParameterPointer]
+Value mc_scriptutil_slicearray(State* state, void* data, Value thisval, size_t argc, Value* args)
+                                                                                            ^
+main.cpp:15884:85: style: Parameter 'args' can be declared as pointer to const. However it seems that 'mc_nsfnfile_join' is a callback function, if 'args' is declared with const you might also need to cast function pointer(s). [constParameterCallback]
+Value mc_nsfnfile_join(State* state, void* data, Value thisval, size_t argc, Value* args)
+                                                                                    ^
+main.cpp:16131:39: note: You might need to cast the function pointer here
+    Value::mapSetStrFunc(map, "join", mc_nsfnfile_join);
+                                      ^
+main.cpp:15884:85: note: Parameter 'args' can be declared as pointer to const
+Value mc_nsfnfile_join(State* state, void* data, Value thisval, size_t argc, Value* args)
+                                                                                    ^
+main.cpp:16024:37: style: Parameter 'state' can be declared as pointer to const. However it seems that 'mc_nsfnvm_hadrecovered' is a callback function, if 'state' is declared with const you might also need to cast function pointer(s). [constParameterCallback]
+Value mc_nsfnvm_hadrecovered(State* state, void* data, Value thisval, size_t argc, Value* args)
+                                    ^
+main.cpp:16150:47: note: You might need to cast the function pointer here
+    Value::mapSetStrFunc(map, "hadRecovered", mc_nsfnvm_hadrecovered);
+                                              ^
+main.cpp:16024:37: note: Parameter 'state' can be declared as pointer to const
+Value mc_nsfnvm_hadrecovered(State* state, void* data, Value thisval, size_t argc, Value* args)
+                                    ^
+glist.h.old.h:190:31: style: Parameter 'other' can be declared as pointer to const [constParameterPointer]
+        void moveFrom(OtherT* other)
+                              ^
+main.cpp:12837:5: warning: Conversion of string literal "mc_state_gcdisablefor() is broken!" to bool always evaluates to true. [incorrectStringBooleanError]
+    MC_ASSERT(!"mc_state_gcdisablefor() is broken!");
+    ^
+main.cpp:12858:5: warning: Conversion of string literal "mc_state_gcenablefor() is broken!" to bool always evaluates to true. [incorrectStringBooleanError]
+    MC_ASSERT(!"mc_state_gcenablefor() is broken!");
+    ^
+main.cpp:1879:16: style: Variable 'ok' is assigned a value that is never used. [unreadVariable]
+            ok = compare(a, b, &cres);
+               ^
+main.cpp:2107:28: style: Variable 'ok' is assigned a value that is never used. [unreadVariable]
+                        ok = targetdict->setKV(&obj, &copy);
+                           ^
+main.cpp:3444:16: style: Variable 'ok' is assigned a value that is never used. [unreadVariable]
+            ok = m_storedsymbols->set((char*)name, symbol);
+               ^
+main.cpp:3676:31: style: Variable 'globalsymboladded' is assigned a value that is never used. [unreadVariable]
+            globalsymboladded = false;
+                              ^
+main.cpp:3677:16: style: Variable 'ok' is assigned a value that is never used. [unreadVariable]
+            ok = false;
+               ^
+main.cpp:3686:20: style: Variable 'ok' is assigned a value that is never used. [unreadVariable]
+                ok = m_symtbmodglobalsymbols.push(globalsymbolcopy);
+                   ^
+main.cpp:3687:35: style: Variable 'globalsymboladded' is assigned a value that is never used. [unreadVariable]
+                globalsymboladded = true;
+                                  ^
+main.cpp:3712:16: style: Variable 'ok' is assigned a value that is never used. [unreadVariable]
+            ok = setSymbol(symbol);
+               ^
+main.cpp:5268:16: style: Variable 'ok' is assigned a value that is never used. [unreadVariable]
+            ok = m_tbitems.push(item);
+               ^
+main.cpp:6434:16: style: Variable 'ok' is assigned a value that is never used. [unreadVariable]
+            ok = m_file->m_srclines.push(line);
+               ^
+main.cpp:7393:16: style: Variable 'ok' is assigned a value that is never used. [unreadVariable]
+            ok = outparams->push(param);
+               ^
+main.cpp:7404:20: style: Variable 'ok' is assigned a value that is never used. [unreadVariable]
+                ok = outparams->push(param);
+                   ^
+main.cpp:8802:16: style: Variable 'ok' is assigned a value that is never used. [unreadVariable]
+            ok = m_modsymbols.push(modulesymbol);
+               ^
+main.cpp:9551:23: style: Variable 'compscope' is assigned a value that is never used. [unreadVariable]
+            compscope = getCompilationScope();
+                      ^
+main.cpp:9552:20: style: Variable 'symtab' is assigned a value that is never used. [unreadVariable]
+            symtab = getsymtable();
+                   ^
+main.cpp:11150:19: style: Variable 'oldsp' is assigned a value that is never used. [unreadVariable]
+            oldsp = m_execstate.vsposition;
+                  ^
+main.cpp:11300:17: style: Variable 'numlocals' is not assigned a value. [unassignedVariable]
+            int numlocals;
+                ^
+main.cpp:11302:34: style: Variable 'currentfunction' is not assigned a value. [unassignedVariable]
+            Object::ObjFunction* currentfunction;
+                                 ^
+main.cpp:11325:17: style: Variable 'numlocals' is not assigned a value. [unassignedVariable]
+            int numlocals;
+                ^
+main.cpp:11328:34: style: Variable 'currentfunction' is not assigned a value. [unassignedVariable]
+            Object::ObjFunction* currentfunction;
+                                 ^
+main.cpp:11405:17: style: Variable 'add' is assigned a value that is never used. [unreadVariable]
+            add = 1;
+                ^
+main.cpp:11505:23: style: Variable 'oldsp' is assigned a value that is never used. [unreadVariable]
+                oldsp = m_execstate.vsposition;
+                      ^
+main.cpp:14358:15: style: Variable 'searchlen' is assigned a value that is never used. [unreadVariable]
+    searchlen = 0;
+              ^
+main.cpp:14360:12: style: Variable 'inplen' is assigned a value that is never used. [unreadVariable]
+    inplen = thisval.stringGetLength();
+           ^
+main.cpp:14366:16: style: Variable 'inplen' is assigned a value that is never used. [unreadVariable]
+        inplen = 1;
+               ^
+main.cpp:14371:19: style: Variable 'searchlen' is assigned a value that is never used. [unreadVariable]
+        searchlen = searchval.stringGetLength();
+                  ^
+valdict.h:122:20: style: Variable 'ok' is assigned a value that is never used. [unreadVariable]
+                ok = growAndRehash();
+                   ^
+valdict.h:330:20: style: Variable 'ok' is assigned a value that is never used. [unreadVariable]
+                ok = newdict.setKV(key, value);
+                   ^
+strdict.h:160:20: style: Variable 'ok' is assigned a value that is never used. [unreadVariable]
+                ok = newdict.setActual(key, key, value);
+                   ^
+strdict.h:208:20: style: Variable 'ok' is assigned a value that is never used. [unreadVariable]
+                ok = growAndRehash();
+                   ^
+strdict.h:368:20: style: Variable 'ok' is assigned a value that is never used. [unreadVariable]
+                ok = dictcopy->set(key, itemcopy);
+                   ^
+glist.h.old.h:90:18: style: Variable 'ok' is not assigned a value. [unassignedVariable]
+            bool ok;
+                 ^
+Checking main.cpp: __CPPCHECK__=1;DT_DIR...
+Checking main.cpp: __CPPCHECK__=1;DT_REG...
+Checking main.cpp: __CPPCHECK__=1;INFINITY...
+Checking main.cpp: __CPPCHECK__=1;MB_CUR_MAX...
+Checking main.cpp: __CPPCHECK__=1;NAN...
+Checking main.cpp: __CPPCHECK__=1;PATH_MAX...
+Checking main.cpp: __CPPCHECK__=1;PRIiFAST64;__CPPCHECK__...
+Checking main.cpp: __CPPCHECK__=1;STOD_HAVE_BUILTIN_CLZLL...
+Checking main.cpp: __CPPCHECK__=1;STOD_HAVE_UNSIGNED_INT128...
+Checking main.cpp: __CPPCHECK__=1;STOD_INLINE...
+Checking main.cpp: __CPPCHECK__=1;STOD_INLINE;__STRICT_ANSI__...
+Checking main.cpp: __CPPCHECK__=1;S_IFBLK...
+Checking main.cpp: __CPPCHECK__=1;S_IFCHR...
+Checking main.cpp: __CPPCHECK__=1;S_IFDIR...
+Checking main.cpp: __CPPCHECK__=1;S_IFIFO...
+Checking main.cpp: __CPPCHECK__=1;S_IFLNK...
+Checking main.cpp: __CPPCHECK__=1;S_IFMT...
+Checking main.cpp: __CPPCHECK__=1;S_IFREG...
+Checking main.cpp: __CPPCHECK__=1;S_IFSOCK...
+Checking main.cpp: __CPPCHECK__=1;S_IRGRP...
+Checking main.cpp: __CPPCHECK__=1;S_IROTH...
+Checking main.cpp: __CPPCHECK__=1;S_IRUSR...
+Checking main.cpp: __CPPCHECK__=1;S_IRWXG...
+Checking main.cpp: __CPPCHECK__=1;S_IRWXO...
+Checking main.cpp: __CPPCHECK__=1;S_IRWXU...
+Checking main.cpp: __CPPCHECK__=1;S_ISDIR...
+Checking main.cpp: __CPPCHECK__=1;S_ISLNK...
+Checking main.cpp: __CPPCHECK__=1;S_ISREG...
+Checking main.cpp: __CPPCHECK__=1;S_IWGRP...
+Checking main.cpp: __CPPCHECK__=1;S_IWOTH...
+Checking main.cpp: __CPPCHECK__=1;S_IWUSR...
+Checking main.cpp: __CPPCHECK__=1;S_IXGRP...
+Checking main.cpp: __CPPCHECK__=1;S_IXOTH...
+Checking main.cpp: __CPPCHECK__=1;S_IXUSR...
+Checking main.cpp: __CPPCHECK__=1;_AIX...
+utilos.h:38:0: information: Include file: <windows.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+        #include <windows.h>
+^
+utilos.h:39:0: information: Include file: <windef.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+        #include <windef.h>
+^
+utilos.h:40:0: information: Include file: <winbase.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+        #include <winbase.h>
+^
+utilos.h:41:0: information: Include file: <io.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+        #include <io.h>
+^
+Checking main.cpp: __CPPCHECK__=1;_WIN32;_WIN64...
+Checking main.cpp: __CPPCHECK__=1;__CLANG__;__CPPCHECK__;__GNUC__;__TINYC__...
+Checking main.cpp: __CPPCHECK__=1;__CLANG__;__GNUC__;va_copy...
+Checking main.cpp: __CPPCHECK__=1;__GNUC__...
+Checking main.cpp: __CPPCHECK__=1;__GNUC__;__clang__...
+Checking main.cpp: __CPPCHECK__=1;__STRICT_ANSI__...
+main.cpp:22:0: information: Include file: <unistd.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+    #include <unistd.h>
+^
+main.cpp:23:0: information: Include file: <sys/time.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+    #include <sys/time.h>
+^
+utilos.h:32:0: information: Include file: <unistd.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+    #include <unistd.h>
+^
+utilos.h:33:0: information: Include file: <dirent.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+    #include <dirent.h>
+^
+utilos.h:34:0: information: Include file: <libgen.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+    #include <libgen.h>
+^
+utilos.h:35:0: information: Include file: <sys/time.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+    #include <sys/time.h>
+^
+Checking main.cpp: __CPPCHECK__=1;__linux__;__unix__...
+utilos.h:223:35: style: C-style pointer casting [cstyleCast]
+                if((ent = readdir((DIR*)(this->m_handle))) == NULL)
+                                  ^
+utilos.h:265:26: style: C-style pointer casting [cstyleCast]
+                closedir((DIR*)(this->m_handle));
+                         ^
+utilos.h:215:32: style: Variable 'ent' can be declared as pointer to const [constVariablePointer]
+                struct dirent* ent;
+                               ^
+Checking main.cpp: __CPPCHECK__=1;__unix__...
+Checking main.cpp: __CPPCHECK__=1;va_copy...
+main.cpp:8975:36: error: Null pointer dereference: operands [ctunullpointer]
+            auto val = (OPValCode)(operands[i] >> (n * 8));
+                                   ^
+main.cpp:10885:53: note: Calling function 'emitOpCode', 3rd argument '0' value is 0
+
+                                                    ^
+main.cpp:9054:26: note: Calling function genCode, 3rd argument is null
+            len = genCode((OPValCode)op, operandscount, operands, getbytecode());
+                         ^
+main.cpp:9006:29: note: Calling function appendByteAt, 2nd argument is null
+                            appendByteAt(res, operands, i, 0);
+                            ^
+main.cpp:8975:36: note: Dereferencing argument operands that is null
+            auto val = (OPValCode)(operands[i] >> (n * 8));
+                                   ^
+glist.h.old.h:407:0: style: The function 'setEmpty' is never used. [unusedFunction]
+        void setEmpty()
+^
+main.cpp:241:0: style: The function 'mc_util_stringallocfmt' is never used. [unusedFunction]
+char* mc_util_stringallocfmt(const char* format, ArgsT&&... args)
+^
+main.cpp:2310:0: style: The function 'makeStrFormat' is never used. [unusedFunction]
+        static Value makeStrFormat(const char* fmt, ArgsT&&... args)
+^
+main.cpp:2661:0: style: The function 'functionGetFreeVals' is never used. [unusedFunction]
+        static Value* functionGetFreeVals(Value selfval)
+^
+main.cpp:2801:0: style: The function 'mapSetValueAt' is never used. [unusedFunction]
+        static bool mapSetValueAt(Value selfval, size_t ix, Value val)
+^
+main.cpp:2885:0: style: The function 'mapHasKey' is never used. [unusedFunction]
+        static bool mapHasKey(Value selfval, Value key)
+^
+main.cpp:3137:0: style: The function 'isArray' is never used. [unusedFunction]
+        MC_INLINE bool isArray() const
+^
+main.cpp:3370:0: style: The function 'copyStack' is never used. [unusedFunction]
+        static AstSymbol copyStack(AstSymbol* symbol)
+^
+main.cpp:5272:0: style: The function 'mc_traceback_getdepth' is never used. [unusedFunction]
+        int mc_traceback_getdepth()
+^
+main.cpp:5277:0: style: The function 'mc_traceback_getsourcefilepath' is never used. [unusedFunction]
+        const char* mc_traceback_getsourcefilepath(int depth)
+^
+main.cpp:5288:0: style: The function 'mc_traceback_getsourcelinecode' is never used. [unusedFunction]
+        const char* mc_traceback_getsourcelinecode(int depth)
+^
+main.cpp:5299:0: style: The function 'mc_traceback_getsourcelinenumber' is never used. [unusedFunction]
+        int mc_traceback_getsourcelinenumber(int depth)
+^
+main.cpp:5310:0: style: The function 'mc_traceback_getsourcecolumn' is never used. [unusedFunction]
+        int mc_traceback_getsourcecolumn(int depth)
+^
+main.cpp:5321:0: style: The function 'mc_traceback_getfunctionname' is never used. [unusedFunction]
+        const char* mc_traceback_getfunctionname(int depth)
+^
+main.cpp:11674:0: style: The function 'callFunctionByName' is never used. [unusedFunction]
+        MC_INLINE Value callFunctionByName(const char* fname, Value thisval, size_t argc, Value* args)
+^
+main.cpp:12621:0: style: The function 'mc_argcheck_checkactual' is never used. [unusedFunction]
+bool mc_argcheck_checkactual(State* state, bool generateerror, size_t argc, Value* args, size_t expectedargc, const Value::Type* expectedtypes)
+^
+main.cpp:12835:0: style: The function 'mc_state_gcdisablefor' is never used. [unusedFunction]
+bool mc_state_gcdisablefor(Value obj)
+^
+main.cpp:12856:0: style: The function 'mc_state_gcenablefor' is never used. [unusedFunction]
+void mc_state_gcenablefor(Value obj)
+^
+strbuf.h:87:0: style: The function 'dyn_strutil_cbufappendchar' is never used. [unusedFunction]
+static inline void dyn_strutil_cbufappendchar(char** buf, size_t* lenptr, size_t* sizeptr, char c)
+^
+strbuf.h:372:0: style: The function 'dyn_strutil_safencpy' is never used. [unusedFunction]
+char* dyn_strutil_safencpy(char* dst, const char* src, size_t n)
+^
+strbuf.h:398:0: style: The function 'dyn_strutil_splitstr' is never used. [unusedFunction]
+size_t dyn_strutil_splitstr(char* str, char sep, char** ptrs, size_t nptrs)
+^
+strbuf.h:426:0: style: The function 'dyn_strutil_charreplace' is never used. [unusedFunction]
+size_t dyn_strutil_charreplace(char* str, char from, char to)
+^
+strbuf.h:461:0: style: The function 'dyn_strutil_isallspace' is never used. [unusedFunction]
+bool dyn_strutil_isallspace(const char* s)
+^
+strbuf.h:470:0: style: The function 'dyn_strutil_nextspace' is never used. [unusedFunction]
+char* dyn_strutil_nextspace(char* s)
+^
+strbuf.h:484:0: style: The function 'dyn_strutil_trim' is never used. [unusedFunction]
+char* dyn_strutil_trim(char* str)
+^
+strbuf.h:518:0: style: The function 'dyn_strutil_countchar' is never used. [unusedFunction]
+size_t dyn_strutil_countchar(const char* str, char c)
+^
+strbuf.h:533:0: style: The function 'dyn_strutil_split' is never used. [unusedFunction]
+size_t dyn_strutil_split(const char* splitat, const char* sourcetxt, char*** result)
+^
+strbuf.h:609:0: style: The function 'dyn_strbuf_makefromstring' is never used. [unusedFunction]
+StringBuffer* dyn_strbuf_makefromstring(const char* str, size_t slen)
+^
+strbuf.h:622:0: style: The function 'dyn_strbuf_makeclone' is never used. [unusedFunction]
+StringBuffer* dyn_strbuf_makeclone(const StringBuffer* sbuf)
+^
+strbuf.h:638:0: style: The function 'dyn_strbuf_reset' is never used. [unusedFunction]
+void dyn_strbuf_reset(StringBuffer* sb)
+^
+strbuf.h:648:0: style: The function 'dyn_strbuf_containschar' is never used. [unusedFunction]
+bool dyn_strbuf_containschar(StringBuffer* sb, char ch)
+^
+strbuf.h:755:0: style: The function 'dyn_strutil_strreplace2' is never used. [unusedFunction]
+void dyn_strutil_strreplace2(char* target, size_t tgtlen, const char *findstr, size_t findlen, const char *substr, size_t sublen)
+^
+strbuf.h:786:0: style: The function 'dyn_strbuf_fullreplace' is never used. [unusedFunction]
+bool dyn_strbuf_fullreplace(StringBuffer* sb, const char* findstr, size_t findlen, const char* substr, size_t sublen)
+^
+strbuf.h:858:0: style: The function 'dyn_strbuf_charreplace' is never used. [unusedFunction]
+bool dyn_strbuf_charreplace(StringBuffer* sb, int findme, const char* substr, size_t sublen)
+^
+strbuf.h:881:0: style: The function 'dyn_strbuf_set' is never used. [unusedFunction]
+void dyn_strbuf_set(StringBuffer* sb, const char* str)
+^
+strbuf.h:892:0: style: The function 'dyn_strbuf_setbuff' is never used. [unusedFunction]
+void dyn_strbuf_setbuff(StringBuffer* dest, StringBuffer* from)
+^
+strbuf.h:911:0: style: The function 'dyn_strbuf_appendstr' is never used. [unusedFunction]
+bool dyn_strbuf_appendstr(StringBuffer* sb, const char* str)
+^
+strbuf.h:916:0: style: The function 'dyn_strbuf_appendbuff' is never used. [unusedFunction]
+bool dyn_strbuf_appendbuff(StringBuffer* sb1, const StringBuffer* sb2)
+^
+strbuf.h:1041:0: style: The function 'dyn_strbuf_appendnumint' is never used. [unusedFunction]
+bool dyn_strbuf_appendnumint(StringBuffer* buf, int value)
+^
+strbuf.h:1049:0: style: The function 'dyn_strbuf_appendstrnlowercase' is never used. [unusedFunction]
+bool dyn_strbuf_appendstrnlowercase(StringBuffer* buf, const char* str, size_t len)
+^
+strbuf.h:1066:0: style: The function 'dyn_strbuf_appendstrnuppercase' is never used. [unusedFunction]
+bool dyn_strbuf_appendstrnuppercase(StringBuffer* buf, const char* str, size_t len)
+^
+strbuf.h:1084:0: style: The function 'dyn_strbuf_appendcharn' is never used. [unusedFunction]
+bool dyn_strbuf_appendcharn(StringBuffer* buf, char c, size_t n)
+^
+strbuf.h:1093:0: style: The function 'dyn_strbuf_shrink' is never used. [unusedFunction]
+void dyn_strbuf_shrink(StringBuffer* sb, size_t len)
+^
+strbuf.h:1102:0: style: The function 'dyn_strbuf_chomp' is never used. [unusedFunction]
+size_t dyn_strbuf_chomp(StringBuffer* sbuf)
+^
+strbuf.h:1111:0: style: The function 'dyn_strbuf_reverse' is never used. [unusedFunction]
+void dyn_strbuf_reverse(StringBuffer* sbuf)
+^
+strbuf.h:1120:0: style: The function 'dyn_strbuf_substr' is never used. [unusedFunction]
+char* dyn_strbuf_substr(const StringBuffer* sbuf, size_t start, size_t len)
+^
+strbuf.h:1162:0: style: The function 'dyn_strbuf_insert' is never used. [unusedFunction]
+void dyn_strbuf_insert(StringBuffer* dst, size_t dstpos, const char* src, size_t len)
+^
+strbuf.h:1221:0: style: The function 'dyn_strbuf_overwrite' is never used. [unusedFunction]
+void dyn_strbuf_overwrite(StringBuffer* dst, size_t dstpos, size_t dstlen, const char* src, size_t srclen)
+^
+strbuf.h:1288:0: style: The function 'dyn_strbuf_erase' is never used. [unusedFunction]
+void dyn_strbuf_erase(StringBuffer* sbuf, size_t pos, size_t len)
+^
+strbuf.h:1302:0: style: The function 'dyn_strbuf_triminplace' is never used. [unusedFunction]
+void dyn_strbuf_triminplace(StringBuffer* sbuf)
+^
+strbuf.h:1334:0: style: The function 'dyn_strbuf_trimleftinplace' is never used. [unusedFunction]
+void dyn_strbuf_trimleftinplace(StringBuffer* sbuf, const char* list)
+^
+strbuf.h:1355:0: style: The function 'dyn_strbuf_trimrightinplace' is never used. [unusedFunction]
+void dyn_strbuf_trimrightinplace(StringBuffer* sbuf, const char* list)
+^
+valdict.h:215:0: style: The function 'removeByKey' is never used. [unusedFunction]
+        inline bool removeByKey(void* key)
+^
+valdict.h:192:0: style: The function 'getCapacity' is never used. [unusedFunction]
+        inline unsigned int getCapacity()
+^
+nofile:0:0: information: Active checkers: 161/592 (use --checkers-report=<filename> to see details) [checkersReport]
+

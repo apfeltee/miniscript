@@ -1,6 +1,7 @@
 // Based on minimal raytracer by Paul Heckbert
 // More: https://fabiensanglard.net/rayTracing_back_of_business_card/
 
+return;
 const G = [
     2048,
     2048,
@@ -140,7 +141,7 @@ function sample(o, d)
 
 function main()
 {
-    var totalsize = 512;
+    var totalsize = 32;
     var sizea = totalsize;
     var sizeb = totalsize;
     var g = !vec3(-6, -16, 0)

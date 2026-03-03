@@ -74,7 +74,11 @@ THE SOFTWARE.
     #define MC_UTIL_CMPFLOAT(a, b) ((a) == (b))
 #endif
 
-#define MC_ASSERT(x) mc_util_assert((x), #x, __FILE__, __LINE__, nullptr)
+#if 0
+    #define MC_ASSERT(x)
+#else
+    #define MC_ASSERT(x) mc_util_assert((x), #x, __FILE__, __LINE__, nullptr)
+#endif
 
 #if defined(__GNUC__) || defined(__clang__)
     #define mc_util_likely(x)   (__builtin_expect(!!(x), 1))
@@ -524,12 +528,12 @@ class Printer
     public:
         Printer()
         {
-            MC_ASSERT(Printer::initFromStack(this, nullptr, false, true));
+            Printer::initFromStack(this, nullptr, false, true);
         }
 
         Printer(FILE* ofh)
         {
-            MC_ASSERT(Printer::initFromStack(this, ofh, false));
+            Printer::initFromStack(this, ofh, false);
         }
 
         MC_INLINE void flush()
@@ -729,7 +733,7 @@ class Printer
             inum = (int64_t)flt;
             if(flt == inum)
             {
-                #if defined(PRIiFAST64)
+                #if defined(PRIiFAST64) && !defined(__CPPCHECK__)
                     format("%" PRIiFAST64 "", inum);
                 #else
                     format("%ld", inum);
@@ -1291,9 +1295,6 @@ class GCMemory
     private:
         void initPool(DataPool* pool)
         {
-            #if 0 
-            pool->m_pooldata = Memory::make<GenericList<Object*>>(MinPoolSize);
-            #endif
             pool->m_poolitemcount = 0;
         }
 
@@ -1380,43 +1381,128 @@ class Object
                 }
         };
 
-        struct ObjUserdata
-        {
-            void* data;
-            CallbackDestroyFN datadestroyfn;
-            CallbackCopyFN datacopyfn;
-        };
-
-        struct ObjArray
+        class ObjUserdata
         {
             public:
-                GenericList<Value>* actualarray;
-
-            public:
-                size_t count();
-                Value get(size_t i);
-                Value* getp(size_t i);
-                Value* set(size_t i, const Value& val);
-                bool push(const Value& val);
-                bool pop(Value* dest);
-                bool removeAt(size_t ix);
+                void* data;
+                CallbackDestroyFN datadestroyfn;
+                CallbackCopyFN datacopyfn;
         };
 
-        struct ObjMap
+        class ObjArray
         {
-            ValDict<Value, Value>* actualmap;
+            public:
+                GenericList<Value>* m_actualarray;
+
+            public:
+                MC_INLINE size_t count()
+                {
+                    return m_actualarray->count();
+                }
+
+                MC_INLINE size_t size()
+                {
+                    return m_actualarray->count();
+                }
+
+                MC_INLINE size_t length()
+                {
+                    return m_actualarray->count();
+                }
+
+                template<typename SizeT>
+                MC_INLINE auto get(SizeT i)
+                {
+                    return m_actualarray->get(i);
+                }
+
+                MC_INLINE Value* getp(size_t i)
+                {
+                    return m_actualarray->getp(i);
+                }
+
+                template<typename ValT>
+                MC_INLINE Value* set(size_t i, const ValT& val)
+                {
+                    return m_actualarray->set(i, val);
+                }
+
+                template<typename ValT>
+                MC_INLINE bool push(const ValT& val)
+                {
+                    return m_actualarray->push(val);
+                }
+
+                template<typename DestT>
+                MC_INLINE bool pop(DestT* dest)
+                {
+                    return m_actualarray->pop(dest);
+                }
+
+                MC_INLINE bool removeAt(size_t ix)
+                {
+                    return m_actualarray->removeAt(ix);
+                }
+
+        };
+
+        class ObjMap
+        {
+            public:
+                ValDict<Value, Value>* m_actualmap;
+
+            public:
+                MC_INLINE size_t count()
+                {
+                    return m_actualmap->count();
+                }
+                
+                MC_INLINE Value* getKeyAt(unsigned int ix)
+                {
+                    return m_actualmap->getKeyAt(ix);
+                }
+
+                MC_INLINE Value* getValueAt(unsigned int ix)
+                {
+                    return m_actualmap->getValueAt(ix);
+                }
+
+                MC_INLINE Value* get(Value* key)
+                {
+                    return m_actualmap->get(key);
+                }
+
+                template<typename KeyT, typename ValT>
+                MC_INLINE bool setKV(KeyT key, ValT value)
+                {
+                    return m_actualmap->setKV(key, value);
+                }
+
+                template<typename ValT>
+                MC_INLINE bool setValueAt(unsigned int ix, ValT value)
+                {
+                    return m_actualmap->setValueAt(ix, value);
+                }
+    
         };
 
         struct ObjString
         {
-            unsigned long hash;
-            StringBuffer* strbuf;
+            public:
+                unsigned long m_hashval;
+                StringBuffer* m_strbuf;
+
+            public:
+
         };
 
-        struct ObjError
+        class ObjError
         {
-            char* message;
-            Traceback* traceback;
+            public:
+                char* message;
+                Traceback* traceback;
+
+            public:
         };
 
         union ValUnion
@@ -1470,7 +1556,7 @@ class Object
                     break;
                 case ValData::VALTYP_STRING:
                     {
-                        StringBuffer::destroy(data->m_uvobj.valstring.strbuf);
+                        StringBuffer::destroy(data->m_uvobj.valstring.m_strbuf);
                     }
                     break;
                 case ValData::VALTYP_FUNCSCRIPT:
@@ -1488,13 +1574,13 @@ class Object
                     break;
                 case ValData::VALTYP_ARRAY:
                     {
-                        Memory::destroy(data->m_uvobj.valarray->actualarray);
+                        Memory::destroy(data->m_uvobj.valarray->m_actualarray);
                         Memory::destroy(data->m_uvobj.valarray);
                     }
                     break;
                 case ValData::VALTYP_MAP:
                     {
-                        Memory::destroy(data->m_uvobj.valmap->actualmap);
+                        Memory::destroy(data->m_uvobj.valmap->m_actualmap);
                         Memory::destroy(data->m_uvobj.valmap);
                     }
                     break;
@@ -1574,7 +1660,7 @@ class Value: public ValData
             /*
             * this is to ensure that large objects won't be kept in pool indefinitely
             */
-            #if 0
+            #if 1
             switch(data->m_odtype)
             {
                 case Value::VALTYP_ARRAY:
@@ -1912,7 +1998,7 @@ class Value: public ValData
             Value copy;
             Value item;
             Value itemcopy;
-            len = Value::arrayGetLength(obj);
+            len = obj.asArray()->size();
             copy = Value::makeArray(len);
             if(copy.isNull())
             {
@@ -2102,7 +2188,7 @@ class Value: public ValData
                         int i;
                         int len;
                         Value item;
-                        len = Value::arrayGetLength(obj);
+                        len = obj.asArray()->size();
                         copy = makeArray(len);
                         if(copy.isNull())
                         {
@@ -2167,13 +2253,13 @@ class Value: public ValData
 
         static MC_INLINE Value makeDataFrom(Type type, Object* data)
         {
-            Value object;
-            memset(&object, 0, sizeof(Value));
-            object.m_valtype = type;
+            Value vrt;
+            memset(&vrt, 0, sizeof(Value));
+            vrt.m_valtype = type;
             data->m_odtype = type;
-            object.m_isallocated = true;
-            object.m_uval.odata = data;
-            return object;
+            vrt.m_isallocated = true;
+            vrt.m_uval.odata = data;
+            return vrt;
         }
 
         static MC_INLINE Value makeEmpty(Type t)
@@ -2215,8 +2301,8 @@ class Value: public ValData
             {
                 return Value::makeNull();
             }
-            data->m_uvobj.valstring.hash = 0;
-            data->m_uvobj.valstring.strbuf = Memory::make<StringBuffer>(capacity);
+            data->m_uvobj.valstring.m_hashval = 0;
+            data->m_uvobj.valstring.m_strbuf = Memory::make<StringBuffer>(capacity);
             return Value::makeDataFrom(Value::VALTYP_STRING, data);
         }
 
@@ -2231,7 +2317,7 @@ class Value: public ValData
             {
                 return Value::makeNull();
             }
-            data->m_uvobj.valstring.strbuf->appendFormat(fmt, args...);
+            data->m_uvobj.valstring.m_strbuf->appendFormat(fmt, args...);
             return res;
         }
 
@@ -2321,8 +2407,8 @@ class Value: public ValData
                 return Value::makeNull();
             }
             data->m_uvobj.valarray = Memory::make<Object::ObjArray>();
-            data->m_uvobj.valarray->actualarray = list;
-            if(data->m_uvobj.valarray->actualarray == nullptr)
+            data->m_uvobj.valarray->m_actualarray = list;
+            if(data->m_uvobj.valarray->m_actualarray == nullptr)
             {
                 return Value::makeNull();
             }
@@ -2354,13 +2440,13 @@ class Value: public ValData
                 return Value::makeNull();
             }
             data->m_uvobj.valmap = Memory::make<Object::ObjMap>();
-            data->m_uvobj.valmap->actualmap = Memory::make<ValDict<Value, Value>>(capacity);
-            if(data->m_uvobj.valmap->actualmap == nullptr)
+            data->m_uvobj.valmap->m_actualmap = Memory::make<ValDict<Value, Value>>(capacity);
+            if(data->m_uvobj.valmap->m_actualmap == nullptr)
             {
                 return Value::makeNull();
             }
-            data->m_uvobj.valmap->actualmap->setHashFunction((CallbackHashItemFN)Value::callbackHash);
-            data->m_uvobj.valmap->actualmap->setEqualsFunction((CallbackCompareFN)Value::callbackEqualsTo);
+            data->m_uvobj.valmap->m_actualmap->setHashFunction((CallbackHashItemFN)Value::callbackHash);
+            data->m_uvobj.valmap->m_actualmap->setEqualsFunction((CallbackCompareFN)Value::callbackEqualsTo);
             return Value::makeDataFrom(Value::VALTYP_MAP, data);
         }
 
@@ -2411,49 +2497,49 @@ class Value: public ValData
 
         //xxhere
 
-        static MC_INLINE bool asBool(Value obj)
+        static MC_INLINE bool asBool(Value selfval)
         {
-            if(obj.isNumber())
+            if(selfval.isNumber())
             {
-                return obj.m_uval.valnumber != 0.0;
+                return selfval.m_uval.valnumber != 0.0;
             }
-            return obj.m_uval.valbool != 0;
+            return selfval.m_uval.valbool != 0;
         }
 
-        static MC_INLINE NumFloat asNumber(Value obj)
+        static MC_INLINE NumFloat asNumber(Value selfval)
         {
-            if(obj.isNumber())
+            if(selfval.isNumber())
             {
-                if(obj.getType() == VALTYP_BOOL)
+                if(selfval.getType() == VALTYP_BOOL)
                 {
-                    return obj.m_uval.valbool;
+                    return selfval.m_uval.valbool;
                 }
-                return obj.m_uval.valnumber;
+                return selfval.m_uval.valnumber;
             }
-            return obj.m_uval.valnumber;
+            return selfval.m_uval.valnumber;
         }
 
-        static MC_INLINE Object::ObjFunction* asFunction(const Value& object)
+        static MC_INLINE Object::ObjFunction* asFunction(const Value& val)
         {
             Object* data;
-            data = object.getAllocatedData();
+            data = val.getAllocatedData();
             return &data->m_uvobj.valfunc;
         }
 
-        static Object::ObjUserdata* userdataGetData(const Value& object)
+        static Object::ObjUserdata* userdataGetData(const Value& val)
         {
             Object* data;
-            MC_ASSERT(object.getType() == VALTYP_EXTERNAL);
-            data = object.getAllocatedData();
+            MC_ASSERT(val.getType() == VALTYP_EXTERNAL);
+            data = val.getAllocatedData();
             return &data->m_uvobj.valuserobject;
         }
 
-        static void valPrintObjString(Printer* pr, const Value& obj)
+        static void valPrintObjString(Printer* pr, const Value& val)
         {
             size_t len;
             const char* str;
-            str = obj.stringGetData();
-            len = obj.stringGetLength();
+            str = val.stringGetData();
+            len = val.stringGetLength();
             if(pr->m_prconfig.quotstring)
             {
                 pr->printEscapedString(str, len);
@@ -2464,11 +2550,11 @@ class Value: public ValData
             }
         }
 
-        static bool userdataSetData(Value object, void* extdata)
+        static bool userdataSetData(Value selfval, void* extdata)
         {
             Object::ObjUserdata* data;
-            MC_ASSERT(object.getType() == Value::VALTYP_EXTERNAL);
-            data = Value::userdataGetData(object);
+            MC_ASSERT(selfval.getType() == Value::VALTYP_EXTERNAL);
+            data = Value::userdataGetData(selfval);
             if(data == nullptr)
             {
                 return false;
@@ -2477,11 +2563,11 @@ class Value: public ValData
             return true;
         }
 
-        static bool userdataSetDestroyFunc(Value object, CallbackDestroyFN dfn)
+        static bool userdataSetDestroyFunc(Value selfval, CallbackDestroyFN dfn)
         {
             Object::ObjUserdata* data;
-            MC_ASSERT(object.getType() == Value::VALTYP_EXTERNAL);
-            data = Value::userdataGetData(object);
+            MC_ASSERT(selfval.getType() == Value::VALTYP_EXTERNAL);
+            data = Value::userdataGetData(selfval);
             if(data == nullptr)
             {
                 return false;
@@ -2490,11 +2576,11 @@ class Value: public ValData
             return true;
         }
 
-        static bool userdataSetCopyFunc(Value object, CallbackCopyFN copyfn)
+        static bool userdataSetCopyFunc(Value selfval, CallbackCopyFN copyfn)
         {
             Object::ObjUserdata* data;
-            MC_ASSERT(object.getType() == Value::VALTYP_EXTERNAL);
-            data = Value::userdataGetData(object);
+            MC_ASSERT(selfval.getType() == Value::VALTYP_EXTERNAL);
+            data = Value::userdataGetData(selfval);
             if(data == nullptr)
             {
                 return false;
@@ -2503,11 +2589,11 @@ class Value: public ValData
             return true;
         }
 
-        static const char* functionGetName(Value obj)
+        static const char* functionGetName(Value selfval)
         {
             Object* data;
-            MC_ASSERT(obj.getType() == Value::VALTYP_FUNCSCRIPT);
-            data = obj.getAllocatedData();
+            MC_ASSERT(selfval.getType() == Value::VALTYP_FUNCSCRIPT);
+            data = selfval.getAllocatedData();
             MC_ASSERT(data);
             if(data == nullptr)
             {
@@ -2520,12 +2606,12 @@ class Value: public ValData
             return data->m_uvobj.valfunc.m_funcdata.valscriptfunc.unamev.fconstname;
         }
 
-        static Value functionGetFreeValAt(Value obj, int ix)
+        static Value functionGetFreeValAt(Value selfval, int ix)
         {
             Object* data;
             Object::ObjFunction* fun;
-            MC_ASSERT(obj.getType() == Value::VALTYP_FUNCSCRIPT);
-            data = obj.getAllocatedData();
+            MC_ASSERT(selfval.getType() == Value::VALTYP_FUNCSCRIPT);
+            data = selfval.getAllocatedData();
             MC_ASSERT(data);
             if(data == nullptr)
             {
@@ -2544,12 +2630,12 @@ class Value: public ValData
             return (Value)fun->m_funcdata.valscriptfunc.ufv.freevalsstack[ix];
         }
 
-        static void functionSetFreeValAt(Value obj, int ix, Value val)
+        static void functionSetFreeValAt(Value selfval, int ix, Value val)
         {
             Object* data;
             Object::ObjFunction* fun;
-            MC_ASSERT(obj.getType() == Value::VALTYP_FUNCSCRIPT);
-            data = obj.getAllocatedData();
+            MC_ASSERT(selfval.getType() == Value::VALTYP_FUNCSCRIPT);
+            data = selfval.getAllocatedData();
             MC_ASSERT(data);
             if(data != nullptr)
             {
@@ -2572,12 +2658,12 @@ class Value: public ValData
             }
         }
 
-        static Value* functionGetFreeVals(Value obj)
+        static Value* functionGetFreeVals(Value selfval)
         {
             Object* data;
             Object::ObjFunction* fun;
-            MC_ASSERT(obj.getType() == Value::VALTYP_FUNCSCRIPT);
-            data = obj.getAllocatedData();
+            MC_ASSERT(selfval.getType() == Value::VALTYP_FUNCSCRIPT);
+            data = selfval.getAllocatedData();
             MC_ASSERT(data);
             if(data == nullptr)
             {
@@ -2591,39 +2677,39 @@ class Value: public ValData
             return (Value*)fun->m_funcdata.valscriptfunc.ufv.freevalsstack;
         }
 
-        static const char* errorGetMessage(Value object)
+        static const char* errorGetMessage(Value selfval)
         {
             Object* data;
-            MC_ASSERT(object.getType() == Value::VALTYP_ERROR);
-            data = object.getAllocatedData();
+            MC_ASSERT(selfval.getType() == Value::VALTYP_ERROR);
+            data = selfval.getAllocatedData();
             return data->m_uvobj.valerror.message;
         }
 
-        static void errorSetTraceback(Value object, Traceback* traceback)
+        static void errorSetTraceback(Value selfval, Traceback* traceback)
         {
             Object* data;
-            MC_ASSERT(object.getType() == Value::VALTYP_ERROR);
-            if(object.getType() == Value::VALTYP_ERROR)
+            MC_ASSERT(selfval.getType() == Value::VALTYP_ERROR);
+            if(selfval.getType() == Value::VALTYP_ERROR)
             {
-                data = object.getAllocatedData();
+                data = selfval.getAllocatedData();
                 MC_ASSERT(data->m_uvobj.valerror.traceback == nullptr);
                 data->m_uvobj.valerror.traceback = traceback;
             }
         }
 
-        static Traceback* errorGetTraceback(Value object)
+        static Traceback* errorGetTraceback(Value selfval)
         {
             Object* data;
-            MC_ASSERT(object.getType() == Value::VALTYP_ERROR);
-            data = object.getAllocatedData();
+            MC_ASSERT(selfval.getType() == Value::VALTYP_ERROR);
+            data = selfval.getAllocatedData();
             return data->m_uvobj.valerror.traceback;
         }
 
-        static Value arrayGetValue(Value object, size_t ix)
+        static Value arrayGetValue(Value selfval, size_t ix)
         {
             Value* res;
-            MC_ASSERT(object.getType() == Value::VALTYP_ARRAY);
-            auto array = object.asArray();
+            MC_ASSERT(selfval.getType() == Value::VALTYP_ARRAY);
+            auto array = selfval.asArray();
             if(ix >= array->count())
             {
                 return Value::makeNull();
@@ -2636,12 +2722,12 @@ class Value: public ValData
             return *res;
         }
 
-        static bool arraySetValue(Value object, size_t ix, Value val)
+        static bool arraySetValue(Value selfval, size_t ix, Value val)
         {
             size_t len;
             size_t toadd;
-            MC_ASSERT(object.getType() == Value::VALTYP_ARRAY);
-            auto array = object.asArray();
+            MC_ASSERT(selfval.getType() == Value::VALTYP_ARRAY);
+            auto array = selfval.asArray();
             len = array->count();
             if((ix >= len) || (len == 0))
             {
@@ -2651,32 +2737,27 @@ class Value: public ValData
                 #endif
                 while(toadd != (ix+2))
                 {
-                    arrayPush(object, Value::makeNull());
+                    arrayPush(selfval, Value::makeNull());
                     toadd++;
                 }
             }
             return array->set(ix, val) != nullptr;
         }
 
-        static bool arrayPush(Value object, Value val)
+        static MC_INLINE bool arrayPush(Value selfval, Value val)
         {
-            MC_ASSERT(object.getType() == Value::VALTYP_ARRAY);
-            auto array = object.asArray();
-            return array->push(val);
+            return selfval.asArray()->push(val);
         }
 
-        static int arrayGetLength(Value object)
+        static MC_INLINE int arrayGetLength(Value selfval)
         {
-            MC_ASSERT(object.getType() == Value::VALTYP_ARRAY);
-            auto array = object.asArray();
-            return array->count();
+            return selfval.asArray()->size();
         }
 
-        static Value arrayPop(Value object)
+        static Value arrayPop(Value selfval)
         {
             Value dest;
-            MC_ASSERT(object.getType() == Value::VALTYP_ARRAY);
-            auto array = object.asArray();
+            auto array = selfval.asArray();
             if(array->pop(&dest))
             {
                 return dest;
@@ -2684,27 +2765,21 @@ class Value: public ValData
             return Value::makeNull();
         }
 
-        static bool arrayRemoveAt(Value object, int ix)
+        static bool arrayRemoveAt(Value selfval, size_t ix)
         {
-            auto array = object.asArray();
+            auto array = selfval.asArray();
             return array->removeAt(ix);
         }
 
-        static int mapGetLength(Value object)
+        static size_t mapGetLength(Value selfval)
         {
-            Object* data;
-            MC_ASSERT(object.getType() == Value::VALTYP_MAP);
-            data = object.getAllocatedData();
-            return data->m_uvobj.valmap->actualmap->count();
+            return selfval.asMap()->count();
         }
 
-        static Value mapGetKeyAt(Value object, int ix)
+        static Value mapGetKeyAt(Value selfval, size_t ix)
         {
             Value* res;
-            Object* data;
-            MC_ASSERT(object.getType() == Value::VALTYP_MAP);
-            data = object.getAllocatedData();
-            res = data->m_uvobj.valmap->actualmap->getKeyAt(ix);
+            res = selfval.asMap()->getKeyAt(ix);
             if(res == nullptr)
             {
                 return Value::makeNull();
@@ -2712,13 +2787,10 @@ class Value: public ValData
             return *res;
         }
 
-        static Value mapGetValueAt(Value object, int ix)
+        static Value mapGetValueAt(Value selfval, size_t ix)
         {
             Value* res;
-            Object* data;
-            MC_ASSERT(object.getType() == Value::VALTYP_MAP);
-            data = object.getAllocatedData();
-            res = data->m_uvobj.valmap->actualmap->getValueAt(ix);
+            res = selfval.asMap()->getValueAt(ix);
             if(res == nullptr)
             {
                 return Value::makeNull();
@@ -2726,34 +2798,29 @@ class Value: public ValData
             return *res;
         }
 
-        static bool mapSetValueAt(Value object, int ix, Value val)
+        static bool mapSetValueAt(Value selfval, size_t ix, Value val)
         {
-            Object* data;
-            MC_ASSERT(object.getType() == Value::VALTYP_MAP);
-            if(ix >= mapGetLength(object))
+            if(ix >= mapGetLength(selfval))
             {
                 return false;
             }
-            data = object.getAllocatedData();
-            return data->m_uvobj.valmap->actualmap->setValueAt(ix, &val);
+            return selfval.asMap()->setValueAt(ix, &val);
         }
 
-        static Value mapGetetKVPairAt(Value object, int ix)
+        static Value mapGetetKVPairAt(Value selfval, size_t ix)
         {
             Value key;
             Value val;
             Value res;
             Value valobj;
             Value keyobj;
-            Object* data;
-            MC_ASSERT(object.getType() == Value::VALTYP_MAP);
-            data = object.getAllocatedData();
-            if(ix >= data->m_uvobj.valmap->actualmap->count())
+            auto selfmap = selfval.asMap();
+            if(ix >= selfmap->count())
             {
                 return Value::makeNull();
             }
-            key = mapGetKeyAt(object, ix);
-            val = mapGetValueAt(object, ix);
+            key = mapGetKeyAt(selfval, ix);
+            val = mapGetValueAt(selfval, ix);
             res = Value::makeMap();
             if(res.isNull())
             {
@@ -2774,19 +2841,16 @@ class Value: public ValData
             return res;
         }
 
-        static bool mapSetValue(Value object, Value key, Value val)
+        static bool mapSetValue(Value selfval, Value key, Value val)
         {
-            Object* data;
-            MC_ASSERT(object.getType() == Value::VALTYP_MAP);
-            data = object.getAllocatedData();
-            return data->m_uvobj.valmap->actualmap->setKV(&key, &val);
+            return selfval.asMap()->setKV(&key, &val);
         }
 
-        static bool mapSetValString(Value object, const char* strkey, Value val)
+        static bool mapSetValString(Value selfval, const char* strkey, Value val)
         {
             Value vkey;
             vkey = Value::makeString(strkey);
-            return mapSetValue(object, vkey, val);
+            return mapSetValue(selfval, vkey, val);
         }
 
         static void mapSetStrFunc(Value map, const char* fnname, CallbackNativeFN function)
@@ -2794,13 +2858,10 @@ class Value: public ValData
             mapSetValString(map, fnname, Value::makeFuncNative(fnname, function, nullptr));
         }
 
-        static Value mapGetValue(Value object, Value key)
+        static Value mapGetValue(Value selfval, Value key)
         {
             Value* res;
-            Object* data;
-            MC_ASSERT(object.getType() == Value::VALTYP_MAP);
-            data = object.getAllocatedData();
-            res = data->m_uvobj.valmap->actualmap->get(&key);
+            res = selfval.asMap()->get(&key);
             if(res == nullptr)
             {
                 return Value::makeNull();
@@ -2808,13 +2869,10 @@ class Value: public ValData
             return *res;
         }
 
-        static bool mapGetValueChecked(Value object, Value key, Value* dest)
+        static bool mapGetValueChecked(Value selfval, Value key, Value* dest)
         {
             Value* res;
-            Object* data;
-            MC_ASSERT(object.getType() == Value::VALTYP_MAP);
-            data = object.getAllocatedData();
-            res = data->m_uvobj.valmap->actualmap->get(&key);
+            res = selfval.asMap()->get(&key);
             if(res == nullptr)
             {
                 *dest = Value::makeNull();
@@ -2824,22 +2882,19 @@ class Value: public ValData
             return true;
         }
 
-        static bool mapHasKey(Value object, Value key)
+        static bool mapHasKey(Value selfval, Value key)
         {
             Value* res;
-            Object* data;
-            MC_ASSERT(object.getType() == Value::VALTYP_MAP);
-            data = object.getAllocatedData();
-            res = data->m_uvobj.valmap->actualmap->get(&key);
+            res = selfval.asMap()->get(&key);
             return res != nullptr;
         }
 
-        static void valPrintObjFuncScript(Printer* pr, const Value& obj)
+        static void valPrintObjFuncScript(Printer* pr, const Value& val)
         {
             const char* fname;
             Object::ObjFunction* fn;
-            fn = Value::asFunction(obj);
-            fname = functionGetName(obj);
+            fn = Value::asFunction(val);
+            fname = functionGetName(val);
             auto numlocals = fn->m_funcdata.valscriptfunc.numlocals;
             auto numargs = fn->m_funcdata.valscriptfunc.numargs;
             auto freevc = fn->m_funcdata.valscriptfunc.freevalscount;
@@ -2861,20 +2916,20 @@ class Value: public ValData
             pr->put(">");
         }
 
-        static void valPrintObjArray(Printer* pr, const Value& obj)
+        static void valPrintObjArray(Printer* pr, const Value& val)
         {
             bool recursion;
             size_t i;
             size_t alen;
             bool prevquot;
             Value iobj;
-            auto actualary = obj.asArray();
-            alen = arrayGetLength(obj);
+            auto actualary = val.asArray();
+            alen = arrayGetLength(val);
             pr->put("[");
             for(i = 0; i < alen; i++)
             {
                 recursion = false;
-                iobj = arrayGetValue(obj, i);
+                iobj = arrayGetValue(val, i);
                 if(iobj.getType() == Value::VALTYP_ARRAY)
                 {
                     auto otherary = iobj.asArray();
@@ -2902,24 +2957,24 @@ class Value: public ValData
             pr->put("]");
         }
 
-        static void valPrintObjMap(Printer* pr, const Value& obj)
+        static void valPrintObjMap(Printer* pr, const Value& val)
         {
             bool prevquot;
             size_t i;
             size_t alen;
-            Value key;
-            Value val;
-            alen = mapGetLength(obj);
+            Value mapkey;
+            Value mapval;
+            alen = mapGetLength(val);
             pr->put("{");
             for(i = 0; i < alen; i++)
             {
-                key = mapGetKeyAt(obj, i);
-                val = mapGetValueAt(obj, i);
+                mapkey = mapGetKeyAt(val, i);
+                mapval = mapGetValueAt(val, i);
                 prevquot = pr->m_prconfig.quotstring;
                 pr->m_prconfig.quotstring = true;
-                printValue(pr, key, false);
+                printValue(pr, mapkey, false);
                 pr->put(": ");
-                printValue(pr, val, false);
+                printValue(pr, mapval, false);
                 pr->m_prconfig.quotstring = prevquot;
                 if(i < (alen - 1))
                 {
@@ -2929,13 +2984,13 @@ class Value: public ValData
             pr->put("}");
         }
 
-        static void valPrintObjError(Printer* pre, const Value& obj);
+        static void valPrintObjError(Printer* pre, const Value& val);
 
-        static void printValue(Printer* pr, const Value& obj, bool accurate)
+        static void printValue(Printer* pr, const Value& val, bool accurate)
         {
             Value::Type type;
             (void)accurate;
-            type = obj.getType();
+            type = val.getType();
             switch(type)
             {
                 case Value::VALTYP_FREED:
@@ -2951,18 +3006,18 @@ class Value: public ValData
                 case Value::VALTYP_NUMBER:
                     {
                         NumFloat number;
-                        number = Value::asNumber(obj);
+                        number = Value::asNumber(val);
                         pr->printNumFloat(number);
                     }
                     break;
                 case Value::VALTYP_BOOL:
                     {
-                        pr->put(Value::asBool(obj) ? "true" : "false");
+                        pr->put(Value::asBool(val) ? "true" : "false");
                     }
                     break;
                 case Value::VALTYP_STRING:
                     {
-                        valPrintObjString(pr, obj);
+                        valPrintObjString(pr, val);
                     }
                     break;
                 case Value::VALTYP_NULL:
@@ -2972,17 +3027,17 @@ class Value: public ValData
                     break;
                 case Value::VALTYP_FUNCSCRIPT:
                     {
-                        valPrintObjFuncScript(pr, obj);
+                        valPrintObjFuncScript(pr, val);
                     }
                     break;
                 case Value::VALTYP_ARRAY:
                     {
-                        valPrintObjArray(pr, obj);
+                        valPrintObjArray(pr, val);
                     }
                     break;
                 case Value::VALTYP_MAP:
                     {
-                        valPrintObjMap(pr, obj);
+                        valPrintObjMap(pr, val);
                     }
                     break;
                 case Value::VALTYP_FUNCNATIVE:
@@ -2997,7 +3052,7 @@ class Value: public ValData
                     break;
                 case Value::VALTYP_ERROR:
                     {
-                        valPrintObjError(pr, obj);
+                        valPrintObjError(pr, val);
                     }
                     break;
                 case Value::VALTYP_ANY:
@@ -3012,6 +3067,11 @@ class Value: public ValData
         MC_INLINE Type getType() const
         {
             return m_valtype;
+        }
+
+        MC_INLINE Object* getAllocatedData()
+        {
+            return m_uval.odata;
         }
 
         MC_INLINE Object* getAllocatedData() const
@@ -3081,28 +3141,40 @@ class Value: public ValData
             return (type == VALTYP_ARRAY);
         }
 
-        Object::ObjArray* asArray()
+        MC_INLINE Object::ObjArray* asArray()
         {
             auto data = getAllocatedData();
             return data->m_uvobj.valarray;
         }
 
-        Object::ObjArray* asArray() const
+        MC_INLINE Object::ObjArray* asArray() const
         {
             auto data = getAllocatedData();
             return data->m_uvobj.valarray;
+        }
+
+        MC_INLINE Object::ObjMap* asMap()
+        {
+            auto data = getAllocatedData();
+            return data->m_uvobj.valmap;
+        }
+
+        MC_INLINE Object::ObjMap* asMap() const
+        {
+            auto data = getAllocatedData();
+            return data->m_uvobj.valmap;
         }
 
         MC_INLINE char* getStringDataIntern()
         {
             auto data = getAllocatedData();
-            return data->m_uvobj.valstring.strbuf->data();
+            return data->m_uvobj.valstring.m_strbuf->data();
         }
 
         MC_INLINE char* getStringDataIntern() const
         {
             auto data = getAllocatedData();
-            return data->m_uvobj.valstring.strbuf->data();
+            return data->m_uvobj.valstring.m_strbuf->data();
         }
 
         MC_INLINE const char* stringGetData() const
@@ -3113,13 +3185,13 @@ class Value: public ValData
         MC_INLINE int stringGetLength() const
         {
             auto data = getAllocatedData();
-            return data->m_uvobj.valstring.strbuf->length();
+            return data->m_uvobj.valstring.m_strbuf->length();
         }
 
         MC_INLINE void stringSetLength(int len)
         {
             auto data = getAllocatedData();
-            data->m_uvobj.valstring.strbuf->setLength(len);
+            data->m_uvobj.valstring.m_strbuf->setLength(len);
             this->stringRehash();
         }
 
@@ -3132,7 +3204,7 @@ class Value: public ValData
         {
             auto data = getAllocatedData();
             auto string = &data->m_uvobj.valstring;
-            string->strbuf->append(src, len);
+            string->m_strbuf->append(src, len);
             this->stringRehash();
             return true;
         }
@@ -3147,7 +3219,7 @@ class Value: public ValData
         {
             auto data = getAllocatedData();
             auto string = &data->m_uvobj.valstring;
-            string->strbuf->appendFormat(fmt, args...);
+            string->m_strbuf->appendFormat(fmt, args...);
             this->stringRehash();
             return true;
         }
@@ -3185,13 +3257,13 @@ class Value: public ValData
             size_t len;
             const char* str;
             auto data = getAllocatedData();
-            if(data->m_uvobj.valstring.hash == 0)
+            if(data->m_uvobj.valstring.m_hashval == 0)
             {
                 len = this->stringGetLength();
                 str = this->stringGetData();
-                data->m_uvobj.valstring.hash = mc_util_hashdata(str, len);
+                data->m_uvobj.valstring.m_hashval = mc_util_hashdata(str, len);
             }
-            return data->m_uvobj.valstring.hash;
+            return data->m_uvobj.valstring.m_hashval;
         }
 
         MC_INLINE bool stringRehash()
@@ -3201,12 +3273,9 @@ class Value: public ValData
             auto data = getAllocatedData();
             len = this->stringGetLength();
             str = this->stringGetData();
-            data->m_uvobj.valstring.hash = mc_util_hashdata(str, len);
+            data->m_uvobj.valstring.m_hashval = mc_util_hashdata(str, len);
             return true;
         }
-
-
-
 };
 
 /*
@@ -3337,7 +3406,6 @@ class SymStore
                 store->m_storedsymbols->destroyItemsAndDict();
                 store->m_storedobjects.deInit();
                 mc_memory_free(store);
-                store = nullptr;
             }
         }
 
@@ -3356,7 +3424,7 @@ class SymStore
             return m_storedsymbols->get(name);
         }
 
-        bool setNamed(const char* name, Value object)
+        bool setNamed(const char* name, Value val)
         {
             bool ok;
             int ix;
@@ -3366,11 +3434,11 @@ class SymStore
             existingsymbol = getSymbol(name);
             if(existingsymbol != nullptr)
             {
-                ok = (m_storedobjects.set(existingsymbol->m_symindex, object) != nullptr);
+                ok = (m_storedobjects.set(existingsymbol->m_symindex, val) != nullptr);
                 return ok;
             }
             ix = m_storedobjects.count();
-            ok = m_storedobjects.push(object);
+            ok = m_storedobjects.push(val);
             symbol = Memory::make<AstSymbol>(name, AstSymbol::SYMTYP_GLOBALBUILTIN, ix, false);
             ok = m_storedsymbols->set((char*)name, symbol);
             return true;
@@ -3407,7 +3475,6 @@ class AstScopeBlock
         {
             scope->m_blscopestore->destroyItemsAndDict();
             mc_memory_free(scope);
-            scope = nullptr;
         }
 
         static AstScopeBlock* copy(AstScopeBlock* scope)
@@ -3458,7 +3525,6 @@ class AstSymTable
                 table->m_symtbmodglobalsymbols.deInit(AstSymbol::destroy);
                 Memory::destroy(table->m_symtbfreesymbols, AstSymbol::destroy);
                 mc_memory_free(table);
-                table = nullptr;
             }
         }
 
@@ -3474,6 +3540,7 @@ class AstSymTable
     public:
         AstSymTable(AstSymTable* syouter, SymStore* sygstore, GenericList<AstScopeBlock*>* syblockscopes, GenericList<AstSymbol*>* syfreesyms, GenericList<AstSymbol*>* symodglobalsymbols, int mgo)
         {
+            bool ok;
             m_symtbmaxnumdefinitions = 0;
             m_symtbouter = syouter;
             m_symtbglobalstore = sygstore;
@@ -3494,7 +3561,8 @@ class AstSymTable
             {
                 m_symtbmodglobalsymbols = *symodglobalsymbols;
             }
-            MC_ASSERT(scopeBlockPush());
+            ok = scopeBlockPush();
+            MC_ASSERT(ok);
         }
 
         AstSymTable* copy()
@@ -4162,11 +4230,8 @@ class AstExprData
             MATHOP_RSHIFT
         };
 
-        class ExprShim
-        {
-        };
 
-        class ExprCodeBlock: public ExprShim
+        class ExprCodeBlock
         {
             public:
                 GenericList<AstExpression*> m_blockstatements;
@@ -4199,7 +4264,7 @@ class AstExprData
                 }
         };
 
-        class ExprIfCase: public ExprShim
+        class ExprIfCase
         {
             public:
                 AstExpression* m_ifcond;
@@ -4231,44 +4296,44 @@ class AstExprData
                 }
         };
 
-        struct ExprIfStmt: public ExprShim
+        struct ExprIfStmt
         {
             bool m_haveifstmtelsestmt;
             GenericList<ExprIfCase*> m_ifcases;
             ExprCodeBlock m_ifstmtelsestmt;
         };
 
-        struct ExprLiteralMap: public ExprShim
+        struct ExprLiteralMap
         {
             GenericList<AstExpression*> m_litmapkeys;
             GenericList<AstExpression*> m_litmapvalues;
         };
 
-        struct ExprLiteralArray: public ExprShim
+        struct ExprLiteralArray
         {
             GenericList<AstExpression*> m_litarritems;
         };
 
-        struct ExprLiteralString: public ExprShim
+        struct ExprLiteralString
         {
             size_t m_strexprlength;
             char* m_strexprdata;
         };
 
-        struct ExprPrefix: public ExprShim
+        struct ExprPrefix
         {
             MathOpType op;
             AstExpression* right;
         };
 
-        struct ExprInfix: public ExprShim
+        struct ExprInfix
         {
             MathOpType op;
             AstExpression* left;
             AstExpression* right;
         };
 
-        class ExprIdent: public ExprShim
+        class ExprIdent
         {
             public:
                 char* m_identvalue = nullptr;
@@ -4303,7 +4368,7 @@ class AstExprData
                 }
         };
 
-        class ExprFuncParam: public ExprShim
+        class ExprFuncParam
         {
             public:
                 ExprIdent m_paramident;
@@ -4337,68 +4402,68 @@ class AstExprData
                 }
         };
 
-        struct ExprLiteralFunction: public ExprShim
+        struct ExprLiteralFunction
         {
             char* name;
             GenericList<ExprFuncParam*> funcparamlist;
             ExprCodeBlock body;
         };
 
-        struct ExprCall: public ExprShim
+        struct ExprCall
         {
             AstExpression* function;
             GenericList<AstExpression*> m_callargs;
         };
 
-        struct ExprIndex: public ExprShim
+        struct ExprIndex
         {
             bool isdot;
             AstExpression* left;
             AstExpression* index;
         };
 
-        struct ExprAssign: public ExprShim
+        struct ExprAssign
         {
             AstExpression* dest;
             AstExpression* source;
             bool is_postfix;
         };
 
-        struct ExprLogical: public ExprShim
+        struct ExprLogical
         {
             MathOpType op;
             AstExpression* left;
             AstExpression* right;
         };
 
-        struct ExprTernary: public ExprShim
+        struct ExprTernary
         {
             AstExpression* tercond;
             AstExpression* teriftrue;
             AstExpression* teriffalse;
         };
 
-        struct ExprDefine: public ExprShim
+        struct ExprDefine
         {
             ExprIdent name;
             AstExpression* value;
             bool assignable;
         };
 
-        struct ExprWhileStmt: public ExprShim
+        struct ExprWhileStmt
         {
             AstExpression* loopcond;
             ExprCodeBlock body;
         };
 
-        struct ExprForeachStmt: public ExprShim
+        struct ExprForeachStmt
         {
             ExprIdent iterator;
             AstExpression* source;
             ExprCodeBlock body;
         };
 
-        struct ExprLoopStmt: public ExprShim
+        struct ExprLoopStmt
         {
             AstExpression* init;
             AstExpression* loopcond;
@@ -4406,12 +4471,12 @@ class AstExprData
             ExprCodeBlock body;
         };
 
-        struct ExprImportStmt: public ExprShim
+        struct ExprImportStmt
         {
             char* path;
         };
 
-        struct ExprRecover: public ExprShim
+        struct ExprRecover
         {
             ExprIdent errident;
             ExprCodeBlock body;
@@ -4479,6 +4544,11 @@ class AstExprData
         ExprType m_exprtype;
         SourceLocation m_exprpos;
         DataUnion m_uexpr;
+
+    public:
+        AstExprData()
+        {
+        }
 
 };
 
@@ -5106,9 +5176,17 @@ class AstExpression: public AstExprData
                         break;
                 }
                 Memory::destroy(expr);
-                expr = nullptr;
             }
         }
+
+    public:
+        AstExpression()
+        {
+        }
+
+        AstExpression(const AstExpression& other) = delete;
+        AstExpression& operator=(const AstExpression& other) = delete;
+
 };
 
 class Traceback
@@ -5168,7 +5246,6 @@ class Traceback
                 }
                 traceback->m_tbitems.deInit();
                 mc_memory_free(traceback);
-                traceback = nullptr;
             }
         }
 
@@ -8839,7 +8916,7 @@ class AstCompiler
 
         AstCompiler(State* state, RuntimeConfig* config, GCMemory* gcmem, ErrList* errors, GenericList<SourceFile*>* files, SymStore* gstore, Printer* fstderr)
         {
-            MC_ASSERT(initBase(state, config, gcmem, errors, files, gstore, fstderr));
+            initBase(state, config, gcmem, errors, files, gstore, fstderr);
             m_pstate = state; 
         }
 
@@ -8907,6 +8984,7 @@ class AstCompiler
             {
                 return 0;
             }
+            MC_ASSERT(operandscount == def->numoperands);
             instrlen = 1;
             for(i = 0; i < def->numoperands; i++)
             {
@@ -10845,6 +10923,7 @@ class AstCompiler
         }
 };
 
+
 class VMFrame
 {
     public:
@@ -11215,13 +11294,10 @@ class State
 
         MC_INLINE void vmStackPush(Value obj)
         {
+        #if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
             int numlocals;
             VMFrame* frame;
             Object::ObjFunction* currentfunction;
-            (void)numlocals;
-            (void)frame;
-            (void)currentfunction;
-        #if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
             if(m_execstate.currframe)
             {
                 frame = m_execstate.currframe;
@@ -11240,14 +11316,11 @@ class State
 
         MC_INLINE Value vmStackPop()
         {
-            int numlocals;
             Value res;
+        #if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
+            int numlocals;
             VMFrame* frame;
             Object::ObjFunction* currentfunction;
-            (void)numlocals;
-            (void)frame;
-            (void)currentfunction;
-        #if defined(MC_CONF_DEBUG) && (MC_CONF_DEBUG == 1)
             if(m_execstate.vsposition == 0)
             {
                 m_errorlist.pushFormat(Error::ERRTYP_RUNTIME, m_execstate.currframe->getPosition(), "stack underflow");
@@ -12184,40 +12257,6 @@ void GCMemory::wrapDestroyObjData(Object* data)
     Object::destroyObjData(data);
 }
 
-size_t Object::ObjArray::count()
-{
-    return actualarray->count();
-}
-
-Value Object::ObjArray::get(size_t i)
-{
-    return actualarray->get(i);
-}
-
-Value* Object::ObjArray::getp(size_t i)
-{
-    return actualarray->getp(i);
-}
-
-Value* Object::ObjArray::set(size_t i, const Value& val)
-{
-    return actualarray->set(i, val);
-}
-
-bool Object::ObjArray::push(const Value& val)
-{
-    return actualarray->push(val);
-}
-
-bool Object::ObjArray::pop(Value* dest)
-{
-    return actualarray->pop(dest);
-}
-
-bool Object::ObjArray::removeAt(size_t ix)
-{
-    return actualarray->removeAt(ix);
-}
 
 void Value::valPrintObjError(Printer* pr, const Value& obj)
 {
@@ -12786,7 +12825,7 @@ int mc_state_gcshouldsweep()
 
 bool mc_state_gcdisablefor(Value obj)
 {
-    MC_ASSERT(!"mc_state_gcdisablefor() is broken!");
+    MC_ASSERT(false && "mc_state_gcdisablefor() is broken!");
     #if 1
         (void)obj;
     #else
@@ -12807,7 +12846,7 @@ bool mc_state_gcdisablefor(Value obj)
 
 void mc_state_gcenablefor(Value obj)
 {
-    MC_ASSERT(!"mc_state_gcenablefor() is broken!");
+    MC_ASSERT(false && "mc_state_gcenablefor() is broken!");
     #if 1
         (void)obj;
     #else
@@ -13086,7 +13125,7 @@ static MC_INLINE bool mc_vmdo_makemapend(State* state)
     return true;
 }
 
-#if defined(__GNUC__) || defined(__CLANG__) || defined(__TINYC__)
+#if (defined(__GNUC__) || defined(__CLANG__) || defined(__TINYC__)) && !defined(__CPPCHECK__)
     #define MC_CONF_USECOMPUTEDGOTOS 1
 #else
     #define MC_CONF_USECOMPUTEDGOTOS 0
@@ -14802,7 +14841,7 @@ Value mc_objfnstring_tolower(State* state, void* data, Value thisval, size_t arg
     inpstr = inpval.stringGetData();
     inplen = inpval.stringGetLength();
     resstr = Value::makeString(inpstr, inplen);
-    resstr.getAllocatedData()->m_uvobj.valstring.strbuf->toLowercase();
+    resstr.getAllocatedData()->m_uvobj.valstring.m_strbuf->toLowercase();
     return resstr;
 }
 
@@ -14821,7 +14860,7 @@ Value mc_objfnstring_toupper(State* state, void* data, Value thisval, size_t arg
     inpstr = inpval.stringGetData();
     inplen = inpval.stringGetLength();
     resstr = Value::makeString(inpstr, inplen);
-    resstr.getAllocatedData()->m_uvobj.valstring.strbuf->toUppercase();
+    resstr.getAllocatedData()->m_uvobj.valstring.m_strbuf->toUppercase();
 
     return resstr;    
 }

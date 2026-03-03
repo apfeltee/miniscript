@@ -206,6 +206,7 @@ class StrDict
             if(m_gdcount >= m_gditemcapacity)
             {
                 ok = growAndRehash();
+                MC_ASSERT(ok);
                 cellix = getCellIndex(ckey, hash, &found);
             }
             if(mkey != nullptr)
