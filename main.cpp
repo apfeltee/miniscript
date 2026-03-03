@@ -2014,9 +2014,9 @@ class Value: public ValData
         template<typename TypeKeyT, typename TypeValueT>
         static MC_INLINE Value copyDeepMap(Value obj, ValDict<TypeKeyT, TypeValueT>* targetdict)
         {
-            int i;
-            Value key;
-            Value val;
+            size_t i;
+            Value mapkey;
+            Value mapval;
             Value copy;
             Value keycopy;
             Value valcopy;
@@ -2031,15 +2031,15 @@ class Value: public ValData
             }
             for(i = 0; i < Value::mapGetLength(obj); i++)
             {
-                key = Value::mapGetKeyAt(obj, i);
-                val = Value::mapGetValueAt(obj, i);
-                keycopy = Value::copyDeepIntern(key, targetdict);
-                if(!key.isNull() && keycopy.isNull())
+                mapkey = Value::mapGetKeyAt(obj, i);
+                mapval = Value::mapGetValueAt(obj, i);
+                keycopy = Value::copyDeepIntern(mapkey, targetdict);
+                if(!mapkey.isNull() && keycopy.isNull())
                 {
                     return Value::makeNull();
                 }
-                valcopy = Value::copyDeepIntern(val, targetdict);
-                if(!val.isNull() && valcopy.isNull())
+                valcopy = Value::copyDeepIntern(mapval, targetdict);
+                if(!mapval.isNull() && valcopy.isNull())
                 {
                     return Value::makeNull();
                 }
@@ -2197,15 +2197,15 @@ class Value: public ValData
                     break;
                 case VALTYP_MAP:
                     {
-                        int i;
-                        Value key;
-                        Value val;
+                        size_t i;
+                        Value mapkey;
+                        Value mapval;
                         copy = makeMap();
                         for(i = 0; i < Value::mapGetLength(obj); i++)
                         {
-                            key = Value::mapGetKeyAt(obj, i);
-                            val = Value::mapGetValueAt(obj, i);
-                            ok = Value::mapSetValue(copy, key, val);
+                            mapkey = Value::mapGetKeyAt(obj, i);
+                            mapval = Value::mapGetValueAt(obj, i);
+                            ok = Value::mapSetValue(copy, mapkey, mapval);
                             if(!ok)
                             {
                                 return makeNull();
@@ -2739,16 +2739,17 @@ class Value: public ValData
 
         static bool mapSetValueAt(Value selfval, size_t ix, Value val)
         {
-            if(ix >= mapGetLength(selfval))
+            auto m = selfval.asMap();
+            if(ix >= m->count())
             {
                 return false;
             }
-            return selfval.asMap()->setValueAt(ix, &val);
+            return m->setValueAt(ix, &val);
         }
 
         static Value mapGetetKVPairAt(Value selfval, size_t ix)
         {
-            Value key;
+            Value mapkey;
             Value val;
             Value res;
             Value valobj;
@@ -2758,7 +2759,7 @@ class Value: public ValData
             {
                 return Value::makeNull();
             }
-            key = mapGetKeyAt(selfval, ix);
+            mapkey = mapGetKeyAt(selfval, ix);
             val = mapGetValueAt(selfval, ix);
             res = Value::makeMap();
             if(res.isNull())
@@ -2770,7 +2771,7 @@ class Value: public ValData
             {
                 return Value::makeNull();
             }
-            mapSetValue(res, keyobj, key);
+            mapSetValue(res, keyobj, mapkey);
             valobj = Value::makeString("value");
             if(valobj.isNull())
             {
@@ -2902,7 +2903,8 @@ class Value: public ValData
             size_t alen;
             Value mapkey;
             Value mapval;
-            alen = mapGetLength(val);
+            auto m = val.asMap();
+            alen = m->count();
             pr->put("{");
             for(i = 0; i < alen; i++)
             {
@@ -3862,80 +3864,80 @@ class AstScopeFile
 class AstToken
 {
     public:
-        enum Type
+        enum class Type
         {
-            TOK_INVALID = 0,
-            TOK_EOF,
+            T_INVALID = 0,
+            T_EOF,
             /* Operators */
-            TOK_ASSIGN,
-            TOK_ASSIGNPLUS,
-            TOK_ASSIGNMINUS,
-            TOK_ASSIGNASTERISK,
-            TOK_ASSIGNSLASH,
-            TOK_ASSIGNPERCENT,
-            TOK_ASSIGNBINAND,
-            TOK_ASSIGNBINOR,
-            TOK_ASSIGNBINXOR,
-            TOK_ASSIGNLSHIFT,
-            TOK_ASSIGNRSHIFT,
-            TOK_QUESTION,
-            TOK_PLUS,
-            TOK_PLUSPLUS,
-            TOK_UNARYMINUS,
-            TOK_MINUSMINUS,
-            TOK_UNARYBINNOT,
-            TOK_BANG,
-            TOK_ASTERISK,
-            TOK_SLASH,
-            TOK_LT,
-            TOK_LTE,
-            TOK_GT,
-            TOK_GTE,
-            TOK_EQ,
-            TOK_NOTEQ,
-            TOK_AND,
-            TOK_OR,
-            TOK_BINAND,
-            TOK_BINOR,
-            TOK_BINXOR,
-            TOK_LSHIFT,
-            TOK_RSHIFT,
+            T_ASSIGN,
+            T_ASSIGNPLUS,
+            T_ASSIGNMINUS,
+            T_ASSIGNASTERISK,
+            T_ASSIGNSLASH,
+            T_ASSIGNPERCENT,
+            T_ASSIGNBINAND,
+            T_ASSIGNBINOR,
+            T_ASSIGNBINXOR,
+            T_ASSIGNLSHIFT,
+            T_ASSIGNRSHIFT,
+            T_QUESTION,
+            T_PLUS,
+            T_PLUSPLUS,
+            T_UNARYMINUS,
+            T_MINUSMINUS,
+            T_UNARYBINNOT,
+            T_BANG,
+            T_ASTERISK,
+            T_SLASH,
+            T_LESSTHAN,
+            T_LESSEQUAL,
+            T_GREATERTHAN,
+            T_GREATEREQUAL,
+            T_EQUAL,
+            T_NOTEQ,
+            T_LOGICALAND,
+            T_LOGICALOR,
+            T_BINAND,
+            T_BINOR,
+            T_BINXOR,
+            T_LSHIFT,
+            T_RSHIFT,
             /* Delimiters */
-            TOK_COMMA,
-            TOK_SEMICOLON,
-            TOK_COLON,
-            TOK_LPAREN,
-            TOK_RPAREN,
-            TOK_LBRACE,
-            TOK_RBRACE,
-            TOK_LBRACKET,
-            TOK_RBRACKET,
-            TOK_DOT,
-            TOK_PERCENT,
+            T_COMMA,
+            T_SEMICOLON,
+            T_COLON,
+            T_PARENOPEN,
+            T_PARENCLOSE,
+            T_BRACEOPEN,
+            T_BRACECLOSE,
+            T_BRACKETOPEN,
+            T_BRACKETCLOSE,
+            T_DOT,
+            T_MATHMODULO,
             /* Keywords */
-            TOK_FUNCTION,
-            TOK_CONST,
-            TOK_VAR,
-            TOK_TRUE,
-            TOK_FALSE,
-            TOK_IF,
-            TOK_ELSE,
-            TOK_RETURN,
-            TOK_WHILE,
-            TOK_BREAK,
-            TOK_FOR,
-            TOK_IN,
-            TOK_CONTINUE,
-            TOK_NULL,
-            TOK_IMPORT,
-            TOK_RECOVER,
+            T_KWFUNCTION,
+            T_KWCONST,
+            T_KWVAR,
+            T_KWTRUE,
+            T_KWFALSE,
+            T_KWIF,
+            T_KWELSE,
+            T_KWRETURN,
+            T_KWWHILE,
+            T_KWBREAK,
+            T_KWFOR,
+            T_KWIN,
+            T_KWCONTINUE,
+            T_KWNULL,
+            T_KWIMPORT,
+            T_KWRECOVER,
             /* Identifiers and literals */
-            TOK_IDENT,
-            TOK_NUMBER,
-            TOK_STRING,
-            TOK_TEMPLATESTRING,
+            T_IDENT,
+            T_NUMBER,
+            T_STRING,
+            T_TEMPLATESTRING,
             /* MUST be last. */
-            TOK_TYPEMAX
+            T_TYPEMAX
         };
 
     public:
@@ -3943,133 +3945,133 @@ class AstToken
         {
             switch(type)
             {
-                case AstToken::TOK_EOF:
+                case Type::T_EOF:
                     return "EOF";
-                case AstToken::TOK_ASSIGN:
+                case Type::T_ASSIGN:
                     return "=";
-                case AstToken::TOK_ASSIGNPLUS:
+                case Type::T_ASSIGNPLUS:
                     return "+=";
-                case AstToken::TOK_ASSIGNMINUS:
+                case Type::T_ASSIGNMINUS:
                     return "-=";
-                case AstToken::TOK_ASSIGNASTERISK:
+                case Type::T_ASSIGNASTERISK:
                     return "*=";
-                case AstToken::TOK_ASSIGNSLASH:
+                case Type::T_ASSIGNSLASH:
                     return "/=";
-                case AstToken::TOK_ASSIGNPERCENT:
+                case Type::T_ASSIGNPERCENT:
                     return "%=";
-                case AstToken::TOK_ASSIGNBINAND:
+                case Type::T_ASSIGNBINAND:
                     return "&=";
-                case AstToken::TOK_ASSIGNBINOR:
+                case Type::T_ASSIGNBINOR:
                     return "|=";
-                case AstToken::TOK_ASSIGNBINXOR:
+                case Type::T_ASSIGNBINXOR:
                     return "^=";
-                case AstToken::TOK_ASSIGNLSHIFT:
+                case Type::T_ASSIGNLSHIFT:
                     return "<<=";
-                case AstToken::TOK_ASSIGNRSHIFT:
+                case Type::T_ASSIGNRSHIFT:
                     return ">>=";
-                case AstToken::TOK_QUESTION:
+                case Type::T_QUESTION:
                     return "?";
-                case AstToken::TOK_PLUS:
+                case Type::T_PLUS:
                     return "+";
-                case AstToken::TOK_PLUSPLUS:
+                case Type::T_PLUSPLUS:
                     return "++";
-                case AstToken::TOK_UNARYMINUS:
+                case Type::T_UNARYMINUS:
                     return "-";
-                case AstToken::TOK_MINUSMINUS:
+                case Type::T_MINUSMINUS:
                     return "--";
-                case AstToken::TOK_BANG:
+                case Type::T_BANG:
                     return "!";
-                case AstToken::TOK_ASTERISK:
+                case Type::T_ASTERISK:
                     return "*";
-                case AstToken::TOK_SLASH:
+                case Type::T_SLASH:
                     return "/";
-                case AstToken::TOK_LT:
+                case Type::T_LESSTHAN:
                     return "<";
-                case AstToken::TOK_LTE:
+                case Type::T_LESSEQUAL:
                     return "<=";
-                case AstToken::TOK_GT:
+                case Type::T_GREATERTHAN:
                     return ">";
-                case AstToken::TOK_GTE:
+                case Type::T_GREATEREQUAL:
                     return ">=";
-                case AstToken::TOK_EQ:
+                case Type::T_EQUAL:
                     return "==";
-                case AstToken::TOK_NOTEQ:
+                case Type::T_NOTEQ:
                     return "!=";
-                case AstToken::TOK_AND:
+                case Type::T_LOGICALAND:
                     return "&&";
-                case AstToken::TOK_OR:
+                case Type::T_LOGICALOR:
                     return "||";
-                case AstToken::TOK_BINAND:
+                case Type::T_BINAND:
                     return "&";
-                case AstToken::TOK_BINOR:
+                case Type::T_BINOR:
                     return "|";
-                case AstToken::TOK_BINXOR:
+                case Type::T_BINXOR:
                     return "^";
-                case AstToken::TOK_LSHIFT:
+                case Type::T_LSHIFT:
                     return "<<";
-                case AstToken::TOK_RSHIFT:
+                case Type::T_RSHIFT:
                     return ">>";
-                case AstToken::TOK_COMMA:
+                case Type::T_COMMA:
                     return ",";
-                case AstToken::TOK_SEMICOLON:
+                case Type::T_SEMICOLON:
                     return ";";
-                case AstToken::TOK_COLON:
+                case Type::T_COLON:
                     return ":";
-                case AstToken::TOK_LPAREN:
+                case Type::T_PARENOPEN:
                     return "(";
-                case AstToken::TOK_RPAREN:
+                case Type::T_PARENCLOSE:
                     return ")";
-                case AstToken::TOK_LBRACE:
+                case Type::T_BRACEOPEN:
                     return "{";
-                case AstToken::TOK_RBRACE:
+                case Type::T_BRACECLOSE:
                     return "}";
-                case AstToken::TOK_LBRACKET:
+                case Type::T_BRACKETOPEN:
                     return "[";
-                case AstToken::TOK_RBRACKET:
+                case Type::T_BRACKETCLOSE:
                     return "]";
-                case AstToken::TOK_DOT:
+                case Type::T_DOT:
                     return ".";
-                case AstToken::TOK_PERCENT:
+                case Type::T_MATHMODULO:
                     return "%";
-                case AstToken::TOK_FUNCTION:
+                case Type::T_KWFUNCTION:
                     return "FUNCTION";
-                case AstToken::TOK_CONST:
+                case Type::T_KWCONST:
                     return "CONST";
-                case AstToken::TOK_VAR:
+                case Type::T_KWVAR:
                     return "VAR";
-                case AstToken::TOK_TRUE:
+                case Type::T_KWTRUE:
                     return "TRUE";
-                case AstToken::TOK_FALSE:
+                case Type::T_KWFALSE:
                     return "FALSE";
-                case AstToken::TOK_IF:
+                case Type::T_KWIF:
                     return "IF";
-                case AstToken::TOK_ELSE:
+                case Type::T_KWELSE:
                     return "ELSE";
-                case AstToken::TOK_RETURN:
+                case Type::T_KWRETURN:
                     return "RETURN";
-                case AstToken::TOK_WHILE:
+                case Type::T_KWWHILE:
                     return "WHILE";
-                case AstToken::TOK_BREAK:
+                case Type::T_KWBREAK:
                     return "BREAK";
-                case AstToken::TOK_FOR:
+                case Type::T_KWFOR:
                     return "FOR";
-                case AstToken::TOK_IN:
+                case Type::T_KWIN:
                     return "IN";
-                case AstToken::TOK_CONTINUE:
+                case Type::T_KWCONTINUE:
                     return "CONTINUE";
-                case AstToken::TOK_NULL:
+                case Type::T_KWNULL:
                     return "nullptr";
-                case AstToken::TOK_IMPORT:
+                case Type::T_KWIMPORT:
                     return "IMPORT";
-                case AstToken::TOK_RECOVER:
+                case Type::T_KWRECOVER:
                     return "RECOVER";
-                case AstToken::TOK_IDENT:
+                case Type::T_IDENT:
                     return "IDENT";
-                case AstToken::TOK_NUMBER:
+                case Type::T_NUMBER:
                     return "NUMBER";
-                case AstToken::TOK_STRING:
+                case Type::T_STRING:
                     return "STRING";
-                case AstToken::TOK_TEMPLATESTRING:
+                case Type::T_TEMPLATESTRING:
                     return "TEMPLATE_STRING";
                 default:
                     break;
@@ -4083,7 +4085,7 @@ class AstToken
         SourceLocation m_tokpos;
 
     public:
-        AstToken(): AstToken(AstToken::TOK_EOF, "", 0)
+        AstToken(): AstToken(Type::T_EOF, "", 0)
         {
         }
 
@@ -4527,10 +4529,18 @@ class Traceback
         class Item
         {
             public:
+                friend class Traceback;
+
+            protected:
                 char* m_tbtracefuncname;
                 SourceLocation m_tbpos;
 
             public:
+                const char* getTraceFunctionName()
+                {
+                    return m_tbtracefuncname;
+                }
+
                 const char* getSourceLine()
                 {
                     const char* line;
@@ -4556,9 +4566,10 @@ class Traceback
                     return m_tbpos.m_locfile->path();
                 }
         };
+        friend class Item;
 
-    public:
-        GenericList<Item> m_tbitems = GenericList<Item>(0);
+    private:
+        GenericList<Item> m_tbitems;
 
     public:
         Traceback()
@@ -4596,12 +4607,12 @@ class Traceback
             return true;
         }
 
-        int mc_traceback_getdepth()
+        int getDepth()
         {
             return m_tbitems.count();
         }
 
-        const char* mc_traceback_getsourcefilepath(int depth)
+        const char* getSourceFilename(int depth)
         {
             Item* item;
             item = m_tbitems.getp(depth);
@@ -4612,7 +4623,7 @@ class Traceback
             return item->getSourceFilename();
         }
 
-        const char* mc_traceback_getsourcelinecode(int depth)
+        const char* getSourceLineCode(int depth)
         {
             Item* item;
             item = m_tbitems.getp(depth);
@@ -4623,7 +4634,7 @@ class Traceback
             return item->getSourceLine();
         }
 
-        int mc_traceback_getsourcelinenumber(int depth)
+        int getSourceLineNumber(int depth)
         {
             Item* item;
             item = m_tbitems.getp(depth);
@@ -4634,7 +4645,7 @@ class Traceback
             return item->m_tbpos.m_locline;
         }
 
-        int mc_traceback_getsourcecolumn(int depth)
+        int getSourceColumn(int depth)
         {
             Item* item;
             item = m_tbitems.getp(depth);
@@ -4645,7 +4656,7 @@ class Traceback
             return item->m_tbpos.m_loccolumn;
         }
 
-        const char* mc_traceback_getfunctionname(int depth)
+        const char* getFunctionName(int depth)
         {
             Item* item;
             item = m_tbitems.getp(depth);
@@ -4653,7 +4664,7 @@ class Traceback
             {
                 return "";
             }
-            return item->m_tbtracefuncname;
+            return item->getTraceFunctionName();
         }
 
         bool printTo(Printer* pr, Console::Color* mcc)
@@ -4729,7 +4740,7 @@ class Error
             return "NONE";
         }
 
-        static bool printUserError(Printer* pr, const Value& obj)
+        static bool printUserError(Printer* pr, const Value& val)
         {
             const char* cred;
             const char* creset;
@@ -4738,8 +4749,8 @@ class Error
             Console::Color mcc(fileno(stdout));
             cred = mcc.get('r');
             creset = mcc.get('0');
-            pr->format("%s%s:%s %s\n", cred, eprefix, creset, Value::errorGetMessage(obj));
-            traceback = Value::errorGetTraceback(obj);
+            pr->format("%s%s:%s %s\n", cred, eprefix, creset, Value::errorGetMessage(val));
+            traceback = Value::errorGetTraceback(val);
             MC_ASSERT(traceback != nullptr);
             if(traceback != nullptr)
             {
@@ -5077,9 +5088,9 @@ class AstLexer: public AstLexData
             }
             lex->m_failed = false;
             lex->m_continuetplstring = false;
-            lex->m_prevtoken = AstToken(AstToken::TOK_INVALID, nullptr, 0);
-            lex->m_currtoken = AstToken(AstToken::TOK_INVALID, nullptr, 0);
-            lex->m_peektoken = AstToken(AstToken::TOK_INVALID, nullptr, 0);
+            lex->m_prevtoken = AstToken(AstToken::Type::T_INVALID, nullptr, 0);
+            lex->m_currtoken = AstToken(AstToken::Type::T_INVALID, nullptr, 0);
+            lex->m_peektoken = AstToken(AstToken::Type::T_INVALID, nullptr, 0);
             return true;
         }
 
@@ -5117,13 +5128,13 @@ class AstLexer: public AstLexData
 
         bool previousToken()
         {
-            if(m_prevtoken.type() == AstToken::TOK_INVALID)
+            if(m_prevtoken.type() == AstToken::Type::T_INVALID)
             {
                 return false;
             }
             m_peektoken = m_currtoken;
             m_currtoken = m_prevtoken;
-            m_prevtoken = AstToken(AstToken::TOK_INVALID, nullptr, 0);
+            m_prevtoken = AstToken(AstToken::Type::T_INVALID, nullptr, 0);
             m_currentchar = m_prevstate.m_currentchar;
             m_column = m_prevstate.m_column;
             m_line = m_prevstate.m_line;
@@ -5147,7 +5158,7 @@ class AstLexer: public AstLexData
                 {
                     skipSpace();
                 }
-                outtok.m_toktype = AstToken::TOK_INVALID;
+                outtok.m_toktype = AstToken::Type::T_INVALID;
                 outtok.m_tokstrdata = m_inputsource + m_position;
                 outtok.m_tokstrlength = 1;
                 outtok.m_tokpos = SourceLocation(m_file, m_line, m_column);
@@ -5156,19 +5167,19 @@ class AstLexer: public AstLexData
                 {
                     case '\0':
                         {
-                            outtok = AstToken(AstToken::TOK_EOF, "EOF", 3);
+                            outtok = AstToken(AstToken::Type::T_EOF, "EOF", 3);
                         }
                         break;
                     case '=':
                         {
                             if(peekChar() == '=')
                             {
-                                outtok = AstToken(AstToken::TOK_EQ, "==", 2);
+                                outtok = AstToken(AstToken::Type::T_EQUAL, "==", 2);
                                 readChar();
                             }
                             else
                             {
-                                outtok = AstToken(AstToken::TOK_ASSIGN, "=", 1);
+                                outtok = AstToken(AstToken::Type::T_ASSIGN, "=", 1);
                             }
                         }
                         break;
@@ -5176,17 +5187,17 @@ class AstLexer: public AstLexData
                         {
                             if(peekChar() == '&')
                             {
-                                outtok = AstToken(AstToken::TOK_AND, "&&", 2);
+                                outtok = AstToken(AstToken::Type::T_LOGICALAND, "&&", 2);
                                 readChar();
                             }
                             else if(peekChar() == '=')
                             {
-                                outtok = AstToken(AstToken::TOK_ASSIGNBINAND, "&=", 2);
+                                outtok = AstToken(AstToken::Type::T_ASSIGNBINAND, "&=", 2);
                                 readChar();
                             }
                             else
                             {
-                                outtok = AstToken(AstToken::TOK_BINAND, "&", 1);
+                                outtok = AstToken(AstToken::Type::T_BINAND, "&", 1);
                             }
                         }
                         break;
@@ -5194,17 +5205,17 @@ class AstLexer: public AstLexData
                         {
                             if(peekChar() == '|')
                             {
-                                outtok = AstToken(AstToken::TOK_OR, "||", 2);
+                                outtok = AstToken(AstToken::Type::T_LOGICALOR, "||", 2);
                                 readChar();
                             }
                             else if(peekChar() == '=')
                             {
-                                outtok = AstToken(AstToken::TOK_ASSIGNBINOR, "|=", 2);
+                                outtok = AstToken(AstToken::Type::T_ASSIGNBINOR, "|=", 2);
                                 readChar();
                             }
                             else
                             {
-                                outtok = AstToken(AstToken::TOK_BINOR, "|", 1);
+                                outtok = AstToken(AstToken::Type::T_BINOR, "|", 1);
                             }
                         }
                         break;
@@ -5212,12 +5223,12 @@ class AstLexer: public AstLexData
                         {
                             if(peekChar() == '=')
                             {
-                                outtok = AstToken(AstToken::TOK_ASSIGNBINXOR, "^=", 2);
+                                outtok = AstToken(AstToken::Type::T_ASSIGNBINXOR, "^=", 2);
                                 readChar();
                             }
                             else
                             {
-                                outtok = AstToken(AstToken::TOK_BINXOR, "^", 1);
+                                outtok = AstToken(AstToken::Type::T_BINXOR, "^", 1);
                                 break;
                             }
                         }
@@ -5226,17 +5237,17 @@ class AstLexer: public AstLexData
                         {
                             if(peekChar() == '=')
                             {
-                                outtok = AstToken(AstToken::TOK_ASSIGNPLUS, "+=", 2);
+                                outtok = AstToken(AstToken::Type::T_ASSIGNPLUS, "+=", 2);
                                 readChar();
                             }
                             else if(peekChar() == '+')
                             {
-                                outtok = AstToken(AstToken::TOK_PLUSPLUS, "++", 2);
+                                outtok = AstToken(AstToken::Type::T_PLUSPLUS, "++", 2);
                                 readChar();
                             }
                             else
                             {
-                                outtok = AstToken(AstToken::TOK_PLUS, "+", 1);
+                                outtok = AstToken(AstToken::Type::T_PLUS, "+", 1);
                                 break;
                             }
                         }
@@ -5245,36 +5256,36 @@ class AstLexer: public AstLexData
                         {
                             if(peekChar() == '=')
                             {
-                                outtok = AstToken(AstToken::TOK_ASSIGNMINUS, "-=", 2);
+                                outtok = AstToken(AstToken::Type::T_ASSIGNMINUS, "-=", 2);
                                 readChar();
                             }
                             else if(peekChar() == '-')
                             {
-                                outtok = AstToken(AstToken::TOK_MINUSMINUS, "--", 2);
+                                outtok = AstToken(AstToken::Type::T_MINUSMINUS, "--", 2);
                                 readChar();
                             }
                             else
                             {
-                                outtok = AstToken(AstToken::TOK_UNARYMINUS, "-", 1);
+                                outtok = AstToken(AstToken::Type::T_UNARYMINUS, "-", 1);
                                 break;
                             }
                         }
                         break;
                     case '~':
                         {
-                            outtok = AstToken(AstToken::TOK_UNARYBINNOT, "~", 1);
+                            outtok = AstToken(AstToken::Type::T_UNARYBINNOT, "~", 1);
                         }
                         break;
                     case '!':
                         {
                             if(peekChar() == '=')
                             {
-                                outtok = AstToken(AstToken::TOK_NOTEQ, "!=", 2);
+                                outtok = AstToken(AstToken::Type::T_NOTEQ, "!=", 2);
                                 readChar();
                             }
                             else
                             {
-                                outtok = AstToken(AstToken::TOK_BANG, "!", 1);
+                                outtok = AstToken(AstToken::Type::T_BANG, "!", 1);
                             }
                         }
                         break;
@@ -5282,12 +5293,12 @@ class AstLexer: public AstLexData
                         {
                             if(peekChar() == '=')
                             {
-                                outtok = AstToken(AstToken::TOK_ASSIGNASTERISK, "*=", 2);
+                                outtok = AstToken(AstToken::Type::T_ASSIGNASTERISK, "*=", 2);
                                 readChar();
                             }
                             else
                             {
-                                outtok = AstToken(AstToken::TOK_ASTERISK, "*", 1);
+                                outtok = AstToken(AstToken::Type::T_ASTERISK, "*", 1);
                                 break;
                             }
                         }
@@ -5305,12 +5316,12 @@ class AstLexer: public AstLexData
                             }
                             if(peekChar() == '=')
                             {
-                                outtok = AstToken(AstToken::TOK_ASSIGNSLASH, "/=", 2);
+                                outtok = AstToken(AstToken::Type::T_ASSIGNSLASH, "/=", 2);
                                 readChar();
                             }
                             else
                             {
-                                outtok = AstToken(AstToken::TOK_SLASH, "/", 1);
+                                outtok = AstToken(AstToken::Type::T_SLASH, "/", 1);
                                 break;
                             }
                         }
@@ -5319,7 +5330,7 @@ class AstLexer: public AstLexData
                         {
                             if(peekChar() == '=')
                             {
-                                outtok = AstToken(AstToken::TOK_LTE, "<=", 2);
+                                outtok = AstToken(AstToken::Type::T_LESSEQUAL, "<=", 2);
                                 readChar();
                             }
                             else if(peekChar() == '<')
@@ -5327,17 +5338,17 @@ class AstLexer: public AstLexData
                                 readChar();
                                 if(peekChar() == '=')
                                 {
-                                    outtok = AstToken(AstToken::TOK_ASSIGNLSHIFT, "<<=", 3);
+                                    outtok = AstToken(AstToken::Type::T_ASSIGNLSHIFT, "<<=", 3);
                                     readChar();
                                 }
                                 else
                                 {
-                                    outtok = AstToken(AstToken::TOK_LSHIFT, "<<", 2);
+                                    outtok = AstToken(AstToken::Type::T_LSHIFT, "<<", 2);
                                 }
                             }
                             else
                             {
-                                outtok = AstToken(AstToken::TOK_LT, "<", 1);
+                                outtok = AstToken(AstToken::Type::T_LESSTHAN, "<", 1);
                                 break;
                             }
                         }
@@ -5346,7 +5357,7 @@ class AstLexer: public AstLexData
                         {
                             if(peekChar() == '=')
                             {
-                                outtok = AstToken(AstToken::TOK_GTE, ">=", 2);
+                                outtok = AstToken(AstToken::Type::T_GREATEREQUAL, ">=", 2);
                                 readChar();
                             }
                             else if(peekChar() == '>')
@@ -5354,85 +5365,85 @@ class AstLexer: public AstLexData
                                 readChar();
                                 if(peekChar() == '=')
                                 {
-                                    outtok = AstToken(AstToken::TOK_ASSIGNRSHIFT, ">>=", 3);
+                                    outtok = AstToken(AstToken::Type::T_ASSIGNRSHIFT, ">>=", 3);
                                     readChar();
                                 }
                                 else
                                 {
-                                    outtok = AstToken(AstToken::TOK_RSHIFT, ">>", 2);
+                                    outtok = AstToken(AstToken::Type::T_RSHIFT, ">>", 2);
                                 }
                             }
                             else
                             {
-                                outtok = AstToken(AstToken::TOK_GT, ">", 1);
+                                outtok = AstToken(AstToken::Type::T_GREATERTHAN, ">", 1);
                             }
                         }
                         break;
                     case ',':
                         {
-                            outtok = AstToken(AstToken::TOK_COMMA, ",", 1);
+                            outtok = AstToken(AstToken::Type::T_COMMA, ",", 1);
                         }
                         break;
                     case ';':
                         {
-                            outtok = AstToken(AstToken::TOK_SEMICOLON, ";", 1);
+                            outtok = AstToken(AstToken::Type::T_SEMICOLON, ";", 1);
                         }
                         break;
                     case ':':
                         {
-                            outtok = AstToken(AstToken::TOK_COLON, ":", 1);
+                            outtok = AstToken(AstToken::Type::T_COLON, ":", 1);
                         }
                         break;
                     case '(':
                         {
-                            outtok = AstToken(AstToken::TOK_LPAREN, "(", 1);
+                            outtok = AstToken(AstToken::Type::T_PARENOPEN, "(", 1);
                         }
                         break;
                     case ')':
                         {
-                            outtok = AstToken(AstToken::TOK_RPAREN, ")", 1);
+                            outtok = AstToken(AstToken::Type::T_PARENCLOSE, ")", 1);
                         }
                         break;
                     case '{':
                         {
-                            outtok = AstToken(AstToken::TOK_LBRACE, "{", 1);
+                            outtok = AstToken(AstToken::Type::T_BRACEOPEN, "{", 1);
                         }
                         break;
                     case '}':
                         {
-                            outtok = AstToken(AstToken::TOK_RBRACE, "}", 1);
+                            outtok = AstToken(AstToken::Type::T_BRACECLOSE, "}", 1);
                         }
                         break;
                     case '[':
                         {
-                            outtok = AstToken(AstToken::TOK_LBRACKET, "[", 1);
+                            outtok = AstToken(AstToken::Type::T_BRACKETOPEN, "[", 1);
                         }
                         break;
                     case ']':
                         {
-                            outtok = AstToken(AstToken::TOK_RBRACKET, "]", 1);
+                            outtok = AstToken(AstToken::Type::T_BRACKETCLOSE, "]", 1);
                         }
                         break;
                     case '.':
                         {
-                            outtok = AstToken(AstToken::TOK_DOT, ".", 1);
+                            outtok = AstToken(AstToken::Type::T_DOT, ".", 1);
                         }
                         break;
                     case '?':
                         {
-                            outtok = AstToken(AstToken::TOK_QUESTION, "?", 1);
+                            outtok = AstToken(AstToken::Type::T_QUESTION, "?", 1);
                         }
                         break;
                     case '%':
                         {
                             if(peekChar() == '=')
                             {
-                                outtok = AstToken(AstToken::TOK_ASSIGNPERCENT, "%=", 2);
+                                outtok = AstToken(AstToken::Type::T_ASSIGNPERCENT, "%=", 2);
                                 readChar();
                             }
                             else
                             {
-                                outtok = AstToken(AstToken::TOK_PERCENT, "%", 1);
+                                outtok = AstToken(AstToken::Type::T_MATHMODULO, "%", 1);
                                 break;
                             }
                         }
@@ -5445,11 +5456,11 @@ class AstLexer: public AstLexData
                             str = scanString('"', false, nullptr, &len);
                             if(str != nullptr)
                             {
-                                outtok = AstToken(AstToken::TOK_STRING, str, len);
+                                outtok = AstToken(AstToken::Type::T_STRING, str, len);
                             }
                             else
                             {
-                                outtok = AstToken(AstToken::TOK_INVALID, nullptr, 0);
+                                outtok = AstToken(AstToken::Type::T_INVALID, nullptr, 0);
                             }
                         }
                         break;
@@ -5461,11 +5472,11 @@ class AstLexer: public AstLexData
                             str = scanString('\'', false, nullptr, &len);
                             if(str != nullptr)
                             {
-                                outtok = AstToken(AstToken::TOK_STRING, str, len);
+                                outtok = AstToken(AstToken::Type::T_STRING, str, len);
                             }
                             else
                             {
-                                outtok = AstToken(AstToken::TOK_INVALID, nullptr, 0);
+                                outtok = AstToken(AstToken::Type::T_INVALID, nullptr, 0);
                             }
                         }
                         break;
@@ -5484,16 +5495,16 @@ class AstLexer: public AstLexData
                             {
                                 if(templatefound)
                                 {
-                                    outtok = AstToken(AstToken::TOK_TEMPLATESTRING, str, len);
+                                    outtok = AstToken(AstToken::Type::T_TEMPLATESTRING, str, len);
                                 }
                                 else
                                 {
-                                    outtok = AstToken(AstToken::TOK_STRING, str, len);
+                                    outtok = AstToken(AstToken::Type::T_STRING, str, len);
                                 }
                             }
                             else
                             {
-                                outtok = AstToken(AstToken::TOK_INVALID, nullptr, 0);
+                                outtok = AstToken(AstToken::Type::T_INVALID, nullptr, 0);
                             }
                         }
                         break;
@@ -5517,7 +5528,7 @@ class AstLexer: public AstLexData
                             {
                                 numberlen = 0;
                                 number = scanNumber(&numberlen);
-                                outtok = AstToken(AstToken::TOK_NUMBER, number, numberlen);
+                                outtok = AstToken(AstToken::Type::T_NUMBER, number, numberlen);
                                 outtok.m_tokpos = SourceLocation(m_file, m_line, m_column);
                                 return outtok;
                             }
@@ -5527,7 +5538,7 @@ class AstLexer: public AstLexData
                 readChar();
                 if(failed())
                 {
-                    outtok = AstToken(AstToken::TOK_INVALID, nullptr, 0);
+                    outtok = AstToken(AstToken::Type::T_INVALID, nullptr, 0);
                 }
                 m_continuetplstring = false;
                 outtok.m_tokpos = SourceLocation(m_file, m_line, m_column);
@@ -5683,23 +5694,23 @@ class AstLexer: public AstLexData
                 const char* value;
                 AstToken::Type type;
             } keywords[] = {
-                { "function", AstToken::TOK_FUNCTION },
-                { "const", AstToken::TOK_CONST },
-                { "var", AstToken::TOK_VAR },
-                { "let", AstToken::TOK_VAR },
-                { "true", AstToken::TOK_TRUE },
-                { "false", AstToken::TOK_FALSE },
-                { "if", AstToken::TOK_IF },
-                { "else", AstToken::TOK_ELSE },
-                { "return", AstToken::TOK_RETURN },
-                { "while", AstToken::TOK_WHILE },
-                { "break", AstToken::TOK_BREAK },
-                { "for", AstToken::TOK_FOR },
-                { "in", AstToken::TOK_IN },
-                { "continue", AstToken::TOK_CONTINUE },
-                { "null", AstToken::TOK_NULL },
-                { "import", AstToken::TOK_IMPORT },
-                { "recover", AstToken::TOK_RECOVER },
+                { "function", AstToken::Type::T_KWFUNCTION },
+                { "const", AstToken::Type::T_KWCONST },
+                { "var", AstToken::Type::T_KWVAR },
+                { "let", AstToken::Type::T_KWVAR },
+                { "true", AstToken::Type::T_KWTRUE },
+                { "false", AstToken::Type::T_KWFALSE },
+                { "if", AstToken::Type::T_KWIF },
+                { "else", AstToken::Type::T_KWELSE },
+                { "return", AstToken::Type::T_KWRETURN },
+                { "while", AstToken::Type::T_KWWHILE },
+                { "break", AstToken::Type::T_KWBREAK },
+                { "for", AstToken::Type::T_KWFOR },
+                { "in", AstToken::Type::T_KWIN },
+                { "continue", AstToken::Type::T_KWCONTINUE },
+                { "null", AstToken::Type::T_KWNULL },
+                { "import", AstToken::Type::T_KWIMPORT },
+                { "recover", AstToken::Type::T_KWRECOVER },
                 { nullptr, (AstToken::Type)0}
             };
             for(i = 0; keywords[i].value != nullptr; i++)
@@ -5710,7 +5721,7 @@ class AstLexer: public AstLexData
                     return keywords[i].type;
                 }
             }
-            return AstToken::TOK_IDENT;
+            return AstToken::Type::T_IDENT;
         }
 
         void skipSpace()
@@ -5768,7 +5779,7 @@ class AstParser
         using AssocParseRightFN = bool(*)(AstParser*, AstExpression**);
         using AssocParseLeftFN = bool (*)(AstParser*, AstExpression**, AstExpression*);
 
-        enum Precedence
+        enum class Precedence
         {
             MC_ASTPREC_LOWEST = 0,
             MC_ASTPREC_ASSIGN,
@@ -5809,20 +5820,7 @@ class AstParser
         template<typename TargetTyp>
         static TargetTyp* makeAstItemBaseExpression(AstExpression::ExprType type)
         {
-            /*
-struct A {};
-struct B : A {};
-
-int main() {
-    A* a = new A();
-    A* b = new B();
-  std::cout << std::boolalpha;
-  std::cout << "A, B: " << std::is_base_of<A,B>::value << std::endl;
-  
-            */
-            #if 0
-            assert((std::is_base_of<AstExpression, TargetTyp>::value));
-            #endif
+            static_assert((std::is_base_of<AstExpression, TargetTyp>::value));
             auto res = Memory::make<TargetTyp>();
             res->m_exprtype = type;
             res->m_exprpos = SourceLocation::Invalid();
@@ -5959,7 +5957,7 @@ int main() {
 
         static AstExpression* makeAstItemInlineCall(AstExpression* expr, const char* fname)
         {
-            auto fntoken = AstToken(AstToken::TOK_IDENT, fname, mc_util_strlen(fname));
+            auto fntoken = AstToken(AstToken::Type::T_IDENT, fname, mc_util_strlen(fname));
             fntoken.m_tokpos = expr->m_exprpos;
             auto ident = Memory::make<AstExpression::Identifier>(fntoken);
             ident->m_exprpos = fntoken.m_tokpos;
@@ -6061,132 +6059,132 @@ int main() {
         {
             switch(tk)
             {
-                case AstToken::TOK_EQ:
-                case AstToken::TOK_NOTEQ:
-                    return MC_ASTPREC_EQUALS;
-                case AstToken::TOK_LT:
-                case AstToken::TOK_LTE:
-                case AstToken::TOK_GT:
-                case AstToken::TOK_GTE:
-                    return MC_ASTPREC_LESSGREATER;
-                case AstToken::TOK_PLUS:
-                case AstToken::TOK_UNARYMINUS:
-                case AstToken::TOK_UNARYBINNOT:
-                    return MC_ASTPREC_SUM;
-                case AstToken::TOK_SLASH:
-                case AstToken::TOK_ASTERISK:
-                case AstToken::TOK_PERCENT:
-                    return MC_ASTPREC_PRODUCT;
-                case AstToken::TOK_LPAREN:
-                case AstToken::TOK_LBRACKET:
-                    return MC_ASTPREC_POSTFIX;
-                case AstToken::TOK_ASSIGN:
-                case AstToken::TOK_ASSIGNPLUS:
-                case AstToken::TOK_ASSIGNMINUS:
-                case AstToken::TOK_ASSIGNASTERISK:
-                case AstToken::TOK_ASSIGNSLASH:
-                case AstToken::TOK_ASSIGNPERCENT:
-                case AstToken::TOK_ASSIGNBINAND:
-                case AstToken::TOK_ASSIGNBINOR:
-                case AstToken::TOK_ASSIGNBINXOR:
-                case AstToken::TOK_ASSIGNLSHIFT:
-                case AstToken::TOK_ASSIGNRSHIFT:
-                    return MC_ASTPREC_ASSIGN;
-                case AstToken::TOK_DOT:
-                    return MC_ASTPREC_POSTFIX;
-                case AstToken::TOK_AND:
-                    return MC_ASTPREC_LOGICALAND;
-                case AstToken::TOK_OR:
-                    return MC_ASTPREC_LOGICALOR;
-                case AstToken::TOK_BINOR:
-                    return MC_ASTPREC_BINOR;
-                case AstToken::TOK_BINXOR:
-                    return MC_ASTPREC_BINXOR;
-                case AstToken::TOK_BINAND:
-                    return MC_ASTPREC_BINAND;
-                case AstToken::TOK_LSHIFT:
-                case AstToken::TOK_RSHIFT:
-                    return MC_ASTPREC_SHIFT;
-                case AstToken::TOK_QUESTION:
-                    return MC_ASTPREC_TERNARY;
-                case AstToken::TOK_PLUSPLUS:
-                case AstToken::TOK_MINUSMINUS:
-                    return MC_ASTPREC_INCDEC;
+                case AstToken::Type::T_EQUAL:
+                case AstToken::Type::T_NOTEQ:
+                    return Precedence::MC_ASTPREC_EQUALS;
+                case AstToken::Type::T_LESSTHAN:
+                case AstToken::Type::T_LESSEQUAL:
+                case AstToken::Type::T_GREATERTHAN:
+                case AstToken::Type::T_GREATEREQUAL:
+                    return Precedence::MC_ASTPREC_LESSGREATER;
+                case AstToken::Type::T_PLUS:
+                case AstToken::Type::T_UNARYMINUS:
+                case AstToken::Type::T_UNARYBINNOT:
+                    return Precedence::MC_ASTPREC_SUM;
+                case AstToken::Type::T_SLASH:
+                case AstToken::Type::T_ASTERISK:
+                case AstToken::Type::T_MATHMODULO:
+                    return Precedence::MC_ASTPREC_PRODUCT;
+                case AstToken::Type::T_PARENOPEN:
+                case AstToken::Type::T_BRACKETOPEN:
+                    return Precedence::MC_ASTPREC_POSTFIX;
+                case AstToken::Type::T_ASSIGN:
+                case AstToken::Type::T_ASSIGNPLUS:
+                case AstToken::Type::T_ASSIGNMINUS:
+                case AstToken::Type::T_ASSIGNASTERISK:
+                case AstToken::Type::T_ASSIGNSLASH:
+                case AstToken::Type::T_ASSIGNPERCENT:
+                case AstToken::Type::T_ASSIGNBINAND:
+                case AstToken::Type::T_ASSIGNBINOR:
+                case AstToken::Type::T_ASSIGNBINXOR:
+                case AstToken::Type::T_ASSIGNLSHIFT:
+                case AstToken::Type::T_ASSIGNRSHIFT:
+                    return Precedence::MC_ASTPREC_ASSIGN;
+                case AstToken::Type::T_DOT:
+                    return Precedence::MC_ASTPREC_POSTFIX;
+                case AstToken::Type::T_LOGICALAND:
+                    return Precedence::MC_ASTPREC_LOGICALAND;
+                case AstToken::Type::T_LOGICALOR:
+                    return Precedence::MC_ASTPREC_LOGICALOR;
+                case AstToken::Type::T_BINOR:
+                    return Precedence::MC_ASTPREC_BINOR;
+                case AstToken::Type::T_BINXOR:
+                    return Precedence::MC_ASTPREC_BINXOR;
+                case AstToken::Type::T_BINAND:
+                    return Precedence::MC_ASTPREC_BINAND;
+                case AstToken::Type::T_LSHIFT:
+                case AstToken::Type::T_RSHIFT:
+                    return Precedence::MC_ASTPREC_SHIFT;
+                case AstToken::Type::T_QUESTION:
+                    return Precedence::MC_ASTPREC_TERNARY;
+                case AstToken::Type::T_PLUSPLUS:
+                case AstToken::Type::T_MINUSMINUS:
+                    return Precedence::MC_ASTPREC_INCDEC;
                 default:
                     break;
             }
-            return MC_ASTPREC_LOWEST;
+            return Precedence::MC_ASTPREC_LOWEST;
         }
 
         static AstExpression::MathOpType tokenToMathOP(AstToken::Type tk)
         {
             switch(tk)
             {
-                case AstToken::TOK_ASSIGN:
+                case AstToken::Type::T_ASSIGN:
                     return AstExpression::MATHOP_ASSIGN;
-                case AstToken::TOK_PLUS:
+                case AstToken::Type::T_PLUS:
                     return AstExpression::MATHOP_PLUS;
-                case AstToken::TOK_UNARYMINUS:
+                case AstToken::Type::T_UNARYMINUS:
                     return AstExpression::MATHOP_MINUS;
-                case AstToken::TOK_UNARYBINNOT:
+                case AstToken::Type::T_UNARYBINNOT:
                     return AstExpression::MATHOP_BINNOT;
-                case AstToken::TOK_BANG:
+                case AstToken::Type::T_BANG:
                     return AstExpression::MATHOP_BANG;
-                case AstToken::TOK_ASTERISK:
+                case AstToken::Type::T_ASTERISK:
                     return AstExpression::MATHOP_ASTERISK;
-                case AstToken::TOK_SLASH:
+                case AstToken::Type::T_SLASH:
                     return AstExpression::MATHOP_SLASH;
-                case AstToken::TOK_LT:
+                case AstToken::Type::T_LESSTHAN:
                     return AstExpression::MATHOP_LT;
-                case AstToken::TOK_LTE:
+                case AstToken::Type::T_LESSEQUAL:
                     return AstExpression::MATHOP_LTE;
-                case AstToken::TOK_GT:
+                case AstToken::Type::T_GREATERTHAN:
                     return AstExpression::MATHOP_GT;
-                case AstToken::TOK_GTE:
+                case AstToken::Type::T_GREATEREQUAL:
                     return AstExpression::MATHOP_GTE;
-                case AstToken::TOK_EQ:
+                case AstToken::Type::T_EQUAL:
                     return AstExpression::MATHOP_EQ;
-                case AstToken::TOK_NOTEQ:
+                case AstToken::Type::T_NOTEQ:
                     return AstExpression::MATHOP_NOTEQ;
-                case AstToken::TOK_PERCENT:
+                case AstToken::Type::T_MATHMODULO:
                     return AstExpression::MATHOP_MODULUS;
-                case AstToken::TOK_AND:
+                case AstToken::Type::T_LOGICALAND:
                     return AstExpression::MATHOP_LOGICALAND;
-                case AstToken::TOK_OR:
+                case AstToken::Type::T_LOGICALOR:
                     return AstExpression::MATHOP_LOGICALOR;
-                case AstToken::TOK_ASSIGNPLUS:
+                case AstToken::Type::T_ASSIGNPLUS:
                     return AstExpression::MATHOP_PLUS;
-                case AstToken::TOK_ASSIGNMINUS:
+                case AstToken::Type::T_ASSIGNMINUS:
                     return AstExpression::MATHOP_MINUS;
-                case AstToken::TOK_ASSIGNASTERISK:
+                case AstToken::Type::T_ASSIGNASTERISK:
                     return AstExpression::MATHOP_ASTERISK;
-                case AstToken::TOK_ASSIGNSLASH:
+                case AstToken::Type::T_ASSIGNSLASH:
                     return AstExpression::MATHOP_SLASH;
-                case AstToken::TOK_ASSIGNPERCENT:
+                case AstToken::Type::T_ASSIGNPERCENT:
                     return AstExpression::MATHOP_MODULUS;
-                case AstToken::TOK_ASSIGNBINAND:
+                case AstToken::Type::T_ASSIGNBINAND:
                     return AstExpression::MATHOP_BINAND;
-                case AstToken::TOK_ASSIGNBINOR:
+                case AstToken::Type::T_ASSIGNBINOR:
                     return AstExpression::MATHOP_BINOR;
-                case AstToken::TOK_ASSIGNBINXOR:
+                case AstToken::Type::T_ASSIGNBINXOR:
                     return AstExpression::MATHOP_BINXOR;
-                case AstToken::TOK_ASSIGNLSHIFT:
+                case AstToken::Type::T_ASSIGNLSHIFT:
                     return AstExpression::MATHOP_LSHIFT;
-                case AstToken::TOK_ASSIGNRSHIFT:
+                case AstToken::Type::T_ASSIGNRSHIFT:
                     return AstExpression::MATHOP_RSHIFT;
-                case AstToken::TOK_BINAND:
+                case AstToken::Type::T_BINAND:
                     return AstExpression::MATHOP_BINAND;
-                case AstToken::TOK_BINOR:
+                case AstToken::Type::T_BINOR:
                     return AstExpression::MATHOP_BINOR;
-                case AstToken::TOK_BINXOR:
+                case AstToken::Type::T_BINXOR:
                     return AstExpression::MATHOP_BINXOR;
-                case AstToken::TOK_LSHIFT:
+                case AstToken::Type::T_LSHIFT:
                     return AstExpression::MATHOP_LSHIFT;
-                case AstToken::TOK_RSHIFT:
+                case AstToken::Type::T_RSHIFT:
                     return AstExpression::MATHOP_RSHIFT;
-                case AstToken::TOK_PLUSPLUS:
+                case AstToken::Type::T_PLUSPLUS:
                     return AstExpression::MATHOP_PLUS;
-                case AstToken::TOK_MINUSMINUS:
+                case AstToken::Type::T_MINUSMINUS:
                     return AstExpression::MATHOP_MINUS;
                 default:
                     {
@@ -6385,23 +6383,23 @@ int main() {
         {
             switch(t)
             {
-                case AstToken::TOK_IDENT: return callback_parseident;
-                case AstToken::TOK_NUMBER: return callback_parseliteralnumber;
-                case AstToken::TOK_TRUE: return callback_parseliteralbool;
-                case AstToken::TOK_FALSE: return callback_parseliteralbool;
-                case AstToken::TOK_STRING: return callback_parseliteralstring;
-                case AstToken::TOK_TEMPLATESTRING: return callback_parseliteraltemplatestring;
-                case AstToken::TOK_NULL: return callback_parseliteralnull;
-                case AstToken::TOK_BANG: return callback_parseprefixexpr;
-                case AstToken::TOK_UNARYMINUS: return callback_parseprefixexpr;
-                case AstToken::TOK_UNARYBINNOT: return callback_parseprefixexpr;
-                case AstToken::TOK_LPAREN: return callback_parsegroupedexpr;
-                case AstToken::TOK_FUNCTION: return callback_parseliteralfunction;
-                case AstToken::TOK_LBRACKET: return callback_parseliteralarray;
-                case AstToken::TOK_LBRACE: return callback_parseliteralmap;
-                case AstToken::TOK_PLUSPLUS: return callback_parseincdecprefixexpr;
-                case AstToken::TOK_MINUSMINUS: return callback_parseincdecprefixexpr;
-                case AstToken::TOK_RECOVER: return callback_parserecoverstmt;
+                case AstToken::Type::T_IDENT: return callback_parseident;
+                case AstToken::Type::T_NUMBER: return callback_parseliteralnumber;
+                case AstToken::Type::T_KWTRUE: return callback_parseliteralbool;
+                case AstToken::Type::T_KWFALSE: return callback_parseliteralbool;
+                case AstToken::Type::T_STRING: return callback_parseliteralstring;
+                case AstToken::Type::T_TEMPLATESTRING: return callback_parseliteraltemplatestring;
+                case AstToken::Type::T_KWNULL: return callback_parseliteralnull;
+                case AstToken::Type::T_BANG: return callback_parseprefixexpr;
+                case AstToken::Type::T_UNARYMINUS: return callback_parseprefixexpr;
+                case AstToken::Type::T_UNARYBINNOT: return callback_parseprefixexpr;
+                case AstToken::Type::T_PARENOPEN: return callback_parsegroupedexpr;
+                case AstToken::Type::T_KWFUNCTION: return callback_parseliteralfunction;
+                case AstToken::Type::T_BRACKETOPEN: return callback_parseliteralarray;
+                case AstToken::Type::T_BRACEOPEN: return callback_parseliteralmap;
+                case AstToken::Type::T_PLUSPLUS: return callback_parseincdecprefixexpr;
+                case AstToken::Type::T_MINUSMINUS: return callback_parseincdecprefixexpr;
+                case AstToken::Type::T_KWRECOVER: return callback_parserecoverstmt;
                 default:
                     break;
             }
@@ -6412,41 +6410,41 @@ int main() {
         {
             switch(t)
             {
-                case AstToken::TOK_PLUS: return callback_parseinfixexpr;
-                case AstToken::TOK_UNARYMINUS: return callback_parseinfixexpr;
-                case AstToken::TOK_SLASH: return callback_parseinfixexpr;
-                case AstToken::TOK_ASTERISK: return callback_parseinfixexpr;
-                case AstToken::TOK_PERCENT: return callback_parseinfixexpr;
-                case AstToken::TOK_EQ: return callback_parseinfixexpr;
-                case AstToken::TOK_NOTEQ: return callback_parseinfixexpr;
-                case AstToken::TOK_LT: return callback_parseinfixexpr;
-                case AstToken::TOK_LTE: return callback_parseinfixexpr;
-                case AstToken::TOK_GT: return callback_parseinfixexpr;
-                case AstToken::TOK_GTE: return callback_parseinfixexpr;
-                case AstToken::TOK_LPAREN: return callback_parsecallexpr;
-                case AstToken::TOK_LBRACKET: return callback_parseindexexpr;
-                case AstToken::TOK_ASSIGN: return callback_parseassignexpr;
-                case AstToken::TOK_ASSIGNPLUS: return callback_parseassignexpr;
-                case AstToken::TOK_ASSIGNMINUS: return callback_parseassignexpr;
-                case AstToken::TOK_ASSIGNSLASH: return callback_parseassignexpr;
-                case AstToken::TOK_ASSIGNASTERISK: return callback_parseassignexpr;
-                case AstToken::TOK_ASSIGNPERCENT: return callback_parseassignexpr;
-                case AstToken::TOK_ASSIGNBINAND: return callback_parseassignexpr;
-                case AstToken::TOK_ASSIGNBINOR: return callback_parseassignexpr;
-                case AstToken::TOK_ASSIGNBINXOR: return callback_parseassignexpr;
-                case AstToken::TOK_ASSIGNLSHIFT: return callback_parseassignexpr;
-                case AstToken::TOK_ASSIGNRSHIFT: return callback_parseassignexpr;
-                case AstToken::TOK_DOT: return callback_parsedotexpression;
-                case AstToken::TOK_AND: return callback_parselogicalexpr;
-                case AstToken::TOK_OR: return callback_parselogicalexpr;
-                case AstToken::TOK_BINAND: return callback_parseinfixexpr;
-                case AstToken::TOK_BINOR: return callback_parseinfixexpr;
-                case AstToken::TOK_BINXOR: return callback_parseinfixexpr;
-                case AstToken::TOK_LSHIFT: return callback_parseinfixexpr;
-                case AstToken::TOK_RSHIFT: return callback_parseinfixexpr;
-                case AstToken::TOK_QUESTION: return callback_parseternaryexpr;
-                case AstToken::TOK_PLUSPLUS: return callback_parseincdecpostfixexpr;
-                case AstToken::TOK_MINUSMINUS: return callback_parseincdecpostfixexpr;
+                case AstToken::Type::T_PLUS: return callback_parseinfixexpr;
+                case AstToken::Type::T_UNARYMINUS: return callback_parseinfixexpr;
+                case AstToken::Type::T_SLASH: return callback_parseinfixexpr;
+                case AstToken::Type::T_ASTERISK: return callback_parseinfixexpr;
+                case AstToken::Type::T_MATHMODULO: return callback_parseinfixexpr;
+                case AstToken::Type::T_EQUAL: return callback_parseinfixexpr;
+                case AstToken::Type::T_NOTEQ: return callback_parseinfixexpr;
+                case AstToken::Type::T_LESSTHAN: return callback_parseinfixexpr;
+                case AstToken::Type::T_LESSEQUAL: return callback_parseinfixexpr;
+                case AstToken::Type::T_GREATERTHAN: return callback_parseinfixexpr;
+                case AstToken::Type::T_GREATEREQUAL: return callback_parseinfixexpr;
+                case AstToken::Type::T_PARENOPEN: return callback_parsecallexpr;
+                case AstToken::Type::T_BRACKETOPEN: return callback_parseindexexpr;
+                case AstToken::Type::T_ASSIGN: return callback_parseassignexpr;
+                case AstToken::Type::T_ASSIGNPLUS: return callback_parseassignexpr;
+                case AstToken::Type::T_ASSIGNMINUS: return callback_parseassignexpr;
+                case AstToken::Type::T_ASSIGNSLASH: return callback_parseassignexpr;
+                case AstToken::Type::T_ASSIGNASTERISK: return callback_parseassignexpr;
+                case AstToken::Type::T_ASSIGNPERCENT: return callback_parseassignexpr;
+                case AstToken::Type::T_ASSIGNBINAND: return callback_parseassignexpr;
+                case AstToken::Type::T_ASSIGNBINOR: return callback_parseassignexpr;
+                case AstToken::Type::T_ASSIGNBINXOR: return callback_parseassignexpr;
+                case AstToken::Type::T_ASSIGNLSHIFT: return callback_parseassignexpr;
+                case AstToken::Type::T_ASSIGNRSHIFT: return callback_parseassignexpr;
+                case AstToken::Type::T_DOT: return callback_parsedotexpression;
+                case AstToken::Type::T_LOGICALAND: return callback_parselogicalexpr;
+                case AstToken::Type::T_LOGICALOR: return callback_parselogicalexpr;
+                case AstToken::Type::T_BINAND: return callback_parseinfixexpr;
+                case AstToken::Type::T_BINOR: return callback_parseinfixexpr;
+                case AstToken::Type::T_BINXOR: return callback_parseinfixexpr;
+                case AstToken::Type::T_LSHIFT: return callback_parseinfixexpr;
+                case AstToken::Type::T_RSHIFT: return callback_parseinfixexpr;
+                case AstToken::Type::T_QUESTION: return callback_parseternaryexpr;
+                case AstToken::Type::T_PLUSPLUS: return callback_parseincdecpostfixexpr;
+                case AstToken::Type::T_MINUSMINUS: return callback_parseincdecpostfixexpr;
                 default:
                     break;
             }
@@ -6472,21 +6470,21 @@ int main() {
             bool assignable;
             AstExpression* value;
             value = nullptr;
-            assignable = m_lexer.currentTokenIs(AstToken::TOK_VAR);
+            assignable = m_lexer.currentTokenIs(AstToken::Type::T_KWVAR);
             m_lexer.nextToken();
-            if(!m_lexer.expectCurrent(AstToken::TOK_IDENT))
+            if(!m_lexer.expectCurrent(AstToken::Type::T_IDENT))
             {
                 return false;
             }
             auto nameident = Memory::make<AstExpression::Identifier>(m_lexer.m_currtoken);
             m_lexer.nextToken();
-            if(!m_lexer.currentTokenIs(AstToken::TOK_ASSIGN))
+            if(!m_lexer.currentTokenIs(AstToken::Type::T_ASSIGN))
             {
                 value = makeAstItemLiteralNull();
                 goto finish;
             }
             m_lexer.nextToken();
-            if(!parseExpression(&value, MC_ASTPREC_LOWEST))
+            if(!parseExpression(&value, Precedence::MC_ASTPREC_LOWEST))
             {
                 goto err;
             }
@@ -6511,28 +6509,26 @@ int main() {
         bool parseIfStmt(AstExpression** res)
         {
             bool ok;
-            bool havealt;
             ExprIfCase* cond;
             ExprIfCase* elif;
             AstExpression::CodeBlock* alternative;
             AstExpression::CodeBlock* emptyblocktop = nullptr;
             GenericList<ExprIfCase*> cases;
             (void)ok;
-            havealt = false;
             alternative = nullptr;
             m_lexer.nextToken();
-            if(!m_lexer.expectCurrent(AstToken::TOK_LPAREN))
+            if(!m_lexer.expectCurrent(AstToken::Type::T_PARENOPEN))
             {
                 goto err;
             }
             m_lexer.nextToken();
             cond = Memory::make<ExprIfCase>(nullptr, emptyblocktop);
             ok = cases.push(cond);
-            if(!parseExpression(&cond->m_ifcond, MC_ASTPREC_LOWEST))
+            if(!parseExpression(&cond->m_ifcond, Precedence::MC_ASTPREC_LOWEST))
             {
                 goto err;
             }
-            if(!m_lexer.expectCurrent(AstToken::TOK_RPAREN))
+            if(!m_lexer.expectCurrent(AstToken::Type::T_PARENCLOSE))
             {
                 goto err;
             }
@@ -6541,25 +6537,25 @@ int main() {
             {
                 goto err;
             }
-            while(m_lexer.currentTokenIs(AstToken::TOK_ELSE))
+            while(m_lexer.currentTokenIs(AstToken::Type::T_KWELSE))
             {
                 AstExpression::CodeBlock* emptyblockinner = nullptr;
                 m_lexer.nextToken();
-                if(m_lexer.currentTokenIs(AstToken::TOK_IF))
+                if(m_lexer.currentTokenIs(AstToken::Type::T_KWIF))
                 {
                     m_lexer.nextToken();
-                    if(!m_lexer.expectCurrent(AstToken::TOK_LPAREN))
+                    if(!m_lexer.expectCurrent(AstToken::Type::T_PARENOPEN))
                     {
                         goto err;
                     }
                     m_lexer.nextToken();
                     elif = Memory::make<ExprIfCase>(nullptr, emptyblockinner);
                     ok = cases.push(elif);
-                    if(!parseExpression(&elif->m_ifcond, MC_ASTPREC_LOWEST))
+                    if(!parseExpression(&elif->m_ifcond, Precedence::MC_ASTPREC_LOWEST))
                     {
                         goto err;
                     }
-                    if(!m_lexer.expectCurrent(AstToken::TOK_RPAREN))
+                    if(!m_lexer.expectCurrent(AstToken::Type::T_PARENCLOSE))
                     {
                         goto err;
                     }
@@ -6576,7 +6572,6 @@ int main() {
                     {
                         goto err;
                     }
-                    havealt = true;
                 }
             }
             *res = makeAstItemIfStmt(cases, alternative);
@@ -6592,9 +6587,9 @@ int main() {
             AstExpression* expr;
             expr = nullptr;
             m_lexer.nextToken();
-            if(!m_lexer.currentTokenIs(AstToken::TOK_SEMICOLON) && !m_lexer.currentTokenIs(AstToken::TOK_RBRACE) && !m_lexer.currentTokenIs(AstToken::TOK_EOF))
+            if(!m_lexer.currentTokenIs(AstToken::Type::T_SEMICOLON) && !m_lexer.currentTokenIs(AstToken::Type::T_BRACECLOSE) && !m_lexer.currentTokenIs(AstToken::Type::T_EOF))
             {
-                if(!parseExpression(&expr, MC_ASTPREC_LOWEST))
+                if(!parseExpression(&expr, Precedence::MC_ASTPREC_LOWEST))
                 {
                     return false;
                 }
@@ -6606,7 +6601,7 @@ int main() {
         bool parseExprStmt(AstExpression** res)
         {
             AstExpression* expr;
-            if(!parseExpression(&expr, MC_ASTPREC_LOWEST))
+            if(!parseExpression(&expr, Precedence::MC_ASTPREC_LOWEST))
             {
                 return false;
             }
@@ -6623,16 +6618,16 @@ int main() {
             AstExpression::CodeBlock* body;
             test = nullptr;
             m_lexer.nextToken();
-            if(!m_lexer.expectCurrent(AstToken::TOK_LPAREN))
+            if(!m_lexer.expectCurrent(AstToken::Type::T_PARENOPEN))
             {
                 goto err;
             }
             m_lexer.nextToken();
-            if(!parseExpression(&test, MC_ASTPREC_LOWEST))
+            if(!parseExpression(&test, Precedence::MC_ASTPREC_LOWEST))
             {
                 goto err;
             }
-            if(!m_lexer.expectCurrent(AstToken::TOK_RPAREN))
+            if(!m_lexer.expectCurrent(AstToken::Type::T_PARENCLOSE))
             {
                 goto err;
             }
@@ -6688,7 +6683,7 @@ int main() {
         {
             char* processedname;
             m_lexer.nextToken();
-            if(!m_lexer.expectCurrent(AstToken::TOK_STRING))
+            if(!m_lexer.expectCurrent(AstToken::Type::T_STRING))
             {
                 return false;
             }
@@ -6708,18 +6703,18 @@ int main() {
             AstExpression::CodeBlock* body;
             body = nullptr;
             m_lexer.nextToken();
-            if(!m_lexer.expectCurrent(AstToken::TOK_LPAREN))
+            if(!m_lexer.expectCurrent(AstToken::Type::T_PARENOPEN))
             {
                 return false;
             }
             m_lexer.nextToken();
-            if(!m_lexer.expectCurrent(AstToken::TOK_IDENT))
+            if(!m_lexer.expectCurrent(AstToken::Type::T_IDENT))
             {
                 return false;
             }
             auto eid = Memory::make<AstExpression::Identifier>(m_lexer.m_currtoken);
             m_lexer.nextToken();
-            if(!m_lexer.expectCurrent(AstToken::TOK_RPAREN))
+            if(!m_lexer.expectCurrent(AstToken::Type::T_PARENCLOSE))
             {
                 goto err;
             }
@@ -6739,12 +6734,12 @@ int main() {
         bool parseLoopForBaseStmt(AstExpression** res)
         {
             m_lexer.nextToken();
-            if(!m_lexer.expectCurrent(AstToken::TOK_LPAREN))
+            if(!m_lexer.expectCurrent(AstToken::Type::T_PARENOPEN))
             {
                 return false;
             }
             m_lexer.nextToken();
-            if(m_lexer.currentTokenIs(AstToken::TOK_IDENT) && m_lexer.peekTokenIs(AstToken::TOK_IN))
+            if(m_lexer.currentTokenIs(AstToken::Type::T_IDENT) && m_lexer.peekTokenIs(AstToken::Type::T_KWIN))
             {
                 return parseLoopForeachStmt(res);
             }
@@ -6759,16 +6754,16 @@ int main() {
             source = nullptr;
             auto iteratorident = Memory::make<AstExpression::Identifier>(m_lexer.m_currtoken);
             m_lexer.nextToken();
-            if(!m_lexer.expectCurrent(AstToken::TOK_IN))
+            if(!m_lexer.expectCurrent(AstToken::Type::T_KWIN))
             {
                 goto err;
             }
             m_lexer.nextToken();
-            if(!parseExpression(&source, MC_ASTPREC_LOWEST))
+            if(!parseExpression(&source, Precedence::MC_ASTPREC_LOWEST))
             {
                 goto err;
             }
-            if(!m_lexer.expectCurrent(AstToken::TOK_RPAREN))
+            if(!m_lexer.expectCurrent(AstToken::Type::T_PARENCLOSE))
             {
                 goto err;
             }
@@ -6795,7 +6790,7 @@ int main() {
             init = nullptr;
             test = nullptr;
             update = nullptr;
-            if(!m_lexer.currentTokenIs(AstToken::TOK_SEMICOLON))
+            if(!m_lexer.currentTokenIs(AstToken::Type::T_SEMICOLON))
             {
                 if(!parseStatement(&init))
                 {
@@ -6806,31 +6801,31 @@ int main() {
                     m_prserrlist->pushFormat(Error::ERRTYP_PARSING, init->m_exprpos, "expected a definition or expression as 'for' loop init clause");
                     goto err;
                 }
-                if(!m_lexer.expectCurrent(AstToken::TOK_SEMICOLON))
+                if(!m_lexer.expectCurrent(AstToken::Type::T_SEMICOLON))
                 {
                     goto err;
                 }
             }
             m_lexer.nextToken();
-            if(!m_lexer.currentTokenIs(AstToken::TOK_SEMICOLON))
+            if(!m_lexer.currentTokenIs(AstToken::Type::T_SEMICOLON))
             {
-                if(!parseExpression(&test, MC_ASTPREC_LOWEST))
+                if(!parseExpression(&test, Precedence::MC_ASTPREC_LOWEST))
                 {
                     goto err;
                 }
-                if(!m_lexer.expectCurrent(AstToken::TOK_SEMICOLON))
+                if(!m_lexer.expectCurrent(AstToken::Type::T_SEMICOLON))
                 {
                     goto err;
                 }
             }
             m_lexer.nextToken();
-            if(!m_lexer.currentTokenIs(AstToken::TOK_RPAREN))
+            if(!m_lexer.currentTokenIs(AstToken::Type::T_PARENCLOSE))
             {
-                if(!parseExpression(&update, MC_ASTPREC_LOWEST))
+                if(!parseExpression(&update, Precedence::MC_ASTPREC_LOWEST))
                 {
                     goto err;
                 }
-                if(!m_lexer.expectCurrent(AstToken::TOK_RPAREN))
+                if(!m_lexer.expectCurrent(AstToken::Type::T_PARENCLOSE))
                 {
                     goto err;
                 }
@@ -6857,20 +6852,20 @@ int main() {
             GenericList<AstExpression*> statements;
             (void)ok;
             expr = nullptr;
-            if(!m_lexer.expectCurrent(AstToken::TOK_LBRACE))
+            if(!m_lexer.expectCurrent(AstToken::Type::T_BRACEOPEN))
             {
                 return false;
             }
             m_lexer.nextToken();
             m_parsedepth++;
-            while(!m_lexer.currentTokenIs(AstToken::TOK_RBRACE))
+            while(!m_lexer.currentTokenIs(AstToken::Type::T_BRACECLOSE))
             {
-                if(m_lexer.currentTokenIs(AstToken::TOK_EOF))
+                if(m_lexer.currentTokenIs(AstToken::Type::T_EOF))
                 {
                     m_prserrlist->pushFormat(Error::ERRTYP_PARSING, m_lexer.m_currtoken.m_tokpos, "unexpected EOF");
                     goto err;
                 }
-                if(m_lexer.currentTokenIs(AstToken::TOK_SEMICOLON))
+                if(m_lexer.currentTokenIs(AstToken::Type::T_SEMICOLON))
                 {
                     m_lexer.nextToken();
                     continue;
@@ -6900,7 +6895,7 @@ int main() {
             AstExpression* newleftexpr;
             AstExpression* leftexpr;
             pos = m_lexer.m_currtoken.m_tokpos;
-            if(m_lexer.m_currtoken.type() == AstToken::TOK_INVALID)
+            if(m_lexer.m_currtoken.type() == AstToken::Type::T_INVALID)
             {
                 m_prserrlist->pushFormat(Error::ERRTYP_PARSING, m_lexer.m_currtoken.m_tokpos, "illegal token");
                 return false;
@@ -6918,7 +6913,7 @@ int main() {
                 return false;
             }
             leftexpr->m_exprpos = pos;
-            while(!m_lexer.currentTokenIs(AstToken::TOK_SEMICOLON) && prec < getPrecedence(m_lexer.m_currtoken.type()))
+            while(!m_lexer.currentTokenIs(AstToken::Type::T_SEMICOLON) && prec < getPrecedence(m_lexer.m_currtoken.type()))
             {
                 parseleftassoc = getLeftAssocParseFunc(m_lexer.m_currtoken.m_toktype);
                 if(parseleftassoc == nullptr)
@@ -6944,7 +6939,7 @@ int main() {
             AstExpression* expr;
             expr = nullptr;
             m_lexer.nextToken();
-            if(!parseExpression(&expr, MC_ASTPREC_LOWEST) || !m_lexer.expectCurrent(AstToken::TOK_RPAREN))
+            if(!parseExpression(&expr, Precedence::MC_ASTPREC_LOWEST) || !m_lexer.expectCurrent(AstToken::Type::T_PARENCLOSE))
             {
                 AstUtilDestroyExpression(expr);
                 return false;
@@ -6958,17 +6953,17 @@ int main() {
         {
             bool ok;
             (void)ok;
-            if(!m_lexer.expectCurrent(AstToken::TOK_LPAREN))
+            if(!m_lexer.expectCurrent(AstToken::Type::T_PARENOPEN))
             {
                 return false;
             }
             m_lexer.nextToken();
-            if(m_lexer.currentTokenIs(AstToken::TOK_RPAREN))
+            if(m_lexer.currentTokenIs(AstToken::Type::T_PARENCLOSE))
             {
                 m_lexer.nextToken();
                 return true;
             }
-            if(!m_lexer.expectCurrent(AstToken::TOK_IDENT))
+            if(!m_lexer.expectCurrent(AstToken::Type::T_IDENT))
             {
                 return false;
             }
@@ -6976,10 +6971,10 @@ int main() {
             auto param = Memory::make<ExprFuncParam>(ident);
             ok = outparams->push(param);
             m_lexer.nextToken();
-            while(m_lexer.currentTokenIs(AstToken::TOK_COMMA))
+            while(m_lexer.currentTokenIs(AstToken::Type::T_COMMA))
             {
                 m_lexer.nextToken();
-                if(!m_lexer.expectCurrent(AstToken::TOK_IDENT))
+                if(!m_lexer.expectCurrent(AstToken::Type::T_IDENT))
                 {
                     return false;
                 }
@@ -6988,7 +6983,7 @@ int main() {
                 ok = outparams->push(param);
                 m_lexer.nextToken();
             }
-            if(!m_lexer.expectCurrent(AstToken::TOK_RPAREN))
+            if(!m_lexer.expectCurrent(AstToken::Type::T_PARENCLOSE))
             {
                 return false;
             }
@@ -7004,7 +6999,7 @@ int main() {
             value = nullptr;
             pos = m_lexer.m_currtoken.m_tokpos;
             m_lexer.nextToken();
-            if(!m_lexer.expectCurrent(AstToken::TOK_IDENT))
+            if(!m_lexer.expectCurrent(AstToken::Type::T_IDENT))
             {
                 return false;
             }
@@ -7034,17 +7029,17 @@ int main() {
             AstExpression* ift;
             AstExpression* iffalse;
             m_lexer.nextToken();
-            if(!parseExpression(&ift, MC_ASTPREC_LOWEST))
+            if(!parseExpression(&ift, Precedence::MC_ASTPREC_LOWEST))
             {
                 return false;
             }
-            if(!m_lexer.expectCurrent(AstToken::TOK_COLON))
+            if(!m_lexer.expectCurrent(AstToken::Type::T_COLON))
             {
                 AstUtilDestroyExpression(ift);
                 return false;
             }
             m_lexer.nextToken();
-            if(!parseExpression(&iffalse, MC_ASTPREC_LOWEST))
+            if(!parseExpression(&iffalse, Precedence::MC_ASTPREC_LOWEST))
             {
                 AstUtilDestroyExpression(ift);
                 return false;
@@ -7073,11 +7068,11 @@ int main() {
         {
             AstExpression* index;
             m_lexer.nextToken();
-            if(!parseExpression(&index, MC_ASTPREC_LOWEST))
+            if(!parseExpression(&index, Precedence::MC_ASTPREC_LOWEST))
             {
                 return false;
             }
-            if(!m_lexer.expectCurrent(AstToken::TOK_RBRACKET))
+            if(!m_lexer.expectCurrent(AstToken::Type::T_BRACKETCLOSE))
             {
                 AstUtilDestroyExpression(index);
                 return false;
@@ -7098,22 +7093,22 @@ int main() {
             source = nullptr;
             assigntype = m_lexer.m_currtoken.m_toktype;
             m_lexer.nextToken();
-            if(!parseExpression(&source, MC_ASTPREC_LOWEST))
+            if(!parseExpression(&source, Precedence::MC_ASTPREC_LOWEST))
             {
                 goto err;
             }
             switch(assigntype)
             {
-                case AstToken::TOK_ASSIGNPLUS:
-                case AstToken::TOK_ASSIGNMINUS:
-                case AstToken::TOK_ASSIGNSLASH:
-                case AstToken::TOK_ASSIGNASTERISK:
-                case AstToken::TOK_ASSIGNPERCENT:
-                case AstToken::TOK_ASSIGNBINAND:
-                case AstToken::TOK_ASSIGNBINOR:
-                case AstToken::TOK_ASSIGNBINXOR:
-                case AstToken::TOK_ASSIGNLSHIFT:
-                case AstToken::TOK_ASSIGNRSHIFT:
+                case AstToken::Type::T_ASSIGNPLUS:
+                case AstToken::Type::T_ASSIGNMINUS:
+                case AstToken::Type::T_ASSIGNSLASH:
+                case AstToken::Type::T_ASSIGNASTERISK:
+                case AstToken::Type::T_ASSIGNPERCENT:
+                case AstToken::Type::T_ASSIGNBINAND:
+                case AstToken::Type::T_ASSIGNBINOR:
+                case AstToken::Type::T_ASSIGNBINXOR:
+                case AstToken::Type::T_ASSIGNLSHIFT:
+                case AstToken::Type::T_ASSIGNRSHIFT:
                     {
                         op = tokenToMathOP(assigntype);
                         leftcopy = AstUtilCopyExpression(left);
@@ -7127,7 +7122,7 @@ int main() {
                         source = newsource;
                     }
                     break;
-                case AstToken::TOK_ASSIGN:
+                case AstToken::Type::T_ASSIGN:
                     {
                     }
                     break;
@@ -7159,7 +7154,7 @@ int main() {
             pos = m_lexer.m_currtoken.m_tokpos;
             m_lexer.nextToken();
             op = tokenToMathOP(operationtype);
-            if(!parseExpression(&dest, MC_ASTPREC_PREFIX))
+            if(!parseExpression(&dest, Precedence::MC_ASTPREC_PREFIX))
             {
                 goto err;
             }
@@ -7217,7 +7212,7 @@ int main() {
             AstExpression* right;
             op = tokenToMathOP(m_lexer.m_currtoken.m_toktype);
             m_lexer.nextToken();
-            if(!parseExpression(&right, MC_ASTPREC_PREFIX))
+            if(!parseExpression(&right, Precedence::MC_ASTPREC_PREFIX))
             {
                 return false;
             }
@@ -7249,7 +7244,7 @@ int main() {
             (void)ok;
             m_parsedepth++;
             body = nullptr;
-            if(m_lexer.currentTokenIs(AstToken::TOK_FUNCTION))
+            if(m_lexer.currentTokenIs(AstToken::Type::T_KWFUNCTION))
             {
                 m_lexer.nextToken();
             }
@@ -7275,7 +7270,7 @@ int main() {
         bool parseLiteralArray(AstExpression** res)
         {
             GenericList<AstExpression*> array;
-            if(!parseExprList(&array, AstToken::TOK_LBRACKET, AstToken::TOK_RBRACKET, true))
+            if(!parseExprList(&array, AstToken::Type::T_BRACKETOPEN, AstToken::Type::T_BRACKETCLOSE, true))
             {
                 return false;
             }
@@ -7294,10 +7289,10 @@ int main() {
             GenericList<AstExpression*> keys;
             GenericList<AstExpression*> values;
             m_lexer.nextToken();
-            while(!m_lexer.currentTokenIs(AstToken::TOK_RBRACE))
+            while(!m_lexer.currentTokenIs(AstToken::Type::T_BRACECLOSE))
             {
                 key = nullptr;
-                if(m_lexer.currentTokenIs(AstToken::TOK_IDENT))
+                if(m_lexer.currentTokenIs(AstToken::Type::T_IDENT))
                 {
                     str = m_lexer.m_currtoken.dupLiteralString();
                     len = mc_util_strlen(str);
@@ -7307,7 +7302,7 @@ int main() {
                 }
                 else
                 {
-                    if(!parseExpression(&key, MC_ASTPREC_LOWEST))
+                    if(!parseExpression(&key, Precedence::MC_ASTPREC_LOWEST))
                     {
                         goto err;
                     }
@@ -7329,21 +7324,21 @@ int main() {
                     }
                 }
                 ok = keys.push(key);
-                if(!m_lexer.expectCurrent(AstToken::TOK_COLON))
+                if(!m_lexer.expectCurrent(AstToken::Type::T_COLON))
                 {
                     goto err;
                 }
                 m_lexer.nextToken();
-                if(!parseExpression(&value, MC_ASTPREC_LOWEST))
+                if(!parseExpression(&value, Precedence::MC_ASTPREC_LOWEST))
                 {
                     goto err;
                 }
                 ok = values.push(value);
-                if(m_lexer.currentTokenIs(AstToken::TOK_RBRACE))
+                if(m_lexer.currentTokenIs(AstToken::Type::T_BRACECLOSE))
                 {
                     break;
                 }
-                if(!m_lexer.expectCurrent(AstToken::TOK_COMMA))
+                if(!m_lexer.expectCurrent(AstToken::Type::T_COMMA))
                 {
                     goto err;
                 }
@@ -7383,7 +7378,7 @@ int main() {
                 return false;
             }
             m_lexer.nextToken();
-            if(!m_lexer.expectCurrent(AstToken::TOK_LBRACE))
+            if(!m_lexer.expectCurrent(AstToken::Type::T_BRACEOPEN))
             {
                 goto err;
             }
@@ -7394,7 +7389,7 @@ int main() {
             leftstringexpr->m_exprpos = pos;
             processedliteral = nullptr;
             pos = m_lexer.m_currtoken.m_tokpos;
-            if(!parseExpression(&templateexpr, MC_ASTPREC_LOWEST))
+            if(!parseExpression(&templateexpr, Precedence::MC_ASTPREC_LOWEST))
             {
                 goto err;
             }
@@ -7405,7 +7400,7 @@ int main() {
             leftaddexpr->m_exprpos = pos;
             leftstringexpr = nullptr;
             tostrcallexpr = nullptr;
-            if(!m_lexer.expectCurrent(AstToken::TOK_RBRACE))
+            if(!m_lexer.expectCurrent(AstToken::Type::T_BRACECLOSE))
             {
                 goto err;
             }
@@ -7414,7 +7409,7 @@ int main() {
             m_lexer.nextToken();
             m_lexer.nextToken();
             pos = m_lexer.m_currtoken.m_tokpos;
-            if(!parseExpression(&rightexpr, MC_ASTPREC_HIGHEST))
+            if(!parseExpression(&rightexpr, Precedence::MC_ASTPREC_HIGHEST))
             {
                 goto err;
             }
@@ -7460,7 +7455,7 @@ int main() {
 
         bool parseLiteralBool(AstExpression** res)
         {
-            *res = makeAstItemLiteralBool(m_lexer.m_currtoken.m_toktype == AstToken::TOK_TRUE);
+            *res = makeAstItemLiteralBool(m_lexer.m_currtoken.m_toktype == AstToken::Type::T_KWTRUE);
             m_lexer.nextToken();
             return true;
         }
@@ -7493,7 +7488,7 @@ int main() {
             char* str;
             AstExpression* index;
             m_lexer.nextToken();
-            if(!m_lexer.expectCurrent(AstToken::TOK_IDENT))
+            if(!m_lexer.expectCurrent(AstToken::Type::T_IDENT))
             {
                 return false;
             }
@@ -7519,7 +7514,7 @@ int main() {
             AstExpression* function;
             GenericList<AstExpression*> args;
             function = left;
-            if(!parseExprList(&args, AstToken::TOK_LPAREN, AstToken::TOK_RPAREN, false))
+            if(!parseExprList(&args, AstToken::Type::T_PARENOPEN, AstToken::Type::T_PARENCLOSE, false))
             {
                 return false;
             }
@@ -7542,19 +7537,19 @@ int main() {
                 m_lexer.nextToken();
                 return true;
             }
-            if(!parseExpression(&argexpr, MC_ASTPREC_LOWEST))
+            if(!parseExpression(&argexpr, Precedence::MC_ASTPREC_LOWEST))
             {
                 goto err;
             }
             ok = res->push(argexpr);
-            while(m_lexer.currentTokenIs(AstToken::TOK_COMMA))
+            while(m_lexer.currentTokenIs(AstToken::Type::T_COMMA))
             {
                 m_lexer.nextToken();
                 if(trailingcommaallowed && m_lexer.currentTokenIs(endtoken))
                 {
                     break;
                 }
-                if(!parseExpression(&argexpr, MC_ASTPREC_LOWEST))
+                if(!parseExpression(&argexpr, Precedence::MC_ASTPREC_LOWEST))
                 {
                     goto err;
                 }
@@ -7579,8 +7574,8 @@ int main() {
             expr = nullptr;
             switch(m_lexer.m_currtoken.m_toktype)
             {
-                case AstToken::TOK_VAR:
-                case AstToken::TOK_CONST:
+                case AstToken::Type::T_KWVAR:
+                case AstToken::Type::T_KWCONST:
                     {
                         if(!parseVarLetStmt(&expr))
                         {
@@ -7588,7 +7583,7 @@ int main() {
                         }
                     }
                     break;
-                case AstToken::TOK_IF:
+                case AstToken::Type::T_KWIF:
                     {
                         if(!parseIfStmt(&expr))
                         {
@@ -7596,7 +7591,7 @@ int main() {
                         }
                     }
                     break;
-                case AstToken::TOK_RETURN:
+                case AstToken::Type::T_KWRETURN:
                     {
                         if(!parseReturnStmt(&expr))
                         {
@@ -7604,7 +7599,7 @@ int main() {
                         }
                     }
                     break;
-                case AstToken::TOK_WHILE:
+                case AstToken::Type::T_KWWHILE:
                     {
                         if(!parseLoopWhileStmt(&expr))
                         {
@@ -7612,7 +7607,7 @@ int main() {
                         }
                     }
                     break;
-                case AstToken::TOK_BREAK:
+                case AstToken::Type::T_KWBREAK:
                     {
                         if(!parseBreakStmt(&expr))
                         {
@@ -7620,7 +7615,7 @@ int main() {
                         }
                     }
                     break;
-                case AstToken::TOK_FOR:
+                case AstToken::Type::T_KWFOR:
                     {
                         if(!parseLoopForBaseStmt(&expr))
                         {
@@ -7628,9 +7623,9 @@ int main() {
                         }
                     }
                     break;
-                case AstToken::TOK_FUNCTION:
+                case AstToken::Type::T_KWFUNCTION:
                     {
-                        if(m_lexer.peekTokenIs(AstToken::TOK_IDENT))
+                        if(m_lexer.peekTokenIs(AstToken::Type::T_IDENT))
                         {
                             if(!parseFunctionStmt(&expr))
                             {
@@ -7646,7 +7641,7 @@ int main() {
                         }
                     }
                     break;
-                case AstToken::TOK_LBRACE:
+                case AstToken::Type::T_BRACEOPEN:
                     {
                         if(m_config->replmode && m_parsedepth == 0)
                         {
@@ -7664,7 +7659,7 @@ int main() {
                         }
                     }
                     break;
-                case AstToken::TOK_CONTINUE:
+                case AstToken::Type::T_KWCONTINUE:
                     {
                         if(!parseContinueStmt(&expr))
                         {
@@ -7672,7 +7667,7 @@ int main() {
                         }
                     }
                     break;
-                case AstToken::TOK_IMPORT:
+                case AstToken::Type::T_KWIMPORT:
                     {
                         if(!parseImportStmt(&expr))
                         {
@@ -7680,7 +7675,7 @@ int main() {
                         }
                     }
                     break;
-                case AstToken::TOK_RECOVER:
+                case AstToken::Type::T_KWRECOVER:
                     {
                         if(!parseRecoverStmt(&expr))
                         {
@@ -7719,9 +7714,9 @@ int main() {
             }
             m_lexer.nextToken();
             m_lexer.nextToken();
-            while(!m_lexer.currentTokenIs(AstToken::TOK_EOF))
+            while(!m_lexer.currentTokenIs(AstToken::Type::T_EOF))
             {
-                if(m_lexer.currentTokenIs(AstToken::TOK_SEMICOLON))
+                if(m_lexer.currentTokenIs(AstToken::Type::T_SEMICOLON))
                 {
                     m_lexer.nextToken();
                     continue;
@@ -9082,7 +9077,7 @@ class AstCompiler
             size_t i;
             int pos;
             int nlocals;
-            Value obj;
+            Value val;
             CompiledProgram* comp_res;
             ExprLiteralFunction* fn;
             AstSymbol* symbol;
@@ -9142,8 +9137,8 @@ class AstCompiler
             popCompilationScope();
             compscope = getCompilationScope();
             symtab = getsymtable();
-            obj = Value::makeFuncScript(fn->name, comp_res, true, nlocals, fn->funcparamlist.count(), 0);
-            if(obj.isNull())
+            val = Value::makeFuncScript(fn->name, comp_res, true, nlocals, fn->funcparamlist.count(), 0);
+            if(val.isNull())
             {
                 Memory::destroy(freesyms, AstSymbol::destroy);
                 CompiledProgram::destroy(comp_res);
@@ -9158,7 +9153,7 @@ class AstCompiler
                     return false;
                 }
             }
-            pos = addconstant(obj);
+            pos = addconstant(val);
             if(pos < 0)
             {
                 Memory::destroy(freesyms, AstSymbol::destroy);
@@ -9342,7 +9337,7 @@ class AstCompiler
             int pos;
             int* posval;
             int* currentpos;
-            Value obj;
+            Value val;
             uint64_t opbuf[10];
             pos = 0;
             auto lits = static_cast<ExprLiteralString*>(expr);
@@ -9353,12 +9348,12 @@ class AstCompiler
             }
             else
             {
-                obj = Value::makeString(lits->m_strexprdata, lits->m_strexprlength);
-                if(obj.isNull())
+                val = Value::makeString(lits->m_strexprdata, lits->m_strexprlength);
+                if(val.isNull())
                 {
                     return false;
                 }
-                pos = addconstant(obj);
+                pos = addconstant(val);
                 if(pos < 0)
                 {
                     return false;
@@ -10208,10 +10203,10 @@ class AstCompiler
             return true;
         }
 
-        int addconstant(Value obj)
+        int addconstant(Value val)
         {
             int pos;
-            m_constants.push(obj);
+            m_constants.push(val);
             pos = m_constants.count() - 1;
             return pos;
         }
@@ -10993,10 +10988,7 @@ class State
 
         MC_INLINE bool vmPushFrame(const VMFrame& frame)
         {
-            int add;
-            add = 0;
             m_execstate.framestack.set(m_execstate.framestack.count(), frame);
-            add = 1;
             m_execstate.currframe = m_execstate.framestack.getp(m_execstate.framestack.count());
             m_execstate.framestack.push(frame);
             auto framefunction = Value::asFunction(frame.m_function);
@@ -12733,7 +12725,7 @@ void mc_state_gcmarkobject(Value obj)
     int i;
     int len;
     Value key;
-    Value val;
+    Value mapval;
     Value freeval;
     Object* data;
     Object* valdata;
@@ -12749,7 +12741,8 @@ void mc_state_gcmarkobject(Value obj)
             {
                 case Value::VALTYP_MAP:
                     {
-                        len = Value::mapGetLength(obj);
+                        auto m = obj.asMap();
+                        len = m->count();
                         for(i = 0; i < len; i++)
                         {
                             key = Value::mapGetKeyAt(obj, i);
@@ -12761,13 +12754,13 @@ void mc_state_gcmarkobject(Value obj)
                                     mc_state_gcmarkobject(key);
                                 }
                             }
-                            val = Value::mapGetValueAt(obj, i);
-                            if(val.isAllocated())
+                            mapval = Value::mapGetValueAt(obj, i);
+                            if(mapval.isAllocated())
                             {
-                                valdata = val.getAllocatedData<Object>();
+                                valdata = mapval.getAllocatedData<Object>();
                                 if(valdata->m_gcmark == 0)
                                 {
-                                    mc_state_gcmarkobject(val);
+                                    mc_state_gcmarkobject(mapval);
                                 }
                             }
                         }
@@ -12778,13 +12771,13 @@ void mc_state_gcmarkobject(Value obj)
                         len = Value::arrayGetLength(obj);
                         for(i = 0; i < len; i++)
                         {
-                            val = Value::arrayGetValue(obj, i);
-                            if(val.isAllocated())
+                            auto itm = Value::arrayGetValue(obj, i);
+                            if(itm.isAllocated())
                             {
-                                valdata = val.getAllocatedData<Object>();
+                                valdata = itm.getAllocatedData<Object>();
                                 if(valdata->m_gcmark == 0)
                                 {
-                                    mc_state_gcmarkobject(val);
+                                    mc_state_gcmarkobject(itm);
                                 }
                             }
                         }
@@ -13152,8 +13145,8 @@ static MC_INLINE bool mc_vmdo_makemapend(State* state)
     uint16_t itemscount;
     const char* keytypename;
     Value::Type keytype;
-    Value key;
-    Value val;
+    Value mapkey;
+    Value mapval;
     Value mapobj;
     Value* kvpairs;
     kvpcount = state->m_execstate.currframe->readUint16();
@@ -13162,16 +13155,16 @@ static MC_INLINE bool mc_vmdo_makemapend(State* state)
     kvpairs = state->m_execstate.valuestack.data() + state->m_execstate.vsposition - itemscount;
     for(i = 0; i < itemscount; i += 2)
     {
-        key = kvpairs[i];
-        if(!Value::isHashable(key))
+        mapkey = kvpairs[i];
+        if(!Value::isHashable(mapkey))
         {
-            keytype = key.getType();
+            keytype = mapkey.getType();
             keytypename = Value::getTypename(keytype);
             state->pushError(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "key of type %s is not hashable", keytypename);
             return false;
         }
-        val = kvpairs[i + 1];
-        Value::mapSetValue(mapobj, key, val);
+        mapval = kvpairs[i + 1];
+        Value::mapSetValue(mapobj, mapkey, mapval);
     }
     state->setStackPos(state->m_execstate.vsposition - itemscount);
     state->vmStackPush(mapobj);
@@ -14204,8 +14197,8 @@ Value mc_scriptfn_maketestdict(State *state, void *data, Value thisval, size_t a
     int blen;
     int numitems;
     Value res;
-    Value key;
-    Value val;
+    Value mapkeystr;
+    Value mapvalstr;
     const char *tname;
     char keybuf[64];
     (void)data;
@@ -14230,9 +14223,9 @@ Value mc_scriptfn_maketestdict(State *state, void *data, Value thisval, size_t a
     for (i = 0; i < numitems; i++)
     {
         blen = sprintf(keybuf, "%d", i);
-        key = Value::makeString(keybuf, blen);
-        val = Value::makeNumber(i);
-        Value::mapSetValue(res, key, val);
+        mapkeystr = Value::makeString(keybuf, blen);
+        mapvalstr = Value::makeNumber(i);
+        Value::mapSetValue(res, mapkeystr, mapvalstr);
     }
     return res;
 }
@@ -15355,7 +15348,7 @@ Value mc_scriptfn_keys(State* state, void* data, Value thisval, size_t argc, Val
     int len;
     Value arg;
     Value res;
-    Value key;
+    Value mapkey;
     (void)state;
     (void)argc;
     (void)data;
@@ -15373,8 +15366,8 @@ Value mc_scriptfn_keys(State* state, void* data, Value thisval, size_t argc, Val
     len = Value::mapGetLength(arg);
     for(i = 0; i < len; i++)
     {
-        key = Value::mapGetKeyAt(arg, i);
-        if(!Value::arrayPush(res, key))
+        mapkey = Value::mapGetKeyAt(arg, i);
+        if(!Value::arrayPush(res, mapkey))
         {
             return Value::makeNull();
         }
@@ -15386,7 +15379,7 @@ Value mc_scriptfn_values(State* state, void* data, Value thisval, size_t argc, V
 {
     int i;
     int len;
-    Value key;
+    Value mapval;
     Value arg;
     Value res;
     (void)state;
@@ -15406,8 +15399,8 @@ Value mc_scriptfn_values(State* state, void* data, Value thisval, size_t argc, V
     len = Value::mapGetLength(arg);
     for(i = 0; i < len; i++)
     {
-        key = Value::mapGetValueAt(arg, i);
-        if(!Value::arrayPush(res, key))
+        mapval = Value::mapGetValueAt(arg, i);
+        if(!Value::arrayPush(res, mapval))
         {
             return Value::makeNull();
         }

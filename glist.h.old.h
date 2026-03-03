@@ -136,7 +136,7 @@ class GenericList
             return dest;
         }
 
-    public:
+    private:
         size_t m_listcapacity;
         size_t m_listcount;
         ValType* m_listitems;
