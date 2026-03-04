@@ -1,5 +1,5 @@
 
-template<typename KeyType, typename ValType>
+template<typename VDTypKey, typename VDTypVal>
 class ValDict
 {
     public:
@@ -25,8 +25,8 @@ class ValDict
             dict->m_funckeyequalsfn = nullptr;
             dict->m_funchashfn = nullptr;
             dict->m_vdcells = (unsigned int*)mc_memory_malloc(dict->m_vdcellcapacity * sizeof(unsigned int));
-            dict->m_vdkeys = (char**)mc_memory_malloc(dict->m_vditemcapacity * sizeof(KeyType));
-            dict->m_vdvalues = (void**)mc_memory_malloc(dict->m_vditemcapacity * sizeof(ValType));
+            dict->m_vdkeys = (char**)mc_memory_malloc(dict->m_vditemcapacity * sizeof(VDTypKey));
+            dict->m_vdvalues = (void**)mc_memory_malloc(dict->m_vditemcapacity * sizeof(VDTypVal));
             dict->m_vdcellindices = (unsigned int*)mc_memory_malloc(dict->m_vditemcapacity * sizeof(unsigned int));
             dict->m_vdhashes = (long unsigned int*)mc_memory_malloc(dict->m_vditemcapacity * sizeof(unsigned long));
             if(dict->m_vdcells == nullptr || dict->m_vdkeys == nullptr || dict->m_vdvalues == nullptr || dict->m_vdcellindices == nullptr || dict->m_vdhashes == nullptr)
@@ -96,7 +96,7 @@ class ValDict
             bool ok;
             unsigned int capacity;
             (void)ok;
-            capacity = mc_util_upperpowoftwo(mincapacity * 2);
+            capacity = Util::upperPowerOfTwo(mincapacity * 2);
             ok = ValDict::initDict(this, capacity);
             MC_ASSERT(ok);
         }
@@ -151,7 +151,7 @@ class ValDict
             return setKVIntern(cellix, hash, key, value);
         }
 
-        inline ValType* get(KeyType* key)
+        inline VDTypVal* get(VDTypKey* key)
         {
             bool found;
             unsigned int itemix;
@@ -172,22 +172,22 @@ class ValDict
             return getValueAt(itemix);
         }
 
-        inline KeyType* getKeyAt(unsigned int ix)
+        inline VDTypKey* getKeyAt(unsigned int ix)
         {
             if(ix >= m_vdcount)
             {
                 return nullptr;
             }
-            return (KeyType*)((char*)m_vdkeys + (sizeof(KeyType) * ix));
+            return (VDTypKey*)((char*)m_vdkeys + (sizeof(VDTypKey) * ix));
         }
 
-        inline ValType* getValueAt(unsigned int ix)
+        inline VDTypVal* getValueAt(unsigned int ix)
         {
             if(ix >= m_vdcount)
             {
                 return nullptr;
             }
-            return (ValType*)((char*)m_vdvalues + (sizeof(ValType) * ix));
+            return (VDTypVal*)((char*)m_vdvalues + (sizeof(VDTypVal) * ix));
         }
 
         inline unsigned int getCapacity()
@@ -203,8 +203,8 @@ class ValDict
             {
                 return false;
             }
-            offset = ix * sizeof(ValType);
-            memcpy((char*)m_vdvalues + offset, value, sizeof(ValType));
+            offset = ix * sizeof(VDTypVal);
+            memcpy((char*)m_vdvalues + offset, value, sizeof(VDTypVal));
             return true;
         }
 
@@ -343,8 +343,8 @@ class ValDict
             {
                 return false;
             }
-            offset = ix * sizeof(KeyType);
-            memcpy((char*)m_vdkeys + offset, key, sizeof(KeyType));
+            offset = ix * sizeof(VDTypKey);
+            memcpy((char*)m_vdkeys + offset, key, sizeof(VDTypKey));
             return true;
         }
 
@@ -354,7 +354,7 @@ class ValDict
             {
                 return m_funckeyequalsfn(a, b);
             }
-            return memcmp(a, b, sizeof(KeyType)) == 0;
+            return memcmp(a, b, sizeof(VDTypKey)) == 0;
         }
 
         inline unsigned long hashKey(void* key)
@@ -363,7 +363,7 @@ class ValDict
             {
                 return m_funchashfn(key);
             }
-            return mc_util_hashdata(key, sizeof(KeyType));
+            return Util::hashData(key, sizeof(VDTypKey));
         }
 };
 // EOF ValDict

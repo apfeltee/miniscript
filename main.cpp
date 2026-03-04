@@ -55,7 +55,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-
 #define MC_CONF_DEBUG 0
 
 #if !defined(__GNUC__)
@@ -77,7 +76,7 @@ THE SOFTWARE.
 #if 0
     #define MC_ASSERT(x)
 #else
-    #define MC_ASSERT(x) mc_util_assert((x), #x, __FILE__, __LINE__, nullptr)
+    #define MC_ASSERT(x) Util::onAssertCall((x), #x, __FILE__, __LINE__, nullptr)
 #endif
 
 #if defined(__GNUC__) || defined(__clang__)
@@ -88,7 +87,6 @@ THE SOFTWARE.
     #define mc_util_unlikely(x) (x)
 #endif
 
-
 #if 1
     #define MC_UTIL_INCCAPACITY(capacity) (((capacity) < 8) ? 8 : ((capacity) * 2))
 #else
@@ -98,296 +96,48 @@ THE SOFTWARE.
 // does nothing; just for grepping
 #define MC_PROTO
 
-typedef double NumFloat;
-typedef uint16_t OPValCode;
-typedef uint32_t NumShiftInt;
+using NumFloat = double;
+using OPValCode = uint16_t;
+using NumShiftInt = uint32_t;
 
 typedef struct mcstoddiyfp_t mcstoddiyfp_t;
 
 class Object;
-class Printer;
-class AstLexer;
-class AstLexData;
-class AstSymTable;
-class Error;
+class Value;
+class GCMemory;
+class State;
 class ErrList;
 class Traceback;
-class Module;
-class GCMemory;
-class AstParser;
-class AstSymbol;
-class SourceLocation;
-class AstScopeComp;
-class Value;
-class SourceFile;
-class AstCompiler;
-class AstPrinter;
-class State;
-class VMFrame;
-class CompiledProgram;
 class AstExpression;
-class AstToken;
-class SymStore;
-class ObjClass;
-class AstScopeBlock;
+class AstParser;
 
-class StrView
+using CallbackNativeFN = Value (*)(State*, void*, Value, size_t, Value*);
+using CallbackHashItemFN = size_t (*)(void*);
+using CallbackCompareFN = bool (*)(void*, void*);
+using CallbackDestroyFN = void (*)(void*);
+using CallbackCopyFN = void* (*)(void*);
+
+namespace Util
 {
-    public:
-        char* m_strdata = nullptr;
-        size_t m_strlength = 0;
-
-    private:
-        template<typename InputT>
-        MC_INLINE void copyFrom(InputT* other)
+    /* must come before any other function/class body */
+    template<typename... ArgsT>
+    MC_INLINE void onAssertCall(bool x, const char* exprstr, const char* file, int line, const char* fmt, ArgsT&&... args)
+    {
+        static auto tmpfprintf = fprintf;
+        if(!x)
         {
-            m_strdata = other->m_strdata;
-            m_strlength = other->m_strlength;
-        }
-
-    public:
-        MC_INLINE StrView()
-        {
-        }
-
-        MC_INLINE ~StrView()
-        {
-        }
-
-        template<typename InputT>
-        MC_INLINE StrView(InputT* str, size_t length)
-        {
-            m_strdata = static_cast<char*>(str);
-            m_strlength = length;
-        }
-
-        MC_INLINE StrView(const StrView& other)
-        {
-            copyFrom(&other);
-        }
-
-        MC_INLINE StrView(StrView&& other)
-        {
-            copyFrom(&other);
-        }
-
-        template<size_t len>
-        MC_INLINE StrView(const char (&str)[len])
-        {
-            m_strdata = str;
-            m_strlength = len;
-        }
-
-        MC_INLINE StrView& operator=(const StrView& other)
-        {
-            copyFrom(&other);
-            return *this;
-        }
-
-        MC_INLINE void deAlloc()
-        {
-            if(m_strdata != nullptr)
+            fprintf(stderr, "ASSERTION FAILED at %s:%d: %s", file, line, exprstr);
+            if(fmt != nullptr)
             {
-                mc_memory_free(m_strdata);
+                fprintf(stderr, ": ");
+                tmpfprintf(stderr, fmt, args...);
             }
-            m_strdata = nullptr;
+            fprintf(stderr, "\n");
+            fflush(stderr);
+            abort();
         }
-
-        MC_INLINE size_t length() const
-        {
-            return m_strlength;
-        }
-
-        MC_INLINE char* data()
-        {
-            return m_strdata;
-        }
-
-        MC_INLINE char* data() const
-        {
-            return m_strdata;
-        }
-};
-
-
-
-typedef Value (*CallbackNativeFN)(State*, void*, Value, size_t, Value*);
-typedef size_t (*CallbackHashItemFN)(void*);
-typedef bool (*CallbackCompareFN)(void*, void*);
-typedef void (*CallbackDestroyFN)(void*);
-typedef void* (*CallbackCopyFN)(void*);
-template<typename... ArgsT>
-MC_PROTO void mc_util_complain(SourceLocation pos, const char *fmt, ArgsT&&... args);
-
-/* must come before any other function/class body */
-template<typename... ArgsT>
-MC_INLINE void mc_util_assert(bool x, const char* exprstr, const char* file, int line, const char* fmt, ArgsT&&... args)
-{
-    static auto tmpfprintf = fprintf;
-    if(!x)
-    {
-        fprintf(stderr, "ASSERTION FAILED at %s:%d: %s", file, line, exprstr);
-        if(fmt != nullptr)
-        {
-            fprintf(stderr, ": ");
-            tmpfprintf(stderr, fmt, args...);
-        }
-        fprintf(stderr, "\n");
-        fflush(stderr);
-        abort();
     }
 }
-
-
-template<typename... ArgsT>
-char* mc_util_stringallocfmt(const char* format, ArgsT&&... args)
-{
-    int needsz;
-    int printedsz;
-    char* res;
-    (void)printedsz;
-    needsz = snprintf(nullptr, 0, format, args...);
-    res = (char*)mc_memory_malloc(needsz + 1);
-    if(!res)
-    {
-        return nullptr;
-    }
-    printedsz = sprintf(res, format, args...);
-    MC_ASSERT(printedsz == needsz);
-    return res;
-}
-
-uint64_t mc_util_doubletouint64(NumFloat val)
-{
-    union
-    {
-        uint64_t val_uint64;
-        double val_double;
-    } temp;
-    temp.val_double = val;
-    return temp.val_uint64;
-}
-
-NumFloat mc_util_uint64todouble(uint64_t val)
-{
-    union
-    {
-        uint64_t val_uint64;
-        double val_double;
-    } temp;
-    temp.val_uint64 = val;
-    return temp.val_double;
-}
-
-
-static MC_INLINE NumShiftInt mc_mathutil_binshiftleft(NumFloat dnleft, NumFloat dnright)
-{
-    int64_t sileft;
-    int64_t siright;
-    NumShiftInt ivleft;
-    NumShiftInt ivright;
-    if((dnleft < 0) || (dnright < 0))
-    {
-        sileft = (int64_t)dnleft;
-        siright = (int64_t)dnright;
-        return (NumFloat)(sileft << siright);
-    }
-    ivleft = (NumShiftInt)dnleft;
-    ivright = (NumShiftInt)dnright;
-    ivright &= 0x1f;
-    return (ivleft << ivright);
-}
-
-static MC_INLINE NumShiftInt mc_mathutil_binshiftright(NumFloat dnleft, NumFloat dnright)
-{
-    int64_t sileft;
-    int64_t siright;
-    NumShiftInt ivleft;
-    NumShiftInt ivright;
-    if((dnleft < 0) || (dnright < 0))
-    {
-        sileft = (int64_t)dnleft;
-        siright = (int64_t)dnright;
-        return (NumFloat)(sileft >> siright);
-    }
-    ivleft = (NumShiftInt)dnleft;
-    ivright = (NumShiftInt)dnright;
-    ivright &= 0x1f;
-    return (ivleft >> ivright);
-}
-
-#define mc_util_numtoint64(n) \
-    ((int64_t)(n))
-
-#define mc_mathutil_binor(dnleft, dnright) \
-    ( \
-        mc_util_numtoint64(dnleft) | mc_util_numtoint64(dnright) \
-    )
-
-#define mc_mathutil_binand(dnleft, dnright) \
-    ( \
-        mc_util_numtoint64(dnleft) & mc_util_numtoint64(dnright) \
-    )
-
-#define mc_mathutil_binxor(dnleft, dnright) \
-    ( \
-        mc_util_numtoint64(dnleft) ^ mc_util_numtoint64(dnright) \
-    )
-
-#define mc_mathutil_add(dnleft, dnright) \
-    ( \
-        (dnleft) + (dnright) \
-    )
-
-#define mc_mathutil_sub(dnleft, dnright) \
-    ( \
-        (dnleft) - (dnright) \
-    )
-
-#define mc_mathutil_mult(dnleft, dnright) \
-    ( \
-        (dnleft) * (dnright) \
-    )
-
-#define mc_mathutil_div(dnleft, dnright) \
-    ( \
-        (dnleft) / (dnright) \
-    )
-
-#define mc_mathutil_mod(dnleft, dnright) \
-    ( \
-        fmod((dnleft), (dnright)) \
-    )
-
-
-
-/* protos */
-
-MC_PROTO char *mc_util_readhandle(FILE *hnd, size_t *dlen);
-MC_PROTO char *mc_util_readfile(const char *filename, size_t *dlen);
-MC_PROTO char *mc_fsutil_fileread(const char *filename, size_t *flen);
-MC_PROTO size_t mc_fsutil_filewrite(const char *path, const char *string, size_t stringsize);
-MC_PROTO size_t mc_util_strlen(const char *str);
-MC_PROTO char *mc_util_strndup(const char *string, size_t n);
-MC_PROTO char *mc_util_strdup(const char *string);
-MC_PROTO bool mc_util_strequal(const char *a, const char *b);
-MC_PROTO bool mc_util_strnequal(const char *a, const char *b, size_t len);
-MC_PROTO char *mc_util_canonpath(const char *path);
-MC_PROTO bool mc_util_pathisabsolute(const char *path);
-MC_PROTO size_t mc_util_hashdata(const void *ptr, size_t len);
-MC_PROTO size_t mc_util_hashdouble(NumFloat val);
-MC_PROTO size_t mc_util_upperpowoftwo(size_t v);
-MC_PROTO NumFloat mc_util_strtod(const char *str, size_t slen, char **endptr);
-MC_PROTO void mc_state_gcunmarkall();
-MC_PROTO void mc_state_gcmarkobjlist(Value *objects, size_t count);
-MC_PROTO void mc_state_gcmarkobject(Value obj);
-MC_PROTO void mc_state_gcsweep();
-MC_PROTO int mc_state_gcshouldsweep();
-MC_PROTO bool mc_state_gcdisablefor(Value obj);
-MC_PROTO void mc_state_gcenablefor(Value obj);
-MC_PROTO bool mc_vm_init(State *state);
-MC_PROTO void mc_vm_reset(State *state);
-MC_PROTO void mc_state_makestdclasses(State *state);
 
 namespace Console
 {
@@ -455,11 +205,10 @@ namespace Console
                 }
                 return "";
             }
-
     };
 }
 
-class Printer
+class IOPrinter
 {
     public:
         struct Config
@@ -470,7 +219,7 @@ class Printer
         };
 
     public:
-        static void destroy(Printer* pr)
+        static void destroy(IOPrinter* pr)
         {
             releaseFromPtr(pr, true);
             if(!pr->m_prisstack)
@@ -479,12 +228,12 @@ class Printer
             }
         }
 
-        static bool initFromStack(Printer* pr, FILE* ofh, bool onstack)
+        static bool initFromStack(IOPrinter* pr, FILE* ofh, bool onstack)
         {
             return initFromStack(pr, ofh, onstack, false);
         }
 
-        static bool initFromStack(Printer* pr, FILE* ofh, bool onstack, bool isnullctor)
+        static bool initFromStack(IOPrinter* pr, FILE* ofh, bool onstack, bool isnullctor)
         {
             pr->m_prfailed = false;
             pr->m_prdestrfile = ofh;
@@ -503,7 +252,7 @@ class Printer
             return true;
         }
 
-        static void releaseFromPtr(Printer* pr, bool took)
+        static void releaseFromPtr(IOPrinter* pr, bool took)
         {
             if(took)
             {
@@ -518,7 +267,6 @@ class Printer
             }
         }
 
-
     public:
         Config m_prconfig;
         bool m_prfailed;
@@ -527,14 +275,14 @@ class Printer
         StringBuffer* m_prdestbuf;
 
     public:
-        Printer()
+        IOPrinter()
         {
-            Printer::initFromStack(this, nullptr, false, true);
+            IOPrinter::initFromStack(this, nullptr, false, true);
         }
 
-        Printer(FILE* ofh)
+        IOPrinter(FILE* ofh)
         {
-            Printer::initFromStack(this, ofh, false);
+            IOPrinter::initFromStack(this, ofh, false);
         }
 
         MC_INLINE void flush()
@@ -573,7 +321,7 @@ class Printer
 
         MC_INLINE bool put(const char* str)
         {
-            return put(str, mc_util_strlen(str));
+            return put(str, strlen(str));
         }
 
         MC_INLINE bool putChar(int b)
@@ -711,7 +459,7 @@ class Printer
             char* res;
             if(m_prfailed)
             {
-                Printer::destroy(this);
+                IOPrinter::destroy(this);
                 return nullptr;
             }
             if(m_prdestrfile != nullptr)
@@ -724,7 +472,7 @@ class Printer
                 *lendest = m_prdestbuf->length();
             }
             m_prdestbuf = nullptr;
-            Printer::destroy(this);
+            IOPrinter::destroy(this);
             return res;
         }
 
@@ -747,9 +495,480 @@ class Printer
         }
 };
 
+namespace Util
+{
+    size_t hashData(const void* ptr, size_t len)
+    {
+        /* djb2 */
+        size_t i;
+        size_t hash;
+        uint8_t val;
+        const uint8_t* up;
+        up = (const uint8_t*)ptr;
+        hash = 5381;
+        for(i = 0; i < len; i++)
+        {
+            val = up[i];
+            hash = ((hash << 5) + hash) + val;
+        }
+        return hash;
+    }
+
+    size_t upperPowerOfTwo(size_t v)
+    {
+        v--;
+        v |= v >> 1;
+        v |= v >> 2;
+        v |= v >> 4;
+        v |= v >> 8;
+        v |= v >> 16;
+        v++;
+        return v;
+    }
+
+    char* strDuplicate(const char* string, size_t n)
+    {
+        char* outputstring;
+        outputstring = (char*)mc_memory_malloc(n + 1);
+        if(outputstring == nullptr)
+        {
+            return nullptr;
+        }
+        outputstring[n] = '\0';
+        memcpy(outputstring, string, n);
+        return outputstring;
+    }
+
+    char* strDuplicate(const char* string)
+    {
+        if(string == nullptr)
+        {
+            return nullptr;
+        }
+        return strDuplicate(string, strlen(string));
+    }
+}
+
 #include "glist.h"
 #include "strdict.h"
 #include "valdict.h"
+
+class StrView
+{
+    public:
+        char* m_strdata = nullptr;
+        size_t m_strlength = 0;
+
+    private:
+        template<typename InputT>
+        MC_INLINE void copyFrom(InputT* other)
+        {
+            m_strdata = other->m_strdata;
+            m_strlength = other->m_strlength;
+        }
+
+    public:
+        MC_INLINE StrView()
+        {
+        }
+
+        MC_INLINE ~StrView()
+        {
+        }
+
+        template<typename InputT>
+        MC_INLINE StrView(InputT* str, size_t length)
+        {
+            m_strdata = static_cast<char*>(str);
+            m_strlength = length;
+        }
+
+        MC_INLINE StrView(const StrView& other)
+        {
+            copyFrom(&other);
+        }
+
+        MC_INLINE StrView(StrView&& other)
+        {
+            copyFrom(&other);
+        }
+
+        template<size_t len>
+        MC_INLINE StrView(const char (&str)[len])
+        {
+            m_strdata = str;
+            m_strlength = len;
+        }
+
+        MC_INLINE StrView& operator=(const StrView& other)
+        {
+            copyFrom(&other);
+            return *this;
+        }
+
+        MC_INLINE void deAlloc()
+        {
+            if(m_strdata != nullptr)
+            {
+                mc_memory_free(m_strdata);
+            }
+            m_strdata = nullptr;
+        }
+
+        MC_INLINE size_t length() const
+        {
+            return m_strlength;
+        }
+
+        MC_INLINE char* data()
+        {
+            return m_strdata;
+        }
+
+        MC_INLINE char* data() const
+        {
+            return m_strdata;
+        }
+};
+
+char* mc_util_readhandle(FILE* hnd, size_t* dlen)
+{
+    long rawtold;
+    /*
+    * the value returned by ftell() may not necessarily be the same as
+    * the amount that can be read.
+    * since we only ever read a maximum of $toldlen, there will
+    * be no memory trashing.
+    */
+    size_t toldlen;
+    size_t actuallen;
+    char* buf;
+    if(fseek(hnd, 0, SEEK_END) == -1)
+    {
+        return nullptr;
+    }
+    if((rawtold = ftell(hnd)) == -1)
+    {
+        return nullptr;
+    }
+    toldlen = rawtold;
+    if(fseek(hnd, 0, SEEK_SET) == -1)
+    {
+        return nullptr;
+    }
+    buf = (char*)mc_memory_malloc(toldlen + 1);
+    memset(buf, 0, toldlen+1);
+    if(buf != nullptr)
+    {
+        actuallen = fread(buf, sizeof(char), toldlen, hnd);
+        /*
+        // optionally, read remainder:
+        size_t tmplen;
+        if(actuallen < toldlen)
+        {
+            tmplen = actuallen;
+            actuallen += fread(buf+tmplen, sizeof(char), actuallen-toldlen, hnd);
+            ...
+        }
+        // unlikely to be necessary, so not implemented.
+        */
+        if(dlen != nullptr)
+        {
+            *dlen = actuallen;
+        }
+        return buf;
+    }
+    return nullptr;
+}
+
+char* mc_util_readfile(const char* filename, size_t* dlen)
+{
+    char* b;
+    FILE* fh;
+    if((fh = fopen(filename, "rb")) == nullptr)
+    {
+        return nullptr;
+    }
+    b = mc_util_readhandle(fh, dlen);
+    fclose(fh);
+    return b;
+}
+
+char* mc_fsutil_fileread(const char* filename, size_t* flen)
+{
+    return mc_util_readfile(filename, flen);
+}
+
+size_t mc_fsutil_filewrite(const char* strpath, const char* string, size_t stringsize)
+{
+    size_t printedsz;
+    FILE* fp;
+    fp = fopen(strpath, "w");
+    if(fp == nullptr)
+    {
+        return 0;
+    }
+    printedsz = fwrite(string, 1, stringsize, fp);
+    fclose(fp);
+    return printedsz;
+}
+
+bool mc_util_strequal(const char* a, const char* b)
+{
+    return strcmp(a, b) == 0;
+}
+
+bool mc_util_strnequal(const char* a, const char* b, size_t len)
+{
+    return strncmp(a, b, len) == 0;
+}
+
+bool mc_util_splitstring(GenericList<StrView>* dest, const char* str, const char* delimiter)
+{
+    size_t i;
+    long len;
+    long restlen;
+    char* reststr;
+    char* line;
+    const char* lineend;
+    const char* linestart;
+    reststr = nullptr;
+    if(str == nullptr)
+    {
+        return false;
+    }
+    linestart = str;
+    lineend = strstr(linestart, delimiter);
+    while(lineend != nullptr)
+    {
+        len = lineend - linestart;
+        line = Util::strDuplicate(linestart, len);
+        if(line == nullptr)
+        {
+            goto err;
+        }
+        dest->push(StrView(line, len));
+        linestart = lineend + 1;
+        lineend = strstr(linestart, delimiter);
+    }
+    reststr = Util::strDuplicate(linestart);
+    if(reststr == nullptr)
+    {
+        goto err;
+    }
+    restlen = strlen(reststr);
+    dest->push(StrView(reststr, restlen));
+    return true;
+err:
+    mc_memory_free(reststr);
+    if(dest->count() > 0)
+    {
+        for(i = 0; i < dest->count(); i++)
+        {
+            auto spitem = dest->getp(i);
+            spitem->deAlloc();
+        }
+    }
+    return false;
+}
+
+char* mc_util_joinstringarray(GenericList<StrView>* items, const char* joinee, size_t jlen)
+{
+    size_t i;
+    IOPrinter* res;
+    res = Memory::make<IOPrinter>(nullptr);
+    for(i = 0; i < items->count(); i++)
+    {
+        auto item = items->get(i);
+        res->put(item.data(), item.length());
+        if(i < (items->count() - 1))
+        {
+            res->put(joinee, jlen);
+        }
+    }
+    return res->getStringAndDestroy(nullptr);
+}
+
+char* mc_util_canonpath(const char* strpath)
+{
+    size_t i;
+    char* joined;
+    const char* tmpstr;
+    GenericList<StrView> spvals;
+    if((strchr(strpath, '/') == nullptr) || ((strstr(strpath, "/../") == nullptr) && (strstr(strpath, "./") == nullptr)))
+    {
+        return Util::strDuplicate(strpath);
+    }
+    if(!mc_util_splitstring(&spvals, strpath, "/"))
+    {
+        return nullptr;
+    }
+    for(i = 0; i < spvals.count() - 1; i++)
+    {
+        auto stritem = spvals.get(i);
+        auto nextitem = spvals.get(i + 1);
+        if(mc_util_strequal(stritem.data(), "."))
+        {
+            stritem.deAlloc();
+            spvals.removeAt(i);
+            i = -1;
+            continue;
+        }
+        if(mc_util_strequal(nextitem.data(), ".."))
+        {
+            stritem.deAlloc();
+            nextitem.deAlloc();
+            spvals.removeAt(i);
+            spvals.removeAt(i);
+            i = -1;
+        }
+    }
+    tmpstr = "/";
+    joined = mc_util_joinstringarray(&spvals, tmpstr, strlen(tmpstr));
+    /*
+    for(i = 0; i < spvals.count(); i++)
+    {
+        auto item = spvals.get(i);
+        item.deAlloc();
+    }
+    */
+    return joined;
+}
+
+bool mc_util_pathisabsolute(const char* strpath)
+{
+    return strpath[0] == '/';
+}
+
+size_t mc_util_hashdouble(NumFloat val)
+{
+    /* djb2 */
+    size_t hash;
+    uint32_t* valptr;
+    valptr = (uint32_t*)&val;
+    hash = 5381;
+    hash = ((hash << 5) + hash) + valptr[0];
+    hash = ((hash << 5) + hash) + valptr[1];
+    return hash;
+}
+
+NumFloat mc_util_strtod(const char* str, size_t slen, char** endptr)
+{
+    const unsigned char* p;
+    const unsigned char* end; 
+    p = (const unsigned char*)str;
+    end = (const unsigned char*)str + slen;
+    if((str[0] == '0') && (str[1] == 'x'))
+    {
+        return strtod(str, endptr);
+    }
+    if(endptr != nullptr)
+    {
+        *endptr = (char*)end;
+    }
+    return stod_strtod(&p, end, 1);
+}
+
+uint64_t mc_util_doubletouint64(NumFloat val)
+{
+    union
+    {
+        uint64_t val_uint64;
+        double val_double;
+    } temp;
+    temp.val_double = val;
+    return temp.val_uint64;
+}
+
+NumFloat mc_util_uint64todouble(uint64_t val)
+{
+    union
+    {
+        uint64_t val_uint64;
+        double val_double;
+    } temp;
+    temp.val_uint64 = val;
+    return temp.val_double;
+}
+
+static MC_INLINE NumShiftInt mc_mathutil_binshiftleft(NumFloat dnleft, NumFloat dnright)
+{
+    int64_t sileft;
+    int64_t siright;
+    NumShiftInt ivleft;
+    NumShiftInt ivright;
+    if((dnleft < 0) || (dnright < 0))
+    {
+        sileft = (int64_t)dnleft;
+        siright = (int64_t)dnright;
+        return (NumFloat)(sileft << siright);
+    }
+    ivleft = (NumShiftInt)dnleft;
+    ivright = (NumShiftInt)dnright;
+    ivright &= 0x1f;
+    return (ivleft << ivright);
+}
+
+static MC_INLINE NumShiftInt mc_mathutil_binshiftright(NumFloat dnleft, NumFloat dnright)
+{
+    int64_t sileft;
+    int64_t siright;
+    NumShiftInt ivleft;
+    NumShiftInt ivright;
+    if((dnleft < 0) || (dnright < 0))
+    {
+        sileft = (int64_t)dnleft;
+        siright = (int64_t)dnright;
+        return (NumFloat)(sileft >> siright);
+    }
+    ivleft = (NumShiftInt)dnleft;
+    ivright = (NumShiftInt)dnright;
+    ivright &= 0x1f;
+    return (ivleft >> ivright);
+}
+
+#define mc_util_numtoint64(n) \
+    ((int64_t)(n))
+
+#define mc_mathutil_binor(dnleft, dnright) \
+    ( \
+        mc_util_numtoint64(dnleft) | mc_util_numtoint64(dnright) \
+    )
+
+#define mc_mathutil_binand(dnleft, dnright) \
+    ( \
+        mc_util_numtoint64(dnleft) & mc_util_numtoint64(dnright) \
+    )
+
+#define mc_mathutil_binxor(dnleft, dnright) \
+    ( \
+        mc_util_numtoint64(dnleft) ^ mc_util_numtoint64(dnright) \
+    )
+
+#define mc_mathutil_add(dnleft, dnright) \
+    ( \
+        (dnleft) + (dnright) \
+    )
+
+#define mc_mathutil_sub(dnleft, dnright) \
+    ( \
+        (dnleft) - (dnright) \
+    )
+
+#define mc_mathutil_mult(dnleft, dnright) \
+    ( \
+        (dnleft) * (dnright) \
+    )
+
+#define mc_mathutil_div(dnleft, dnright) \
+    ( \
+        (dnleft) / (dnright) \
+    )
+
+#define mc_mathutil_mod(dnleft, dnright) \
+    ( \
+        fmod((dnleft), (dnright)) \
+    )
 
 class SourceFile
 {
@@ -785,14 +1004,14 @@ class SourceFile
             if(lastslashpos != nullptr)
             {
                 len = lastslashpos - strpath + 1;
-                m_dirpath = mc_util_strndup(strpath, len);
+                m_dirpath = Util::strDuplicate(strpath, len);
             }
             else
             {
-                m_dirpath = mc_util_strdup("");
+                m_dirpath = Util::strDuplicate("");
             }
             MC_ASSERT(m_dirpath);
-            m_path = mc_util_strdup(strpath);
+            m_path = Util::strDuplicate(strpath);
             MC_ASSERT(m_path);
         }
 
@@ -806,7 +1025,6 @@ class SourceFile
             return m_path;
         }
 };
-
 
 class SourceLocation
 {
@@ -1082,7 +1300,7 @@ class Instruction
             return true;
         }
 
-        static void bcPrintOneInstruction(Printer* pr, OPValCode* code, OPValCode op, size_t* pos, SourceLocation* sposlist, bool simple)
+        static void bcPrintOneInstruction(IOPrinter* pr, OPValCode* code, OPValCode op, size_t* pos, SourceLocation* sposlist, bool simple)
         {
             int i;
             NumFloat dval;
@@ -1136,7 +1354,7 @@ class Instruction
             }
         }
 
-        static void bcPrintByteCodeTo(Printer* pr, OPValCode* code, SourceLocation* sposlist, size_t codesize, bool simple)
+        static void bcPrintByteCodeTo(IOPrinter* pr, OPValCode* code, SourceLocation* sposlist, size_t codesize, bool simple)
         {
             OPValCode op;
             size_t pos;
@@ -1149,7 +1367,6 @@ class Instruction
         }
 
 };
-
 
 struct RuntimeConfig
 {
@@ -1164,26 +1381,30 @@ struct RuntimeConfig
     bool replmode;
 };
 
+
+
 class ValData
 {
     public:
+        /* can NOT be an enum class, because values must be combinable */
         enum Type
         {
-            VALTYP_NONE,
-            VALTYP_ERROR,
-            VALTYP_NUMBER,
-            VALTYP_BOOL,
-            VALTYP_STRING,
-            VALTYP_NULL,
-            VALTYP_FUNCNATIVE,
-            VALTYP_ARRAY,
-            VALTYP_MAP,
-            VALTYP_FUNCSCRIPT,
-            VALTYP_EXTERNAL,
-            VALTYP_FREED,
+            VT_NONE,
+            VT_ERROR,
+            VT_NUMBER,
+            VT_BOOL,
+            VT_STRING,
+            VT_NULL,
+            VT_FUNCNATIVE,
+            VT_ARRAY,
+            VT_MAP,
+            VT_FUNCSCRIPT,
+            VT_EXTERNAL,
+            VT_FREED,
             /* for checking types with & */
-            VALTYP_ANY
+            VT_ANY
         };
+
 
         struct CompareResult
         {
@@ -1311,18 +1532,18 @@ class GCMemory
             initPool(&m_poolscriptfuncs);
         }
 
-        template<typename ValTypT>
-        MC_INLINE DataPool* getPoolForType(ValTypT type)
+        template<typename VType>
+        MC_INLINE DataPool* getPoolForType(VType type)
         {
             switch(type)
             {
-                case ValData::VALTYP_FUNCSCRIPT:
+                case ValData::VT_FUNCSCRIPT:
                     return &m_poolscriptfuncs;
-                case ValData::VALTYP_ARRAY:
+                case ValData::VT_ARRAY:
                     return &m_poolarray;
-                case ValData::VALTYP_MAP:
+                case ValData::VT_MAP:
                     return &m_poolmap;
-                case ValData::VALTYP_STRING:
+                case ValData::VT_STRING:
                     return &m_poolstring;
                 default:
                     break;
@@ -1330,7 +1551,6 @@ class GCMemory
             return nullptr;
         }
 };
-
 
 class Object
 {
@@ -1397,7 +1617,6 @@ class Value: public ValData
                     MaxFreeVal = (2),
                 };
 
-
                 union
                 {
                     struct
@@ -1433,8 +1652,59 @@ class Value: public ValData
                 {
                     return m_funcdata.valscriptfunc.freevalscount >= MaxFreeVal;
                 }
-        };
 
+                MC_INLINE const char* getName()
+                {
+                    if(m_funcdata.valscriptfunc.ownsdata)
+                    {
+                        return m_funcdata.valscriptfunc.unamev.fallocname;
+                    }
+                    return m_funcdata.valscriptfunc.unamev.fconstname;
+                }
+
+                MC_INLINE Value getFreeValAt(int ix)
+                {
+                    MC_ASSERT(ix >= 0 && ix < m_funcdata.valscriptfunc.freevalscount);
+                    if(ix < 0 || ix >= m_funcdata.valscriptfunc.freevalscount)
+                    {
+                        return Value::makeNull();
+                    }
+                    if(freeValuesAreAllocated())
+                    {
+                        return (Value)m_funcdata.valscriptfunc.ufv.freevalsallocated[ix];
+                    }
+                    return (Value)m_funcdata.valscriptfunc.ufv.freevalsstack[ix];
+                }
+
+                MC_INLINE void setFreeValAt(int ix, Value val)
+                {
+                    MC_ASSERT(ix >= 0 && ix < m_funcdata.valscriptfunc.freevalscount);
+                    if(ix < 0 || ix >= m_funcdata.valscriptfunc.freevalscount)
+                    {
+                    }
+                    else
+                    {
+                        if(freeValuesAreAllocated())
+                        {
+                            m_funcdata.valscriptfunc.ufv.freevalsallocated[ix] = val;
+                        }
+                        else
+                        {
+                            m_funcdata.valscriptfunc.ufv.freevalsstack[ix] = val;
+                        }
+                    }
+                }
+
+                MC_INLINE Value* getFreeVals()
+                {
+                    if(freeValuesAreAllocated())
+                    {
+                        return m_funcdata.valscriptfunc.ufv.freevalsallocated;
+                    }
+                    return (Value*)m_funcdata.valscriptfunc.ufv.freevalsstack;
+                }
+
+        };
 
         class ObjUserdata: public Object
         {
@@ -1465,9 +1735,24 @@ class Value: public ValData
                     return m_actualarray->count();
                 }
 
-                MC_INLINE Value get(size_t i)
+                MC_INLINE Value getDirect(size_t i)
                 {
                     return m_actualarray->get(i);
+                }
+
+                Value get(size_t ix)
+                {
+                    Value* res;
+                    if(ix >= count())
+                    {
+                        return Value::makeNull();
+                    }
+                    res = getp(ix);
+                    if(res == nullptr)
+                    {
+                        return Value::makeNull();
+                    }
+                    return *res;
                 }
 
                 MC_INLINE Value* getp(size_t i)
@@ -1475,9 +1760,29 @@ class Value: public ValData
                     return m_actualarray->getp(i);
                 }
 
-                MC_INLINE Value* set(size_t i, const Value& val)
+                MC_INLINE Value* setDirect(size_t i, const Value& val)
                 {
                     return m_actualarray->set(i, val);
+                }
+
+                bool set(size_t ix, Value val)
+                {
+                    size_t len;
+                    size_t toadd;
+                    len = count();
+                    if((ix >= len) || (len == 0))
+                    {
+                        toadd = len+1;
+                        #if 0
+                            fprintf(stderr, "ix=%d toadd=%d len=%d\n", ix, toadd, len);
+                        #endif
+                        while(toadd != (ix+2))
+                        {
+                            push(Value::makeNull());
+                            toadd++;
+                        }
+                    }
+                    return setDirect(ix, val) != nullptr;
                 }
 
                 MC_INLINE bool push(const Value& val)
@@ -1506,36 +1811,401 @@ class Value: public ValData
                 {
                     return m_actualmap->count();
                 }
-                
-                MC_INLINE Value* getKeyAt(unsigned int ix)
+
+                MC_INLINE bool mapHasKey(Value key)
                 {
-                    return m_actualmap->getKeyAt(ix);
+                    return (getValPtr(&key) != nullptr);
                 }
 
-                MC_INLINE Value* getValueAt(unsigned int ix)
+                MC_INLINE Value getKeyAt(unsigned int ix)
                 {
-                    return m_actualmap->getValueAt(ix);
+                    auto v = m_actualmap->getKeyAt(ix);
+                    if(v == nullptr)
+                    {
+                        return makeNull();
+                    }
+                    return *v;
                 }
 
-                MC_INLINE Value* get(Value* key)
+                MC_INLINE Value getValueAt(unsigned int ix)
+                {
+                    auto v = m_actualmap->getValueAt(ix);
+                    if(v == nullptr)
+                    {
+                        return makeNull();
+                    }
+                    return *v;
+                }
+
+                bool getValueChecked(Value key, Value* dest)
+                {
+                    Value* res;
+                    res = getValPtr(&key);
+                    if(res == nullptr)
+                    {
+                        *dest = Value::makeNull();
+                        return false;
+                    }
+                    *dest = *res;
+                    return true;
+                }
+
+                MC_INLINE Value* getValPtr(Value* key)
                 {
                     return m_actualmap->get(key);
                 }
 
-                template<typename KeyT, typename ValT>
-                MC_INLINE bool setKV(KeyT key, ValT value)
+                Value getValue(Value key)
                 {
-                    return m_actualmap->setKV(key, value);
+                    Value* res;
+                    res = getValPtr(&key);
+                    if(res == nullptr)
+                    {
+                        return Value::makeNull();
+                    }
+                    return *res;
                 }
 
-                template<typename ValT>
-                MC_INLINE bool setValueAt(unsigned int ix, ValT value)
+                MC_INLINE bool setKV(Value key, Value value)
                 {
-                    return m_actualmap->setValueAt(ix, value);
+                    return m_actualmap->setKV(&key, &value);
+                }
+
+                MC_INLINE bool setValue(Value key, Value value)
+                {
+                    return m_actualmap->setKV(&key, &value);
+                }
+
+                MC_INLINE bool setValueAt(unsigned int ix, Value value)
+                {
+                    return m_actualmap->setValueAt(ix, &value);
+                }
+
+                bool setValString(const char* strkey, Value val)
+                {
+                    Value vkey;
+                    vkey = Value::makeString(strkey);
+                    return setValue(vkey, val);
+                }
+
+                void setStrFunc(const char* fnname, CallbackNativeFN function)
+                {
+                    setValString(fnname, Value::makeFuncNative(fnname, function, nullptr));
+                }
+
+                Value getKVPairAt(size_t ix)
+                {
+                    Value mapkey;
+                    Value val;
+                    Value res;
+                    Value valobj;
+                    Value keyobj;
+                    if(ix >= count())
+                    {
+                        return Value::makeNull();
+                    }
+                    mapkey = getKeyAt(ix);
+                    val = getValueAt(ix);
+                    res = Value::makeMap();
+                    auto m = res.asMap();
+                    keyobj = Value::makeString("key");
+                    if(keyobj.isNull())
+                    {
+                        return Value::makeNull();
+                    }
+                    m->setKV(keyobj, mapkey);
+                    valobj = Value::makeString("value");
+                    if(valobj.isNull())
+                    {
+                        return Value::makeNull();
+                    }
+                    m->setKV(valobj, val);
+                    return res;
+                }
+        };
+
+        class ValPrinter
+        {
+            public:
+                static void valPrintObjFuncScript(IOPrinter* pr, const Value& val)
+                {
+                    const char* fname;
+                    auto fn = val.asFunction();
+                    fname = fn->getName();
+                    auto numlocals = fn->m_funcdata.valscriptfunc.numlocals;
+                    auto numargs = fn->m_funcdata.valscriptfunc.numargs;
+                    auto freevc = fn->m_funcdata.valscriptfunc.freevalscount;
+                    pr->format("<scriptfunction '%s' locals=%d argc=%d fvc=%d", fname, numlocals, numargs, freevc);
+                    #if 1
+                    if(pr->m_prconfig.verbosefunc)
+                    {
+                        auto code = fn->m_funcdata.valscriptfunc.compiledprogcode->m_compiledbytecode;
+                        auto poslist = fn->m_funcdata.valscriptfunc.compiledprogcode->m_progsrcposlist;
+                        auto count = fn->m_funcdata.valscriptfunc.compiledprogcode->m_compiledcount;
+                        pr->put(" [");
+                        Instruction::bcPrintByteCodeTo(pr, code, poslist, count, true);
+                        pr->put(" ]");
+                    }
+                    else
+                    #endif
+                    {
+                    }
+                    pr->put(">");
+                }
+
+                static void valPrintObjArray(IOPrinter* pr, const Value& val)
+                {
+                    bool recursion;
+                    size_t i;
+                    size_t alen;
+                    bool prevquot;
+                    Value iobj;
+                    auto actualary = val.asArray();
+                    alen = actualary->size();
+                    pr->put("[");
+                    for(i = 0; i < alen; i++)
+                    {
+                        recursion = false;
+                        iobj = actualary->get(i);
+                        if(iobj.getType() == Value::VT_ARRAY)
+                        {
+                            auto otherary = iobj.asArray();
+                            if(otherary == actualary)
+                            {
+                                recursion = true;
+                            }
+                        }
+                        prevquot = pr->m_prconfig.quotstring;
+                        pr->m_prconfig.quotstring = true;
+                        if(recursion)
+                        {
+                            pr->put("<recursion>");
+                        }
+                        else
+                        {
+                            doPrintValue(pr, iobj, false);
+                        }
+                        pr->m_prconfig.quotstring = prevquot;
+                        if(i < (alen - 1))
+                        {
+                            pr->put(", ");
+                        }
+                    }
+                    pr->put("]");
+                }
+
+                static void valPrintObjMap(IOPrinter* pr, const Value& val)
+                {
+                    bool prevquot;
+                    size_t i;
+                    size_t alen;
+                    Value mapkey;
+                    Value mapval;
+                    auto m = val.asMap();
+                    alen = m->count();
+                    pr->put("{");
+                    for(i = 0; i < alen; i++)
+                    {
+                        mapkey = m->getKeyAt(i);
+                        mapval = m->getValueAt(i);
+                        prevquot = pr->m_prconfig.quotstring;
+                        pr->m_prconfig.quotstring = true;
+                        doPrintValue(pr, mapkey, false);
+                        pr->put(": ");
+                        doPrintValue(pr, mapval, false);
+                        pr->m_prconfig.quotstring = prevquot;
+                        if(i < (alen - 1))
+                        {
+                            pr->put(", ");
+                        }
+                    }
+                    pr->put("}");
+                }
+
+                MC_PROTO static void valPrintObjError(IOPrinter* pre, const Value& val);
+
+                static void doPrintValue(IOPrinter* pr, const Value& val, bool accurate)
+                {
+                    Value::Type type;
+                    (void)accurate;
+                    type = val.getType();
+                    switch(type)
+                    {
+                        case Value::VT_FREED:
+                            {
+                                pr->put("FREED");
+                            }
+                            break;
+                        case Value::VT_NONE:
+                            {
+                                pr->put("NONE");
+                            }
+                            break;
+                        case Value::VT_NUMBER:
+                            {
+                                NumFloat number;
+                                number = val.asNumber();
+                                pr->printNumFloat(number);
+                            }
+                            break;
+                        case Value::VT_BOOL:
+                            {
+                                pr->put(val.asBool() ? "true" : "false");
+                            }
+                            break;
+                        case Value::VT_STRING:
+                            {
+                                valPrintObjString(pr, val);
+                            }
+                            break;
+                        case Value::VT_NULL:
+                            {
+                                pr->put("null");
+                            }
+                            break;
+                        case Value::VT_FUNCSCRIPT:
+                            {
+                                valPrintObjFuncScript(pr, val);
+                            }
+                            break;
+                        case Value::VT_ARRAY:
+                            {
+                                valPrintObjArray(pr, val);
+                            }
+                            break;
+                        case Value::VT_MAP:
+                            {
+                                valPrintObjMap(pr, val);
+                            }
+                            break;
+                        case Value::VT_FUNCNATIVE:
+                            {
+                                pr->put("FUNCNATIVE");
+                            }
+                            break;
+                        case Value::VT_EXTERNAL:
+                            {
+                                pr->put("EXTERNAL");
+                            }
+                            break;
+                        case Value::VT_ERROR:
+                            {
+                                valPrintObjError(pr, val);
+                            }
+                            break;
+                        case Value::VT_ANY:
+                            {
+                                MC_ASSERT(false);
+                            }
+                            break;
+                    }
                 }
         };
 
     public:
+        static void markObject(Value obj)
+        {
+            int i;
+            int len;
+            Value key;
+            Value mapval;
+            Value freeval;
+            Object* data;
+            Object* valdata;
+            Object* keydata;
+            Object* freevaldata;
+            if(obj.isAllocated())
+            {
+                data = obj.getAllocatedData<Object>();
+                if(data->m_gcmark == 0)
+                {
+                    data->m_gcmark = 1;
+                    switch(obj.getType())
+                    {
+                        case Value::VT_MAP:
+                            {
+                                auto m = obj.asMap();
+                                len = m->count();
+                                for(i = 0; i < len; i++)
+                                {
+                                    key = m->getKeyAt(i);
+                                    if(key.isAllocated())
+                                    {
+                                        keydata = key.getAllocatedData<Object>();
+                                        if(keydata->m_gcmark == 0)
+                                        {
+                                            markObject(key);
+                                        }
+                                    }
+                                    mapval = m->getValueAt(i);
+                                    if(mapval.isAllocated())
+                                    {
+                                        valdata = mapval.getAllocatedData<Object>();
+                                        if(valdata->m_gcmark == 0)
+                                        {
+                                            markObject(mapval);
+                                        }
+                                    }
+                                }
+                            }
+                            break;
+                        case Value::VT_ARRAY:
+                            {
+                                auto arr = obj.asArray();
+                                len = arr->size();
+                                for(i = 0; i < len; i++)
+                                {
+                                    auto itm = arr->get(i);
+                                    if(itm.isAllocated())
+                                    {
+                                        valdata = itm.getAllocatedData<Object>();
+                                        if(valdata->m_gcmark == 0)
+                                        {
+                                            markObject(itm);
+                                        }
+                                    }
+                                }
+                            }
+                            break;
+                        case Value::VT_FUNCSCRIPT:
+                            {
+                                break;
+                                auto function = obj.asFunction();
+                                for(i = 0; i < function->m_funcdata.valscriptfunc.freevalscount; i++)
+                                {
+                                    freeval = function->getFreeValAt(i);
+                                    markObject(freeval);
+                                    if(freeval.isAllocated())
+                                    {
+                                        freevaldata = freeval.getAllocatedData<Object>();
+                                        if(freevaldata->m_gcmark == 0)
+                                        {
+                                            markObject(freeval);
+                                        }
+                                    }
+                                }
+                            }
+                            break;
+                        default:
+                            {
+                            }
+                            break;
+                    }
+                }
+            }
+        }
+
+        static void markListOfValues(Value* objects, size_t count)
+        {
+            size_t i;
+            Value obj;
+            for(i = 0; i < count; i++)
+            {
+                obj = objects[i];
+                Value::markObject(obj);
+            }
+        }
+
         template<typename DerivTyp>
         static DerivTyp* makeObjData(ValData::Type typ)
         {
@@ -1570,17 +2240,17 @@ class Value: public ValData
         {
             switch(data->m_odtype)
             {
-                case ValData::VALTYP_FREED:
+                case ValData::VT_FREED:
                     {
                         MC_ASSERT(false);
                     }
                     break;
-                case ValData::VALTYP_STRING:
+                case ValData::VT_STRING:
                     {
                         StringBuffer::destroy(((ObjString*)data)->m_strbuf);
                     }
                     break;
-                case ValData::VALTYP_FUNCSCRIPT:
+                case ValData::VT_FUNCSCRIPT:
                     {
                         auto fn = (ObjFunction*)data;
                         if(fn->m_funcdata.valscriptfunc.ownsdata)
@@ -1594,27 +2264,27 @@ class Value: public ValData
                         }
                     }
                     break;
-                case ValData::VALTYP_ARRAY:
+                case ValData::VT_ARRAY:
                     {
                         auto arr = (ObjArray*)data;
                         Memory::destroy(arr->m_actualarray);
                         //Memory::destroy(arr);
                     }
                     break;
-                case ValData::VALTYP_MAP:
+                case ValData::VT_MAP:
                     {
                         auto m = (ObjMap*)data;
                         Memory::destroy(m->m_actualmap);
                         //Memory::destroy(m);
                     }
                     break;
-                case ValData::VALTYP_FUNCNATIVE:
+                case ValData::VT_FUNCNATIVE:
                     {
                         auto fn = (ObjFunction*)data;
                         mc_memory_free(fn->m_funcdata.valnativefunc.natfnname);
                     }
                     break;
-                case ValData::VALTYP_EXTERNAL:
+                case ValData::VT_EXTERNAL:
                     {
                         auto ud = (ObjUserdata*)data;
                         if(ud->datadestroyfn != nullptr)
@@ -1623,7 +2293,7 @@ class Value: public ValData
                         }
                     }
                     break;
-                case ValData::VALTYP_ERROR:
+                case ValData::VT_ERROR:
                     {
                         auto e = (ObjError*)data;
                         mc_memory_free(e->message);
@@ -1635,7 +2305,7 @@ class Value: public ValData
                     }
                     break;
             }
-            data->m_odtype = ValData::VALTYP_FREED;
+            data->m_odtype = ValData::VT_FREED;
         }
 
         static bool canStoreInPool(Object* data)
@@ -1652,23 +2322,23 @@ class Value: public ValData
             #if 1
             switch(data->m_odtype)
             {
-                case Value::VALTYP_ARRAY:
+                case Value::VT_ARRAY:
                     {
-                        if(Value::arrayGetLength(obj) > 1024)
+                        if(obj.asArray()->size() > 1024)
                         {
                             return false;
                         }
                     }
                     break;
-                case Value::VALTYP_MAP:
+                case Value::VT_MAP:
                     {
-                        if(Value::mapGetLength(obj) > 1024)
+                        if(obj.asMap()->count() > 1024)
                         {
                             return false;
                         }
                     }
                     break;
-                case Value::VALTYP_STRING:
+                case Value::VT_STRING:
                     {
                         #if 0
                         auto os = (ObjString*)data;
@@ -1698,9 +2368,9 @@ class Value: public ValData
             Type type = obj.getType();
             switch(type)
             {
-                case VALTYP_STRING:
-                case VALTYP_NUMBER:
-                case VALTYP_BOOL:
+                case VT_STRING:
+                case VT_NUMBER:
+                case VT_BOOL:
                     return true;
                 default:
                     break;
@@ -1712,30 +2382,30 @@ class Value: public ValData
         {
             switch(type)
             {
-                case VALTYP_NONE:
+                case VT_NONE:
                     return "none";
-                case VALTYP_ERROR:
+                case VT_ERROR:
                     return "error";
-                case VALTYP_NUMBER:
+                case VT_NUMBER:
                     return "number";
-                case VALTYP_BOOL:
+                case VT_BOOL:
                     return "boolean";
-                case VALTYP_STRING:
+                case VT_STRING:
                     return "string";
-                case VALTYP_NULL:
+                case VT_NULL:
                     return "null";
-                case VALTYP_ARRAY:
+                case VT_ARRAY:
                     return "array";
-                case VALTYP_MAP:
+                case VT_MAP:
                     return "object";
-                case VALTYP_FUNCSCRIPT:
-                case VALTYP_FUNCNATIVE:
+                case VT_FUNCSCRIPT:
+                case VT_FUNCNATIVE:
                     return "function";
-                case VALTYP_EXTERNAL:
+                case VT_EXTERNAL:
                     return "external";
-                case VALTYP_FREED:
+                case VT_FREED:
                     return "freed";
-                case VALTYP_ANY:
+                case VT_ANY:
                     return "any";
                 default:
                     break;
@@ -1743,7 +2413,7 @@ class Value: public ValData
             return "none";
         }
 
-        static MC_INLINE void checkInbetween(Printer* res, Type type, Type t, bool* inbetween)
+        static MC_INLINE void checkInbetween(IOPrinter* res, Type type, Type t, bool* inbetween)
         {
             if((type & t) == t)
             {
@@ -1759,23 +2429,23 @@ class Value: public ValData
         static MC_INLINE char* getUnionName(Type type)
         {
             bool inbetween;
-            Printer* res;
-            if(type == VALTYP_ANY || type == VALTYP_NONE || type == VALTYP_FREED)
+            IOPrinter* res;
+            if(type == VT_ANY || type == VT_NONE || type == VT_FREED)
             {
-                return mc_util_strdup(getTypename(type));
+                return Util::strDuplicate(getTypename(type));
             }
-            res = Memory::make<Printer>(nullptr);
+            res = Memory::make<IOPrinter>(nullptr);
             inbetween = false;
-            checkInbetween(res, type, VALTYP_NUMBER, &inbetween);
-            checkInbetween(res, type, VALTYP_BOOL, &inbetween);
-            checkInbetween(res, type, VALTYP_STRING, &inbetween);
-            checkInbetween(res, type, VALTYP_NULL, &inbetween);
-            checkInbetween(res, type, VALTYP_FUNCNATIVE, &inbetween);
-            checkInbetween(res, type, VALTYP_ARRAY, &inbetween);
-            checkInbetween(res, type, VALTYP_MAP, &inbetween);
-            checkInbetween(res, type, VALTYP_FUNCSCRIPT, &inbetween);
-            checkInbetween(res, type, VALTYP_EXTERNAL, &inbetween);
-            checkInbetween(res, type, VALTYP_ERROR, &inbetween);
+            checkInbetween(res, type, VT_NUMBER, &inbetween);
+            checkInbetween(res, type, VT_BOOL, &inbetween);
+            checkInbetween(res, type, VT_STRING, &inbetween);
+            checkInbetween(res, type, VT_NULL, &inbetween);
+            checkInbetween(res, type, VT_FUNCNATIVE, &inbetween);
+            checkInbetween(res, type, VT_ARRAY, &inbetween);
+            checkInbetween(res, type, VT_MAP, &inbetween);
+            checkInbetween(res, type, VT_FUNCSCRIPT, &inbetween);
+            checkInbetween(res, type, VT_EXTERNAL, &inbetween);
+            checkInbetween(res, type, VT_ERROR, &inbetween);
             return res->getStringAndDestroy(nullptr);
         }
 
@@ -1804,17 +2474,17 @@ class Value: public ValData
             atype = a.getType();
             btype = b.getType();
             isnumlike = (
-                (atype == VALTYP_NUMBER || atype == VALTYP_BOOL || atype == VALTYP_NULL) &&
-                (btype == VALTYP_NUMBER || btype == VALTYP_BOOL || btype == VALTYP_NULL)
+                (atype == VT_NUMBER || atype == VT_BOOL || atype == VT_NULL) &&
+                (btype == VT_NUMBER || btype == VT_BOOL || btype == VT_NULL)
             );
             if(isnumlike)
             {
-                dnleft = asNumber(a);
-                dnright = asNumber(b);
+                dnleft = a.asNumber();
+                dnright = b.asNumber();
                 cres->result = (dnleft - dnright);
                 return true;
             }
-            if(atype == btype && atype == VALTYP_STRING)
+            if(atype == btype && atype == VT_STRING)
             {
                 alen = a.stringGetLength();
                 blen = b.stringGetLength();
@@ -1889,19 +2559,19 @@ class Value: public ValData
             type = obj.getType();
             switch(type)
             {
-                case VALTYP_NUMBER:
+                case VT_NUMBER:
                     {
-                        dval = asNumber(obj);
+                        dval = obj.asNumber();
                         return mc_util_hashdouble(dval);
                     }
                     break;
-                case VALTYP_BOOL:
+                case VT_BOOL:
                     {
-                        bval = asBool(obj);
+                        bval = obj.asBool();
                         return static_cast<size_t>(bval);
                     }
                     break;
-                case VALTYP_STRING:
+                case VT_STRING:
                     {
                         return obj.stringGetHash();
                     }
@@ -1918,7 +2588,7 @@ class Value: public ValData
         static Value copyDeepFuncScript(Value obj, ValDict<TypeKeyT, TypeValueT>* targetdict)
         {
             int i;
-            auto function = Value::asFunction(obj);
+            auto function = obj.asFunction();
             auto fvcnt = function->m_funcdata.valscriptfunc.freevalscount;
             auto bccnt = function->m_funcdata.valscriptfunc.compiledprogcode->m_compiledcount;
             auto bytecodecopy = (OPValCode*)mc_memory_malloc(sizeof(OPValCode) * bccnt);
@@ -1947,7 +2617,8 @@ class Value: public ValData
             }
             auto nlocals = function->m_funcdata.valscriptfunc.numlocals;
             auto nargs = function->m_funcdata.valscriptfunc.numargs;
-            auto copy = Value::makeFuncScript(Value::functionGetName(obj), comprescopy, true, nlocals, nargs, 0);
+            auto name = function->getName();
+            auto copy = Value::makeFuncScript(name, comprescopy, true, nlocals, nargs, 0);
             if(copy.isNull())
             {
                 CompiledProgram::destroy(comprescopy);
@@ -1957,7 +2628,7 @@ class Value: public ValData
             {
                 return Value::makeNull();
             }
-            auto functioncopy = Value::asFunction(copy);
+            auto functioncopy = copy.asFunction();
             if(function->freeValuesAreAllocated())
             {
                 functioncopy->m_funcdata.valscriptfunc.ufv.freevalsallocated = (Value*)mc_memory_malloc(sizeof(Value) * fvcnt);
@@ -1969,13 +2640,13 @@ class Value: public ValData
             functioncopy->m_funcdata.valscriptfunc.freevalscount = fvcnt;
             for(i = 0; i < fvcnt; i++)
             {
-                auto freeval = Value::functionGetFreeValAt(obj, i);
+                auto freeval = function->getFreeValAt(i);
                 auto freevalcopy = Value::copyDeepIntern(freeval, targetdict);
                 if(!freeval.isNull() && freevalcopy.isNull())
                 {
                     return Value::makeNull();
                 }
-                Value::functionSetFreeValAt(copy, i, freevalcopy);
+                functioncopy->setFreeValAt(i, freevalcopy);
             }
             return copy;
         }
@@ -1990,23 +2661,21 @@ class Value: public ValData
             Value itemcopy;
             len = obj.asArray()->size();
             copy = Value::makeArray(len);
-            if(copy.isNull())
-            {
-                return Value::makeNull();
-            }
+            auto carr = copy.asArray();
             if(!targetdict->setKV(&obj, &copy))
             {
                 return Value::makeNull();
             }
+            auto arr = obj.asArray();
             for(i = 0; i < len; i++)
             {
-                item = Value::arrayGetValue(obj, i);
+                item = arr->get(i);
                 itemcopy = Value::copyDeepIntern(item, targetdict);
                 if(!item.isNull() && itemcopy.isNull())
                 {
                     return Value::makeNull();
                 }
-                Value::arrayPush(copy, itemcopy);
+                carr->push(itemcopy);
             }
             return copy;
         }
@@ -2021,6 +2690,7 @@ class Value: public ValData
             Value keycopy;
             Value valcopy;
             copy = Value::makeMap();
+            auto mcopy = copy.asMap();
             if(copy.isNull())
             {
                 return Value::makeNull();
@@ -2029,10 +2699,11 @@ class Value: public ValData
             {
                 return Value::makeNull();
             }
-            for(i = 0; i < Value::mapGetLength(obj); i++)
+            auto m = obj.asMap();
+            for(i = 0; i < m->count(); i++)
             {
-                mapkey = Value::mapGetKeyAt(obj, i);
-                mapval = Value::mapGetValueAt(obj, i);
+                mapkey = m->getKeyAt(i);
+                mapval = m->getValueAt(i);
                 keycopy = Value::copyDeepIntern(mapkey, targetdict);
                 if(!mapkey.isNull() && keycopy.isNull())
                 {
@@ -2043,7 +2714,7 @@ class Value: public ValData
                 {
                     return Value::makeNull();
                 }
-                if(!Value::mapSetValue(copy, keycopy, valcopy))
+                if(!mcopy->setValue(keycopy, valcopy))
                 {
                     return Value::makeNull();
                 }
@@ -2069,23 +2740,23 @@ class Value: public ValData
             type = obj.getType();
             switch(type)
             {
-                case VALTYP_FREED:
-                case VALTYP_ANY:
-                case VALTYP_NONE:
+                case VT_FREED:
+                case VT_ANY:
+                case VT_NONE:
                     {
                         MC_ASSERT(false);
                         copy = makeNull();
                     }
                     break;
-                case VALTYP_NUMBER:
-                case VALTYP_BOOL:
-                case VALTYP_NULL:
-                case VALTYP_FUNCNATIVE:
+                case VT_NUMBER:
+                case VT_BOOL:
+                case VT_NULL:
+                case VT_FUNCNATIVE:
                     {
                         copy = obj;
                     }
                     break;
-                case VALTYP_STRING:
+                case VT_STRING:
                     {
                         bool ok;
                         int len;
@@ -2098,27 +2769,27 @@ class Value: public ValData
                         return copy;
                     }
                     break;
-                case VALTYP_FUNCSCRIPT:
+                case VT_FUNCSCRIPT:
                     {
                         return copyDeepFuncScript(obj, targetdict);
                     }
                     break;
-                case VALTYP_ARRAY:
+                case VT_ARRAY:
                     {
                         return copyDeepArray(obj, targetdict);
                     }
                     break;
-                case VALTYP_MAP:
+                case VT_MAP:
                     {
                         return copyDeepMap(obj, targetdict);
                     }
                     break;
-                case VALTYP_EXTERNAL:
+                case VT_EXTERNAL:
                     {
                         copy = copyFlat(obj);
                     }
                     break;
-                case VALTYP_ERROR:
+                case VT_ERROR:
                     {
                         copy = obj;
                     }
@@ -2146,25 +2817,25 @@ class Value: public ValData
             type = obj.getType();
             switch(type)
             {
-                case VALTYP_ANY:
-                case VALTYP_FREED:
-                case VALTYP_NONE:
+                case VT_ANY:
+                case VT_FREED:
+                case VT_NONE:
                     {
                         MC_ASSERT(false);
                         copy = makeNull();
                     }
                     break;
-                case VALTYP_NUMBER:
-                case VALTYP_BOOL:
-                case VALTYP_NULL:
-                case VALTYP_FUNCSCRIPT:
-                case VALTYP_FUNCNATIVE:
-                case VALTYP_ERROR:
+                case VT_NUMBER:
+                case VT_BOOL:
+                case VT_NULL:
+                case VT_FUNCSCRIPT:
+                case VT_FUNCNATIVE:
+                case VT_ERROR:
                     {
                         copy = obj;
                     }
                     break;
-                case VALTYP_STRING:
+                case VT_STRING:
                     {
                         size_t len;
                         const char* str;
@@ -2173,21 +2844,19 @@ class Value: public ValData
                         copy = makeString(str, len);
                     }
                     break;
-                case VALTYP_ARRAY:
+                case VT_ARRAY:
                     {
                         int i;
                         int len;
                         Value item;
                         len = obj.asArray()->size();
                         copy = makeArray(len);
-                        if(copy.isNull())
-                        {
-                            return makeNull();
-                        }
+                        auto arr = copy.asArray();
+                        auto carr = copy.asArray();
                         for(i = 0; i < len; i++)
                         {
-                            item = Value::arrayGetValue(obj, i);
-                            ok = Value::arrayPush(copy, item);
+                            item = arr->get(i);
+                            ok = carr->push(item);
                             if(!ok)
                             {
                                 return makeNull();
@@ -2195,17 +2864,19 @@ class Value: public ValData
                         }
                     }
                     break;
-                case VALTYP_MAP:
+                case VT_MAP:
                     {
                         size_t i;
                         Value mapkey;
                         Value mapval;
                         copy = makeMap();
-                        for(i = 0; i < Value::mapGetLength(obj); i++)
+                        auto mself = obj.asMap();
+                        auto mcopy = copy.asMap();
+                        for(i = 0; i < mself->count(); i++)
                         {
-                            mapkey = Value::mapGetKeyAt(obj, i);
-                            mapval = Value::mapGetValueAt(obj, i);
-                            ok = Value::mapSetValue(copy, mapkey, mapval);
+                            mapkey = mself->getKeyAt(i);
+                            mapval = mself->getValueAt(i);
+                            ok = mcopy->setValue(mapkey, mapval);
                             if(!ok)
                             {
                                 return makeNull();
@@ -2213,7 +2884,7 @@ class Value: public ValData
                         }
                     }
                     break;
-                case VALTYP_EXTERNAL:
+                case VT_EXTERNAL:
                     {
                         void* datacopy;
                         Value::ObjUserdata* objext;
@@ -2222,7 +2893,7 @@ class Value: public ValData
                         {
                             return makeNull();
                         }
-                        objext = userdataGetData(obj);
+                        objext = obj.asUserdata();
                         datacopy = nullptr;
                         if(objext->datacopyfn != nullptr)
                         {
@@ -2263,7 +2934,7 @@ class Value: public ValData
         static MC_INLINE Value makeNumber(NumFloat val)
         {
             Value o;
-            o = makeEmpty(VALTYP_NUMBER);
+            o = makeEmpty(VT_NUMBER);
             o.m_uval.valnumber = val;
             return o;
         }
@@ -2271,7 +2942,7 @@ class Value: public ValData
         static MC_INLINE Value makeBool(bool val)
         {
             Value o;
-            o = makeEmpty(VALTYP_BOOL);
+            o = makeEmpty(VT_BOOL);
             o.m_uval.valbool = static_cast<int>(val);
             return o;
         }
@@ -2279,27 +2950,27 @@ class Value: public ValData
         static MC_INLINE Value makeNull()
         {
             Value o;
-            o = makeEmpty(VALTYP_NULL);
+            o = makeEmpty(VT_NULL);
             return o;
         }
 
         static Value makeStrEmptyCapacity(int capacity)
         {
-            auto data = makeObjData<ObjString>(Value::VALTYP_STRING);
+            auto data = makeObjData<ObjString>(Value::VT_STRING);
             if(data == nullptr)
             {
                 return Value::makeNull();
             }
             data->m_hashval = 0;
             data->m_strbuf = Memory::make<StringBuffer>(capacity);
-            return Value::makeDataFrom(Value::VALTYP_STRING, data);
+            return Value::makeDataFrom(Value::VT_STRING, data);
         }
 
         template<typename... ArgsT>
         static Value makeStrFormat(const char* fmt, ArgsT&&... args)
         {
             Value res;
-            auto data = (ObjString*)Object::getDataFromPool(Value::VALTYP_STRING);
+            auto data = (ObjString*)Object::getDataFromPool(Value::VT_STRING);
             res = makeStrEmptyCapacity(0);
             if(res.isNull())
             {
@@ -2326,12 +2997,16 @@ class Value: public ValData
 
         static Value makeString(const char* string)
         {
-            return makeString(string, mc_util_strlen(string));
+            return makeString(string, strlen(string));
         }
 
         static Value makeFuncScript(const char* name, CompiledProgram* cres, bool ownsdt, int nlocals, int nargs, int fvc)
         {
-            auto data = makeObjData<ObjFunction>(Value::VALTYP_FUNCSCRIPT);
+            if(name == nullptr)
+            {
+                fprintf(stderr, "makeFuncScript: name is NULL!!\n");
+            }
+            auto data = makeObjData<ObjFunction>(Value::VT_FUNCSCRIPT);
             if(data == nullptr)
             {
                 return Value::makeNull();
@@ -2339,7 +3014,7 @@ class Value: public ValData
             if(ownsdt)
             {
                 
-                data->m_funcdata.valscriptfunc.unamev.fallocname = (name != nullptr) ? mc_util_strdup(name) : mc_util_strdup("anonymous");
+                data->m_funcdata.valscriptfunc.unamev.fallocname = (name != nullptr) ? Util::strDuplicate(name) : Util::strDuplicate("anonymous");
                 if(data->m_funcdata.valscriptfunc.unamev.fallocname == nullptr)
                 {
                     return Value::makeNull();
@@ -2362,17 +3037,17 @@ class Value: public ValData
                 }
             }
             data->m_funcdata.valscriptfunc.freevalscount = fvc;
-            return Value::makeDataFrom(Value::VALTYP_FUNCSCRIPT, data);
+            return Value::makeDataFrom(Value::VT_FUNCSCRIPT, data);
         }
 
         static Value makeFuncNative(const char* name, CallbackNativeFN fn, void* data)
         {
-            auto obj = makeObjData<ObjFunction>(Value::VALTYP_FUNCNATIVE);
+            auto obj = makeObjData<ObjFunction>(Value::VT_FUNCNATIVE);
             if(obj == nullptr)
             {
                 return Value::makeNull();
             }
-            obj->m_funcdata.valnativefunc.natfnname = mc_util_strdup(name);
+            obj->m_funcdata.valnativefunc.natfnname = Util::strDuplicate(name);
             if(obj->m_funcdata.valnativefunc.natfnname == nullptr)
             {
                 return Value::makeNull();
@@ -2382,12 +3057,12 @@ class Value: public ValData
             {
                 obj->m_funcdata.valnativefunc.userpointer = data;
             }
-            return Value::makeDataFrom(Value::VALTYP_FUNCNATIVE, obj);
+            return Value::makeDataFrom(Value::VT_FUNCNATIVE, obj);
         }
 
         static Value makeArrayFromList(GenericList<Value>* list)
         {
-            auto data = makeObjData<ObjArray>(Value::VALTYP_ARRAY);
+            auto data = makeObjData<ObjArray>(Value::VT_ARRAY);
             if(data == nullptr)
             {
                 return Value::makeNull();
@@ -2397,7 +3072,7 @@ class Value: public ValData
             {
                 return Value::makeNull();
             }
-            return Value::makeDataFrom(Value::VALTYP_ARRAY, data);
+            return Value::makeDataFrom(Value::VT_ARRAY, data);
         }
 
         static Value makeArray()
@@ -2418,7 +3093,7 @@ class Value: public ValData
 
         static Value makeMap(size_t capacity)
         {
-            auto data = makeObjData<ObjMap>(Value::VALTYP_MAP);
+            auto data = makeObjData<ObjMap>(Value::VT_MAP);
             if(data == nullptr)
             {
                 return Value::makeNull();
@@ -2430,26 +3105,26 @@ class Value: public ValData
             }
             data->m_actualmap->setHashFunction((CallbackHashItemFN)Value::callbackHash);
             data->m_actualmap->setEqualsFunction((CallbackCompareFN)Value::callbackEqualsTo);
-            return Value::makeDataFrom(Value::VALTYP_MAP, data);
+            return Value::makeDataFrom(Value::VT_MAP, data);
         }
 
         static Value makeErrorNoCopy(char* error)
         {
-            auto data = makeObjData<ObjError>(Value::VALTYP_ERROR);
+            auto data = makeObjData<ObjError>(Value::VT_ERROR);
             if(data == nullptr)
             {
                 return Value::makeNull();
             }
             data->message = error;
             data->traceback = nullptr;
-            return Value::makeDataFrom(Value::VALTYP_ERROR, data);
+            return Value::makeDataFrom(Value::VT_ERROR, data);
         }
 
         static Value makeError(const char* error)
         {
             char* errorstr;
             Value res;
-            errorstr = mc_util_strdup(error);
+            errorstr = Util::strDuplicate(error);
             if(errorstr == nullptr)
             {
                 return Value::makeNull();
@@ -2465,7 +3140,7 @@ class Value: public ValData
 
         static Value makeUserObj(void* data)
         {
-            auto obj = makeObjData<ObjUserdata>(Value::VALTYP_EXTERNAL);
+            auto obj = makeObjData<ObjUserdata>(Value::VT_EXTERNAL);
             if(obj == nullptr)
             {
                 return Value::makeNull();
@@ -2473,44 +3148,10 @@ class Value: public ValData
             obj->data = data;
             obj->datadestroyfn = nullptr;
             obj->datacopyfn = nullptr;
-            return Value::makeDataFrom(Value::VALTYP_EXTERNAL, obj);
+            return Value::makeDataFrom(Value::VT_EXTERNAL, obj);
         }
 
-        //xxhere
-
-        static MC_INLINE bool asBool(Value selfval)
-        {
-            if(selfval.isNumber())
-            {
-                return selfval.m_uval.valnumber != 0.0;
-            }
-            return selfval.m_uval.valbool != 0;
-        }
-
-        static MC_INLINE NumFloat asNumber(Value selfval)
-        {
-            if(selfval.isNumber())
-            {
-                if(selfval.getType() == VALTYP_BOOL)
-                {
-                    return selfval.m_uval.valbool;
-                }
-                return selfval.m_uval.valnumber;
-            }
-            return selfval.m_uval.valnumber;
-        }
-
-        static MC_INLINE ObjFunction* asFunction(const Value& val)
-        {
-            return val.getAllocatedData<ObjFunction>();
-        }
-
-        static ObjUserdata* userdataGetData(const Value& val)
-        {
-            return val.getAllocatedData<ObjUserdata>();
-        }
-
-        static void valPrintObjString(Printer* pr, const Value& val)
+        static void valPrintObjString(IOPrinter* pr, const Value& val)
         {
             size_t len;
             const char* str;
@@ -2529,8 +3170,8 @@ class Value: public ValData
         static bool userdataSetData(Value selfval, void* extdata)
         {
             ObjUserdata* data;
-            MC_ASSERT(selfval.getType() == Value::VALTYP_EXTERNAL);
-            data = Value::userdataGetData(selfval);
+            MC_ASSERT(selfval.getType() == Value::VT_EXTERNAL);
+            data = selfval.asUserdata();
             if(data == nullptr)
             {
                 return false;
@@ -2542,8 +3183,8 @@ class Value: public ValData
         static bool userdataSetDestroyFunc(Value selfval, CallbackDestroyFN dfn)
         {
             ObjUserdata* data;
-            MC_ASSERT(selfval.getType() == Value::VALTYP_EXTERNAL);
-            data = Value::userdataGetData(selfval);
+            MC_ASSERT(selfval.getType() == Value::VT_EXTERNAL);
+            data = selfval.asUserdata();
             if(data == nullptr)
             {
                 return false;
@@ -2555,8 +3196,8 @@ class Value: public ValData
         static bool userdataSetCopyFunc(Value selfval, CallbackCopyFN copyfn)
         {
             ObjUserdata* data;
-            MC_ASSERT(selfval.getType() == Value::VALTYP_EXTERNAL);
-            data = Value::userdataGetData(selfval);
+            MC_ASSERT(selfval.getType() == Value::VT_EXTERNAL);
+            data = selfval.asUserdata();
             if(data == nullptr)
             {
                 return false;
@@ -2565,65 +3206,6 @@ class Value: public ValData
             return true;
         }
 
-        static const char* functionGetName(Value selfval)
-        {
-            auto data = selfval.getAllocatedData<ObjFunction>();
-            MC_ASSERT(data);
-            if(data == nullptr)
-            {
-                return nullptr;
-            }
-            if(data->m_funcdata.valscriptfunc.ownsdata)
-            {
-                return data->m_funcdata.valscriptfunc.unamev.fallocname;
-            }
-            return data->m_funcdata.valscriptfunc.unamev.fconstname;
-        }
-
-        static Value functionGetFreeValAt(Value selfval, int ix)
-        {
-            auto fun = selfval.getAllocatedData<ObjFunction>();
-            MC_ASSERT(ix >= 0 && ix < fun->m_funcdata.valscriptfunc.freevalscount);
-            if(ix < 0 || ix >= fun->m_funcdata.valscriptfunc.freevalscount)
-            {
-                return Value::makeNull();
-            }
-            if(fun->freeValuesAreAllocated())
-            {
-                return (Value)fun->m_funcdata.valscriptfunc.ufv.freevalsallocated[ix];
-            }
-            return (Value)fun->m_funcdata.valscriptfunc.ufv.freevalsstack[ix];
-        }
-
-        static void functionSetFreeValAt(Value selfval, int ix, Value val)
-        {
-            auto fun = selfval.getAllocatedData<ObjFunction>();
-            MC_ASSERT(ix >= 0 && ix < fun->m_funcdata.valscriptfunc.freevalscount);
-            if(ix < 0 || ix >= fun->m_funcdata.valscriptfunc.freevalscount)
-            {
-            }
-            else
-            {
-                if(fun->freeValuesAreAllocated())
-                {
-                    fun->m_funcdata.valscriptfunc.ufv.freevalsallocated[ix] = val;
-                }
-                else
-                {
-                    fun->m_funcdata.valscriptfunc.ufv.freevalsstack[ix] = val;
-                }
-            }
-        }
-
-        static Value* functionGetFreeVals(Value selfval)
-        {
-            auto fun = selfval.getAllocatedData<ObjFunction>();
-            if(fun->freeValuesAreAllocated())
-            {
-                return fun->m_funcdata.valscriptfunc.ufv.freevalsallocated;
-            }
-            return (Value*)fun->m_funcdata.valscriptfunc.ufv.freevalsstack;
-        }
 
         static const char* errorGetMessage(Value selfval)
         {
@@ -2644,55 +3226,6 @@ class Value: public ValData
             return data->traceback;
         }
 
-        static Value arrayGetValue(Value selfval, size_t ix)
-        {
-            Value* res;
-            MC_ASSERT(selfval.getType() == Value::VALTYP_ARRAY);
-            auto array = selfval.asArray();
-            if(ix >= array->count())
-            {
-                return Value::makeNull();
-            }
-            res = array->getp(ix);
-            if(res == nullptr)
-            {
-                return Value::makeNull();
-            }
-            return *res;
-        }
-
-        static bool arraySetValue(Value selfval, size_t ix, Value val)
-        {
-            size_t len;
-            size_t toadd;
-            MC_ASSERT(selfval.getType() == Value::VALTYP_ARRAY);
-            auto array = selfval.asArray();
-            len = array->count();
-            if((ix >= len) || (len == 0))
-            {
-                toadd = len+1;
-                #if 0
-                    fprintf(stderr, "ix=%d toadd=%d len=%d\n", ix, toadd, len);
-                #endif
-                while(toadd != (ix+2))
-                {
-                    arrayPush(selfval, Value::makeNull());
-                    toadd++;
-                }
-            }
-            return array->set(ix, val) != nullptr;
-        }
-
-        static MC_INLINE bool arrayPush(Value selfval, Value val)
-        {
-            return selfval.asArray()->push(val);
-        }
-
-        static MC_INLINE int arrayGetLength(Value selfval)
-        {
-            return selfval.asArray()->size();
-        }
-
         static Value arrayPop(Value selfval)
         {
             Value dest;
@@ -2710,297 +3243,9 @@ class Value: public ValData
             return array->removeAt(ix);
         }
 
-        static size_t mapGetLength(Value selfval)
+        static void printValue(IOPrinter* pr, const Value& val, bool accurate)
         {
-            return selfval.asMap()->count();
-        }
-
-        static Value mapGetKeyAt(Value selfval, size_t ix)
-        {
-            Value* res;
-            res = selfval.asMap()->getKeyAt(ix);
-            if(res == nullptr)
-            {
-                return Value::makeNull();
-            }
-            return *res;
-        }
-
-        static Value mapGetValueAt(Value selfval, size_t ix)
-        {
-            Value* res;
-            res = selfval.asMap()->getValueAt(ix);
-            if(res == nullptr)
-            {
-                return Value::makeNull();
-            }
-            return *res;
-        }
-
-        static bool mapSetValueAt(Value selfval, size_t ix, Value val)
-        {
-            auto m = selfval.asMap();
-            if(ix >= m->count())
-            {
-                return false;
-            }
-            return m->setValueAt(ix, &val);
-        }
-
-        static Value mapGetetKVPairAt(Value selfval, size_t ix)
-        {
-            Value mapkey;
-            Value val;
-            Value res;
-            Value valobj;
-            Value keyobj;
-            auto selfmap = selfval.asMap();
-            if(ix >= selfmap->count())
-            {
-                return Value::makeNull();
-            }
-            mapkey = mapGetKeyAt(selfval, ix);
-            val = mapGetValueAt(selfval, ix);
-            res = Value::makeMap();
-            if(res.isNull())
-            {
-                return Value::makeNull();
-            }
-            keyobj = Value::makeString("key");
-            if(keyobj.isNull())
-            {
-                return Value::makeNull();
-            }
-            mapSetValue(res, keyobj, mapkey);
-            valobj = Value::makeString("value");
-            if(valobj.isNull())
-            {
-                return Value::makeNull();
-            }
-            mapSetValue(res, valobj, val);
-            return res;
-        }
-
-        static bool mapSetValue(Value selfval, Value key, Value val)
-        {
-            return selfval.asMap()->setKV(&key, &val);
-        }
-
-        static bool mapSetValString(Value selfval, const char* strkey, Value val)
-        {
-            Value vkey;
-            vkey = Value::makeString(strkey);
-            return mapSetValue(selfval, vkey, val);
-        }
-
-        static void mapSetStrFunc(Value map, const char* fnname, CallbackNativeFN function)
-        {
-            mapSetValString(map, fnname, Value::makeFuncNative(fnname, function, nullptr));
-        }
-
-        static Value mapGetValue(Value selfval, Value key)
-        {
-            Value* res;
-            res = selfval.asMap()->get(&key);
-            if(res == nullptr)
-            {
-                return Value::makeNull();
-            }
-            return *res;
-        }
-
-        static bool mapGetValueChecked(Value selfval, Value key, Value* dest)
-        {
-            Value* res;
-            res = selfval.asMap()->get(&key);
-            if(res == nullptr)
-            {
-                *dest = Value::makeNull();
-                return false;
-            }
-            *dest = *res;
-            return true;
-        }
-
-        static bool mapHasKey(Value selfval, Value key)
-        {
-            Value* res;
-            res = selfval.asMap()->get(&key);
-            return res != nullptr;
-        }
-
-        static void valPrintObjFuncScript(Printer* pr, const Value& val)
-        {
-            const char* fname;
-            auto fn = Value::asFunction(val);
-            fname = functionGetName(val);
-            auto numlocals = fn->m_funcdata.valscriptfunc.numlocals;
-            auto numargs = fn->m_funcdata.valscriptfunc.numargs;
-            auto freevc = fn->m_funcdata.valscriptfunc.freevalscount;
-            pr->format("<scriptfunction '%s' locals=%d argc=%d fvc=%d", fname, numlocals, numargs, freevc);
-            #if 1
-            if(pr->m_prconfig.verbosefunc)
-            {
-                auto code = fn->m_funcdata.valscriptfunc.compiledprogcode->m_compiledbytecode;
-                auto poslist = fn->m_funcdata.valscriptfunc.compiledprogcode->m_progsrcposlist;
-                auto count = fn->m_funcdata.valscriptfunc.compiledprogcode->m_compiledcount;
-                pr->put(" [");
-                Instruction::bcPrintByteCodeTo(pr, code, poslist, count, true);
-                pr->put(" ]");
-            }
-            else
-            #endif
-            {
-            }
-            pr->put(">");
-        }
-
-        static void valPrintObjArray(Printer* pr, const Value& val)
-        {
-            bool recursion;
-            size_t i;
-            size_t alen;
-            bool prevquot;
-            Value iobj;
-            auto actualary = val.asArray();
-            alen = arrayGetLength(val);
-            pr->put("[");
-            for(i = 0; i < alen; i++)
-            {
-                recursion = false;
-                iobj = arrayGetValue(val, i);
-                if(iobj.getType() == Value::VALTYP_ARRAY)
-                {
-                    auto otherary = iobj.asArray();
-                    if(otherary == actualary)
-                    {
-                        recursion = true;
-                    }
-                }
-                prevquot = pr->m_prconfig.quotstring;
-                pr->m_prconfig.quotstring = true;
-                if(recursion)
-                {
-                    pr->put("<recursion>");
-                }
-                else
-                {
-                    printValue(pr, iobj, false);
-                }
-                pr->m_prconfig.quotstring = prevquot;
-                if(i < (alen - 1))
-                {
-                    pr->put(", ");
-                }
-            }
-            pr->put("]");
-        }
-
-        static void valPrintObjMap(Printer* pr, const Value& val)
-        {
-            bool prevquot;
-            size_t i;
-            size_t alen;
-            Value mapkey;
-            Value mapval;
-            auto m = val.asMap();
-            alen = m->count();
-            pr->put("{");
-            for(i = 0; i < alen; i++)
-            {
-                mapkey = mapGetKeyAt(val, i);
-                mapval = mapGetValueAt(val, i);
-                prevquot = pr->m_prconfig.quotstring;
-                pr->m_prconfig.quotstring = true;
-                printValue(pr, mapkey, false);
-                pr->put(": ");
-                printValue(pr, mapval, false);
-                pr->m_prconfig.quotstring = prevquot;
-                if(i < (alen - 1))
-                {
-                    pr->put(", ");
-                }
-            }
-            pr->put("}");
-        }
-
-        MC_PROTO static void valPrintObjError(Printer* pre, const Value& val);
-
-        static void printValue(Printer* pr, const Value& val, bool accurate)
-        {
-            Value::Type type;
-            (void)accurate;
-            type = val.getType();
-            switch(type)
-            {
-                case Value::VALTYP_FREED:
-                    {
-                        pr->put("FREED");
-                    }
-                    break;
-                case Value::VALTYP_NONE:
-                    {
-                        pr->put("NONE");
-                    }
-                    break;
-                case Value::VALTYP_NUMBER:
-                    {
-                        NumFloat number;
-                        number = Value::asNumber(val);
-                        pr->printNumFloat(number);
-                    }
-                    break;
-                case Value::VALTYP_BOOL:
-                    {
-                        pr->put(Value::asBool(val) ? "true" : "false");
-                    }
-                    break;
-                case Value::VALTYP_STRING:
-                    {
-                        valPrintObjString(pr, val);
-                    }
-                    break;
-                case Value::VALTYP_NULL:
-                    {
-                        pr->put("null");
-                    }
-                    break;
-                case Value::VALTYP_FUNCSCRIPT:
-                    {
-                        valPrintObjFuncScript(pr, val);
-                    }
-                    break;
-                case Value::VALTYP_ARRAY:
-                    {
-                        valPrintObjArray(pr, val);
-                    }
-                    break;
-                case Value::VALTYP_MAP:
-                    {
-                        valPrintObjMap(pr, val);
-                    }
-                    break;
-                case Value::VALTYP_FUNCNATIVE:
-                    {
-                        pr->put("FUNCNATIVE");
-                    }
-                    break;
-                case Value::VALTYP_EXTERNAL:
-                    {
-                        pr->put("EXTERNAL");
-                    }
-                    break;
-                case Value::VALTYP_ERROR:
-                    {
-                        valPrintObjError(pr, val);
-                    }
-                    break;
-                case Value::VALTYP_ANY:
-                    {
-                        MC_ASSERT(false);
-                    }
-                    break;
-            }
+            ValPrinter::doPrintValue(pr, val, accurate);
         }
 
     public:
@@ -3030,31 +3275,31 @@ class Value: public ValData
         {
             Type type;
             type = getType();
-            return type == VALTYP_NUMBER || type == VALTYP_BOOL;
+            return type == VT_NUMBER || type == VT_BOOL;
         }
 
         MC_INLINE bool isNumber() const
         {
-            return (getType() == VALTYP_NUMBER || getType() == VALTYP_BOOL);
+            return (getType() == VT_NUMBER || getType() == VT_BOOL);
         }
 
         MC_INLINE bool isNull() const
         {
-            return getType() == VALTYP_NULL;
+            return getType() == VT_NULL;
         }
 
         MC_INLINE bool isFuncNative() const
         {
             Type type;
             type = getType();
-            return (type == VALTYP_FUNCNATIVE);
+            return (type == VT_FUNCNATIVE);
         }
 
         MC_INLINE bool isFuncScript() const
         {
             Type type;
             type = getType();
-            return (type == VALTYP_FUNCSCRIPT);
+            return (type == VT_FUNCSCRIPT);
         }
 
         MC_INLINE bool isCallable() const
@@ -3066,21 +3311,53 @@ class Value: public ValData
         {
             Type type;
             type = getType();
-            return (type == VALTYP_STRING);
+            return (type == VT_STRING);
         }
 
         MC_INLINE bool isMap() const
         {
             Type type;
             type = getType();
-            return (type == VALTYP_MAP);
+            return (type == VT_MAP);
         }
 
         MC_INLINE bool isArray() const
         {
             Type type;
             type = getType();
-            return (type == VALTYP_ARRAY);
+            return (type == VT_ARRAY);
+        }
+
+        MC_INLINE bool asBool() const
+        {
+            if(isNumber())
+            {
+                return m_uval.valnumber != 0.0;
+            }
+            return m_uval.valbool != 0;
+        }
+
+        MC_INLINE NumFloat asNumber() const
+        {
+            if(isNumber())
+            {
+                if(getType() == VT_BOOL)
+                {
+                    return m_uval.valbool;
+                }
+                return m_uval.valnumber;
+            }
+            return m_uval.valnumber;
+        }
+
+        MC_INLINE ObjFunction* asFunction() const
+        {
+            return getAllocatedData<ObjFunction>();
+        }
+
+        MC_INLINE ObjUserdata* asUserdata() const
+        {
+            return getAllocatedData<ObjUserdata>();
         }
 
         MC_INLINE ObjArray* asArray()
@@ -3167,12 +3444,12 @@ class Value: public ValData
             int vlen;
             const char* vstr;
             (void)ok;
-            if(val.getType() == Value::VALTYP_NUMBER)
+            if(val.getType() == Value::VT_NUMBER)
             {
-                this->stringAppendFmt("%g", Value::asNumber(val));
+                this->stringAppendFmt("%g", val.asNumber());
                 goto finished;
             }
-            if(val.getType() == Value::VALTYP_STRING)
+            if(val.getType() == Value::VT_STRING)
             {
                 vlen = val.stringGetLength();
                 vstr = val.stringGetData();
@@ -3198,7 +3475,7 @@ class Value: public ValData
             {
                 len = this->stringGetLength();
                 str = this->stringGetData();
-                data->m_hashval = mc_util_hashdata(str, len);
+                data->m_hashval = Util::hashData(str, len);
             }
             return data->m_hashval;
         }
@@ -3210,7 +3487,7 @@ class Value: public ValData
             auto data = getAllocatedData<ObjString>();
             len = this->stringGetLength();
             str = this->stringGetData();
-            data->m_hashval = mc_util_hashdata(str, len);
+            data->m_hashval = Util::hashData(str, len);
             return true;
         }
 };
@@ -3227,9 +3504,9 @@ class ObjClass
         class Field
         {
             public:
-                const char* name;
-                bool ispseudo;
-                CallbackNativeFN fndest;
+                const char* m_fieldname;
+                bool m_ispseudo;
+                CallbackNativeFN m_fndest;
         };
 
     public:
@@ -3256,9 +3533,9 @@ class ObjClass
         void addFunction(const char* name, bool ispseudo, CallbackNativeFN fn)
         {
             Field bt;
-            bt.name = name;
-            bt.ispseudo = ispseudo;
-            bt.fndest = fn;
+            bt.m_fieldname = name;
+            bt.m_ispseudo = ispseudo;
+            bt.m_fndest = fn;
             m_memberfields.push(bt);
         }
 
@@ -3271,7 +3548,490 @@ class ObjClass
         {
             return addFunction(name, true, fn);
         }
+};
 
+class Traceback
+{
+    public:
+        class Item
+        {
+            public:
+                friend class Traceback;
+
+            protected:
+                char* m_tbtracefuncname;
+                SourceLocation m_tbpos;
+
+            public:
+                const char* getTraceFunctionName()
+                {
+                    return m_tbtracefuncname;
+                }
+
+                const char* getSourceLine()
+                {
+                    const char* line;
+                    if(m_tbpos.m_locfile == nullptr)
+                    {
+                        return nullptr;
+                    }
+                    auto lines = &m_tbpos.m_locfile->m_srclines;
+                    if((size_t)m_tbpos.m_locline >= (size_t)lines->count())
+                    {
+                        return nullptr;
+                    }
+                    line = (const char*)lines->get(m_tbpos.m_locline);
+                    return line;
+                }
+
+                const char* getSourceFilename()
+                {
+                    if(m_tbpos.m_locfile == nullptr)
+                    {
+                        return nullptr;
+                    }
+                    return m_tbpos.m_locfile->path();
+                }
+        };
+        friend class Item;
+
+    private:
+        GenericList<Item> m_tbitems;
+
+    public:
+        Traceback()
+        {
+        }
+
+        static void destroy(Traceback* traceback)
+        {
+            size_t i;
+            if(traceback != nullptr)
+            {
+                for(i = 0; i < traceback->m_tbitems.count(); i++)
+                {
+                    auto item = traceback->m_tbitems.getp(i);
+                    mc_memory_free(item->m_tbtracefuncname);
+                    item->m_tbtracefuncname = nullptr;
+                }
+                traceback->m_tbitems.deInit();
+                mc_memory_free(traceback);
+            }
+        }
+
+        bool push(const char* fname, SourceLocation pos)
+        {
+            bool ok;
+            Item item;
+            (void)ok;
+            item.m_tbtracefuncname = Util::strDuplicate(fname);
+            if(item.m_tbtracefuncname == nullptr)
+            {
+                return false;
+            }
+            item.m_tbpos = pos;
+            ok = m_tbitems.push(item);
+            return true;
+        }
+
+        int getDepth()
+        {
+            return m_tbitems.count();
+        }
+
+        const char* getSourceFilename(int depth)
+        {
+            Item* item;
+            item = m_tbitems.getp(depth);
+            if(item == nullptr)
+            {
+                return nullptr;
+            }
+            return item->getSourceFilename();
+        }
+
+        const char* getSourceLineCode(int depth)
+        {
+            Item* item;
+            item = m_tbitems.getp(depth);
+            if(item == nullptr)
+            {
+                return nullptr;
+            }
+            return item->getSourceLine();
+        }
+
+        int getSourceLineNumber(int depth)
+        {
+            Item* item;
+            item = m_tbitems.getp(depth);
+            if(item == nullptr)
+            {
+                return -1;
+            }
+            return item->m_tbpos.m_locline;
+        }
+
+        int getSourceColumn(int depth)
+        {
+            Item* item;
+            item = m_tbitems.getp(depth);
+            if(item == nullptr)
+            {
+                return -1;
+            }
+            return item->m_tbpos.m_loccolumn;
+        }
+
+        const char* getFunctionName(int depth)
+        {
+            Item* item;
+            item = m_tbitems.getp(depth);
+            if(item == nullptr)
+            {
+                return "";
+            }
+            return item->getTraceFunctionName();
+        }
+
+        bool printTo(IOPrinter* pr, Console::Color* mcc)
+        {
+            int i;
+            int depth;
+            const char* cblue;
+            const char* cyell;
+            const char* creset;
+            const char* filename;
+            Item* item;
+            cblue = mcc->get('b');
+            cyell = mcc->get('y');
+            creset = mcc->get('0');
+            depth = m_tbitems.count();
+            for(i = 0; i < depth; i++)
+            {
+                item = m_tbitems.getp(i);
+                filename = item->getSourceFilename();
+                pr->format("  function %s%s%s", cblue, item->m_tbtracefuncname, creset);
+                if(item->m_tbpos.m_locline >= 0 && item->m_tbpos.m_loccolumn >= 0)
+                {
+                    pr->format(" in %s%s:%d:%d%s", cyell, filename, item->m_tbpos.m_locline, item->m_tbpos.m_loccolumn, creset);
+                }
+                else
+                {
+                }
+                pr->format("\n");
+            }
+            return !pr->m_prfailed;
+        }
+};
+
+class Error
+{
+    public:
+        enum
+        {
+            MaxErrorMsgLength = (64),
+        };
+
+        enum Type
+        {
+            ERRTYP_NONE = 0,
+            ERRTYP_PARSING,
+            ERRTYP_COMPILING,
+            ERRTYP_RUNTIME,
+            ERRTYP_TIMEOUT,
+            ERRTYP_MEMORY,
+            ERRTYP_USER
+        };
+
+    public:
+        static const char* mc_util_errortypename(Type type)
+        {
+            switch(type)
+            {
+                case ERRTYP_PARSING:
+                    return "PARSING";
+                case ERRTYP_COMPILING:
+                    return "COMPILATION";
+                case ERRTYP_RUNTIME:
+                    return "RUNTIME";
+                case ERRTYP_TIMEOUT:
+                    return "TIMEOUT";
+                case ERRTYP_MEMORY:
+                    return "ALLOCATION";
+                case ERRTYP_USER:
+                    return "USER";
+                default:
+                    break;
+            }
+            return "NONE";
+        }
+
+        static bool printUserError(IOPrinter* pr, const Value& val)
+        {
+            const char* cred;
+            const char* creset;
+            Traceback* traceback;
+            static const char eprefix[] = "script error";
+            Console::Color mcc(fileno(stdout));
+            cred = mcc.get('r');
+            creset = mcc.get('0');
+            pr->format("%s%s:%s %s\n", cred, eprefix, creset, Value::errorGetMessage(val));
+            traceback = Value::errorGetTraceback(val);
+            MC_ASSERT(traceback != nullptr);
+            if(traceback != nullptr)
+            {
+                pr->format("%sTraceback:%s\n", cred, creset);
+                traceback->printTo(pr, &mcc);
+            }
+            return true;
+        }
+
+        static bool printErrorTo(Error* err, IOPrinter* pr)
+        {
+            int j;
+            int colnum;
+            int linenum;
+            const char* line;
+            const char* typestr;
+            const char* filename;
+            const char* cred;
+            const char* cblue;
+            const char* creset;
+            Traceback* traceback;
+            static const char eprefix[] = "runtime error";
+            Console::Color mcc(fileno(stdout));
+            cred = mcc.get('r');
+            cblue = mcc.get('b');
+            creset = mcc.get('0');
+            typestr = err->getTypeString();
+            filename = err->getFile();
+            line = err->getSourceLineCode();
+            linenum = err->getSourceLineNumber();
+            colnum = err->getSourceColumn();
+            if(line != nullptr)
+            {
+                pr->put(line);
+                pr->put("\n");
+                if(colnum >= 0)
+                {
+                    for(j = 0; j < (colnum - 1); j++)
+                    {
+                        pr->put(" ");
+                    }
+                    pr->put("^\n");
+                }
+            }
+            pr->format("%s%s %s%s in \"%s\" on %s%d:%d:%s %s\n", cred, eprefix, typestr, creset, filename, cblue, linenum, colnum, creset, err->getMessage());
+            traceback = err->getTraceback();
+            if(traceback != nullptr)
+            {
+                pr->format("traceback:\n");
+                traceback->printTo(pr, &mcc);
+            }
+            return true;
+        }
+
+    public:
+        Type m_errtype = ERRTYP_NONE;
+        char m_message[MaxErrorMsgLength] = {};
+        SourceLocation m_pos;
+        Traceback* m_traceback = nullptr;
+
+    public:
+        Error()
+        {
+        }
+
+        const char* getMessage()
+        {
+            return m_message;
+        }
+
+        const char* getFile()
+        {
+            if(m_pos.m_locfile == nullptr)
+            {
+                return nullptr;
+            }
+            return m_pos.m_locfile->path();
+        }
+
+        const char* getSourceLineCode()
+        {
+            const char* line;
+            if(m_pos.m_locfile == nullptr)
+            {
+                return nullptr;
+            }
+            auto lines = &m_pos.m_locfile->m_srclines;
+            if(m_pos.m_locline >= (int)lines->count())
+            {
+                return nullptr;
+            }
+            line = (const char*)lines->get(m_pos.m_locline);
+            return line;
+        }
+
+        int getSourceLineNumber()
+        {
+            if(m_pos.m_locline < 0)
+            {
+                return -1;
+            }
+            return m_pos.m_locline + 1;
+        }
+
+        int getSourceColumn()
+        {
+            if(m_pos.m_loccolumn < 0)
+            {
+                return -1;
+            }
+            return m_pos.m_loccolumn + 1;
+        }
+
+        Type getType()
+        {
+            switch(m_errtype)
+            {
+                case ERRTYP_NONE:
+                    return ERRTYP_NONE;
+                case ERRTYP_PARSING:
+                    return ERRTYP_PARSING;
+                case ERRTYP_COMPILING:
+                    return ERRTYP_COMPILING;
+                case ERRTYP_RUNTIME:
+                    return ERRTYP_RUNTIME;
+                case ERRTYP_TIMEOUT:
+                    return ERRTYP_TIMEOUT;
+                case ERRTYP_MEMORY:
+                    return ERRTYP_MEMORY;
+                case ERRTYP_USER:
+                    return ERRTYP_USER;
+                default:
+                    break;
+            }
+            return ERRTYP_NONE;
+        }
+
+        const char* getTypeString()
+        {
+            return mc_util_errortypename(getType());
+        }
+
+        Traceback* getTraceback()
+        {
+            return m_traceback;
+        }
+
+        bool printErrorTo(IOPrinter* pr)
+        {
+            return printErrorTo(this, pr);
+        }
+};
+
+class ErrList
+{
+    public:
+        enum
+        {
+            MaxErrItemCount = (10),
+        };
+
+    public:
+        Error m_erroritems[MaxErrItemCount];
+        int m_count;
+
+    public:
+        ErrList()
+        {
+            m_count = 0;
+        }
+
+        void destroy()
+        {
+            clear();
+        }
+
+        size_t count() const
+        {
+            return m_count;
+        }
+
+        void clear()
+        {
+            int i;
+            Error* error;
+            for(i = 0; i < m_count; i++)
+            {
+                error = get(i);
+                if(error->m_traceback != nullptr)
+                {
+                    Memory::destroy(error->m_traceback);
+                }
+            }
+            m_count = 0;
+        }
+
+        void pushMessage(Error::Type type, SourceLocation pos, const char* message)
+        {
+            int len;
+            int tocopy;
+            Error err;
+            if(m_count >= MaxErrItemCount)
+            {
+            }
+            else
+            {
+                err.m_errtype = type;
+                len = strlen(message);
+                tocopy = len;
+                if(tocopy >= (Error::MaxErrorMsgLength - 1))
+                {
+                    tocopy = Error::MaxErrorMsgLength - 1;
+                }
+                memcpy(err.m_message, message, tocopy);
+                err.m_message[tocopy] = '\0';
+                err.m_pos = pos;
+                err.m_traceback = nullptr;
+                m_erroritems[m_count] = err;
+                m_count++;
+            }
+        }
+
+        template<typename... ArgsT>
+        void pushFormat(Error::Type type, SourceLocation pos, const char* format, ArgsT&&... args)
+        {
+            static auto tmpsnprintf = snprintf;
+            int needsz;
+            int printedsz;
+            char res[Error::MaxErrorMsgLength];
+            (void)needsz;
+            (void)printedsz;
+            needsz = tmpsnprintf(nullptr, 0, format, args...);
+            printedsz = tmpsnprintf(res, Error::MaxErrorMsgLength, format, args...);
+            MC_ASSERT(needsz == printedsz);
+            pushMessage(type, pos, res);
+        }
+
+        Error* get(int ix)
+        {
+            if(ix >= m_count)
+            {
+                return nullptr;
+            }
+            return &m_erroritems[ix];
+        }
+
+        Error* getLast()
+        {
+            if(m_count <= 0)
+            {
+                return nullptr;
+            }
+            return &m_erroritems[m_count - 1];
+        }
 };
 
 class AstSymbol
@@ -3310,7 +4070,6 @@ class AstSymbol
             return AstSymbol(symbol->m_symname, symbol->m_symtype, symbol->m_symindex, symbol->m_symisassignable);
         }
 
-
     public:
         Type m_symtype;
         char* m_symname;
@@ -3320,7 +4079,7 @@ class AstSymbol
     public:
         AstSymbol(const char* syname, Type sytype, int syindex, bool syassignable)
         {
-            m_symname = mc_util_strdup(syname);
+            m_symname = Util::strDuplicate(syname);
             MC_ASSERT(m_symname);
             m_symtype = sytype;
             m_symindex = syindex;
@@ -3349,7 +4108,7 @@ class SymStore
 
     public:
         StrDict<char*, AstSymbol*>* m_storedsymbols;
-        GenericList<Value> m_storedobjects = GenericList<Value>(0);
+        GenericList<Value> m_storedobjects;
 
     public:
         SymStore()
@@ -3550,7 +4309,6 @@ class AstSymTable
             }
             return count;
         }
-
 
         bool addModuleSymbol(AstSymbol* symbol)
         {
@@ -3783,7 +4541,6 @@ class AstSymTable
         }
 };
 
-
 class AstScopeComp
 {
     public:
@@ -3798,10 +4555,10 @@ class AstScopeComp
 
     public:
         AstScopeComp* m_outerscope;
-        GenericList<uint16_t> m_scopecompiledbc = GenericList<uint16_t>(0);
-        GenericList<SourceLocation> m_scopesrcposlist = GenericList<SourceLocation>(0);
-        GenericList<int> m_scopeipstackbreak = GenericList<int>(0);
-        GenericList<int> m_scopeipstackcontinue = GenericList<int>(0);
+        GenericList<uint16_t> m_scopecompiledbc;
+        GenericList<SourceLocation> m_scopesrcposlist;
+        GenericList<int> m_scopeipstackbreak;
+        GenericList<int> m_scopeipstackcontinue;
         OPValCode m_scopelastopcode = 0;
 
     public:
@@ -4098,912 +4855,12 @@ class AstToken
 
         char* dupLiteralString()
         {
-            return mc_util_strndup(m_tokstrdata, m_tokstrlength);
+            return Util::strDuplicate(m_tokstrdata, m_tokstrlength);
         }
 
         MC_INLINE Type type() const
         {
             return m_toktype;
-        }
-};
-
-
-MC_PROTO AstExpression* AstUtilCopyExpression(AstExpression* expr);
-MC_PROTO void AstUtilDestroyExpression(AstExpression* expr);
-
-class AstExpression
-{
-    public:
-        enum ExprType
-        {
-            EXPR_NONE,
-            EXPR_IDENT,
-            EXPR_NUMBERLITERAL,
-            EXPR_BOOLLITERAL,
-            EXPR_STRINGLITERAL,
-            EXPR_NULLLITERAL,
-            EXPR_ARRAYLITERAL,
-            EXPR_MAPLITERAL,
-            EXPR_PREFIX,
-            EXPR_INFIX,
-            EXPR_FUNCTIONLITERAL,
-            EXPR_CALL,
-            EXPR_INDEX,
-            EXPR_ASSIGN,
-            EXPR_LOGICAL,
-            EXPR_TERNARY,
-            EXPR_STMTDEFINE,
-            EXPR_STMTIF,
-            EXPR_STMTRETURN,
-            EXPR_STMTEXPRESSION,
-            EXPR_STMTLOOPWHILE,
-            EXPR_STMTBREAK,
-            EXPR_STMTCONTINUE,
-            EXPR_STMTLOOPFOREACH,
-            EXPR_STMTLOOPFORCLASSIC,
-            EXPR_STMTBLOCK,
-            EXPR_STMTIMPORT,
-            EXPR_STMTRECOVER
-        };
-
-        enum MathOpType
-        {
-            MATHOP_NONE,
-            MATHOP_ASSIGN,
-            MATHOP_PLUS,
-            MATHOP_MINUS,
-            MATHOP_BINNOT,
-            MATHOP_BANG,
-            MATHOP_ASTERISK,
-            MATHOP_SLASH,
-            MATHOP_LT,
-            MATHOP_LTE,
-            MATHOP_GT,
-            MATHOP_GTE,
-            MATHOP_EQ,
-            MATHOP_NOTEQ,
-            MATHOP_MODULUS,
-            MATHOP_LOGICALAND,
-            MATHOP_LOGICALOR,
-            MATHOP_BINAND,
-            MATHOP_BINOR,
-            MATHOP_BINXOR,
-            MATHOP_LSHIFT,
-            MATHOP_RSHIFT
-        };
-
-        class Identifier
-        {
-            public:
-                char* m_identvalue = nullptr;
-                SourceLocation m_exprpos = SourceLocation::Invalid();
-
-            public:
-                Identifier()
-                {
-                }
-
-                Identifier(AstToken tok)
-                {
-                    m_identvalue = tok.dupLiteralString();
-                    m_exprpos = tok.m_tokpos;
-                }
-
-                static Identifier* copy(Identifier* ident)
-                {
-                    Identifier* res = Memory::make<Identifier>();
-                    res->m_identvalue = mc_util_strdup(ident->m_identvalue);
-                    res->m_exprpos = ident->m_exprpos;
-                    return res;
-                }
-
-                static void destroy(Identifier* ident)
-                {
-                    if(ident != nullptr)
-                    {
-                        mc_memory_free(ident->m_identvalue);
-                        ident->m_identvalue = nullptr;
-                        ident->m_exprpos = SourceLocation::Invalid();
-                        mc_memory_free(ident);
-                    }
-                }
-        };
-
-        class CodeBlock
-        {
-            public:
-                GenericList<AstExpression*> m_blockstatements;
-
-            public:
-                CodeBlock(const GenericList<AstExpression*>& stmts)
-                {
-                    m_blockstatements = stmts;
-                }
-
-                static void destroy(CodeBlock* block)
-                {
-                    if(block != nullptr)
-                    {
-                        block->m_blockstatements.deInit(AstUtilDestroyExpression);
-                        mc_memory_free(block);
-                    }
-                }
-
-                static CodeBlock* copy(CodeBlock* block)
-                {
-                    if(!block)
-                    {
-                        return nullptr;
-                    }
-                    auto copyfn = AstUtilCopyExpression;
-                    auto delfn = AstUtilDestroyExpression;
-                    auto statementscopy = block->m_blockstatements.copyToStack(copyfn, delfn);
-                    auto res = Memory::make<CodeBlock>(statementscopy);
-                    return res;
-                }
-        };
-
-    public:
-        ExprType m_exprtype;
-        SourceLocation m_exprpos;
-
-    public:
-};
-
-class ExprLiteralNull: public AstExpression
-{
-};
-
-class ExprLiteralNumber: public AstExpression
-{
-    public:
-        NumFloat m_exprnumber;
-};
-
-class ExprLiteralBool: public AstExpression
-{
-    public:
-        bool m_exprbool;
-};
-
-class ExprReturnStmt: public AstExpression
-{
-    public:
-        AstExpression* m_exprretvalue;
-};
-
-
-class ExprExpression: public AstExpression
-{
-    public:
-        AstExpression* m_exprexprvalue;
-};
-
-class ExprBreakStmt: public AstExpression
-{
-};
-
-class ExprContinueStmt: public AstExpression
-{
-};
-
-class ExprIdent: public AstExpression
-{
-    public:
-        Identifier* m_expridvalue;
-};
-
-class ExprBlock: public AstExpression
-{
-    public:
-        CodeBlock* m_exprblockvalue;
-};
-
-
-class ExprIfCase: public AstExpression
-{
-    public:
-        AstExpression* m_ifcond;
-        CodeBlock* m_ifthen;
-
-    public:
-        ExprIfCase(AstExpression* test, CodeBlock* consq)
-        {
-            m_ifcond = test;
-            m_ifthen = consq;
-        }
-
-        static ExprIfCase* copy(ExprIfCase* ifcase)
-        {
-            AstExpression* testcopy;
-            CodeBlock* consequencecopy;
-            ExprIfCase* ifcasecopy;
-            testcopy = nullptr;
-            consequencecopy = nullptr;
-            ifcasecopy = nullptr;
-            if(!ifcase)
-            {
-                return nullptr;
-            }
-            testcopy = AstUtilCopyExpression(ifcase->m_ifcond);
-            if(!testcopy)
-            {
-                goto err;
-            }
-            consequencecopy = CodeBlock::copy(ifcase->m_ifthen);
-            if(!testcopy || !consequencecopy)
-            {
-                goto err;
-            }
-            ifcasecopy = Memory::make<ExprIfCase>(testcopy, consequencecopy);
-            return ifcasecopy;
-        err:
-            AstUtilDestroyExpression(testcopy);
-            Memory::destroy(consequencecopy);
-            ExprIfCase::destroy(ifcasecopy);
-            return nullptr;
-        }
-
-        static void destroy(ExprIfCase* cond)
-        {
-            if(cond != nullptr)
-            {
-                AstUtilDestroyExpression(cond->m_ifcond);
-                Memory::destroy(cond->m_ifthen);
-                mc_memory_free(cond);
-            }
-        }
-};
-
-class ExprIfStmt: public AstExpression
-{
-    public:
-        GenericList<ExprIfCase*> m_ifcases;
-        CodeBlock* m_ifstmtelsestmt;
-};
-
-class ExprLiteralMap: public AstExpression
-{
-    public:
-        GenericList<AstExpression*> m_litmapkeys;
-        GenericList<AstExpression*> m_litmapvalues;
-};
-
-class ExprLiteralArray: public AstExpression
-{
-    public:
-        GenericList<AstExpression*> m_litarritems;
-};
-
-class ExprLiteralString: public AstExpression
-{
-    public:
-        size_t m_strexprlength;
-        char* m_strexprdata;
-};
-
-class ExprPrefix: public AstExpression
-{
-    public:
-        MathOpType op;
-        AstExpression* right;
-};
-
-class ExprInfix: public AstExpression
-{
-    public:
-        MathOpType op;
-        AstExpression* left;
-        AstExpression* right;
-};
-
-class ExprFuncParam: public AstExpression
-{
-    public:
-        Identifier* m_paramident;
-
-    public:
-        ExprFuncParam(Identifier* idv)
-        {
-            m_paramident = idv;
-            MC_ASSERT(m_paramident->m_identvalue);
-        }
-
-        static ExprFuncParam* copy(ExprFuncParam* param)
-        {
-            ExprFuncParam* res;
-            res = Memory::make<ExprFuncParam>(Identifier::copy(param->m_paramident));
-            if(!res->m_paramident->m_identvalue)
-            {
-                mc_memory_free(res);
-                return nullptr;
-            }
-            return res;
-        }
-
-        static void destroy(ExprFuncParam* param)
-        {
-            if(param != nullptr)
-            {
-                Memory::destroy(param->m_paramident);
-                mc_memory_free(param);
-            }
-        }
-};
-
-class ExprLiteralFunction: public AstExpression
-{
-    public:
-        char* name;
-        GenericList<ExprFuncParam*> funcparamlist;
-        CodeBlock* body;
-};
-
-class ExprCall: public AstExpression
-{
-    public:
-        AstExpression* function;
-        GenericList<AstExpression*> m_callargs;
-};
-
-class ExprIndex: public AstExpression
-{
-    public:
-        bool isdot;
-        AstExpression* left;
-        AstExpression* index;
-};
-
-class ExprAssign: public AstExpression
-{
-    public:
-        AstExpression* dest;
-        AstExpression* source;
-        bool is_postfix;
-};
-
-class ExprLogical: public AstExpression
-{
-    public:
-        MathOpType op;
-        AstExpression* left;
-        AstExpression* right;
-};
-
-class ExprTernary: public AstExpression
-{
-    public:
-        AstExpression* tercond;
-        AstExpression* teriftrue;
-        AstExpression* teriffalse;
-};
-
-class ExprDefine: public AstExpression
-{
-    public:
-        Identifier* name;
-        AstExpression* value;
-        bool assignable;
-};
-
-class ExprWhileStmt: public AstExpression
-{
-    public:
-        AstExpression* loopcond;
-        CodeBlock* body;
-};
-
-class ExprForeachStmt: public AstExpression
-{
-    public:
-        Identifier* iterator;
-        AstExpression* source;
-        CodeBlock* body;
-};
-
-class ExprLoopStmt: public AstExpression
-{
-    public:
-        AstExpression* init;
-        AstExpression* loopcond;
-        AstExpression* update;
-        CodeBlock* body;
-};
-
-class ExprImportStmt: public AstExpression
-{
-    public:
-        char* path;
-};
-
-class ExprRecover: public AstExpression
-{
-    public:
-        Identifier* errident;
-        CodeBlock* body;
-};
-
-class Traceback
-{
-    public:
-        class Item
-        {
-            public:
-                friend class Traceback;
-
-            protected:
-                char* m_tbtracefuncname;
-                SourceLocation m_tbpos;
-
-            public:
-                const char* getTraceFunctionName()
-                {
-                    return m_tbtracefuncname;
-                }
-
-                const char* getSourceLine()
-                {
-                    const char* line;
-                    if(m_tbpos.m_locfile == nullptr)
-                    {
-                        return nullptr;
-                    }
-                    auto lines = &m_tbpos.m_locfile->m_srclines;
-                    if((size_t)m_tbpos.m_locline >= (size_t)lines->count())
-                    {
-                        return nullptr;
-                    }
-                    line = (const char*)lines->get(m_tbpos.m_locline);
-                    return line;
-                }
-
-                const char* getSourceFilename()
-                {
-                    if(m_tbpos.m_locfile == nullptr)
-                    {
-                        return nullptr;
-                    }
-                    return m_tbpos.m_locfile->path();
-                }
-        };
-        friend class Item;
-
-    private:
-        GenericList<Item> m_tbitems;
-
-    public:
-        Traceback()
-        {
-        }
-
-        static void destroy(Traceback* traceback)
-        {
-            size_t i;
-            if(traceback != nullptr)
-            {
-                for(i = 0; i < traceback->m_tbitems.count(); i++)
-                {
-                    auto item = traceback->m_tbitems.getp(i);
-                    mc_memory_free(item->m_tbtracefuncname);
-                    item->m_tbtracefuncname = nullptr;
-                }
-                traceback->m_tbitems.deInit();
-                mc_memory_free(traceback);
-            }
-        }
-
-        bool push(const char* fname, SourceLocation pos)
-        {
-            bool ok;
-            Item item;
-            (void)ok;
-            item.m_tbtracefuncname = mc_util_strdup(fname);
-            if(item.m_tbtracefuncname == nullptr)
-            {
-                return false;
-            }
-            item.m_tbpos = pos;
-            ok = m_tbitems.push(item);
-            return true;
-        }
-
-        int getDepth()
-        {
-            return m_tbitems.count();
-        }
-
-        const char* getSourceFilename(int depth)
-        {
-            Item* item;
-            item = m_tbitems.getp(depth);
-            if(item == nullptr)
-            {
-                return nullptr;
-            }
-            return item->getSourceFilename();
-        }
-
-        const char* getSourceLineCode(int depth)
-        {
-            Item* item;
-            item = m_tbitems.getp(depth);
-            if(item == nullptr)
-            {
-                return nullptr;
-            }
-            return item->getSourceLine();
-        }
-
-        int getSourceLineNumber(int depth)
-        {
-            Item* item;
-            item = m_tbitems.getp(depth);
-            if(item == nullptr)
-            {
-                return -1;
-            }
-            return item->m_tbpos.m_locline;
-        }
-
-        int getSourceColumn(int depth)
-        {
-            Item* item;
-            item = m_tbitems.getp(depth);
-            if(item == nullptr)
-            {
-                return -1;
-            }
-            return item->m_tbpos.m_loccolumn;
-        }
-
-        const char* getFunctionName(int depth)
-        {
-            Item* item;
-            item = m_tbitems.getp(depth);
-            if(item == nullptr)
-            {
-                return "";
-            }
-            return item->getTraceFunctionName();
-        }
-
-        bool printTo(Printer* pr, Console::Color* mcc)
-        {
-            int i;
-            int depth;
-            const char* cblue;
-            const char* cyell;
-            const char* creset;
-            const char* filename;
-            Item* item;
-            cblue = mcc->get('b');
-            cyell = mcc->get('y');
-            creset = mcc->get('0');
-            depth = m_tbitems.count();
-            for(i = 0; i < depth; i++)
-            {
-                item = m_tbitems.getp(i);
-                filename = item->getSourceFilename();
-                pr->format("  function %s%s%s", cblue, item->m_tbtracefuncname, creset);
-                if(item->m_tbpos.m_locline >= 0 && item->m_tbpos.m_loccolumn >= 0)
-                {
-                    pr->format(" in %s%s:%d:%d%s", cyell, filename, item->m_tbpos.m_locline, item->m_tbpos.m_loccolumn, creset);
-                }
-                else
-                {
-                }
-                pr->format("\n");
-            }
-            return !pr->m_prfailed;
-        }
-};
-
-class Error
-{
-    public:
-        enum
-        {
-            MaxErrorMsgLength = (64),
-        };
-
-        enum Type
-        {
-            ERRTYP_NONE = 0,
-            ERRTYP_PARSING,
-            ERRTYP_COMPILING,
-            ERRTYP_RUNTIME,
-            ERRTYP_TIMEOUT,
-            ERRTYP_MEMORY,
-            ERRTYP_USER
-        };
-
-    public:
-        static const char* mc_util_errortypename(Type type)
-        {
-            switch(type)
-            {
-                case ERRTYP_PARSING:
-                    return "PARSING";
-                case ERRTYP_COMPILING:
-                    return "COMPILATION";
-                case ERRTYP_RUNTIME:
-                    return "RUNTIME";
-                case ERRTYP_TIMEOUT:
-                    return "TIMEOUT";
-                case ERRTYP_MEMORY:
-                    return "ALLOCATION";
-                case ERRTYP_USER:
-                    return "USER";
-                default:
-                    break;
-            }
-            return "NONE";
-        }
-
-        static bool printUserError(Printer* pr, const Value& val)
-        {
-            const char* cred;
-            const char* creset;
-            Traceback* traceback;
-            static const char eprefix[] = "script error";
-            Console::Color mcc(fileno(stdout));
-            cred = mcc.get('r');
-            creset = mcc.get('0');
-            pr->format("%s%s:%s %s\n", cred, eprefix, creset, Value::errorGetMessage(val));
-            traceback = Value::errorGetTraceback(val);
-            MC_ASSERT(traceback != nullptr);
-            if(traceback != nullptr)
-            {
-                pr->format("%sTraceback:%s\n", cred, creset);
-                traceback->printTo(pr, &mcc);
-            }
-            return true;
-        }
-
-        static bool printErrorTo(Error* err, Printer* pr)
-        {
-            int j;
-            int colnum;
-            int linenum;
-            const char* line;
-            const char* typestr;
-            const char* filename;
-            const char* cred;
-            const char* cblue;
-            const char* creset;
-            Traceback* traceback;
-            static const char eprefix[] = "runtime error";
-            Console::Color mcc(fileno(stdout));
-            cred = mcc.get('r');
-            cblue = mcc.get('b');
-            creset = mcc.get('0');
-            typestr = err->getTypeString();
-            filename = err->getFile();
-            line = err->getSourceLineCode();
-            linenum = err->getSourceLineNumber();
-            colnum = err->getSourceColumn();
-            if(line != nullptr)
-            {
-                pr->put(line);
-                pr->put("\n");
-                if(colnum >= 0)
-                {
-                    for(j = 0; j < (colnum - 1); j++)
-                    {
-                        pr->put(" ");
-                    }
-                    pr->put("^\n");
-                }
-            }
-            pr->format("%s%s %s%s in \"%s\" on %s%d:%d:%s %s\n", cred, eprefix, typestr, creset, filename, cblue, linenum, colnum, creset, err->getMessage());
-            traceback = err->getTraceback();
-            if(traceback != nullptr)
-            {
-                pr->format("traceback:\n");
-                traceback->printTo(pr, &mcc);
-            }
-            return true;
-        }
-
-    public:
-        Type m_errtype = ERRTYP_NONE;
-        char m_message[MaxErrorMsgLength] = {};
-        SourceLocation m_pos;
-        Traceback* m_traceback = nullptr;
-
-    public:
-        Error()
-        {
-        }
-
-        const char* getMessage()
-        {
-            return m_message;
-        }
-
-        const char* getFile()
-        {
-            if(m_pos.m_locfile == nullptr)
-            {
-                return nullptr;
-            }
-            return m_pos.m_locfile->path();
-        }
-
-        const char* getSourceLineCode()
-        {
-            const char* line;
-            if(m_pos.m_locfile == nullptr)
-            {
-                return nullptr;
-            }
-            auto lines = &m_pos.m_locfile->m_srclines;
-            if(m_pos.m_locline >= (int)lines->count())
-            {
-                return nullptr;
-            }
-            line = (const char*)lines->get(m_pos.m_locline);
-            return line;
-        }
-
-        int getSourceLineNumber()
-        {
-            if(m_pos.m_locline < 0)
-            {
-                return -1;
-            }
-            return m_pos.m_locline + 1;
-        }
-
-        int getSourceColumn()
-        {
-            if(m_pos.m_loccolumn < 0)
-            {
-                return -1;
-            }
-            return m_pos.m_loccolumn + 1;
-        }
-
-        Type getType()
-        {
-            switch(m_errtype)
-            {
-                case ERRTYP_NONE:
-                    return ERRTYP_NONE;
-                case ERRTYP_PARSING:
-                    return ERRTYP_PARSING;
-                case ERRTYP_COMPILING:
-                    return ERRTYP_COMPILING;
-                case ERRTYP_RUNTIME:
-                    return ERRTYP_RUNTIME;
-                case ERRTYP_TIMEOUT:
-                    return ERRTYP_TIMEOUT;
-                case ERRTYP_MEMORY:
-                    return ERRTYP_MEMORY;
-                case ERRTYP_USER:
-                    return ERRTYP_USER;
-                default:
-                    break;
-            }
-            return ERRTYP_NONE;
-        }
-
-        const char* getTypeString()
-        {
-            return mc_util_errortypename(getType());
-        }
-
-        Traceback* getTraceback()
-        {
-            return m_traceback;
-        }
-
-        bool printErrorTo(Printer* pr)
-        {
-            return printErrorTo(this, pr);
-        }
-};
-
-class ErrList
-{
-    public:
-        enum
-        {
-            MaxErrItemCount = (10),
-        };
-
-    public:
-        Error m_erroritems[MaxErrItemCount];
-        int m_count;
-
-    public:
-        ErrList()
-        {
-            m_count = 0;
-        }
-
-        void destroy()
-        {
-            clear();
-        }
-
-        size_t count() const
-        {
-            return m_count;
-        }
-
-        void clear()
-        {
-            int i;
-            Error* error;
-            for(i = 0; i < m_count; i++)
-            {
-                error = get(i);
-                if(error->m_traceback != nullptr)
-                {
-                    Memory::destroy(error->m_traceback);
-                }
-            }
-            m_count = 0;
-        }
-
-        void pushMessage(Error::Type type, SourceLocation pos, const char* message)
-        {
-            int len;
-            int tocopy;
-            Error err;
-            if(m_count >= MaxErrItemCount)
-            {
-            }
-            else
-            {
-                err.m_errtype = type;
-                len = mc_util_strlen(message);
-                tocopy = len;
-                if(tocopy >= (Error::MaxErrorMsgLength - 1))
-                {
-                    tocopy = Error::MaxErrorMsgLength - 1;
-                }
-                memcpy(err.m_message, message, tocopy);
-                err.m_message[tocopy] = '\0';
-                err.m_pos = pos;
-                err.m_traceback = nullptr;
-                m_erroritems[m_count] = err;
-                m_count++;
-            }
-        }
-
-        template<typename... ArgsT>
-        void pushFormat(Error::Type type, SourceLocation pos, const char* format, ArgsT&&... args)
-        {
-            static auto tmpsnprintf = snprintf;
-            int needsz;
-            int printedsz;
-            char res[Error::MaxErrorMsgLength];
-            (void)needsz;
-            (void)printedsz;
-            needsz = tmpsnprintf(nullptr, 0, format, args...);
-            printedsz = tmpsnprintf(res, Error::MaxErrorMsgLength, format, args...);
-            MC_ASSERT(needsz == printedsz);
-            pushMessage(type, pos, res);
-        }
-
-        Error* get(int ix)
-        {
-            if(ix >= m_count)
-            {
-                return nullptr;
-            }
-            return &m_erroritems[ix];
-        }
-
-        Error* getLast()
-        {
-            if(m_count <= 0)
-            {
-                return nullptr;
-            }
-            return &m_erroritems[m_count - 1];
         }
 };
 
@@ -5062,7 +4919,7 @@ class AstLexer: public AstLexData
             (void)ok;
             lex->m_errors = errs;
             lex->m_inputsource = input;
-            lex->m_inputlength = (int)mc_util_strlen(input);
+            lex->m_inputlength = (int)strlen(input);
             lex->m_position = 0;
             lex->m_nextposition = 0;
             lex->m_currentchar = '\0';
@@ -5715,7 +5572,7 @@ class AstLexer: public AstLexData
             };
             for(i = 0; keywords[i].value != nullptr; i++)
             {
-                klen = mc_util_strlen(keywords[i].value);
+                klen = strlen(keywords[i].value);
                 if(klen == len && mc_util_strnequal(ident, keywords[i].value, len))
                 {
                     return keywords[i].type;
@@ -5756,12 +5613,12 @@ class AstLexer: public AstLexData
             line = nullptr;
             if(newlineptr == nullptr)
             {
-                line = mc_util_strdup(linestart);
+                line = Util::strDuplicate(linestart);
             }
             else
             {
                 linelen = newlineptr - linestart;
-                line = mc_util_strndup(linestart, linelen);
+                line = Util::strDuplicate(linestart, linelen);
             }
             if(line == nullptr)
             {
@@ -5773,6 +5630,419 @@ class AstLexer: public AstLexData
         }
 };
 
+MC_PROTO AstExpression* AstUtilCopyExpression(AstExpression* expr);
+MC_PROTO void AstUtilDestroyExpression(AstExpression* expr);
+
+class AstIdentifier
+{
+    public:
+        char* m_identvalue = nullptr;
+        SourceLocation m_exprpos = SourceLocation::Invalid();
+
+    public:
+        AstIdentifier()
+        {
+        }
+
+        AstIdentifier(AstToken tok)
+        {
+            m_identvalue = tok.dupLiteralString();
+            m_exprpos = tok.m_tokpos;
+        }
+
+        static AstIdentifier* copy(AstIdentifier* ident)
+        {
+            AstIdentifier* res = Memory::make<AstIdentifier>();
+            res->m_identvalue = Util::strDuplicate(ident->m_identvalue);
+            res->m_exprpos = ident->m_exprpos;
+            return res;
+        }
+
+        static void destroy(AstIdentifier* ident)
+        {
+            if(ident != nullptr)
+            {
+                mc_memory_free(ident->m_identvalue);
+                ident->m_identvalue = nullptr;
+                ident->m_exprpos = SourceLocation::Invalid();
+                mc_memory_free(ident);
+            }
+        }
+};
+
+class AstCodeBlock
+{
+    public:
+        GenericList<AstExpression*> m_blockstatements;
+
+    public:
+        AstCodeBlock(const GenericList<AstExpression*>& stmts)
+        {
+            m_blockstatements = stmts;
+        }
+
+        static void destroy(AstCodeBlock* block)
+        {
+            if(block != nullptr)
+            {
+                block->m_blockstatements.deInit(AstUtilDestroyExpression);
+                mc_memory_free(block);
+            }
+        }
+
+        static AstCodeBlock* copy(AstCodeBlock* block)
+        {
+            if(!block)
+            {
+                return nullptr;
+            }
+            auto copyfn = AstUtilCopyExpression;
+            auto delfn = AstUtilDestroyExpression;
+            auto statementscopy = block->m_blockstatements.copyToStack(copyfn, delfn);
+            auto res = Memory::make<AstCodeBlock>(statementscopy);
+            return res;
+        }
+};
+
+class AstExpression
+{
+    public:
+        enum ExprType
+        {
+            EXPR_NONE,
+            EXPR_IDENT,
+            EXPR_LITERALNUMBER,
+            EXPR_LITERALBOOL,
+            EXPR_LITERALSTRING,
+            EXPR_LITERALNULL,
+            EXPR_LITERALARRAY,
+            EXPR_LITERALMAP,
+            EXPR_PREFIX,
+            EXPR_INFIX,
+            EXPR_LITERALFUNCTION,
+            EXPR_CALL,
+            EXPR_INDEX,
+            EXPR_ASSIGN,
+            EXPR_LOGICAL,
+            EXPR_TERNARY,
+            EXPR_STMTDEFINE,
+            EXPR_STMTIF,
+            EXPR_STMTRETURN,
+            EXPR_STMTEXPRESSION,
+            EXPR_STMTLOOPWHILE,
+            EXPR_STMTBREAK,
+            EXPR_STMTCONTINUE,
+            EXPR_STMTLOOPFOREACH,
+            EXPR_STMTLOOPFORCLASSIC,
+            EXPR_STMTBLOCK,
+            EXPR_STMTIMPORT,
+            EXPR_STMTRECOVER
+        };
+
+        enum MathOpType
+        {
+            MATHOP_NONE,
+            MATHOP_ASSIGN,
+            MATHOP_PLUS,
+            MATHOP_MINUS,
+            MATHOP_BINNOT,
+            MATHOP_BANG,
+            MATHOP_ASTERISK,
+            MATHOP_SLASH,
+            MATHOP_LESSTHAN,
+            MATHOP_LESSEQUAL,
+            MATHOP_GREATERTHAN,
+            MATHOP_GREATEREQAL,
+            MATHOP_EQUAL,
+            MATHOP_NOTEQUAL,
+            MATHOP_MODULUS,
+            MATHOP_LOGICALAND,
+            MATHOP_LOGICALOR,
+            MATHOP_BINAND,
+            MATHOP_BINOR,
+            MATHOP_BINXOR,
+            MATHOP_LEFTSHIFT,
+            MATHOP_RIGHTSHIFT
+        };
+
+    public:
+        ExprType m_exprtype;
+        SourceLocation m_exprpos;
+
+    public:
+};
+
+class ExprLiteralNull: public AstExpression
+{
+};
+
+class ExprLiteralNumber: public AstExpression
+{
+    public:
+        NumFloat m_exprnumber;
+};
+
+class ExprLiteralBool: public AstExpression
+{
+    public:
+        bool m_exprbool;
+};
+
+class ExprReturnStmt: public AstExpression
+{
+    public:
+        AstExpression* m_exprretvalue;
+};
+
+class ExprExpression: public AstExpression
+{
+    public:
+        AstExpression* m_exprexprvalue;
+};
+
+class ExprBreakStmt: public AstExpression
+{
+};
+
+class ExprContinueStmt: public AstExpression
+{
+};
+
+class ExprIdent: public AstExpression
+{
+    public:
+        AstIdentifier* m_expridvalue;
+};
+
+class ExprBlock: public AstExpression
+{
+    public:
+        AstCodeBlock* m_exprblockvalue;
+};
+
+class ExprIfCase: public AstExpression
+{
+    public:
+        AstExpression* m_exprifcond;
+        AstCodeBlock* m_exprifthen;
+
+    public:
+        ExprIfCase(AstExpression* test, AstCodeBlock* consq)
+        {
+            m_exprifcond = test;
+            m_exprifthen = consq;
+        }
+
+        static ExprIfCase* copy(ExprIfCase* ifcase)
+        {
+            AstExpression* testcopy;
+            AstCodeBlock* consequencecopy;
+            ExprIfCase* ifcasecopy;
+            testcopy = nullptr;
+            consequencecopy = nullptr;
+            ifcasecopy = nullptr;
+            if(!ifcase)
+            {
+                return nullptr;
+            }
+            testcopy = AstUtilCopyExpression(ifcase->m_exprifcond);
+            if(!testcopy)
+            {
+                goto err;
+            }
+            consequencecopy = AstCodeBlock::copy(ifcase->m_exprifthen);
+            if(!testcopy || !consequencecopy)
+            {
+                goto err;
+            }
+            ifcasecopy = Memory::make<ExprIfCase>(testcopy, consequencecopy);
+            return ifcasecopy;
+        err:
+            AstUtilDestroyExpression(testcopy);
+            Memory::destroy(consequencecopy);
+            ExprIfCase::destroy(ifcasecopy);
+            return nullptr;
+        }
+
+        static void destroy(ExprIfCase* cond)
+        {
+            if(cond != nullptr)
+            {
+                AstUtilDestroyExpression(cond->m_exprifcond);
+                Memory::destroy(cond->m_exprifthen);
+                mc_memory_free(cond);
+            }
+        }
+};
+
+class ExprIfStmt: public AstExpression
+{
+    public:
+        GenericList<ExprIfCase*> m_exprifcases;
+        AstCodeBlock* m_exprifelse;
+};
+
+class ExprLiteralMap: public AstExpression
+{
+    public:
+        GenericList<AstExpression*> m_exprlitmapkeys;
+        GenericList<AstExpression*> m_exprlitmapvalues;
+};
+
+class ExprLiteralArray: public AstExpression
+{
+    public:
+        GenericList<AstExpression*> m_exprlitarritems;
+};
+
+class ExprLiteralString: public AstExpression
+{
+    public:
+        size_t m_exprstrlength;
+        char* m_exprstrdata;
+};
+
+class ExprPrefix: public AstExpression
+{
+    public:
+        MathOpType m_exprprefixoper;
+        AstExpression* m_exprprefixright;
+};
+
+class ExprInfix: public AstExpression
+{
+    public:
+        MathOpType m_exprinfixoper;
+        AstExpression* m_exprinfixleft;
+        AstExpression* m_exprinfixright;
+};
+
+class ExprFuncParam: public AstExpression
+{
+    public:
+        AstIdentifier* m_exprfnparamident;
+
+    public:
+        ExprFuncParam(AstIdentifier* idv)
+        {
+            m_exprfnparamident = idv;
+            MC_ASSERT(m_exprfnparamident->m_identvalue);
+        }
+
+        static ExprFuncParam* copy(ExprFuncParam* param)
+        {
+            ExprFuncParam* res;
+            res = Memory::make<ExprFuncParam>(AstIdentifier::copy(param->m_exprfnparamident));
+            if(!res->m_exprfnparamident->m_identvalue)
+            {
+                mc_memory_free(res);
+                return nullptr;
+            }
+            return res;
+        }
+
+        static void destroy(ExprFuncParam* param)
+        {
+            if(param != nullptr)
+            {
+                Memory::destroy(param->m_exprfnparamident);
+                mc_memory_free(param);
+            }
+        }
+};
+
+class ExprLiteralFunction: public AstExpression
+{
+    public:
+        char* m_exprfnname;
+        GenericList<ExprFuncParam*> m_exprfnparamlist;
+        AstCodeBlock* m_exprfnbody;
+};
+
+class ExprCall: public AstExpression
+{
+    public:
+        AstExpression* m_exprcallfunction;
+        GenericList<AstExpression*> m_exprcallargs;
+};
+
+class ExprIndex: public AstExpression
+{
+    public:
+        bool m_exprindexisdot;
+        AstExpression* m_exprindexleft;
+        AstExpression* m_exprindexindex;
+};
+
+class ExprAssign: public AstExpression
+{
+    public:
+        AstExpression* m_exprassigndest;
+        AstExpression* m_exprassignsource;
+        bool m_exprassignispostfix;
+};
+
+class ExprLogical: public AstExpression
+{
+    public:
+        MathOpType m_exprlogoper;
+        AstExpression* m_exprlogleft;
+        AstExpression* m_exprlogright;
+};
+
+class ExprTernary: public AstExpression
+{
+    public:
+        AstExpression* m_exprterncond;
+        AstExpression* m_exprterniftrue;
+        AstExpression* m_exprterniffalse;
+};
+
+class ExprDefine: public AstExpression
+{
+    public:
+        AstIdentifier* m_exprdefname;
+        AstExpression* m_exprdefvalue;
+        bool m_exprdefassignable;
+};
+
+class ExprWhileStmt: public AstExpression
+{
+    public:
+        AstExpression* m_exprwhilecond;
+        AstCodeBlock* m_exprwhilebody;
+};
+
+class ExprForeachStmt: public AstExpression
+{
+    public:
+        AstIdentifier* m_exprforeachiterator;
+        AstExpression* m_exprforeachsource;
+        AstCodeBlock* m_exprforeachbody;
+};
+
+class ExprLoopStmt: public AstExpression
+{
+    public:
+        AstExpression* m_exprforloopinit;
+        AstExpression* m_exprforloopcond;
+        AstExpression* m_exprforloopupdate;
+        AstCodeBlock* m_exprforloopbody;
+};
+
+class ExprImportStmt: public AstExpression
+{
+    public:
+        char* m_exprimportpath;
+};
+
+class ExprRecover: public AstExpression
+{
+    public:
+        AstIdentifier* m_exprrecovererrident;
+        AstCodeBlock* m_exprrecoverbody;
+};
+
 class AstParser
 {
     public:
@@ -5781,38 +6051,38 @@ class AstParser
 
         enum class Precedence
         {
-            MC_ASTPREC_LOWEST = 0,
-            MC_ASTPREC_ASSIGN,
+            Lowest = 0,
+            Assign,
             /* a = b */
-            MC_ASTPREC_TERNARY,
+            Ternary,
             /* a ? b : c */
-            MC_ASTPREC_LOGICALOR,
+            LogicalOr,
             /* || */
-            MC_ASTPREC_LOGICALAND,
+            LogicalAnd,
             /* && */
-            MC_ASTPREC_BINOR,
+            BinaryOr,
             /* | */
-            MC_ASTPREC_BINXOR,
+            BinaryXor,
             /* ^ */
-            MC_ASTPREC_BINAND,
+            BinaryAnd,
             /* & */
-            MC_ASTPREC_EQUALS,
+            Equals,
             /* == != */
-            MC_ASTPREC_LESSGREATER,
+            LessGreater,
             /* >, >=, <, <= */
-            MC_ASTPREC_SHIFT,
+            Shift,
             /* << >> */
-            MC_ASTPREC_SUM,
+            Sum,
             /* + - */
-            MC_ASTPREC_PRODUCT,
+            Product,
             /* * / % */
-            MC_ASTPREC_PREFIX,
+            Prefix,
             /* -x !x ++x --x */
-            MC_ASTPREC_INCDEC,
+            IncrementDecrement,
             /* x++ x-- */
-            MC_ASTPREC_POSTFIX,
+            Postfix,
             /* myFunction(x) x["foo"] x.foo */
-            MC_ASTPREC_HIGHEST
+            Highest
         };
 
     public:
@@ -5827,43 +6097,43 @@ class AstParser
             return res;
         }
 
-        static AstExpression* makeAstItemRecover(AstExpression::Identifier* eid, AstExpression::CodeBlock* body)
+        static AstExpression* makeAstItemRecover(AstIdentifier* eid, AstCodeBlock* body)
         {
             auto res = makeAstItemBaseExpression<ExprRecover>(AstExpression::EXPR_STMTRECOVER);
-            res->errident = eid;
-            res->body = body;
+            res->m_exprrecovererrident = eid;
+            res->m_exprrecoverbody = body;
             return res;
         }
 
         static AstExpression* makeAstItemLiteralNumber(NumFloat val)
         {
-            auto res = makeAstItemBaseExpression<ExprLiteralNumber>(AstExpression::EXPR_NUMBERLITERAL);
+            auto res = makeAstItemBaseExpression<ExprLiteralNumber>(AstExpression::EXPR_LITERALNUMBER);
             res->m_exprnumber = val;
             return res;
         }
 
         static AstExpression* makeAstItemLiteralBool(bool val)
         {
-            auto res = makeAstItemBaseExpression<ExprLiteralBool>(AstExpression::EXPR_BOOLLITERAL);
+            auto res = makeAstItemBaseExpression<ExprLiteralBool>(AstExpression::EXPR_LITERALBOOL);
             res->m_exprbool = val;
             return res;
         }
 
         static AstExpression* makeAstItemLiteralString(char* value, size_t len)
         {
-            auto res = makeAstItemBaseExpression<ExprLiteralString>(AstExpression::EXPR_STRINGLITERAL);
-            res->m_strexprdata = value;
-            res->m_strexprlength = len;
+            auto res = makeAstItemBaseExpression<ExprLiteralString>(AstExpression::EXPR_LITERALSTRING);
+            res->m_exprstrdata = value;
+            res->m_exprstrlength = len;
             return res;
         }
 
         static AstExpression* makeAstItemLiteralNull()
         {
-            auto res = makeAstItemBaseExpression<ExprLiteralNull>(AstExpression::EXPR_NULLLITERAL);
+            auto res = makeAstItemBaseExpression<ExprLiteralNull>(AstExpression::EXPR_LITERALNULL);
             return res;
         }
 
-        static AstExpression* makeAstItemIdent(AstExpression::Identifier* ident)
+        static AstExpression* makeAstItemIdent(AstIdentifier* ident)
         {
             auto res = makeAstItemBaseExpression<ExprIdent>(AstExpression::EXPR_IDENT);
             res->m_expridvalue = ident;
@@ -5872,94 +6142,94 @@ class AstParser
 
         static AstExpression* makeAstItemLiteralArray(const GenericList<AstExpression*>& values)
         {
-            auto res = makeAstItemBaseExpression<ExprLiteralArray>(AstExpression::EXPR_ARRAYLITERAL);
-            res->m_litarritems = values;
+            auto res = makeAstItemBaseExpression<ExprLiteralArray>(AstExpression::EXPR_LITERALARRAY);
+            res->m_exprlitarritems = values;
             return res;
         }
 
         static AstExpression* makeAstItemLiteralMap(const GenericList<AstExpression*>& keys, const GenericList<AstExpression*>& values)
         {
-            auto res = makeAstItemBaseExpression<ExprLiteralMap>(AstExpression::EXPR_MAPLITERAL);
-            res->m_litmapkeys = keys;
-            res->m_litmapvalues = values;
+            auto res = makeAstItemBaseExpression<ExprLiteralMap>(AstExpression::EXPR_LITERALMAP);
+            res->m_exprlitmapkeys = keys;
+            res->m_exprlitmapvalues = values;
             return res;
         }
 
         static AstExpression* makeAstItemPrefix(AstExpression::MathOpType op, AstExpression* right)
         {
             auto res = makeAstItemBaseExpression<ExprPrefix>(AstExpression::EXPR_PREFIX);
-            res->op = op;
-            res->right = right;
+            res->m_exprprefixoper = op;
+            res->m_exprprefixright = right;
             return res;
         }
 
         static AstExpression* makeAstItemInfix(AstExpression::MathOpType op, AstExpression* left, AstExpression* right)
         {
             auto res = makeAstItemBaseExpression<ExprInfix>(AstExpression::EXPR_INFIX);
-            res->op = op;
-            res->left = left;
-            res->right = right;
+            res->m_exprinfixoper = op;
+            res->m_exprinfixleft = left;
+            res->m_exprinfixright = right;
             return res;
         }
 
-        static AstExpression* makeAstItemLiteralFunction(const GenericList<ExprFuncParam*>& params, AstExpression::CodeBlock* body)
+        static AstExpression* makeAstItemLiteralFunction(char* name, const GenericList<ExprFuncParam*>& params, AstCodeBlock* body)
         {
-            auto res = makeAstItemBaseExpression<ExprLiteralFunction>(AstExpression::EXPR_FUNCTIONLITERAL);
-            res->name = nullptr;
-            res->funcparamlist = params;
-            res->body = body;
+            auto res = makeAstItemBaseExpression<ExprLiteralFunction>(AstExpression::EXPR_LITERALFUNCTION);
+            res->m_exprfnname = name;
+            res->m_exprfnparamlist = params;
+            res->m_exprfnbody = body;
             return res;
         }
 
         static AstExpression* makeAstItemCallExpr(AstExpression* function, const GenericList<AstExpression*>& args)
         {
             auto res = makeAstItemBaseExpression<ExprCall>(AstExpression::EXPR_CALL);
-            res->function = function;
-            res->m_callargs = args;
+            res->m_exprcallfunction = function;
+            res->m_exprcallargs = args;
             return res;
         }
 
         static AstExpression* makeAstItemIndex(AstExpression* left, AstExpression* index, bool isdot)
         {
             auto res = makeAstItemBaseExpression<ExprIndex>(AstExpression::EXPR_INDEX);
-            res->isdot = isdot;
-            res->left = left;
-            res->index = index;
+            res->m_exprindexisdot = isdot;
+            res->m_exprindexleft = left;
+            res->m_exprindexindex = index;
             return res;
         }
 
-        static AstExpression* makeAstItemAssign(AstExpression* dest, AstExpression* source, bool is_postfix)
+        static AstExpression* makeAstItemAssign(AstExpression* dest, AstExpression* source, bool ispostfix)
         {
             auto res = makeAstItemBaseExpression<ExprAssign>(AstExpression::EXPR_ASSIGN);
-            res->dest = dest;
-            res->source = source;
-            res->is_postfix = is_postfix;
+            res->m_exprassigndest = dest;
+            res->m_exprassignsource = source;
+            res->m_exprassignispostfix = ispostfix;
             return res;
         }
 
         static AstExpression* makeAstItemLogical(AstExpression::MathOpType op, AstExpression* left, AstExpression* right)
         {
             auto res = makeAstItemBaseExpression<ExprLogical>(AstExpression::EXPR_LOGICAL);
-            res->op = op;
-            res->left = left;
-            res->right = right;
+            res->m_exprlogoper = op;
+            res->m_exprlogleft = left;
+            res->m_exprlogright = right;
             return res;
         }
 
         static AstExpression* makeAstItemTernary(AstExpression* test, AstExpression* ift, AstExpression* iffalse)
         {
             auto res = makeAstItemBaseExpression<ExprTernary>(AstExpression::EXPR_TERNARY);
-            res->tercond = test;
-            res->teriftrue = ift;
-            res->teriffalse = iffalse;
+            res->m_exprterncond = test;
+            res->m_exprterniftrue = ift;
+            res->m_exprterniffalse = iffalse;
             return res;
         }
 
         static AstExpression* makeAstItemInlineCall(AstExpression* expr, const char* fname)
         {
-            auto fntoken = AstToken(AstToken::Type::T_IDENT, fname, mc_util_strlen(fname));
+            auto fntoken = AstToken(AstToken::Type::T_IDENT, fname, strlen(fname));
             fntoken.m_tokpos = expr->m_exprpos;
-            auto ident = Memory::make<AstExpression::Identifier>(fntoken);
+            auto ident = Memory::make<AstIdentifier>(fntoken);
             ident->m_exprpos = fntoken.m_tokpos;
             auto functionidentexpr = makeAstItemIdent(ident);
             functionidentexpr->m_exprpos = expr->m_exprpos;
@@ -5971,20 +6241,20 @@ class AstParser
             return ce;
         }
 
-        static AstExpression* makeAstItemDefine(AstExpression::Identifier* name, AstExpression* value, bool assignable)
+        static AstExpression* makeAstItemDefine(AstIdentifier* name, AstExpression* value, bool assignable)
         {
             auto res = makeAstItemBaseExpression<ExprDefine>(AstExpression::EXPR_STMTDEFINE);
-            res->name = name;
-            res->value = value;
-            res->assignable = assignable;
+            res->m_exprdefname = name;
+            res->m_exprdefvalue = value;
+            res->m_exprdefassignable = assignable;
             return res;
         }
 
-        static AstExpression* makeAstItemIfStmt(const GenericList<ExprIfCase*>& cases, AstExpression::CodeBlock* alternative)
+        static AstExpression* makeAstItemIfStmt(const GenericList<ExprIfCase*>& cases, AstCodeBlock* alternative)
         {
             auto res = makeAstItemBaseExpression<ExprIfStmt>(AstExpression::EXPR_STMTIF);
-            res->m_ifcases = cases;
-            res->m_ifstmtelsestmt = alternative;
+            res->m_exprifcases = cases;
+            res->m_exprifelse = alternative;
             return res;
         }
 
@@ -6002,11 +6272,11 @@ class AstParser
             return res;
         }
 
-        static AstExpression* makeAstItemWhileStmt(AstExpression* test, AstExpression::CodeBlock* body)
+        static AstExpression* makeAstItemWhileStmt(AstExpression* test, AstCodeBlock* body)
         {
             auto res = makeAstItemBaseExpression<ExprWhileStmt>(AstExpression::EXPR_STMTLOOPWHILE);
-            res->loopcond = test;
-            res->body = body;
+            res->m_exprwhilecond = test;
+            res->m_exprwhilebody = body;
             return res;
         }
 
@@ -6016,22 +6286,22 @@ class AstParser
             return res;
         }
 
-        static AstExpression* makeAstItemForeachStmt(AstExpression::Identifier* iterator, AstExpression* source, AstExpression::CodeBlock* body)
+        static AstExpression* makeAstItemForeachStmt(AstIdentifier* iterator, AstExpression* source, AstCodeBlock* body)
         {
             auto res = makeAstItemBaseExpression<ExprForeachStmt>(AstExpression::EXPR_STMTLOOPFOREACH);
-            res->iterator = iterator;
-            res->source = source;
-            res->body = body;
+            res->m_exprforeachiterator = iterator;
+            res->m_exprforeachsource = source;
+            res->m_exprforeachbody = body;
             return res;
         }
 
-        static AstExpression* makeAstItemForLoopStmt(AstExpression* init, AstExpression* test, AstExpression* update, AstExpression::CodeBlock* body)
+        static AstExpression* makeAstItemForLoopStmt(AstExpression* init, AstExpression* test, AstExpression* update, AstCodeBlock* body)
         {
             auto res = makeAstItemBaseExpression<ExprLoopStmt>(AstExpression::EXPR_STMTLOOPFORCLASSIC);
-            res->init = init;
-            res->loopcond = test;
-            res->update = update;
-            res->body = body;
+            res->m_exprforloopinit = init;
+            res->m_exprforloopcond = test;
+            res->m_exprforloopupdate = update;
+            res->m_exprforloopbody = body;
             return res;
         }
 
@@ -6041,7 +6311,7 @@ class AstParser
             return res;
         }
 
-        static AstExpression* makeAstItemBlockStmt(AstExpression::CodeBlock* block)
+        static AstExpression* makeAstItemBlockStmt(AstCodeBlock* block)
         {
             auto res = makeAstItemBaseExpression<ExprBlock>(AstExpression::EXPR_STMTBLOCK);
             res->m_exprblockvalue = block;
@@ -6051,8 +6321,459 @@ class AstParser
         static AstExpression* makeAstItemImportExpr(char* strpath)
         {
             auto res = makeAstItemBaseExpression<ExprImportStmt>(AstExpression::EXPR_STMTIMPORT);
-            res->path = strpath;
+            res->m_exprimportpath = strpath;
             return res;
+        }
+
+        static AstExpression* copyExpression(AstExpression* expr)
+        {
+            AstExpression* res;
+            if(!expr)
+            {
+                return nullptr;
+            }
+            res = nullptr;
+            switch(expr->m_exprtype)
+            {
+                case AstExpression::EXPR_NONE:
+                    {
+                        MC_ASSERT(false);
+                    }
+                    break;
+                case AstExpression::EXPR_IDENT:
+                    {
+                        AstIdentifier* ident;
+                        auto actual = static_cast<ExprIdent*>(expr);
+                        ident = AstIdentifier::copy(actual->m_expridvalue);
+                        res = AstParser::makeAstItemIdent(ident);
+                    }
+                    break;
+                case AstExpression::EXPR_LITERALNUMBER:
+                    {
+                        auto actual = static_cast<ExprLiteralNumber*>(expr);
+                        res = AstParser::makeAstItemLiteralNumber(actual->m_exprnumber);
+                    }
+                    break;
+                case AstExpression::EXPR_LITERALBOOL:
+                    {
+                        auto actual = static_cast<ExprLiteralBool*>(expr);
+                        res = AstParser::makeAstItemLiteralBool(actual->m_exprbool);
+                    }
+                    break;
+                case AstExpression::EXPR_LITERALSTRING:
+                    {
+                        char* stringcopy;
+                        auto actual = static_cast<ExprLiteralString*>(expr);
+                        stringcopy = Util::strDuplicate(actual->m_exprstrdata, actual->m_exprstrlength);
+                        res = AstParser::makeAstItemLiteralString(stringcopy, actual->m_exprstrlength);
+                    }
+                    break;
+
+                case AstExpression::EXPR_LITERALNULL:
+                    {
+                        res = AstParser::makeAstItemLiteralNull();
+                    }
+                    break;
+                case AstExpression::EXPR_LITERALARRAY:
+                    {
+                        auto actual = static_cast<ExprLiteralArray*>(expr);
+                        auto valuescopy = actual->m_exprlitarritems.copyToStack(copyExpression, destroyExpression);
+                        res = AstParser::makeAstItemLiteralArray(valuescopy);
+                    }
+                    break;
+
+                case AstExpression::EXPR_LITERALMAP:
+                    {
+                        auto actual = static_cast<ExprLiteralMap*>(expr);
+                        auto keyscopy = actual->m_exprlitmapkeys.copyToStack(copyExpression, destroyExpression);
+                        auto valuescopy = actual->m_exprlitmapvalues.copyToStack(copyExpression, destroyExpression);
+                        res = AstParser::makeAstItemLiteralMap(keyscopy, valuescopy);
+                    }
+                    break;
+                case AstExpression::EXPR_PREFIX:
+                    {
+                        AstExpression* rightcopy;
+                        auto actual = static_cast<ExprPrefix*>(expr);
+                        rightcopy = copyExpression(actual->m_exprprefixright);
+                        res = AstParser::makeAstItemPrefix(actual->m_exprprefixoper, rightcopy);
+                    }
+                    break;
+                case AstExpression::EXPR_INFIX:
+                    {
+                        AstExpression* leftcopy;
+                        AstExpression* rightcopy;
+                        auto actual = static_cast<ExprInfix*>(expr);
+                        leftcopy = copyExpression(actual->m_exprinfixleft);
+                        rightcopy = copyExpression(actual->m_exprinfixright);
+                        res = AstParser::makeAstItemInfix(actual->m_exprinfixoper, leftcopy, rightcopy);
+                    }
+                    break;
+                case AstExpression::EXPR_LITERALFUNCTION:
+                    {
+                        char* namecopy;
+                        AstCodeBlock* bodycopy;
+                        auto actual = static_cast<ExprLiteralFunction*>(expr);
+                        auto pacopy = actual->m_exprfnparamlist.copyToStack(ExprFuncParam::copy, ExprFuncParam::destroy);
+                        bodycopy = AstCodeBlock::copy(actual->m_exprfnbody);
+                        namecopy = Util::strDuplicate(actual->m_exprfnname);
+                        res = AstParser::makeAstItemLiteralFunction(namecopy, pacopy, bodycopy);
+                    }
+                    break;
+                case AstExpression::EXPR_CALL:
+                    {
+                        AstExpression* fcopy;
+                        auto actual = static_cast<ExprCall*>(expr);
+                        fcopy = copyExpression(actual->m_exprcallfunction);
+                        auto argscopy = actual->m_exprcallargs.copyToStack(copyExpression, destroyExpression);
+                        res = AstParser::makeAstItemCallExpr(fcopy, argscopy);
+                    }
+                    break;
+                case AstExpression::EXPR_INDEX:
+                    {
+                        AstExpression* leftcopy;
+                        AstExpression* indexcopy;
+                        auto actual = static_cast<ExprIndex*>(expr);
+                        leftcopy = copyExpression(actual->m_exprindexleft);
+                        indexcopy = copyExpression(actual->m_exprindexindex);
+                        res = AstParser::makeAstItemIndex(leftcopy, indexcopy, false);
+                    }
+                    break;
+                case AstExpression::EXPR_ASSIGN:
+                    {
+                        AstExpression* destcopy;
+                        AstExpression* sourcecopy;
+                        auto actual = static_cast<ExprAssign*>(expr);
+                        destcopy = copyExpression(actual->m_exprassigndest);
+                        sourcecopy = copyExpression(actual->m_exprassignsource);
+                        res = AstParser::makeAstItemAssign(destcopy, sourcecopy, actual->m_exprassignispostfix);
+                    }
+                    break;
+                case AstExpression::EXPR_LOGICAL:
+                    {
+                        AstExpression* leftcopy;
+                        auto actual = static_cast<ExprLogical*>(expr);
+                        AstExpression* rightcopy;
+                        leftcopy = copyExpression(actual->m_exprlogleft);
+                        rightcopy = copyExpression(actual->m_exprlogright);
+                        res = AstParser::makeAstItemLogical(actual->m_exprlogoper, leftcopy, rightcopy);
+                    }
+                    break;
+                case AstExpression::EXPR_TERNARY:
+                    {
+                        AstExpression* testcopy;
+                        AstExpression* iftruecopy;
+                        AstExpression* iffalsecopy;
+                        auto actual = static_cast<ExprTernary*>(expr);
+                        testcopy = copyExpression(actual->m_exprterncond);
+                        iftruecopy = copyExpression(actual->m_exprterniftrue);
+                        iffalsecopy = copyExpression(actual->m_exprterniffalse);
+                        res = AstParser::makeAstItemTernary(testcopy, iftruecopy, iffalsecopy);
+                    }
+                    break;
+                case AstExpression::EXPR_STMTDEFINE:
+                    {
+                        AstExpression* valuecopy;
+                        auto actual = static_cast<ExprDefine*>(expr);
+                        valuecopy = copyExpression(actual->m_exprdefvalue);
+                        res = AstParser::makeAstItemDefine(AstIdentifier::copy(actual->m_exprdefname), valuecopy, actual->m_exprdefassignable);
+                    }
+                    break;
+                case AstExpression::EXPR_STMTIF:
+                    {
+                        AstCodeBlock* alternativecopy;
+                        auto actual = static_cast<ExprIfStmt*>(expr);
+                        auto casescopy = actual->m_exprifcases.copyToStack(ExprIfCase::copy, ExprIfCase::destroy);
+                        alternativecopy = AstCodeBlock::copy(actual->m_exprifelse);
+                        res = AstParser::makeAstItemIfStmt(casescopy, alternativecopy);
+                    }
+                    break;
+                case AstExpression::EXPR_STMTRETURN:
+                    {
+                        AstExpression* valuecopy;
+                        auto actual = static_cast<ExprReturnStmt*>(expr);
+                        valuecopy = copyExpression(actual->m_exprretvalue);
+                        res = AstParser::makeAstItemReturnStmt(valuecopy);
+                    }
+                    break;
+                case AstExpression::EXPR_STMTEXPRESSION:
+                    {
+                        AstExpression* valuecopy;
+                        auto actual = static_cast<ExprExpression*>(expr);
+                        valuecopy = copyExpression(actual->m_exprexprvalue);
+                        res = AstParser::makeAstItemExprStmt(valuecopy);
+                    }
+                    break;
+                case AstExpression::EXPR_STMTLOOPWHILE:
+                    {
+                        AstExpression* testcopy;
+                        AstCodeBlock* bodycopy;
+                        auto actual = static_cast<ExprWhileStmt*>(expr);
+                        testcopy = copyExpression(actual->m_exprwhilecond);
+                        bodycopy = AstCodeBlock::copy(actual->m_exprwhilebody);
+                        res = AstParser::makeAstItemWhileStmt(testcopy, bodycopy);
+                    }
+                    break;
+                case AstExpression::EXPR_STMTBREAK:
+                    {
+                        res = AstParser::makeAstItemBreakStmt();
+                    }
+                    break;
+                case AstExpression::EXPR_STMTCONTINUE:
+                    {
+                        res = AstParser::makeAstItemContinueStmt();
+                    }
+                    break;
+                case AstExpression::EXPR_STMTLOOPFOREACH:
+                    {
+                        AstExpression* sourcecopy;
+                        AstCodeBlock* bodycopy;
+                        auto actual = static_cast<ExprForeachStmt*>(expr);
+                        sourcecopy = copyExpression(actual->m_exprforeachsource);
+                        bodycopy = AstCodeBlock::copy(actual->m_exprforeachbody);
+                        res = AstParser::makeAstItemForeachStmt(AstIdentifier::copy(actual->m_exprforeachiterator), sourcecopy, bodycopy);
+                    }
+                    break;
+                case AstExpression::EXPR_STMTLOOPFORCLASSIC:
+                    {
+                        AstExpression* initcopy;
+                        AstExpression* testcopy;
+                        AstExpression* updatecopy;
+                        AstCodeBlock* bodycopy;
+                        auto actual = static_cast<ExprLoopStmt*>(expr);
+                        initcopy= copyExpression(actual->m_exprforloopinit);
+                        testcopy = copyExpression(actual->m_exprforloopcond);
+                        updatecopy = copyExpression(actual->m_exprforloopupdate);
+                        bodycopy = AstCodeBlock::copy(actual->m_exprforloopbody);
+                        res = AstParser::makeAstItemForLoopStmt(initcopy, testcopy, updatecopy, bodycopy);
+                    }
+                    break;
+                case AstExpression::EXPR_STMTBLOCK:
+                    {
+                        AstCodeBlock* blockcopy;
+                        auto actual = static_cast<ExprBlock*>(expr);
+                        blockcopy = AstCodeBlock::copy(actual->m_exprblockvalue);
+                        res = AstParser::makeAstItemBlockStmt(blockcopy);
+                    }
+                    break;
+                case AstExpression::EXPR_STMTIMPORT:
+                    {
+                        char* pathcopy;
+                        auto actual = static_cast<ExprImportStmt*>(expr);
+                        pathcopy = Util::strDuplicate(actual->m_exprimportpath);
+                        res = AstParser::makeAstItemImportExpr(pathcopy);
+                    }
+                    break;
+                case AstExpression::EXPR_STMTRECOVER:
+                    {
+                        AstCodeBlock* bodycopy;
+                        AstIdentifier* erroridentcopy;
+                        auto actual = static_cast<ExprRecover*>(expr);
+                        bodycopy = AstCodeBlock::copy(actual->m_exprrecoverbody);
+                        erroridentcopy = AstIdentifier::copy(actual->m_exprrecovererrident);
+                        res = AstParser::makeAstItemRecover(erroridentcopy, bodycopy);
+                    }
+                    break;
+                default:
+                    {
+                    }
+                    break;
+            }
+            if(!res)
+            {
+                return nullptr;
+            }
+            res->m_exprpos = expr->m_exprpos;
+            return res;
+        }
+
+        static void destroyExpression(AstExpression* expr)
+        {
+            if(expr != nullptr)
+            {
+                switch(expr->m_exprtype)
+                {
+                    case AstExpression::EXPR_NONE:
+                        {
+                            MC_ASSERT(false);
+                        }
+                        break;
+                    case AstExpression::EXPR_IDENT:
+                        {
+                            auto actual = static_cast<ExprIdent*>(expr);
+                            Memory::destroy(actual->m_expridvalue);
+                        }
+                        break;
+                    case AstExpression::EXPR_LITERALNUMBER:
+                    case AstExpression::EXPR_LITERALBOOL:
+                        {
+                        }
+                        break;
+                    case AstExpression::EXPR_LITERALSTRING:
+                        {
+                            auto actual = static_cast<ExprLiteralString*>(expr);
+                            mc_memory_free(actual->m_exprstrdata);
+                        }
+                        break;
+                    case AstExpression::EXPR_LITERALNULL:
+                        {
+                        }
+                        break;
+                    case AstExpression::EXPR_LITERALARRAY:
+                        {
+                            auto actual = static_cast<ExprLiteralArray*>(expr);
+                            actual->m_exprlitarritems.deInit(destroyExpression);
+                        }
+                        break;
+                    case AstExpression::EXPR_LITERALMAP:
+                        {
+                            auto actual = static_cast<ExprLiteralMap*>(expr);
+                            actual->m_exprlitmapkeys.deInit(destroyExpression);
+                            actual->m_exprlitmapvalues.deInit(destroyExpression);
+                        }
+                        break;
+                    case AstExpression::EXPR_PREFIX:
+                        {
+                            auto actual = static_cast<ExprPrefix*>(expr);
+                            destroyExpression(actual->m_exprprefixright);
+                        }
+                        break;
+                    case AstExpression::EXPR_INFIX:
+                        {
+                            auto actual = static_cast<ExprInfix*>(expr);
+                            destroyExpression(actual->m_exprinfixleft);
+                            destroyExpression(actual->m_exprinfixright);
+                        }
+                        break;
+                    case AstExpression::EXPR_LITERALFUNCTION:
+                        {
+                            ExprLiteralFunction* fn;
+                            fn = static_cast<ExprLiteralFunction*>(expr);
+                            mc_memory_free(fn->m_exprfnname);
+                            fn->m_exprfnparamlist.deInit(ExprFuncParam::destroy);
+                            Memory::destroy(fn->m_exprfnbody);
+                        }
+                        break;
+                    case AstExpression::EXPR_CALL:
+                        {
+                            auto actual = static_cast<ExprCall*>(expr);
+                            actual->m_exprcallargs.deInit(destroyExpression);
+                            destroyExpression(actual->m_exprcallfunction);
+                        }
+                        break;
+                    case AstExpression::EXPR_INDEX:
+                        {
+                            auto actual = static_cast<ExprIndex*>(expr);
+                            destroyExpression(actual->m_exprindexleft);
+                            destroyExpression(actual->m_exprindexindex);
+                        }
+                        break;
+                    case AstExpression::EXPR_ASSIGN:
+                        {
+                            auto actual = static_cast<ExprAssign*>(expr);
+                            destroyExpression(actual->m_exprassigndest);
+                            destroyExpression(actual->m_exprassignsource);
+                        }
+                        break;
+                    case AstExpression::EXPR_LOGICAL:
+                        {
+                            auto actual = static_cast<ExprLogical*>(expr);
+                            destroyExpression(actual->m_exprlogleft);
+                            destroyExpression(actual->m_exprlogright);
+                        }
+                        break;
+                    case AstExpression::EXPR_TERNARY:
+                        {
+                            auto actual = static_cast<ExprTernary*>(expr);
+                            destroyExpression(actual->m_exprterncond);
+                            destroyExpression(actual->m_exprterniftrue);
+                            destroyExpression(actual->m_exprterniffalse);
+                        }
+                        break;
+                    case AstExpression::EXPR_STMTDEFINE:
+                        {
+                            auto actual = static_cast<ExprDefine*>(expr);
+                            Memory::destroy(actual->m_exprdefname);
+                            destroyExpression(actual->m_exprdefvalue);
+                        }
+                        break;
+                    case AstExpression::EXPR_STMTIF:
+                        {
+                            auto actual = static_cast<ExprIfStmt*>(expr);
+                            actual->m_exprifcases.deInit(ExprIfCase::destroy);
+                            Memory::destroy(actual->m_exprifelse);
+                        }
+                        break;
+                    case AstExpression::EXPR_STMTRETURN:
+                        {
+                            auto actual = static_cast<ExprReturnStmt*>(expr);
+                            destroyExpression(actual->m_exprretvalue);
+                        }
+                        break;
+                    case AstExpression::EXPR_STMTEXPRESSION:
+                        {
+                            auto actual = static_cast<ExprExpression*>(expr);
+                            destroyExpression(actual->m_exprexprvalue);
+                        }
+                        break;
+                    case AstExpression::EXPR_STMTLOOPWHILE:
+                        {
+                            auto actual = static_cast<ExprWhileStmt*>(expr);
+                            destroyExpression(actual->m_exprwhilecond);
+                            Memory::destroy(actual->m_exprwhilebody);
+                        }
+                        break;
+                    case AstExpression::EXPR_STMTBREAK:
+                        {
+                        }
+                        break;
+                    case AstExpression::EXPR_STMTCONTINUE:
+                        {
+                        }
+                        break;
+                    case AstExpression::EXPR_STMTLOOPFOREACH:
+                        {
+                            auto actual = static_cast<ExprForeachStmt*>(expr);
+                            Memory::destroy(actual->m_exprforeachiterator);
+                            destroyExpression(actual->m_exprforeachsource);
+                            Memory::destroy(actual->m_exprforeachbody);
+                        }
+                        break;
+                    case AstExpression::EXPR_STMTLOOPFORCLASSIC:
+                        {
+                            auto actual = static_cast<ExprLoopStmt*>(expr);
+                            destroyExpression(actual->m_exprforloopinit);
+                            destroyExpression(actual->m_exprforloopcond);
+                            destroyExpression(actual->m_exprforloopupdate);
+                            Memory::destroy(actual->m_exprforloopbody);
+                        }
+                        break;
+                    case AstExpression::EXPR_STMTBLOCK:
+                        {
+                            auto actual = static_cast<ExprBlock*>(expr);
+                            Memory::destroy(actual->m_exprblockvalue);
+                        }
+                        break;
+                    case AstExpression::EXPR_STMTIMPORT:
+                        {
+                            auto actual = static_cast<ExprImportStmt*>(expr);
+                            mc_memory_free(actual->m_exprimportpath);
+                        }
+                        break;
+                    case AstExpression::EXPR_STMTRECOVER:
+                        {
+                            auto actual = static_cast<ExprRecover*>(expr);
+                            Memory::destroy(actual->m_exprrecoverbody);
+                            Memory::destroy(actual->m_exprrecovererrident);
+                        }
+                        break;
+                    default:
+                        {
+                        }
+                        break;
+                }
+                Memory::destroy(expr);
+                expr = nullptr;
+            }
         }
 
         static Precedence getPrecedence(AstToken::Type tk)
@@ -6061,23 +6782,23 @@ class AstParser
             {
                 case AstToken::Type::T_EQUAL:
                 case AstToken::Type::T_NOTEQ:
-                    return Precedence::MC_ASTPREC_EQUALS;
+                    return Precedence::Equals;
                 case AstToken::Type::T_LESSTHAN:
                 case AstToken::Type::T_LESSEQUAL:
                 case AstToken::Type::T_GREATERTHAN:
                 case AstToken::Type::T_GREATEREQUAL:
-                    return Precedence::MC_ASTPREC_LESSGREATER;
+                    return Precedence::LessGreater;
                 case AstToken::Type::T_PLUS:
                 case AstToken::Type::T_UNARYMINUS:
                 case AstToken::Type::T_UNARYBINNOT:
-                    return Precedence::MC_ASTPREC_SUM;
+                    return Precedence::Sum;
                 case AstToken::Type::T_SLASH:
                 case AstToken::Type::T_ASTERISK:
                 case AstToken::Type::T_MATHMODULO:
-                    return Precedence::MC_ASTPREC_PRODUCT;
+                    return Precedence::Product;
                 case AstToken::Type::T_PARENOPEN:
                 case AstToken::Type::T_BRACKETOPEN:
-                    return Precedence::MC_ASTPREC_POSTFIX;
+                    return Precedence::Postfix;
                 case AstToken::Type::T_ASSIGN:
                 case AstToken::Type::T_ASSIGNPLUS:
                 case AstToken::Type::T_ASSIGNMINUS:
@@ -6089,31 +6810,31 @@ class AstParser
                 case AstToken::Type::T_ASSIGNBINXOR:
                 case AstToken::Type::T_ASSIGNLSHIFT:
                 case AstToken::Type::T_ASSIGNRSHIFT:
-                    return Precedence::MC_ASTPREC_ASSIGN;
+                    return Precedence::Assign;
                 case AstToken::Type::T_DOT:
-                    return Precedence::MC_ASTPREC_POSTFIX;
+                    return Precedence::Postfix;
                 case AstToken::Type::T_LOGICALAND:
-                    return Precedence::MC_ASTPREC_LOGICALAND;
+                    return Precedence::LogicalAnd;
                 case AstToken::Type::T_LOGICALOR:
-                    return Precedence::MC_ASTPREC_LOGICALOR;
+                    return Precedence::LogicalOr;
                 case AstToken::Type::T_BINOR:
-                    return Precedence::MC_ASTPREC_BINOR;
+                    return Precedence::BinaryOr;
                 case AstToken::Type::T_BINXOR:
-                    return Precedence::MC_ASTPREC_BINXOR;
+                    return Precedence::BinaryXor;
                 case AstToken::Type::T_BINAND:
-                    return Precedence::MC_ASTPREC_BINAND;
+                    return Precedence::BinaryAnd;
                 case AstToken::Type::T_LSHIFT:
                 case AstToken::Type::T_RSHIFT:
-                    return Precedence::MC_ASTPREC_SHIFT;
+                    return Precedence::Shift;
                 case AstToken::Type::T_QUESTION:
-                    return Precedence::MC_ASTPREC_TERNARY;
+                    return Precedence::Ternary;
                 case AstToken::Type::T_PLUSPLUS:
                 case AstToken::Type::T_MINUSMINUS:
-                    return Precedence::MC_ASTPREC_INCDEC;
+                    return Precedence::IncrementDecrement;
                 default:
                     break;
             }
-            return Precedence::MC_ASTPREC_LOWEST;
+            return Precedence::Lowest;
         }
 
         static AstExpression::MathOpType tokenToMathOP(AstToken::Type tk)
@@ -6135,17 +6856,17 @@ class AstParser
                 case AstToken::Type::T_SLASH:
                     return AstExpression::MATHOP_SLASH;
                 case AstToken::Type::T_LESSTHAN:
-                    return AstExpression::MATHOP_LT;
+                    return AstExpression::MATHOP_LESSTHAN;
                 case AstToken::Type::T_LESSEQUAL:
-                    return AstExpression::MATHOP_LTE;
+                    return AstExpression::MATHOP_LESSEQUAL;
                 case AstToken::Type::T_GREATERTHAN:
-                    return AstExpression::MATHOP_GT;
+                    return AstExpression::MATHOP_GREATERTHAN;
                 case AstToken::Type::T_GREATEREQUAL:
-                    return AstExpression::MATHOP_GTE;
+                    return AstExpression::MATHOP_GREATEREQAL;
                 case AstToken::Type::T_EQUAL:
-                    return AstExpression::MATHOP_EQ;
+                    return AstExpression::MATHOP_EQUAL;
                 case AstToken::Type::T_NOTEQ:
-                    return AstExpression::MATHOP_NOTEQ;
+                    return AstExpression::MATHOP_NOTEQUAL;
                 case AstToken::Type::T_MATHMODULO:
                     return AstExpression::MATHOP_MODULUS;
                 case AstToken::Type::T_LOGICALAND:
@@ -6169,9 +6890,9 @@ class AstParser
                 case AstToken::Type::T_ASSIGNBINXOR:
                     return AstExpression::MATHOP_BINXOR;
                 case AstToken::Type::T_ASSIGNLSHIFT:
-                    return AstExpression::MATHOP_LSHIFT;
+                    return AstExpression::MATHOP_LEFTSHIFT;
                 case AstToken::Type::T_ASSIGNRSHIFT:
-                    return AstExpression::MATHOP_RSHIFT;
+                    return AstExpression::MATHOP_RIGHTSHIFT;
                 case AstToken::Type::T_BINAND:
                     return AstExpression::MATHOP_BINAND;
                 case AstToken::Type::T_BINOR:
@@ -6179,9 +6900,9 @@ class AstParser
                 case AstToken::Type::T_BINXOR:
                     return AstExpression::MATHOP_BINXOR;
                 case AstToken::Type::T_LSHIFT:
-                    return AstExpression::MATHOP_LSHIFT;
+                    return AstExpression::MATHOP_LEFTSHIFT;
                 case AstToken::Type::T_RSHIFT:
-                    return AstExpression::MATHOP_RSHIFT;
+                    return AstExpression::MATHOP_RIGHTSHIFT;
                 case AstToken::Type::T_PLUSPLUS:
                     return AstExpression::MATHOP_PLUS;
                 case AstToken::Type::T_MINUSMINUS:
@@ -6476,7 +7197,7 @@ class AstParser
             {
                 return false;
             }
-            auto nameident = Memory::make<AstExpression::Identifier>(m_lexer.m_currtoken);
+            auto nameident = Memory::make<AstIdentifier>(m_lexer.m_currtoken);
             m_lexer.nextToken();
             if(!m_lexer.currentTokenIs(AstToken::Type::T_ASSIGN))
             {
@@ -6484,15 +7205,15 @@ class AstParser
                 goto finish;
             }
             m_lexer.nextToken();
-            if(!parseExpression(&value, Precedence::MC_ASTPREC_LOWEST))
+            if(!parseExpression(&value, Precedence::Lowest))
             {
                 goto err;
             }
-            if(value->m_exprtype == AstExpression::EXPR_FUNCTIONLITERAL)
+            if(value->m_exprtype == AstExpression::EXPR_LITERALFUNCTION)
             {
                 auto ofn = static_cast<ExprLiteralFunction*>(value);
-                ofn ->name = mc_util_strdup(nameident->m_identvalue);
-                if(ofn->name == nullptr)
+                ofn->m_exprfnname = Util::strDuplicate(nameident->m_identvalue);
+                if(ofn->m_exprfnname == nullptr)
                 {
                     goto err;
                 }
@@ -6501,7 +7222,7 @@ class AstParser
             *res = makeAstItemDefine(nameident, value, assignable);
             return true;
         err:
-            AstUtilDestroyExpression(value);
+            destroyExpression(value);
             Memory::destroy(nameident);
             return false;
         }
@@ -6511,8 +7232,8 @@ class AstParser
             bool ok;
             ExprIfCase* cond;
             ExprIfCase* elif;
-            AstExpression::CodeBlock* alternative;
-            AstExpression::CodeBlock* emptyblocktop = nullptr;
+            AstCodeBlock* alternative;
+            AstCodeBlock* emptyblocktop = nullptr;
             GenericList<ExprIfCase*> cases;
             (void)ok;
             alternative = nullptr;
@@ -6524,7 +7245,7 @@ class AstParser
             m_lexer.nextToken();
             cond = Memory::make<ExprIfCase>(nullptr, emptyblocktop);
             ok = cases.push(cond);
-            if(!parseExpression(&cond->m_ifcond, Precedence::MC_ASTPREC_LOWEST))
+            if(!parseExpression(&cond->m_exprifcond, Precedence::Lowest))
             {
                 goto err;
             }
@@ -6533,13 +7254,13 @@ class AstParser
                 goto err;
             }
             m_lexer.nextToken();
-            if(!parseCodeBlock(&cond->m_ifthen))
+            if(!parseCodeBlock(&cond->m_exprifthen))
             {
                 goto err;
             }
             while(m_lexer.currentTokenIs(AstToken::Type::T_KWELSE))
             {
-                AstExpression::CodeBlock* emptyblockinner = nullptr;
+                AstCodeBlock* emptyblockinner = nullptr;
                 m_lexer.nextToken();
                 if(m_lexer.currentTokenIs(AstToken::Type::T_KWIF))
                 {
@@ -6551,7 +7272,7 @@ class AstParser
                     m_lexer.nextToken();
                     elif = Memory::make<ExprIfCase>(nullptr, emptyblockinner);
                     ok = cases.push(elif);
-                    if(!parseExpression(&elif->m_ifcond, Precedence::MC_ASTPREC_LOWEST))
+                    if(!parseExpression(&elif->m_exprifcond, Precedence::Lowest))
                     {
                         goto err;
                     }
@@ -6560,7 +7281,7 @@ class AstParser
                         goto err;
                     }
                     m_lexer.nextToken();
-                    if(!parseCodeBlock(&elif->m_ifthen))
+                    if(!parseCodeBlock(&elif->m_exprifthen))
                     {
                         goto err;
                     }
@@ -6589,7 +7310,7 @@ class AstParser
             m_lexer.nextToken();
             if(!m_lexer.currentTokenIs(AstToken::Type::T_SEMICOLON) && !m_lexer.currentTokenIs(AstToken::Type::T_BRACECLOSE) && !m_lexer.currentTokenIs(AstToken::Type::T_EOF))
             {
-                if(!parseExpression(&expr, Precedence::MC_ASTPREC_LOWEST))
+                if(!parseExpression(&expr, Precedence::Lowest))
                 {
                     return false;
                 }
@@ -6601,7 +7322,7 @@ class AstParser
         bool parseExprStmt(AstExpression** res)
         {
             AstExpression* expr;
-            if(!parseExpression(&expr, Precedence::MC_ASTPREC_LOWEST))
+            if(!parseExpression(&expr, Precedence::Lowest))
             {
                 return false;
             }
@@ -6615,7 +7336,7 @@ class AstParser
         bool parseLoopWhileStmt(AstExpression** res)
         {
             AstExpression* test;
-            AstExpression::CodeBlock* body;
+            AstCodeBlock* body;
             test = nullptr;
             m_lexer.nextToken();
             if(!m_lexer.expectCurrent(AstToken::Type::T_PARENOPEN))
@@ -6623,7 +7344,7 @@ class AstParser
                 goto err;
             }
             m_lexer.nextToken();
-            if(!parseExpression(&test, Precedence::MC_ASTPREC_LOWEST))
+            if(!parseExpression(&test, Precedence::Lowest))
             {
                 goto err;
             }
@@ -6640,7 +7361,7 @@ class AstParser
             return true;
         err:
             Memory::destroy(body);
-            AstUtilDestroyExpression(test);
+            destroyExpression(test);
             return false;
         }
 
@@ -6670,7 +7391,7 @@ class AstParser
 
         bool parseBlockStmt(AstExpression** res)
         {
-            AstExpression::CodeBlock* block;
+            AstCodeBlock* block;
             if(!parseCodeBlock(&block))
             {
                 return false;
@@ -6700,7 +7421,7 @@ class AstParser
 
         bool parseRecoverStmt(AstExpression** res)
         {
-            AstExpression::CodeBlock* body;
+            AstCodeBlock* body;
             body = nullptr;
             m_lexer.nextToken();
             if(!m_lexer.expectCurrent(AstToken::Type::T_PARENOPEN))
@@ -6712,7 +7433,7 @@ class AstParser
             {
                 return false;
             }
-            auto eid = Memory::make<AstExpression::Identifier>(m_lexer.m_currtoken);
+            auto eid = Memory::make<AstIdentifier>(m_lexer.m_currtoken);
             m_lexer.nextToken();
             if(!m_lexer.expectCurrent(AstToken::Type::T_PARENCLOSE))
             {
@@ -6749,17 +7470,17 @@ class AstParser
         bool parseLoopForeachStmt(AstExpression** res)
         {
             AstExpression* source;
-            AstExpression::CodeBlock* body;
+            AstCodeBlock* body;
             body = nullptr;
             source = nullptr;
-            auto iteratorident = Memory::make<AstExpression::Identifier>(m_lexer.m_currtoken);
+            auto iteratorident = Memory::make<AstIdentifier>(m_lexer.m_currtoken);
             m_lexer.nextToken();
             if(!m_lexer.expectCurrent(AstToken::Type::T_KWIN))
             {
                 goto err;
             }
             m_lexer.nextToken();
-            if(!parseExpression(&source, Precedence::MC_ASTPREC_LOWEST))
+            if(!parseExpression(&source, Precedence::Lowest))
             {
                 goto err;
             }
@@ -6777,7 +7498,7 @@ class AstParser
         err:
             Memory::destroy(body);
             Memory::destroy(iteratorident);
-            AstUtilDestroyExpression(source);
+            destroyExpression(source);
             return false;
         }
 
@@ -6786,7 +7507,7 @@ class AstParser
             AstExpression* init;
             AstExpression* test;
             AstExpression* update;
-            AstExpression::CodeBlock* body;
+            AstCodeBlock* body;
             init = nullptr;
             test = nullptr;
             update = nullptr;
@@ -6809,7 +7530,7 @@ class AstParser
             m_lexer.nextToken();
             if(!m_lexer.currentTokenIs(AstToken::Type::T_SEMICOLON))
             {
-                if(!parseExpression(&test, Precedence::MC_ASTPREC_LOWEST))
+                if(!parseExpression(&test, Precedence::Lowest))
                 {
                     goto err;
                 }
@@ -6821,7 +7542,7 @@ class AstParser
             m_lexer.nextToken();
             if(!m_lexer.currentTokenIs(AstToken::Type::T_PARENCLOSE))
             {
-                if(!parseExpression(&update, Precedence::MC_ASTPREC_LOWEST))
+                if(!parseExpression(&update, Precedence::Lowest))
                 {
                     goto err;
                 }
@@ -6838,14 +7559,14 @@ class AstParser
             *res = makeAstItemForLoopStmt(init, test, update, body);
             return true;
         err:
-            AstUtilDestroyExpression(init);
-            AstUtilDestroyExpression(test);
-            AstUtilDestroyExpression(update);
+            destroyExpression(init);
+            destroyExpression(test);
+            destroyExpression(update);
             Memory::destroy(body);
             return false;
         }
 
-        bool parseCodeBlock(AstExpression::CodeBlock** res)
+        bool parseCodeBlock(AstCodeBlock** res)
         {
             bool ok;
             AstExpression* expr;
@@ -6878,11 +7599,11 @@ class AstParser
             }
             m_lexer.nextToken();
             m_parsedepth--;
-            *res = Memory::make<AstExpression::CodeBlock>(statements);
+            *res = Memory::make<AstCodeBlock>(statements);
             return true;
         err:
             m_parsedepth--;
-            statements.deInit(AstUtilDestroyExpression);
+            statements.deInit(destroyExpression);
             return false;
         }
 
@@ -6924,7 +7645,7 @@ class AstParser
                 pos = m_lexer.m_currtoken.m_tokpos;
                 if(!parseleftassoc(this, &newleftexpr, leftexpr))
                 {
-                    AstUtilDestroyExpression(leftexpr);
+                    destroyExpression(leftexpr);
                     return false;
                 }
                 newleftexpr->m_exprpos = pos;
@@ -6939,9 +7660,9 @@ class AstParser
             AstExpression* expr;
             expr = nullptr;
             m_lexer.nextToken();
-            if(!parseExpression(&expr, Precedence::MC_ASTPREC_LOWEST) || !m_lexer.expectCurrent(AstToken::Type::T_PARENCLOSE))
+            if(!parseExpression(&expr, Precedence::Lowest) || !m_lexer.expectCurrent(AstToken::Type::T_PARENCLOSE))
             {
-                AstUtilDestroyExpression(expr);
+                destroyExpression(expr);
                 return false;
             }
             m_lexer.nextToken();
@@ -6967,7 +7688,7 @@ class AstParser
             {
                 return false;
             }
-            auto ident = Memory::make<AstExpression::Identifier>(m_lexer.m_currtoken);
+            auto ident = Memory::make<AstIdentifier>(m_lexer.m_currtoken);
             auto param = Memory::make<ExprFuncParam>(ident);
             ok = outparams->push(param);
             m_lexer.nextToken();
@@ -6978,7 +7699,7 @@ class AstParser
                 {
                     return false;
                 }
-                ident = Memory::make<AstExpression::Identifier>(m_lexer.m_currtoken);
+                ident = Memory::make<AstIdentifier>(m_lexer.m_currtoken);
                 param = Memory::make<ExprFuncParam>(ident);
                 ok = outparams->push(param);
                 m_lexer.nextToken();
@@ -7003,7 +7724,7 @@ class AstParser
             {
                 return false;
             }
-            auto nameident = Memory::make<AstExpression::Identifier>(m_lexer.m_currtoken);
+            auto nameident = Memory::make<AstIdentifier>(m_lexer.m_currtoken);
             m_lexer.nextToken();
             if(!callback_parseliteralfunction(this, &value))
             {
@@ -7011,15 +7732,15 @@ class AstParser
             }
             value->m_exprpos = pos;
             ofn = static_cast<ExprLiteralFunction*>(value);
-            ofn->name = mc_util_strdup(nameident->m_identvalue);
-            if(ofn->name == nullptr)
+            ofn->m_exprfnname = Util::strDuplicate(nameident->m_identvalue);
+            if(ofn->m_exprfnname == nullptr)
             {
                 goto err;
             }
             *res = makeAstItemDefine(nameident, value, false);
             return true;
         err:
-            AstUtilDestroyExpression(value);
+            destroyExpression(value);
             Memory::destroy(nameident);
             return false;
         }
@@ -7029,19 +7750,19 @@ class AstParser
             AstExpression* ift;
             AstExpression* iffalse;
             m_lexer.nextToken();
-            if(!parseExpression(&ift, Precedence::MC_ASTPREC_LOWEST))
+            if(!parseExpression(&ift, Precedence::Lowest))
             {
                 return false;
             }
             if(!m_lexer.expectCurrent(AstToken::Type::T_COLON))
             {
-                AstUtilDestroyExpression(ift);
+                destroyExpression(ift);
                 return false;
             }
             m_lexer.nextToken();
-            if(!parseExpression(&iffalse, Precedence::MC_ASTPREC_LOWEST))
+            if(!parseExpression(&iffalse, Precedence::Lowest))
             {
-                AstUtilDestroyExpression(ift);
+                destroyExpression(ift);
                 return false;
             }
             *res = makeAstItemTernary(left, ift, iffalse);
@@ -7068,13 +7789,13 @@ class AstParser
         {
             AstExpression* index;
             m_lexer.nextToken();
-            if(!parseExpression(&index, Precedence::MC_ASTPREC_LOWEST))
+            if(!parseExpression(&index, Precedence::Lowest))
             {
                 return false;
             }
             if(!m_lexer.expectCurrent(AstToken::Type::T_BRACKETCLOSE))
             {
-                AstUtilDestroyExpression(index);
+                destroyExpression(index);
                 return false;
             }
             m_lexer.nextToken();
@@ -7093,7 +7814,7 @@ class AstParser
             source = nullptr;
             assigntype = m_lexer.m_currtoken.m_toktype;
             m_lexer.nextToken();
-            if(!parseExpression(&source, Precedence::MC_ASTPREC_LOWEST))
+            if(!parseExpression(&source, Precedence::Lowest))
             {
                 goto err;
             }
@@ -7111,7 +7832,7 @@ class AstParser
                 case AstToken::Type::T_ASSIGNRSHIFT:
                     {
                         op = tokenToMathOP(assigntype);
-                        leftcopy = AstUtilCopyExpression(left);
+                        leftcopy = copyExpression(left);
                         if(leftcopy == nullptr)
                         {
                             goto err;
@@ -7135,7 +7856,7 @@ class AstParser
             *res = makeAstItemAssign(left, source, false);
             return true;
         err:
-            AstUtilDestroyExpression(source);
+            destroyExpression(source);
             return false;
         }
 
@@ -7154,17 +7875,17 @@ class AstParser
             pos = m_lexer.m_currtoken.m_tokpos;
             m_lexer.nextToken();
             op = tokenToMathOP(operationtype);
-            if(!parseExpression(&dest, Precedence::MC_ASTPREC_PREFIX))
+            if(!parseExpression(&dest, Precedence::Prefix))
             {
                 goto err;
             }
             oneliteral = makeAstItemLiteralNumber(1);
             oneliteral->m_exprpos = pos;
-            destcopy = AstUtilCopyExpression(dest);
+            destcopy = copyExpression(dest);
             if(destcopy == nullptr)
             {
-                AstUtilDestroyExpression(oneliteral);
-                AstUtilDestroyExpression(dest);
+                destroyExpression(oneliteral);
+                destroyExpression(dest);
                 goto err;
             }
             operation = makeAstItemInfix(op, destcopy, oneliteral);
@@ -7172,7 +7893,7 @@ class AstParser
             *res = makeAstItemAssign(dest, operation, false);
             return true;
         err:
-            AstUtilDestroyExpression(source);
+            destroyExpression(source);
             return false;
         }
 
@@ -7190,7 +7911,7 @@ class AstParser
             pos = m_lexer.m_currtoken.m_tokpos;
             m_lexer.nextToken();
             op = tokenToMathOP(operationtype);
-            leftcopy = AstUtilCopyExpression(left);
+            leftcopy = copyExpression(left);
             if(leftcopy == nullptr)
             {
                 goto err;
@@ -7202,7 +7923,7 @@ class AstParser
             *res = makeAstItemAssign(left, operation, true);
             return true;
         err:
-            AstUtilDestroyExpression(source);
+            destroyExpression(source);
             return false;
         }
 
@@ -7212,7 +7933,7 @@ class AstParser
             AstExpression* right;
             op = tokenToMathOP(m_lexer.m_currtoken.m_toktype);
             m_lexer.nextToken();
-            if(!parseExpression(&right, Precedence::MC_ASTPREC_PREFIX))
+            if(!parseExpression(&right, Precedence::Prefix))
             {
                 return false;
             }
@@ -7239,7 +7960,7 @@ class AstParser
         bool parseLiteralFunction(AstExpression** res)
         {
             bool ok;
-            AstExpression::CodeBlock* body;
+            AstCodeBlock* body;
             GenericList<ExprFuncParam*> params;
             (void)ok;
             m_parsedepth++;
@@ -7257,7 +7978,7 @@ class AstParser
             {
                 goto err;
             }
-            *res = makeAstItemLiteralFunction(params, body);
+            *res = makeAstItemLiteralFunction(nullptr, params, body);
             m_parsedepth -= 1;
             return true;
         err:
@@ -7295,29 +8016,29 @@ class AstParser
                 if(m_lexer.currentTokenIs(AstToken::Type::T_IDENT))
                 {
                     str = m_lexer.m_currtoken.dupLiteralString();
-                    len = mc_util_strlen(str);
+                    len = strlen(str);
                     key = makeAstItemLiteralString(str, len);
                     key->m_exprpos = m_lexer.m_currtoken.m_tokpos;
                     m_lexer.nextToken();
                 }
                 else
                 {
-                    if(!parseExpression(&key, Precedence::MC_ASTPREC_LOWEST))
+                    if(!parseExpression(&key, Precedence::Lowest))
                     {
                         goto err;
                     }
                     switch(key->m_exprtype)
                     {
-                        case AstExpression::EXPR_STRINGLITERAL:
-                        case AstExpression::EXPR_NUMBERLITERAL:
-                        case AstExpression::EXPR_BOOLLITERAL:
+                        case AstExpression::EXPR_LITERALSTRING:
+                        case AstExpression::EXPR_LITERALNUMBER:
+                        case AstExpression::EXPR_LITERALBOOL:
                             {
                             }
                             break;
                         default:
                             {
                                 m_prserrlist->pushFormat(Error::ERRTYP_PARSING, key->m_exprpos, "can only use primitive types as literal 'map' object keys");
-                                AstUtilDestroyExpression(key);
+                                destroyExpression(key);
                                 goto err;
                             }
                             break;
@@ -7329,7 +8050,7 @@ class AstParser
                     goto err;
                 }
                 m_lexer.nextToken();
-                if(!parseExpression(&value, Precedence::MC_ASTPREC_LOWEST))
+                if(!parseExpression(&value, Precedence::Lowest))
                 {
                     goto err;
                 }
@@ -7348,8 +8069,8 @@ class AstParser
             *res = makeAstItemLiteralMap(keys, values);
             return true;
         err:
-            keys.deInit(AstUtilDestroyExpression);
-            values.deInit(AstUtilDestroyExpression);
+            keys.deInit(destroyExpression);
+            values.deInit(destroyExpression);
             return false;
         }
 
@@ -7384,12 +8105,12 @@ class AstParser
             }
             m_lexer.nextToken();
             pos = m_lexer.m_currtoken.m_tokpos;
-            len = mc_util_strlen(processedliteral);
+            len = strlen(processedliteral);
             leftstringexpr = makeAstItemLiteralString(processedliteral, len);
             leftstringexpr->m_exprpos = pos;
             processedliteral = nullptr;
             pos = m_lexer.m_currtoken.m_tokpos;
-            if(!parseExpression(&templateexpr, Precedence::MC_ASTPREC_LOWEST))
+            if(!parseExpression(&templateexpr, Precedence::Lowest))
             {
                 goto err;
             }
@@ -7409,7 +8130,7 @@ class AstParser
             m_lexer.nextToken();
             m_lexer.nextToken();
             pos = m_lexer.m_currtoken.m_tokpos;
-            if(!parseExpression(&rightexpr, Precedence::MC_ASTPREC_HIGHEST))
+            if(!parseExpression(&rightexpr, Precedence::Highest))
             {
                 goto err;
             }
@@ -7420,12 +8141,12 @@ class AstParser
             *res = rightaddexpr;
             return true;
         err:
-            AstUtilDestroyExpression(rightaddexpr);
-            AstUtilDestroyExpression(rightexpr);
-            AstUtilDestroyExpression(leftaddexpr);
-            AstUtilDestroyExpression(tostrcallexpr);
-            AstUtilDestroyExpression(templateexpr);
-            AstUtilDestroyExpression(leftstringexpr);
+            destroyExpression(rightaddexpr);
+            destroyExpression(rightexpr);
+            destroyExpression(leftaddexpr);
+            destroyExpression(tostrcallexpr);
+            destroyExpression(templateexpr);
+            destroyExpression(leftstringexpr);
             mc_memory_free(processedliteral);
             return false;
         }
@@ -7441,7 +8162,7 @@ class AstParser
                 return false;
             }
             m_lexer.nextToken();
-            len = mc_util_strlen(processedliteral);
+            len = strlen(processedliteral);
             *res = makeAstItemLiteralString(processedliteral, len);
             return true;
         }
@@ -7493,7 +8214,7 @@ class AstParser
                 return false;
             }
             str = m_lexer.m_currtoken.dupLiteralString();
-            len = mc_util_strlen(str);
+            len = strlen(str);
             index = makeAstItemLiteralString(str, len);
             index->m_exprpos = m_lexer.m_currtoken.m_tokpos;
             m_lexer.nextToken();
@@ -7503,7 +8224,7 @@ class AstParser
         
         bool parseIdent(AstExpression** res)
         {
-            auto ident = Memory::make<AstExpression::Identifier>(m_lexer.m_currtoken);
+            auto ident = Memory::make<AstIdentifier>(m_lexer.m_currtoken);
             *res = makeAstItemIdent(ident);
             m_lexer.nextToken();
             return true;
@@ -7537,7 +8258,7 @@ class AstParser
                 m_lexer.nextToken();
                 return true;
             }
-            if(!parseExpression(&argexpr, Precedence::MC_ASTPREC_LOWEST))
+            if(!parseExpression(&argexpr, Precedence::Lowest))
             {
                 goto err;
             }
@@ -7549,7 +8270,7 @@ class AstParser
                 {
                     break;
                 }
-                if(!parseExpression(&argexpr, Precedence::MC_ASTPREC_LOWEST))
+                if(!parseExpression(&argexpr, Precedence::Lowest))
                 {
                     goto err;
                 }
@@ -7562,7 +8283,7 @@ class AstParser
             m_lexer.nextToken();
             return true;
         err:
-            //Memory::destroy(res, AstUtilDestroyExpression);
+            //Memory::destroy(res, destroyExpression);
             return false;
         }
 
@@ -7733,7 +8454,7 @@ class AstParser
             }
             return true;
         err:
-            statements->deInit(AstUtilDestroyExpression);
+            statements->deInit(destroyExpression);
             return false;
         }
 };
@@ -7759,13 +8480,13 @@ class AstPrinter
                     return "*";
                 case AstExpression::MATHOP_SLASH:
                     return "/";
-                case AstExpression::MATHOP_LT:
+                case AstExpression::MATHOP_LESSTHAN:
                     return "<";
-                case AstExpression::MATHOP_GT:
+                case AstExpression::MATHOP_GREATERTHAN:
                     return ">";
-                case AstExpression::MATHOP_EQ:
+                case AstExpression::MATHOP_EQUAL:
                     return "==";
-                case AstExpression::MATHOP_NOTEQ:
+                case AstExpression::MATHOP_NOTEQUAL:
                     return "!=";
                 case AstExpression::MATHOP_MODULUS:
                     return "%";
@@ -7779,13 +8500,13 @@ class AstPrinter
                     return "|";
                 case AstExpression::MATHOP_BINXOR:
                     return "^";
-                case AstExpression::MATHOP_LSHIFT:
+                case AstExpression::MATHOP_LEFTSHIFT:
                     return "<<";
-                case AstExpression::MATHOP_RSHIFT:
+                case AstExpression::MATHOP_RIGHTSHIFT:
                     return ">>";
-                case AstExpression::MATHOP_LTE:
+                case AstExpression::MATHOP_LESSEQUAL:
                     return "<=";
-                case AstExpression::MATHOP_GTE:
+                case AstExpression::MATHOP_GREATEREQAL:
                     return ">=";
                 case AstExpression::MATHOP_BINNOT:
                     return "~";
@@ -7793,13 +8514,12 @@ class AstPrinter
             return "AstExpression::MATHOP_UNKNOWN";
         }
 
-
     public:
-        Printer* m_pdest;
+        IOPrinter* m_pdest;
         bool m_pseudolisp;
 
     public:
-        AstPrinter(Printer* pr)
+        AstPrinter(IOPrinter* pr)
         {
             m_pseudolisp = false;
             m_pdest = pr;
@@ -7864,30 +8584,30 @@ class AstPrinter
             {
                 put("function(");
             }
-            for(i = 0; i < ex->funcparamlist.count(); i++)
+            for(i = 0; i < ex->m_exprfnparamlist.count(); i++)
             {
-                auto param = ex->funcparamlist.get(i);
-                put(param->m_paramident->m_identvalue);
-                if(i < (ex->funcparamlist.count() - 1))
+                auto param = ex->m_exprfnparamlist.get(i);
+                put(param->m_exprfnparamident->m_identvalue);
+                if(i < (ex->m_exprfnparamlist.count() - 1))
                 {
                     put(", ");
                 }
             }
             put(") ");
-            printCodeblock(ex->body);
+            printCodeblock(ex->m_exprfnbody);
         }
 
         void printCall(AstExpression* astexpr)
         {
             size_t i;
             auto ex = static_cast<ExprCall*>(astexpr);
-            printExpression(ex->function);
+            printExpression(ex->m_exprcallfunction);
             put("(");
-            for(i = 0; i < ex->m_callargs.count(); i++)
+            for(i = 0; i < ex->m_exprcallargs.count(); i++)
             {
-                auto arg = ex->m_callargs.get(i);
+                auto arg = ex->m_exprcallargs.get(i);
                 printExpression(arg);
-                if(i < (ex->m_callargs.count() - 1))
+                if(i < (ex->m_exprcallargs.count() - 1))
                 {
                     put(", ");
                 }
@@ -7900,7 +8620,7 @@ class AstPrinter
             size_t i;
             size_t len;
             auto ex = static_cast<ExprLiteralArray*>(astexpr);
-            auto vl = &ex->m_litarritems;
+            auto vl = &ex->m_exprlitarritems;
             len = vl->count();
             put("[");
             for(i = 0; i < len; i++)
@@ -7920,8 +8640,8 @@ class AstPrinter
             size_t slen;
             const char* sdata;
             auto ex = static_cast<ExprLiteralString*>(astexpr);
-            sdata = ex->m_strexprdata;
-            slen = ex->m_strexprlength;
+            sdata = ex->m_exprstrdata;
+            slen = ex->m_exprstrlength;
             if(m_pdest->m_prconfig.quotstring)
             {
                 m_pdest->printEscapedString(sdata, slen);
@@ -7937,14 +8657,14 @@ class AstPrinter
             size_t i;
             auto ex = static_cast<ExprLiteralMap*>(astexpr);
             put("{");
-            for(i = 0; i < ex->m_litmapkeys.count(); i++)
+            for(i = 0; i < ex->m_exprlitmapkeys.count(); i++)
             {
-                auto keyexpr = ex->m_litmapkeys.get(i);
-                auto valexpr = ex->m_litmapvalues.get(i);
+                auto keyexpr = ex->m_exprlitmapkeys.get(i);
+                auto valexpr = ex->m_exprlitmapvalues.get(i);
                 printExpression(keyexpr);
                 put(" : ");
                 printExpression(valexpr);
-                if(i < (ex->m_litmapkeys.count() - 1))
+                if(i < (ex->m_exprlitmapkeys.count() - 1))
                 {
                     put(", ");
                 }
@@ -7956,8 +8676,8 @@ class AstPrinter
         {
             auto ex = static_cast<ExprPrefix*>(astexpr);
             put("(");
-            put(getMathOpString(ex->op));
-            printExpression(ex->right);
+            put(getMathOpString(ex->m_exprprefixoper));
+            printExpression(ex->m_exprprefixright);
             put(")");
         }
 
@@ -7965,11 +8685,11 @@ class AstPrinter
         {
             auto ex = static_cast<ExprInfix*>(astexpr);
             put("(");
-            printExpression(ex->left);
+            printExpression(ex->m_exprinfixleft);
             put(" ");
-            put(getMathOpString(ex->op));
+            put(getMathOpString(ex->m_exprinfixoper));
             put(" ");
-            printExpression(ex->right);
+            printExpression(ex->m_exprinfixright);
             put(")");
         }
 
@@ -7978,19 +8698,19 @@ class AstPrinter
             bool prevquot;
             auto ex = static_cast<ExprIndex*>(astexpr);
             put("(");
-            printExpression(ex->left);
-            if(ex->isdot)
+            printExpression(ex->m_exprindexleft);
+            if(ex->m_exprindexisdot)
             {
                 put(".");
                 prevquot = m_pdest->m_prconfig.quotstring;
                 m_pdest->m_prconfig.quotstring = false;
-                printExpression(ex->index);
+                printExpression(ex->m_exprindexindex);
                 m_pdest->m_prconfig.quotstring = prevquot;
             }
             else
             {
                 put("[");
-                printExpression(ex->index);
+                printExpression(ex->m_exprindexindex);
                 put("]");
             }
             put(")");
@@ -7999,35 +8719,35 @@ class AstPrinter
         void printAssign(AstExpression* astexpr)
         {
             auto ex = static_cast<ExprAssign*>(astexpr);
-            printExpression(ex->dest);
+            printExpression(ex->m_exprassigndest);
             put(" = ");
-            printExpression(ex->source);
+            printExpression(ex->m_exprassignsource);
         }
 
         void printLogical(AstExpression* astexpr)
         {
             auto ex = static_cast<ExprLogical*>(astexpr);
-            printExpression(ex->left);
+            printExpression(ex->m_exprlogleft);
             put(" ");
-            put(getMathOpString(ex->op));
+            put(getMathOpString(ex->m_exprlogoper));
             put(" ");
-            printExpression(ex->right);
+            printExpression(ex->m_exprlogright);
         }
 
         void printTernary(AstExpression* astexpr)
         {
             auto ex = static_cast<ExprTernary*>(astexpr);
-            printExpression(ex->tercond);
+            printExpression(ex->m_exprterncond);
             put(" ? ");
-            printExpression(ex->teriftrue);
+            printExpression(ex->m_exprterniftrue);
             put(" : ");
-            printExpression(ex->teriffalse);
+            printExpression(ex->m_exprterniffalse);
         }
 
         void printDefine(AstExpression* astexpr)
         {
             auto ex = static_cast<ExprDefine*>(astexpr);
-            if(ex->assignable)
+            if(ex->m_exprdefassignable)
             {
                 put("var ");
             }
@@ -8035,11 +8755,11 @@ class AstPrinter
             {
                 put("const ");
             }
-            put(ex->name->m_identvalue);
+            put(ex->m_exprdefname->m_identvalue);
             put(" = ");
-            if(ex->value != nullptr)
+            if(ex->m_exprdefvalue != nullptr)
             {
-                printExpression(ex->value);
+                printExpression(ex->m_exprdefvalue);
             }
         }
 
@@ -8047,23 +8767,23 @@ class AstPrinter
         {
             size_t i;
             auto ex = static_cast<ExprIfStmt*>(astexpr);
-            auto ifcase = ex->m_ifcases.get(0);
+            auto ifcase = ex->m_exprifcases.get(0);
             put("if (");
-            printExpression(ifcase->m_ifcond);
+            printExpression(ifcase->m_exprifcond);
             put(") ");
-            printCodeblock(ifcase->m_ifthen);
-            for(i = 1; i < ex->m_ifcases.count(); i++)
+            printCodeblock(ifcase->m_exprifthen);
+            for(i = 1; i < ex->m_exprifcases.count(); i++)
             {
-                auto elifcase = ex->m_ifcases.get(i);
+                auto elifcase = ex->m_exprifcases.get(i);
                 put(" elif (");
-                printExpression(elifcase->m_ifcond);
+                printExpression(elifcase->m_exprifcond);
                 put(") ");
-                printCodeblock(elifcase->m_ifthen);
+                printCodeblock(elifcase->m_exprifthen);
             }
-            if(ex->m_ifstmtelsestmt != nullptr)
+            if(ex->m_exprifelse != nullptr)
             {
                 put(" else ");
-                printCodeblock(ex->m_ifstmtelsestmt);
+                printCodeblock(ex->m_exprifelse);
             }
         }
 
@@ -8071,66 +8791,66 @@ class AstPrinter
         {
             auto ex = static_cast<ExprWhileStmt*>(astexpr);
             put("while (");
-            printExpression(ex->loopcond);
+            printExpression(ex->m_exprwhilecond);
             put(")");
-            printCodeblock(ex->body);
+            printCodeblock(ex->m_exprwhilebody);
         }
 
         void printForClassic(AstExpression* astexpr)
         {
             auto ex = static_cast<ExprLoopStmt*>(astexpr);
             put("for (");
-            if(ex->init != nullptr)
+            if(ex->m_exprforloopinit != nullptr)
             {
-                printExpression(ex->init);
+                printExpression(ex->m_exprforloopinit);
                 put(" ");
             }
             else
             {
                 put(";");
             }
-            if(ex->loopcond != nullptr)
+            if(ex->m_exprforloopcond != nullptr)
             {
-                printExpression(ex->loopcond);
+                printExpression(ex->m_exprforloopcond);
                 put("; ");
             }
             else
             {
                 put(";");
             }
-            if(ex->update != nullptr)
+            if(ex->m_exprforloopupdate != nullptr)
             {
-                printExpression(ex->update);
+                printExpression(ex->m_exprforloopupdate);
             }
             put(")");
-            printCodeblock(ex->body);
+            printCodeblock(ex->m_exprforloopbody);
         }
 
         void printForeach(AstExpression* astexpr)
         {
             auto ex = static_cast<ExprForeachStmt*>(astexpr);
             put("for (");
-            putfmt("%s", ex->iterator->m_identvalue);
+            putfmt("%s", ex->m_exprforeachiterator->m_identvalue);
             put(" in ");
-            printExpression(ex->source);
+            printExpression(ex->m_exprforeachsource);
             put(")");
-            printCodeblock(ex->body);
+            printCodeblock(ex->m_exprforeachbody);
         }
 
         void printImport(AstExpression* astexpr)
         {
             auto ex = static_cast<ExprImportStmt*>(astexpr);
-            putfmt("import \"%s\"", ex->path);
+            putfmt("import \"%s\"", ex->m_exprimportpath);
         }
 
         void printRecover(AstExpression* astexpr)
         {
             auto ex = static_cast<ExprRecover*>(astexpr);
-            putfmt("recover (%s)", ex->errident->m_identvalue);
-            printCodeblock(ex->body);
+            putfmt("recover (%s)", ex->m_exprrecovererrident->m_identvalue);
+            printCodeblock(ex->m_exprrecoverbody);
         }
 
-        void printCodeblock(AstExpression::CodeBlock* blockexpr)
+        void printCodeblock(AstCodeBlock* blockexpr)
         {
             size_t i;
             size_t cnt;
@@ -8155,34 +8875,34 @@ class AstPrinter
                         put(ex->m_identvalue);
                     }
                     break;
-                case AstExpression::EXPR_NUMBERLITERAL:
+                case AstExpression::EXPR_LITERALNUMBER:
                     {
                         auto fl = static_cast<ExprLiteralNumber*>(astexpr)->m_exprnumber;
                         putfmt("%1.17g", fl);
                     }
                     break;
-                case AstExpression::EXPR_BOOLLITERAL:
+                case AstExpression::EXPR_LITERALBOOL:
                     {
                         auto bl = static_cast<ExprLiteralBool*>(astexpr)->m_exprbool;
                         putfmt("%s", bl ? "true" : "false");
                     }
                     break;
-                case AstExpression::EXPR_STRINGLITERAL:
+                case AstExpression::EXPR_LITERALSTRING:
                     {
                         printStringLiteral(astexpr);
                     }
                     break;
-                case AstExpression::EXPR_NULLLITERAL:
+                case AstExpression::EXPR_LITERALNULL:
                     {
                         put("null");
                     }
                     break;
-                case AstExpression::EXPR_ARRAYLITERAL:
+                case AstExpression::EXPR_LITERALARRAY:
                     {
                         printArrayLiteral(astexpr);
                     }
                     break;
-                case AstExpression::EXPR_MAPLITERAL:
+                case AstExpression::EXPR_LITERALMAP:
                     {
                         printMapLiteral(astexpr);
                     }
@@ -8197,7 +8917,7 @@ class AstPrinter
                         printInfix(astexpr);
                     }
                     break;
-                case AstExpression::EXPR_FUNCTIONLITERAL:
+                case AstExpression::EXPR_LITERALFUNCTION:
                     {
                         printFuncLiteral(astexpr);
                     }
@@ -8278,7 +8998,7 @@ class AstPrinter
                     break;
                 case AstExpression::EXPR_STMTBLOCK:
                     {
-                        AstExpression::CodeBlock* ex;
+                        AstCodeBlock* ex;
                         ex = static_cast<ExprBlock*>(astexpr)->m_exprblockvalue;
                         printCodeblock(ex);
                     }
@@ -8350,7 +9070,6 @@ class Module
             return Memory::make<Module>(src->m_modname, &modsyms);
         }
 
-
     public:
         char* m_modname;
         GenericList<AstSymbol*> m_modsymbols;
@@ -8362,7 +9081,7 @@ class Module
 
         Module(const char* nm, GenericList<AstSymbol*>* ms)
         {
-            m_modname = mc_util_strdup(nm);
+            m_modname = Util::strDuplicate(nm);
             MC_ASSERT(m_modname);
             if(ms != nullptr)
             {
@@ -8374,10 +9093,10 @@ class Module
         {
             bool ok;
             (void)ok;
-            Printer namebuf(nullptr);
+            IOPrinter namebuf(nullptr);
             ok = namebuf.format("%s::%s", m_modname, symbol->m_symname);
             auto modulesymbol = Memory::make<AstSymbol>(namebuf.getString(), AstSymbol::SYMTYP_MODULEGLOBAL, symbol->m_symindex, false);
-            Printer::releaseFromPtr(&namebuf, false);
+            IOPrinter::releaseFromPtr(&namebuf, false);
             if(modulesymbol == nullptr)
             {
                 return false;
@@ -8390,6 +9109,30 @@ class Module
 class AstCompiler
 {
     public:
+        template<typename... ArgsT>
+        void complain(SourceLocation pos, const char *fmt, ArgsT&&... args)
+        {
+            static auto tmpfprintf = fprintf;
+            int ncol;
+            int nline;
+            const char* fname;
+            fname = "unknown";
+            ncol = 0;
+            nline = 0;
+            if(pos.m_locfile != nullptr)
+            {
+                if(pos.m_locfile->path() != nullptr)
+                {
+                    fname = pos.m_locfile->path();
+                }
+                nline = pos.m_locline;
+                ncol = pos.m_loccolumn;
+            }
+            fprintf(stderr, "**WARNING** [%s:%d:%d] ", fname, nline, ncol);
+            tmpfprintf(stderr, fmt, args...);
+            fprintf(stderr, "\n");
+        }
+
         static void destroy(AstCompiler* comp)
         {
             if(comp != nullptr)
@@ -8398,7 +9141,6 @@ class AstCompiler
                 mc_memory_free(comp);
             }
         }
-
 
         static bool initShallowCopy(AstCompiler* copy, AstCompiler* src)
         {
@@ -8468,7 +9210,7 @@ class AstCompiler
             for(i = 0; i < srcloadedmodulenames->count(); i++)
             {
                 loadedname = (const char*)srcloadedmodulenames->get(i);
-                loadednamecopy = mc_util_strdup(loadedname);
+                loadednamecopy = Util::strDuplicate(loadedname);
                 if(loadednamecopy == nullptr)
                 {
                     goto compilercopyfailed;
@@ -8480,7 +9222,6 @@ class AstCompiler
             copy->deinit();
             return false;
         }
-
 
     public:
         State* m_pstate = nullptr;
@@ -8494,7 +9235,7 @@ class AstCompiler
         GenericList<SourceLocation> m_srcposstack = GenericList<SourceLocation>(0);
         StrDict<char*, Module*>* m_modules = nullptr;
         StrDict<char*, int*>* m_stringconstposdict = nullptr;
-        Printer* m_filestderr = nullptr;
+        IOPrinter* m_filestderr = nullptr;
         GenericList<AstScopeFile> m_filescopelist = GenericList<AstScopeFile>(0);
 
     public:
@@ -8502,13 +9243,13 @@ class AstCompiler
         {
         }
 
-        AstCompiler(State* state, RuntimeConfig* config, GCMemory* gcmem, ErrList* errors, GenericList<SourceFile*>* files, SymStore* gstore, Printer* fstderr)
+        AstCompiler(State* state, RuntimeConfig* config, GCMemory* gcmem, ErrList* errors, GenericList<SourceFile*>* files, SymStore* gstore, IOPrinter* fstderr)
         {
             initBase(state, config, gcmem, errors, files, gstore, fstderr);
             m_pstate = state; 
         }
 
-        bool initBase(State* state, RuntimeConfig* cfg, GCMemory* gcmem, ErrList* errors, GenericList<SourceFile*>* files, SymStore* gstor, Printer* fstderr)
+        bool initBase(State* state, RuntimeConfig* cfg, GCMemory* gcmem, ErrList* errors, GenericList<SourceFile*>* files, SymStore* gstor, IOPrinter* fstderr)
         {
             const char* filename;
             m_pstate = state;
@@ -8777,7 +9518,7 @@ class AstCompiler
             const char* loadedname;
             const char* searchedpath;
             const char* filepathnoncanonicalised;
-            Printer filepathbuf(nullptr);
+            IOPrinter filepathbuf(nullptr);
             AstSymTable* symtab;
             AstScopeFile* fs;
             Module* module;
@@ -8789,7 +9530,7 @@ class AstCompiler
             code = nullptr;
             filescope = m_filescopelist.topp();
             auto importstmt = static_cast<ExprImportStmt*>(expr);
-            modpath = importstmt->path;
+            modpath = importstmt->m_exprimportpath;
             modname = Module::getModuleName(modpath);
             for(i = 0; i < filescope->m_filescopeloadednames.count(); i++)
             {
@@ -8803,7 +9544,7 @@ class AstCompiler
                     }
                     else
                     {
-                        mc_util_complain(importstmt->m_exprpos, "module \"%s\" already imported; ignoring 'import' statement", modname);
+                        complain(importstmt->m_exprpos, "module \"%s\" already imported; ignoring 'import' statement", modname);
                         result = true;
                     }
                     goto end;
@@ -8819,7 +9560,7 @@ class AstCompiler
             }
             filepathnoncanonicalised = filepathbuf.getString();
             filepath = mc_util_canonpath(filepathnoncanonicalised);
-            Printer::releaseFromPtr(&filepathbuf, false);
+            IOPrinter::releaseFromPtr(&filepathbuf, false);
             if(filepath == nullptr)
             {
                 result = false;
@@ -8871,7 +9612,7 @@ class AstCompiler
                 symbol = module->m_modsymbols.get(i);
                 symtab->addModuleSymbol(symbol);
             }
-            namecopy = mc_util_strdup(modname);
+            namecopy = Util::strDuplicate(modname);
             filescope->m_filescopeloadednames.push(namecopy);
             result = true;
         end:
@@ -8908,11 +9649,11 @@ class AstCompiler
         {
             AstSymbol* symbol;
             auto ud = static_cast<ExprDefine*>(expr);
-            if(!compileExpression(ud->value))
+            if(!compileExpression(ud->m_exprdefvalue))
             {
                 return false;
             }
-            symbol = doDefineSymbol(ud->name->m_exprpos, ud->name->m_identvalue, ud->assignable, false);
+            symbol = doDefineSymbol(ud->m_exprdefname->m_exprpos, ud->m_exprdefname->m_identvalue, ud->m_exprdefassignable, false);
             if(symbol == nullptr)
             {
                 return false;
@@ -8935,21 +9676,21 @@ class AstCompiler
             uint64_t opbuf[10];
             GenericList<int> jumptoendips;
             auto ifstmt = static_cast<ExprIfStmt*>(expr);
-            for(i = 0; i < ifstmt->m_ifcases.count(); i++)
+            for(i = 0; i < ifstmt->m_exprifcases.count(); i++)
             {
-                auto ifcase = ifstmt->m_ifcases.get(i);
-                if(!compileExpression(ifcase->m_ifcond))
+                auto ifcase = ifstmt->m_exprifcases.get(i);
+                if(!compileExpression(ifcase->m_exprifcond))
                 {
                     return false;
                 }
                 opbuf[0] = 0xbeef;
                 nextcasejumpip = emitOpCode(Instruction::OPCODE_JUMPIFFALSE, 1, opbuf);
-                if(!compilecodeblock(ifcase->m_ifthen))
+                if(!compilecodeblock(ifcase->m_exprifthen))
                 {
                     return false;
                 }
                 /* don't emit jump for the last statement */
-                if(i < (ifstmt->m_ifcases.count() - 1) || (ifstmt->m_ifstmtelsestmt != nullptr))
+                if(i < (ifstmt->m_exprifcases.count() - 1) || (ifstmt->m_exprifelse != nullptr))
                 {
                     opbuf[0] = 0xbeef;
                     jumptoendip = emitOpCode(Instruction::OPCODE_JUMP, 1, opbuf);
@@ -8958,9 +9699,9 @@ class AstCompiler
                 afterelifip = getip();
                 changeOperand(nextcasejumpip + 1, afterelifip);
             }
-            if(ifstmt->m_ifstmtelsestmt != nullptr)
+            if(ifstmt->m_exprifelse != nullptr)
             {
-                if(!compilecodeblock(ifstmt->m_ifstmtelsestmt))
+                if(!compilecodeblock(ifstmt->m_exprifelse))
                 {
                     return false;
                 }
@@ -9008,7 +9749,7 @@ class AstCompiler
             uint64_t opbuf[10];
             auto loop = static_cast<ExprWhileStmt*>(expr);
             beforetestip = getip();
-            if(!compileExpression(loop->loopcond))
+            if(!compileExpression(loop->m_exprwhilecond))
             {
                 return false;
             }
@@ -9026,7 +9767,7 @@ class AstCompiler
                 {
                     pushbreakip(jumptoafterbodyip);
                     {
-                        if(!compilecodeblock(loop->body))
+                        if(!compilecodeblock(loop->m_exprwhilebody))
                         {
                             return false;
                         }
@@ -9091,12 +9832,12 @@ class AstCompiler
             pushSymtable(0);
             auto compscope = getCompilationScope();
             auto symtab = getsymtable();
-            if(fn->name != nullptr)
+            if(fn->m_exprfnname != nullptr)
             {
-                fnsymbol = symtab->defineFunctionName(fn->name, false);
+                fnsymbol = symtab->defineFunctionName(fn->m_exprfnname, false);
                 if(fnsymbol == nullptr)
                 {
-                    m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, expr->m_exprpos, "cannot define function name as \"%s\"", fn->name);
+                    m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, expr->m_exprpos, "cannot define function name as \"%s\"", fn->m_exprfnname);
                     return false;
                 }
             }
@@ -9106,16 +9847,16 @@ class AstCompiler
                 m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, expr->m_exprpos, "cannot define \"this\" symbol");
                 return false;
             }
-            for(i = 0; i < fn->funcparamlist.count(); i++)
+            for(i = 0; i < fn->m_exprfnparamlist.count(); i++)
             {
-                param = fn->funcparamlist.get(i);
-                paramsymbol = doDefineSymbol(param->m_paramident->m_exprpos, param->m_paramident->m_identvalue, true, false);
+                param = fn->m_exprfnparamlist.get(i);
+                paramsymbol = doDefineSymbol(param->m_exprfnparamident->m_exprpos, param->m_exprfnparamident->m_identvalue, true, false);
                 if(paramsymbol == nullptr)
                 {
                     return false;
                 }
             }
-            if(!compileStmtList(&fn->body->m_blockstatements))
+            if(!compileStmtList(&fn->m_exprfnbody->m_blockstatements))
             {
                 return false;
             }
@@ -9137,7 +9878,7 @@ class AstCompiler
             popCompilationScope();
             compscope = getCompilationScope();
             symtab = getsymtable();
-            val = Value::makeFuncScript(fn->name, comp_res, true, nlocals, fn->funcparamlist.count(), 0);
+            val = Value::makeFuncScript(fn->m_exprfnname, comp_res, true, nlocals, fn->m_exprfnparamlist.count(), 0);
             if(val.isNull())
             {
                 Memory::destroy(freesyms, AstSymbol::destroy);
@@ -9170,12 +9911,12 @@ class AstCompiler
         {
             Instruction::Code op;
             auto pre = static_cast<ExprPrefix*>(expr);
-            if(!compileExpression(pre->right))
+            if(!compileExpression(pre->m_exprprefixright))
             {
                 return false;
             }
             op = Instruction::OPCODE_HALT;
-            switch(pre->op)
+            switch(pre->m_exprprefixoper)
             {
                 case AstExpression::MATHOP_MINUS:
                     op = Instruction::OPCODE_MINUS;
@@ -9206,7 +9947,7 @@ class AstCompiler
             rearrange = false;
             op = Instruction::OPCODE_HALT;
             auto infe = static_cast<ExprInfix*>(expr);
-            switch(infe->op)
+            switch(infe->m_exprinfixoper)
             {
                 case AstExpression::MATHOP_PLUS:
                     {
@@ -9233,33 +9974,33 @@ class AstCompiler
                         op = Instruction::OPCODE_MOD;
                     }
                     break;
-                case AstExpression::MATHOP_EQ:
+                case AstExpression::MATHOP_EQUAL:
                     {
                         op = Instruction::OPCODE_EQUAL;
                     }
                     break;
-                case AstExpression::MATHOP_NOTEQ:
+                case AstExpression::MATHOP_NOTEQUAL:
                     {
                         op = Instruction::OPCODE_NOTEQUAL;
                     }
                     break;
-                case AstExpression::MATHOP_GT:
+                case AstExpression::MATHOP_GREATERTHAN:
                     {
                         op = Instruction::OPCODE_GREATERTHAN;
                     }
                     break;
-                case AstExpression::MATHOP_GTE:
+                case AstExpression::MATHOP_GREATEREQAL:
                     {
                         op = Instruction::OPCODE_GREATERTHANEQUAL;
                     }
                     break;
-                case AstExpression::MATHOP_LT:
+                case AstExpression::MATHOP_LESSTHAN:
                     {
                         op = Instruction::OPCODE_GREATERTHAN;
                         rearrange = true;
                     }
                     break;
-                case AstExpression::MATHOP_LTE:
+                case AstExpression::MATHOP_LESSEQUAL:
                     {
                         op = Instruction::OPCODE_GREATERTHANEQUAL;
                         rearrange = true;
@@ -9280,12 +10021,12 @@ class AstCompiler
                         op = Instruction::OPCODE_BINAND;
                     }
                     break;
-                case AstExpression::MATHOP_LSHIFT:
+                case AstExpression::MATHOP_LEFTSHIFT:
                     {
                         op = Instruction::OPCODE_LSHIFT;
                     }
                     break;
-                case AstExpression::MATHOP_RSHIFT:
+                case AstExpression::MATHOP_RIGHTSHIFT:
                     {
                         op = Instruction::OPCODE_RSHIFT;
                     }
@@ -9297,8 +10038,8 @@ class AstCompiler
                     }
                     break;
             }
-            left = rearrange ? infe->right : infe->left;
-            right = rearrange ? infe->left : infe->right;
+            left = rearrange ? infe->m_exprinfixright : infe->m_exprinfixleft;
+            right = rearrange ? infe->m_exprinfixleft : infe->m_exprinfixright;
             if(!compileExpression(left))
             {
                 return false;
@@ -9307,18 +10048,18 @@ class AstCompiler
             {
                 return false;
             }
-            switch(infe->op)
+            switch(infe->m_exprinfixoper)
             {
-                case AstExpression::MATHOP_EQ:
-                case AstExpression::MATHOP_NOTEQ:
+                case AstExpression::MATHOP_EQUAL:
+                case AstExpression::MATHOP_NOTEQUAL:
                     {
                         emitOpCode(Instruction::OPCODE_COMPAREEQ, 0, nullptr);
                     }
                     break;
-                case AstExpression::MATHOP_GT:
-                case AstExpression::MATHOP_GTE:
-                case AstExpression::MATHOP_LT:
-                case AstExpression::MATHOP_LTE:
+                case AstExpression::MATHOP_GREATERTHAN:
+                case AstExpression::MATHOP_GREATEREQAL:
+                case AstExpression::MATHOP_LESSTHAN:
+                case AstExpression::MATHOP_LESSEQUAL:
                     {
                         emitOpCode(Instruction::OPCODE_COMPARE, 0, nullptr);
                     }
@@ -9341,14 +10082,14 @@ class AstCompiler
             uint64_t opbuf[10];
             pos = 0;
             auto lits = static_cast<ExprLiteralString*>(expr);
-            currentpos = m_stringconstposdict->get(lits->m_strexprdata);
+            currentpos = m_stringconstposdict->get(lits->m_exprstrdata);
             if(currentpos != nullptr)
             {
                 pos = *currentpos;
             }
             else
             {
-                val = Value::makeString(lits->m_strexprdata, lits->m_strexprlength);
+                val = Value::makeString(lits->m_exprstrdata, lits->m_exprstrlength);
                 if(val.isNull())
                 {
                     return false;
@@ -9364,7 +10105,7 @@ class AstCompiler
                     return false;
                 }
                 *posval = pos;
-                m_stringconstposdict->set(lits->m_strexprdata, posval);
+                m_stringconstposdict->set(lits->m_exprstrdata, posval);
             }
             opbuf[0] = pos;
             emitOpCode(Instruction::OPCODE_CONSTANT, 1, opbuf);
@@ -9406,7 +10147,7 @@ class AstCompiler
             afterjumptorecoverip = getip();
             changeOperand(recip + 1, afterjumptorecoverip);
             symtab->scopeBlockPush();
-            errorsymbol = doDefineSymbol(recover->errident->m_exprpos, recover->errident->m_identvalue, false, false);
+            errorsymbol = doDefineSymbol(recover->m_exprrecovererrident->m_exprpos, recover->m_exprrecovererrident->m_identvalue, false, false);
             if(errorsymbol == nullptr)
             {
                 return false;
@@ -9415,13 +10156,13 @@ class AstCompiler
             {
                 return false;
             }
-            if(!compilecodeblock(recover->body))
+            if(!compilecodeblock(recover->m_exprrecoverbody))
             {
                 return false;
             }
             if(!lastopcodeis(Instruction::OPCODE_RETURN) && !lastopcodeis(Instruction::OPCODE_RETURNVALUE))
             {
-                mc_util_complain(expr->m_exprpos, "recover body should end with a return statement");
+                complain(expr->m_exprpos, "recover body should end with a return statement");
             }
             symtab->scopeBlockPop();
             afterrecoverip = getip();
@@ -9451,14 +10192,14 @@ class AstCompiler
             size_t i;
             uint64_t opbuf[10];
             auto arr = static_cast<ExprLiteralArray*>(expr);
-            for(i = 0; i < arr->m_litarritems.count(); i++)
+            for(i = 0; i < arr->m_exprlitarritems.count(); i++)
             {
-                if(!compileExpression(arr->m_litarritems.get(i)))
+                if(!compileExpression(arr->m_exprlitarritems.get(i)))
                 {
                     return false;
                 }
             }
-            opbuf[0] = arr->m_litarritems.count();
+            opbuf[0] = arr->m_exprlitarritems.count();
             emitOpCode(Instruction::OPCODE_ARRAY, 1, opbuf);
             return true;
         }
@@ -9472,13 +10213,13 @@ class AstCompiler
             ExprLiteralMap* map;
             uint64_t opbuf[10];
             map = static_cast<ExprLiteralMap*>(expr);
-            len = map->m_litmapkeys.count();
+            len = map->m_exprlitmapkeys.count();
             opbuf[0] = len;
             emitOpCode(Instruction::OPCODE_MAPSTART, 1, opbuf);
             for(i = 0; i < len; i++)
             {
-                key = map->m_litmapkeys.get(i);
-                val = map->m_litmapvalues.get(i);
+                key = map->m_exprlitmapkeys.get(i);
+                val = map->m_exprlitmapvalues.get(i);
                 if(!compileExpression(key))
                 {
                     return false;
@@ -9498,38 +10239,38 @@ class AstCompiler
             AstSymTable* symtab;
             ExprIndex* index;
             ExprAssign* assign;
-            AstExpression::Identifier* ident;
+            AstIdentifier* ident;
             AstSymbol* symbol;
             symtab = getsymtable();
             assign = static_cast<ExprAssign*>(expr);
-            if(assign->dest->m_exprtype != AstExpression::EXPR_IDENT && assign->dest->m_exprtype != AstExpression::EXPR_INDEX)
+            if(assign->m_exprassigndest->m_exprtype != AstExpression::EXPR_IDENT && assign->m_exprassigndest->m_exprtype != AstExpression::EXPR_INDEX)
             {
-                m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, assign->dest->m_exprpos, "expression is not assignable");
+                m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, assign->m_exprassigndest->m_exprpos, "expression is not assignable");
                 return false;
             }
-            if(assign->is_postfix)
+            if(assign->m_exprassignispostfix)
             {
-                if(!compileExpression(assign->dest))
+                if(!compileExpression(assign->m_exprassigndest))
                 {
                     return false;
                 }
             }
-            if(!compileExpression(assign->source))
+            if(!compileExpression(assign->m_exprassignsource))
             {
                 return false;
             }
             emitOpCode(Instruction::OPCODE_DUP, 0, nullptr);
-            m_srcposstack.push(assign->dest->m_exprpos);
-            if(assign->dest->m_exprtype == AstExpression::EXPR_IDENT)
+            m_srcposstack.push(assign->m_exprassigndest->m_exprpos);
+            if(assign->m_exprassigndest->m_exprtype == AstExpression::EXPR_IDENT)
             {
-                auto ide = static_cast<ExprIdent*>(assign->dest);
+                auto ide = static_cast<ExprIdent*>(assign->m_exprassigndest);
                 ident = ide->m_expridvalue;
                 symbol = symtab->resolve(ident->m_identvalue);
                 if(symbol == nullptr)
                 {
                     if(m_config->strictmode)
                     {
-                        m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, assign->dest->m_exprpos, "cannot assign to undeclared symbol \"%s\"", ident->m_identvalue);
+                        m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, assign->m_exprassigndest->m_exprpos, "cannot assign to undeclared symbol \"%s\"", ident->m_identvalue);
                         return false;
                     }
                     else
@@ -9537,14 +10278,14 @@ class AstCompiler
                         symbol = doDefineSymbol(ident->m_exprpos, ident->m_identvalue, true, false);
                         if(symbol == nullptr)
                         {
-                            m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, assign->dest->m_exprpos, "failed to implicitly create symbol \"%s\"", ident->m_identvalue);
+                            m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, assign->m_exprassigndest->m_exprpos, "failed to implicitly create symbol \"%s\"", ident->m_identvalue);
                             return false;
                         }
                     }
                 }
                 if(!symbol->m_symisassignable)
                 {
-                    m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, assign->dest->m_exprpos, "compilation: cannot assign to readonly symbol \"%s\"", ident->m_identvalue);
+                    m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, assign->m_exprassigndest->m_exprpos, "compilation: cannot assign to readonly symbol \"%s\"", ident->m_identvalue);
                     return false;
                 }
                 if(!storesymbol(symbol, false))
@@ -9552,20 +10293,20 @@ class AstCompiler
                     return false;
                 }
             }
-            else if(assign->dest->m_exprtype == AstExpression::EXPR_INDEX)
+            else if(assign->m_exprassigndest->m_exprtype == AstExpression::EXPR_INDEX)
             {
-                index = static_cast<ExprIndex*>(assign->dest);
-                if(!compileExpression(index->left))
+                index = static_cast<ExprIndex*>(assign->m_exprassigndest);
+                if(!compileExpression(index->m_exprindexleft))
                 {
                     return false;
                 }
-                if(!compileExpression(index->index))
+                if(!compileExpression(index->m_exprindexindex))
                 {
                     return false;
                 }
                 emitOpCode(Instruction::OPCODE_SETINDEX, 0, nullptr);
             }
-            if(assign->is_postfix)
+            if(assign->m_exprassignispostfix)
             {
                 emitOpCode(Instruction::OPCODE_POP, 0, nullptr);
             }
@@ -9576,15 +10317,15 @@ class AstCompiler
         bool compileIndexExpr(AstExpression* expr)
         {
             auto index = static_cast<ExprIndex*>(expr);
-            if(!compileExpression(index->left))
+            if(!compileExpression(index->m_exprindexleft))
             {
                 return false;
             }
-            if(!compileExpression(index->index))
+            if(!compileExpression(index->m_exprindexindex))
             {
                 return false;
             }
-            if(index->isdot)
+            if(index->m_exprindexisdot)
             {
                 emitOpCode(Instruction::OPCODE_GETDOTINDEX, 0, nullptr);
             }
@@ -9621,23 +10362,23 @@ class AstCompiler
                 return false;
             }
             sourcesymbol = nullptr;
-            if(foreach->source->m_exprtype == AstExpression::EXPR_IDENT)
+            if(foreach->m_exprforeachsource->m_exprtype == AstExpression::EXPR_IDENT)
             {
-                auto exsrc = static_cast<ExprIdent*>(foreach->source);
+                auto exsrc = static_cast<ExprIdent*>(foreach->m_exprforeachsource);
                 sourcesymbol = symtab->resolve(exsrc->m_expridvalue->m_identvalue);
                 if(sourcesymbol == nullptr)
                 {
-                    m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, foreach->source->m_exprpos, "symbol \"%s\" could not be resolved", exsrc->m_expridvalue->m_identvalue);
+                    m_ccerrlist->pushFormat(Error::ERRTYP_COMPILING, foreach->m_exprforeachsource->m_exprpos, "symbol \"%s\" could not be resolved", exsrc->m_expridvalue->m_identvalue);
                     return false;
                 }
             }
             else
             {
-                if(!compileExpression(foreach->source))
+                if(!compileExpression(foreach->m_exprforeachsource))
                 {
                     return false;
                 }
-                sourcesymbol = doDefineSymbol(foreach->source->m_exprpos, "@source", false, true);
+                sourcesymbol = doDefineSymbol(foreach->m_exprforeachsource->m_exprpos, "@source", false, true);
                 if(sourcesymbol == nullptr)
                 {
                     return false;
@@ -9669,7 +10410,7 @@ class AstCompiler
             afterupdateip = getip();
             changeOperand(jumptoafterupdateip + 1, afterupdateip);
             /* Test */
-            m_srcposstack.push(foreach->source->m_exprpos);
+            m_srcposstack.push(foreach->m_exprforeachsource->m_exprpos);
             if(!readsymbol(sourcesymbol))
             {
                 return false;
@@ -9700,7 +10441,7 @@ class AstCompiler
                 return false;
             }
             emitOpCode(Instruction::OPCODE_GETVALUEAT, 0, nullptr);
-            auto itersymbol = doDefineSymbol(foreach->iterator->m_exprpos, foreach->iterator->m_identvalue, false, false);
+            auto itersymbol = doDefineSymbol(foreach->m_exprforeachiterator->m_exprpos, foreach->m_exprforeachiterator->m_identvalue, false, false);
             if(itersymbol == nullptr)
             {
                 return false;
@@ -9715,7 +10456,7 @@ class AstCompiler
                 {
                     pushbreakip(jumptoafterbodyip);
                     {
-                        if(!compilecodeblock(foreach->body))
+                        if(!compilecodeblock(foreach->m_exprforeachbody))
                         {
                             return false;
                         }
@@ -9736,7 +10477,7 @@ class AstCompiler
         {
             AstSymTable* symtab;
             AstSymbol* symbol;
-            AstExpression::Identifier* ident;
+            AstIdentifier* ident;
             symtab = getsymtable();
             auto idex = static_cast<ExprIdent*>(expr);
             ident = idex->m_expridvalue;
@@ -9766,19 +10507,19 @@ class AstCompiler
             AstExpression* argexpr;
             uint64_t opbuf[10];
             auto excall = static_cast<ExprCall*>(expr);
-            if(!compileExpression(excall->function))
+            if(!compileExpression(excall->m_exprcallfunction))
             {
                 return false;
             }
-            for(i = 0; i < excall->m_callargs.count(); i++)
+            for(i = 0; i < excall->m_exprcallargs.count(); i++)
             {
-                argexpr = excall->m_callargs.get(i);
+                argexpr = excall->m_exprcallargs.get(i);
                 if(!compileExpression(argexpr))
                 {
                     return false;
                 }
             }
-            opbuf[0] = excall->m_callargs.count();
+            opbuf[0] = excall->m_exprcallargs.count();
             emitOpCode(Instruction::OPCODE_CALL, 1, opbuf);
             return true;
         }
@@ -9790,13 +10531,13 @@ class AstCompiler
             ExprLogical* logi;
             uint64_t opbuf[10];
             logi = static_cast<ExprLogical*>(expr);
-            if(!compileExpression(logi->left))
+            if(!compileExpression(logi->m_exprlogleft))
             {
                 return false;
             }
             emitOpCode(Instruction::OPCODE_DUP, 0, nullptr);
             afterleftjumpip = 0;
-            if(logi->op == AstExpression::MATHOP_LOGICALAND)
+            if(logi->m_exprlogoper == AstExpression::MATHOP_LOGICALAND)
             {
                 opbuf[0] = 0xbeef;
                 afterleftjumpip = emitOpCode(Instruction::OPCODE_JUMPIFFALSE, 1, opbuf);
@@ -9811,7 +10552,7 @@ class AstCompiler
                 return false;
             }
             emitOpCode(Instruction::OPCODE_POP, 0, nullptr);
-            if(!compileExpression(logi->right))
+            if(!compileExpression(logi->m_exprlogright))
             {
                 return false;
             }
@@ -9829,13 +10570,13 @@ class AstCompiler
             ExprTernary* ternary;
             uint64_t opbuf[10];
             ternary = static_cast<ExprTernary*>(expr);
-            if(!compileExpression(ternary->tercond))
+            if(!compileExpression(ternary->m_exprterncond))
             {
                 return false;
             }
             opbuf[0] = 0xbeef;
             elsejumpip = emitOpCode(Instruction::OPCODE_JUMPIFFALSE, 1, opbuf);
-            if(!compileExpression(ternary->teriftrue))
+            if(!compileExpression(ternary->m_exprterniftrue))
             {
                 return false;
             }
@@ -9843,7 +10584,7 @@ class AstCompiler
             endjumpip = emitOpCode(Instruction::OPCODE_JUMP, 1, opbuf);
             elseip = getip();
             changeOperand(elsejumpip + 1, elseip);
-            if(!compileExpression(ternary->teriffalse))
+            if(!compileExpression(ternary->m_exprterniffalse))
             {
                 return false;
             }
@@ -9866,9 +10607,9 @@ class AstCompiler
             symtab->scopeBlockPush();
             /* Init */
             jumptoafterupdateip = 0;
-            if(loop->init != nullptr)
+            if(loop->m_exprforloopinit != nullptr)
             {
-                if(!compileExpression(loop->init))
+                if(!compileExpression(loop->m_exprforloopinit))
                 {
                     return false;
                 }
@@ -9881,23 +10622,23 @@ class AstCompiler
             }
             /* Update */
             updateip = getip();
-            if(loop->update != nullptr)
+            if(loop->m_exprforloopupdate != nullptr)
             {
-                if(!compileExpression(loop->update))
+                if(!compileExpression(loop->m_exprforloopupdate))
                 {
                     return false;
                 }
                 emitOpCode(Instruction::OPCODE_POP, 0, nullptr);
             }
-            if(loop->init != nullptr)
+            if(loop->m_exprforloopinit != nullptr)
             {
                 afterupdateip = getip();
                 changeOperand(jumptoafterupdateip + 1, afterupdateip);
             }
             /* Test */
-            if(loop->loopcond != nullptr)
+            if(loop->m_exprforloopcond != nullptr)
             {
-                if(!compileExpression(loop->loopcond))
+                if(!compileExpression(loop->m_exprforloopcond))
                 {
                     return false;
                 }
@@ -9918,7 +10659,7 @@ class AstCompiler
             /* Body */
             pushcontinueip(updateip);
             pushbreakip(jumptoafterbodyip);
-            if(!compilecodeblock(loop->body))
+            if(!compilecodeblock(loop->m_exprforloopbody))
             {
                 return false;
             }
@@ -9947,7 +10688,7 @@ class AstCompiler
                         }
                     }
                     break;
-                case AstExpression::EXPR_NUMBERLITERAL:
+                case AstExpression::EXPR_LITERALNUMBER:
                     {
                         if(!compileNumberLiteral(expr))
                         {
@@ -9956,7 +10697,7 @@ class AstCompiler
                     }
                     break;
 
-                case AstExpression::EXPR_STRINGLITERAL:
+                case AstExpression::EXPR_LITERALSTRING:
                     {
                         if(!compileStringLiteral(expr))
                         {
@@ -9964,7 +10705,7 @@ class AstCompiler
                         }
                     }
                     break;
-                case AstExpression::EXPR_NULLLITERAL:
+                case AstExpression::EXPR_LITERALNULL:
                     {
                         if(!compileNullLiteral(expr))
                         {
@@ -9972,13 +10713,13 @@ class AstCompiler
                         }
                     }
                     break;
-                case AstExpression::EXPR_BOOLLITERAL:
+                case AstExpression::EXPR_LITERALBOOL:
                     {
                         auto exbool = static_cast<ExprLiteralBool*>(expr);
                         emitOpCode(exbool->m_exprbool ? Instruction::OPCODE_TRUE : Instruction::OPCODE_FALSE, 0, nullptr);
                     }
                     break;
-                case AstExpression::EXPR_ARRAYLITERAL:
+                case AstExpression::EXPR_LITERALARRAY:
                     {
                         if(!compileArrayLiteral(expr))
                         {
@@ -9986,7 +10727,7 @@ class AstCompiler
                         }
                     }
                     break;
-                case AstExpression::EXPR_MAPLITERAL:
+                case AstExpression::EXPR_LITERALMAP:
                     {
                         if(!compileMapLiteral(expr))
                         {
@@ -10018,7 +10759,7 @@ class AstCompiler
                         }
                     }
                     break;
-                case AstExpression::EXPR_FUNCTIONLITERAL:
+                case AstExpression::EXPR_LITERALFUNCTION:
                     {
                         if(!compileFuncLiteral(expr))
                         {
@@ -10175,7 +10916,7 @@ class AstCompiler
             return res;
         }
 
-        bool compilecodeblock(AstExpression::CodeBlock* block)
+        bool compilecodeblock(AstCodeBlock* block)
         {
             size_t i;
             AstSymTable* symtab;
@@ -10525,7 +11266,6 @@ class AstCompiler
         }
 };
 
-
 class VMFrame
 {
     public:
@@ -10542,11 +11282,11 @@ class VMFrame
     public:
         static MC_INLINE bool init(VMFrame* frame, Value functionobj, int64_t baseptr)
         {
-            if(functionobj.getType() != Value::VALTYP_FUNCSCRIPT)
+            if(functionobj.getType() != Value::VT_FUNCSCRIPT)
             {
                 return false;
             }
-            auto function = Value::asFunction(functionobj);
+            auto function = functionobj.asFunction();
             frame->m_function = functionobj;
             frame->m_bcposition = 0;
             frame->m_basepointer = baseptr;
@@ -10654,6 +11394,377 @@ class State
             }
         }
 
+        MC_PROTO void makeDefaultClasses();
+
+        void setOverloadKey(Instruction::Code opc, const char* rawstr)
+        {
+            Value keyobj;
+            keyobj = Value::makeString(rawstr);
+            m_operoverloadkeys[(int)opc] = keyobj;
+        }
+
+        bool vmInit()
+        {
+            int i;
+            m_hadrecovered = false;
+            m_globalvalcount = 0;
+            m_execstate.vsposition = 0;
+            m_execstate.thisstpos = 0;
+            m_execstate.lastpopped = Value::makeNull();
+            m_running = false;
+            for(i = 0; i < State::MaxOperOverloads; i++)
+            {
+                m_operoverloadkeys[i] = Value::makeNull();
+            }
+            setOverloadKey(Instruction::OPCODE_ADD, "__operator_add__");
+            setOverloadKey(Instruction::OPCODE_SUB, "__operator_sub__");
+            setOverloadKey(Instruction::OPCODE_MUL, "__operator_mul__");
+            setOverloadKey(Instruction::OPCODE_DIV, "__operator_div__");
+            setOverloadKey(Instruction::OPCODE_MOD, "__operator_mod__");
+            setOverloadKey(Instruction::OPCODE_BINOR, "__operator_or__");
+            setOverloadKey(Instruction::OPCODE_BINXOR, "__operator_xor__");
+            setOverloadKey(Instruction::OPCODE_BINAND, "__operator_and__");
+            setOverloadKey(Instruction::OPCODE_LSHIFT, "__operator_lshift__");
+            setOverloadKey(Instruction::OPCODE_RSHIFT, "__operator_rshift__");
+            setOverloadKey(Instruction::OPCODE_MINUS, "__operator_minus__");
+            setOverloadKey(Instruction::OPCODE_BINNOT, "__operator_binnot__");
+            setOverloadKey(Instruction::OPCODE_BANG, "__operator_bang__");
+            setOverloadKey(Instruction::OPCODE_COMPARE, "__cmp__");
+            return true;
+        }
+
+        void vmReset()
+        {
+            m_execstate.vsposition = 0;
+            m_execstate.thisstpos = 0;
+            while(m_execstate.framestack.count() > 0)
+            {
+                vmPopFrame();
+            }
+        }
+
+        MC_INLINE bool vmDoMakeFunction(GenericList<Value>* constants)
+        {
+            int i;
+            OPValCode numfree;
+            uint16_t constantix;
+            const char* fname;
+            const char* tname;
+            Value::Type constanttype;
+            Value freeval;
+            Value functionobj;
+            Value* constant;
+            constantix = m_execstate.currframe->readUint16();
+            numfree = m_execstate.currframe->readUint8();
+            constant = constants->getp(constantix);
+            if(constant == nullptr)
+            {
+                pushError(Error::ERRTYP_RUNTIME, m_execstate.currframe->getPosition(), "constant %d not found", constantix);
+                return false;
+            }
+            constanttype = (*constant).getType();
+            if(constanttype != Value::VT_FUNCSCRIPT)
+            {
+                tname = Value::getTypename(constanttype);
+                pushError(Error::ERRTYP_RUNTIME, m_execstate.currframe->getPosition(), "%s is not a function", tname);
+                return false;
+            }
+            auto constfun = (*constant).asFunction();
+            fname = constfun->getName();
+            functionobj = Value::makeFuncScript(fname, constfun->m_funcdata.valscriptfunc.compiledprogcode, false, constfun->m_funcdata.valscriptfunc.numlocals, constfun->m_funcdata.valscriptfunc.numargs, numfree);
+            if(functionobj.isNull())
+            {
+                return false;
+            }
+            for(i = 0; i < numfree; i++)
+            {
+                freeval = m_execstate.valuestack.get(m_execstate.vsposition - numfree + i);
+                functionobj.asFunction()->setFreeValAt(i, freeval);
+            }
+            setStackPos(m_execstate.vsposition - numfree);
+            vmStackPush(functionobj);
+            return true;
+        }
+
+        MC_INLINE bool vmDoCompareValues(Instruction::Code opcode)
+        {
+            bool ok;
+            bool isoverloaded;
+            const char* lefttname;
+            const char* righttname;
+            Value::CompareResult cres;
+            Value res;
+            Value left;
+            Value right;
+            right = vmStackPop();
+            left = vmStackPop();
+            isoverloaded = false;
+            if(!vmTryOverloadOperator(left, right, Instruction::OPCODE_COMPARE, &isoverloaded))
+            {
+                return false;
+            }
+            if(!isoverloaded)
+            {
+                ok = Value::compare(left, right, &cres);
+                #if 0
+                fprintf(stderr, "compare: ok=%d cres.result=%g\n", ok, cres.result);
+                #endif
+                if(ok || (opcode == Instruction::OPCODE_COMPAREEQ))
+                {
+                    res = Value::makeNumber(cres.result);
+                    vmStackPush(res);
+                }
+                else
+                {
+                    righttname = Value::getTypename(right.getType());
+                    lefttname = Value::getTypename(left.getType());
+                    pushError(Error::ERRTYP_RUNTIME, m_execstate.currframe->getPosition(), "cannot compare %s and %s", lefttname, righttname);
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        MC_INLINE bool vmDoCompareValGreater(Instruction::Code opcode)
+        {
+            bool resval;
+            NumFloat comparisonres;
+            Value res;
+            Value value;
+            value = vmStackPop();
+            comparisonres = value.asNumber();
+            resval = false;
+            switch(opcode)
+            {
+                case Instruction::OPCODE_EQUAL:
+                    {
+                        resval = MC_UTIL_CMPFLOAT(comparisonres, 0);
+                    }
+                    break;
+                case Instruction::OPCODE_NOTEQUAL:
+                    {
+                        resval = !MC_UTIL_CMPFLOAT(comparisonres, 0);
+                    }
+                    break;
+                case Instruction::OPCODE_GREATERTHAN:
+                    {
+                        resval = comparisonres > 0;
+                    }
+                    break;
+                case Instruction::OPCODE_GREATERTHANEQUAL:
+                    {
+                        resval = comparisonres > 0 || MC_UTIL_CMPFLOAT(comparisonres, 0);
+                    }
+                    break;
+                default:
+                    {
+                        MC_ASSERT(false);
+                    }
+                    break;
+            }
+            res = Value::makeBool(resval);
+            vmStackPush(res);
+            return true;
+        }
+
+        MC_INLINE bool vmDoMakeArray()
+        {
+            int i;
+            uint16_t count;
+            Value item;
+            Value arrayobj;
+            Value* items;
+            count = m_execstate.currframe->readUint16();
+            arrayobj = Value::makeArray(count);
+            auto arr = arrayobj.asArray();
+            if(arrayobj.isNull())
+            {
+                return false;
+            }
+            items = m_execstate.valuestack.data() + m_execstate.vsposition - count;
+            for(i = 0; i < count; i++)
+            {
+                item = items[i];
+                arr->push(item);
+            }
+            setStackPos(m_execstate.vsposition - count);
+            vmStackPush(arrayobj);
+            return true;
+        }
+
+        MC_INLINE bool vmDoMakeMapStart()
+        {
+            uint16_t count;
+            Value mapobj;
+            count = m_execstate.currframe->readUint16();
+            mapobj = Value::makeMap(count);
+            if(mapobj.isNull())
+            {
+                return false;
+            }
+            vmStackThisPush(mapobj);
+            return true;
+        }
+
+        MC_INLINE bool vmDoMakeMapEnd()
+        {
+            int i;
+            uint16_t kvpcount;
+            uint16_t itemscount;
+            const char* keytypename;
+            Value::Type keytype;
+            Value mapkey;
+            Value mapval;
+            Value mapobj;
+            Value* kvpairs;
+            kvpcount = m_execstate.currframe->readUint16();
+            itemscount = kvpcount * 2;
+            mapobj = vmStackThisPop();
+            kvpairs = m_execstate.valuestack.data() + m_execstate.vsposition - itemscount;
+            for(i = 0; i < itemscount; i += 2)
+            {
+                mapkey = kvpairs[i];
+                if(!Value::isHashable(mapkey))
+                {
+                    keytype = mapkey.getType();
+                    keytypename = Value::getTypename(keytype);
+                    pushError(Error::ERRTYP_RUNTIME, m_execstate.currframe->getPosition(), "key of type %s is not hashable", keytypename);
+                    return false;
+                }
+                mapval = kvpairs[i + 1];
+                mapobj.asMap()->setKV(mapkey, mapval);
+            }
+            setStackPos(m_execstate.vsposition - itemscount);
+            vmStackPush(mapobj);
+            return true;
+        }
+
+        void vmGCUnmarkAll()
+        {
+            size_t i;
+            Object* data;
+            for(i = 0; i < GCMemory::get()->m_gcobjliststored->count(); i++)
+            {
+                data = GCMemory::get()->m_gcobjliststored->get(i);
+                data->m_gcmark = 0;
+            }
+        }
+
+        void vmGCSweep()
+        {
+            size_t i;
+            Object* data;
+            GCMemory::DataPool* pool;
+            auto vd = GCMemory::get()->m_gcobjlistremains.data();
+            auto cnt = GCMemory::get()->m_gcobjlistremains.count();
+            Value::markListOfValues(static_cast<Value*>(vd), cnt);
+            MC_ASSERT(GCMemory::get()->m_gcobjlistback->count() >= GCMemory::get()->m_gcobjliststored->count());
+            GCMemory::get()->m_gcobjlistback->clear();
+            for(i = 0; i < GCMemory::get()->m_gcobjliststored->count(); i++)
+            {
+                data = GCMemory::get()->m_gcobjliststored->get(i);
+                if(data->m_gcmark != 0)
+                {
+                    /*
+                    * this should never fail because m_gcobjlistback's size should be equal to objects
+                    */
+                    GCMemory::get()->m_gcobjlistback->push(data);
+                }
+                else
+                {
+                    if(Value::canStoreInPool(data))
+                    {
+                        pool = GCMemory::get()->getPoolForType(data->m_odtype);
+                        pool->m_pooldata.set(pool->m_poolitemcount, data);
+                        pool->m_poolitemcount++;
+                    }
+                    else
+                    {
+                        Value::destroyObjData(data);
+                        /*
+                        if(GCMemory::get()->m_poolonlydata.m_poolitemcount < GCMemory::MinPoolSize)
+                        {
+                        */
+                            GCMemory::get()->m_poolonlydata.m_pooldata.set(GCMemory::get()->m_poolonlydata.m_poolitemcount, data);
+                            GCMemory::get()->m_poolonlydata.m_poolitemcount++;
+                        /*
+                        }
+                        else
+                        {
+                            Memory::destroy(data);
+                            data = nullptr;
+                        }
+                        */
+                    }
+                }
+            }
+            auto objstemp = GCMemory::get()->m_gcobjliststored;
+            GCMemory::get()->m_gcobjliststored = GCMemory::get()->m_gcobjlistback;
+            GCMemory::get()->m_gcobjlistback = objstemp;
+            GCMemory::get()->m_allocssincesweep = 0;
+        }
+
+        int vmGCShouldSweep()
+        {
+            return static_cast<int>(GCMemory::get()->m_allocssincesweep > GCMemory::SweepInterval);
+        }
+
+        bool gcDisableFor(Value obj)
+        {
+            MC_ASSERT(false && "gcDisableFor() is broken!");
+            #if 1
+                (void)obj;
+            #else
+            Object* data;
+            if(!obj.isAllocated())
+            {
+                return false;
+            }
+            data = obj.getAllocatedData<Object>();
+            if(data->m_objmem->m_gcobjlistremains.contains(&obj))
+            {
+                return false;
+            }
+            return data->m_objmem->m_gcobjlistremains.push(obj);
+            #endif
+            return false;
+        }
+
+        void gcEnableFor(Value obj)
+        {
+            MC_ASSERT(false && "gcEnableFor() is broken!");
+            #if 1
+                (void)obj;
+            #else
+            Object* data;
+            if(obj.isAllocated())
+            {
+                data = obj.getAllocatedData<Object>();
+                data->m_objmem->m_gcobjlistremains.removeItem(&obj);
+            }
+            #endif
+        }
+
+        MC_INLINE void vmGCRunCollector(GenericList<Value>* constants)
+        {
+            size_t i;
+            VMFrame* frame;
+            vmGCUnmarkAll();
+            Value::markListOfValues(m_vmglobalstore->getData(), m_vmglobalstore->getCount());
+            Value::markListOfValues(constants->data(), constants->count());
+            Value::markListOfValues(m_globalvalstack.data(), m_globalvalcount);
+            for(i = 0; i < m_execstate.framestack.count(); i++)
+            {
+                frame = m_execstate.framestack.getp(i);
+                Value::markObject(frame->m_function);
+            }
+            Value::markListOfValues(m_execstate.valuestack.data(), m_execstate.vsposition);
+            Value::markListOfValues(m_execstate.valthisstack.data(), m_execstate.thisstpos);
+            Value::markObject(m_execstate.lastpopped);
+            Value::markListOfValues(m_operoverloadkeys, State::MaxOperOverloads);
+            vmGCSweep();
+        }
+
     public:
         RuntimeConfig m_config;
         ErrList m_errorlist;
@@ -10666,8 +11777,8 @@ class State
         GenericList<SourceFile*> m_sharedfilelist;
         AstCompiler* m_sharedcompiler;
         ExecInfo m_execstate;
-        Printer* m_stdoutprinter;
-        Printer* m_stderrprinter;
+        IOPrinter* m_stdoutprinter;
+        IOPrinter* m_stderrprinter;
         ObjClass* m_stdobjectobject;
         ObjClass* m_stdobjectnumber;
         ObjClass* m_stdobjectstring;
@@ -10680,12 +11791,12 @@ class State
         {
             setDefaultConfig();
             GCMemory::create();
-            mc_vm_init(this);
-            m_stdoutprinter = Memory::make<Printer>(stdout);
-            m_stderrprinter = Memory::make<Printer>(stderr);
+            vmInit();
+            m_stdoutprinter = Memory::make<IOPrinter>(stdout);
+            m_stderrprinter = Memory::make<IOPrinter>(stderr);
             m_vmglobalstore = Memory::make<SymStore>();
             m_sharedcompiler = Memory::make<AstCompiler>(this, &m_config, GCMemory::get(), &m_errorlist, &m_sharedfilelist, m_vmglobalstore, m_stderrprinter);
-            mc_state_makestdclasses(this);
+            makeDefaultClasses();
         }
 
         void deinit()
@@ -10695,8 +11806,8 @@ class State
             GCMemory::destroy();
             m_sharedfilelist.deInit(SourceFile::destroy);
             m_errorlist.destroy();
-            Printer::destroy(m_stdoutprinter);
-            Printer::destroy(m_stderrprinter);
+            IOPrinter::destroy(m_stdoutprinter);
+            IOPrinter::destroy(m_stderrprinter);
             m_globalvalstack.deInit();
             m_execstate.deInit();
             Memory::destroy(m_stdobjectobject);
@@ -10710,7 +11821,7 @@ class State
         void reset()
         {
             errorsClear();
-            mc_vm_reset(this);
+            vmReset();
         }
 
         void setDefaultConfig()
@@ -10781,13 +11892,12 @@ class State
             }
             //MC_ASSERT(m_execstate.vsposition == 0);
             res = m_execstate.lastpopped;
-            if(res.getType() == Value::VALTYP_NONE)
+            if(res.getType() == Value::VT_NONE)
             {
                 return Value::makeNull();
             }
             return res;
         }
-
 
         bool setGlobalFunction(const char* name, CallbackNativeFN fn, void* data)
         {
@@ -10849,7 +11959,6 @@ class State
             est->currframe = m_execstate.currframe;
         }
 
-
         MC_INLINE void restoreExecInfo(ExecInfo* est)
         {
             m_execstate.thisstpos = est->thisstpos;
@@ -10886,7 +11995,7 @@ class State
                 bytescount = (count - 0) * sizeof(Value);
                 for(i=(m_execstate.vsposition - 0); (i != bytescount) && (i < m_execstate.valuestack.capacity()); i++)
                 {
-                    m_execstate.valuestack.getp(i)->m_valtype = Value::VALTYP_NULL;
+                    m_execstate.valuestack.getp(i)->m_valtype = Value::VT_NULL;
                 }
             }
             #endif
@@ -10901,7 +12010,7 @@ class State
             if(m_execstate.currframe)
             {
                 frame = m_execstate.currframe;
-                auto currentfunction = Value::asFunction(frame->m_function);
+                auto currentfunction = frame->m_function.asFunction();
                 numlocals = currentfunction->m_funcdata.valscriptfunc.numlocals;
                 MC_ASSERT((size_t)m_execstate.vsposition >= (size_t)(frame->m_basepointer + numlocals));
             }
@@ -10929,7 +12038,7 @@ class State
             if(m_execstate.currframe)
             {
                 frame = m_execstate.currframe;
-                auto currentfunction = Value::asFunction(frame->m_function);
+                auto currentfunction = frame->m_function.asFunction();
                 numlocals = currentfunction->m_funcdata.valscriptfunc.numlocals;
                 MC_ASSERT((m_execstate.vsposition - 1) >= (frame->m_basepointer + numlocals));
             }
@@ -10991,7 +12100,7 @@ class State
             m_execstate.framestack.set(m_execstate.framestack.count(), frame);
             m_execstate.currframe = m_execstate.framestack.getp(m_execstate.framestack.count());
             m_execstate.framestack.push(frame);
-            auto framefunction = Value::asFunction(frame.m_function);
+            auto framefunction = frame.m_function.asFunction();
             setStackPos(frame.m_basepointer + framefunction->m_funcdata.valscriptfunc.numlocals);
             return true;
         }
@@ -11022,7 +12131,8 @@ class State
             for(i = m_execstate.framestack.count() - 1; i >= 0; i--)
             {
                 frame = m_execstate.framestack.getp(i);
-                traceback->push(Value::functionGetName(frame->m_function), frame->getPosition());
+                auto name = frame->m_function.asFunction()->getName();
+                traceback->push(name, frame->getPosition());
             }
             return true;
         }
@@ -11033,7 +12143,7 @@ class State
             Value res;
             Error* err; 
             Traceback* traceback;
-            auto nativefun = Value::asFunction(callee);
+            auto nativefun = callee.asFunction();
             auto uptr = nativefun->m_funcdata.valnativefunc.userpointer;
             res = nativefun->m_funcdata.valnativefunc.natptrfn(this, uptr, selfval, argc, args);
             if(mc_util_unlikely(m_errorlist.count() > 0))
@@ -11048,7 +12158,7 @@ class State
                 return Value::makeNull();
             }
             restype = res.getType();
-            if(mc_util_unlikely(restype == Value::VALTYP_ERROR))
+            if(mc_util_unlikely(restype == Value::VT_ERROR))
             {
                 traceback = Memory::make<Traceback>();
                 if(traceback != nullptr)
@@ -11082,7 +12192,7 @@ class State
                 constants = m_sharedcompiler->getconstants();
             }
             type = callee.getType();
-            if(type == Value::VALTYP_FUNCSCRIPT)
+            if(type == Value::VT_FUNCSCRIPT)
             {
                 //VMFrame::init(&tempframe, callee, 0);
                 VMFrame::init(&tempframe, callee, m_execstate.vsposition - argc);
@@ -11112,7 +12222,7 @@ class State
                 restoreExecInfo(&est);
                 return retv;
             }
-            if(type == Value::VALTYP_FUNCNATIVE)
+            if(type == Value::VT_FUNCNATIVE)
             {
                 return vmCallNativeFunction(callee, SourceLocation::Invalid(), thisval, argc, args);
             }
@@ -11153,14 +12263,14 @@ class State
                 m_stderrprinter->format(">>>\n");
             }
             #endif
-            if(calleetype == Value::VALTYP_FUNCSCRIPT)
+            if(calleetype == Value::VT_FUNCSCRIPT)
             {
-                auto calleefunction = Value::asFunction(callee);
+                auto calleefunction = callee.asFunction();
                 if(nargs != calleefunction->m_funcdata.valscriptfunc.numargs)
                 {
                     #if 0
                     m_errorlist.pushFormat(Error::ERRTYP_RUNTIME, m_execstate.currframe->getPosition(), "invalid number of arguments to \"%s\": expected %d, got %d",
-                                      Value::functionGetName(callee), calleefunction->m_funcdata.valscriptfunc.numargs, nargs);
+                                      calleefunction->getName(), calleefunction->m_funcdata.valscriptfunc.numargs, nargs);
                     return false;
                     #endif
                 }
@@ -11175,7 +12285,7 @@ class State
                     return false;
                 }
             }
-            else if(calleetype == Value::VALTYP_FUNCNATIVE)
+            else if(calleetype == Value::VT_FUNCNATIVE)
             {
                 #if 0
                 if(!selfval.isNull())
@@ -11215,7 +12325,7 @@ class State
             *outoverloadfound = false;
             lefttype = left.getType();
             righttype = right.getType();
-            if(lefttype != Value::VALTYP_MAP && righttype != Value::VALTYP_MAP)
+            if(lefttype != Value::VT_MAP && righttype != Value::VT_MAP)
             {
                 *outoverloadfound = false;
                 return true;
@@ -11227,17 +12337,18 @@ class State
             }
             key = m_operoverloadkeys[(int)op];
             callee = Value::makeNull();
-            if(lefttype == Value::VALTYP_MAP)
+            if(lefttype == Value::VT_MAP)
             {
-                callee = Value::mapGetValue(left, key);
+                auto m = left.asMap();
+                callee = m->getValue(key);
             }
             if(!callee.isCallable())
             {
-                if(righttype == Value::VALTYP_MAP)
+                if(righttype == Value::VT_MAP)
                 {
-                    callee = Value::mapGetValue(right, key);
+                    auto m = right.asMap();
+                    callee = m->getValue(key);
                 }
-
                 if(!callee.isCallable())
                 {
                     *outoverloadfound = false;
@@ -11254,14 +12365,13 @@ class State
             return vmCallObject(callee, numoper);
         }
 
-
         MC_INLINE Value callFunctionByName(const char* fname, Value thisval, size_t argc, Value* args)
         {
             Value res;
             Value callee;
             reset();
             callee = getGlobalByName(fname);
-            if(callee.getType() == Value::VALTYP_NULL)
+            if(callee.getType() == Value::VT_NULL)
             {
                 return Value::makeNull();
             }
@@ -11280,7 +12390,7 @@ class State
             Value::Type oldvaluetype;
             oldvaluetype = oldvalue.getType();
             nvaluetype = nvalue.getType();
-            if(oldvaluetype == Value::VALTYP_NULL || nvaluetype == Value::VALTYP_NULL)
+            if(oldvaluetype == Value::VT_NULL || nvaluetype == Value::VT_NULL)
             {
                 return true;
             }
@@ -11324,7 +12434,7 @@ class State
             valleft = vmStackPop();
             lefttype = valleft.getType();
             righttype = valright.getType();
-            if(lefttype == Value::VALTYP_STRING && opcode == Instruction::OPCODE_ADD)
+            if(lefttype == Value::VT_STRING && opcode == Instruction::OPCODE_ADD)
             {
                 if(vmOpAddString(valleft, valright, righttype, opcode))
                 {
@@ -11333,8 +12443,8 @@ class State
             }
             else if((valleft.isNumeric() || valleft.isNull()) && (valright.isNumeric() || valright.isNull()))
             {
-                dnright = Value::asNumber(valright);
-                dnleft = Value::asNumber(valleft);
+                dnright = valright.asNumber();
+                dnleft = valleft.asNumber();
                 res = 0;
                 switch(opcode)
                 {
@@ -11441,28 +12551,28 @@ class State
             (void)typ;
             switch(typ)
             {
-                case Value::VALTYP_NUMBER:
+                case Value::VT_NUMBER:
                     {
                         return m_stdobjectnumber;
                     }
                     break;
-                case Value::VALTYP_STRING:
+                case Value::VT_STRING:
                     {
                         return m_stdobjectstring;
                     }
                     break;
-                case Value::VALTYP_ARRAY:
+                case Value::VT_ARRAY:
                     {
                         return m_stdobjectarray;
                     }
                     break;
-                case Value::VALTYP_MAP:
+                case Value::VT_MAP:
                     {
                         return m_stdobjectmap;
                     }
                     break;
-                case Value::VALTYP_FUNCNATIVE:
-                case Value::VALTYP_FUNCSCRIPT:
+                case Value::VT_FUNCNATIVE:
+                case Value::VT_FUNCSCRIPT:
                     {
                         return m_stdobjectfunction;
                     }
@@ -11492,7 +12602,7 @@ class State
             for(i=0; i<cl->m_memberfields.count(); i++)
             {
                 auto memb = cl->m_memberfields.getp(i);
-                if(strcmp(memb->name, name) == 0)
+                if(strcmp(memb->m_fieldname, name) == 0)
                 {
                     return memb;
                 }
@@ -11525,8 +12635,8 @@ class State
                 }
                 else
                 {
-                    fnval = Value::makeFuncNative(vdest->name, vdest->fndest, nullptr);
-                    if(vdest->ispseudo)
+                    fnval = Value::makeFuncNative(vdest->m_fieldname, vdest->m_fndest, nullptr);
+                    if(vdest->m_ispseudo)
                     {
                         retv = vmCallNativeFunction(fnval, m_execstate.currframe->getPosition(), left, 0, nullptr);
                         vmStackPush(retv);
@@ -11554,9 +12664,10 @@ class State
             Value res;
             (void)fromdot;
             lefttypename = "unknown";
-            if(lefttype == Value::VALTYP_MAP)
+            if(lefttype == Value::VT_MAP)
             {
-                if(Value::mapGetValueChecked(left, index, &res))
+                auto m = left.asMap();
+                if(m->getValueChecked(index, &res))
                 {
                     goto finished;
                 }
@@ -11590,35 +12701,36 @@ class State
                     }
                 }
             }
-            if(lefttype != Value::VALTYP_ARRAY && lefttype != Value::VALTYP_MAP && lefttype != Value::VALTYP_STRING)
+            if(lefttype != Value::VT_ARRAY && lefttype != Value::VT_MAP && lefttype != Value::VT_STRING)
             {
                 pushError(Error::ERRTYP_RUNTIME, m_execstate.currframe->getPosition(), "getindexpartial: type %s is not indexable", lefttypename);
 
                 return false;
             }
             res = Value::makeNull();
-            if(lefttype == Value::VALTYP_ARRAY)
+            if(lefttype == Value::VT_ARRAY)
             {
-                if(indextype != Value::VALTYP_NUMBER)
+                if(indextype != Value::VT_NUMBER)
                 {
                     lefttypename = Value::getTypename(lefttype);
                     indextypename = Value::getTypename(indextype);
                     pushError(Error::ERRTYP_RUNTIME, m_execstate.currframe->getPosition(), "cannot get partial index of %s with %s", lefttypename, indextypename);
                     return false;
                 }
-                ix = (int)Value::asNumber(index);
+                auto arr = left.asArray();
+                ix = (int)index.asNumber();
                 if(ix < 0)
                 {
-                    ix = Value::arrayGetLength(left) + ix;
+                    ix = arr->size() + ix;
                 }
-                if(ix >= 0 && ix < Value::arrayGetLength(left))
+                if(ix >= 0 && ix < (int)arr->size())
                 {
-                    res = Value::arrayGetValue(left, ix);
+                    res = arr->get(ix);
                 }
             }
-            else if(lefttype == Value::VALTYP_STRING)
+            else if(lefttype == Value::VT_STRING)
             {
-                if(indextype != Value::VALTYP_NUMBER)
+                if(indextype != Value::VT_NUMBER)
                 {
                     lefttypename = Value::getTypename(lefttype);
                     indextypename = Value::getTypename(indextype);
@@ -11627,7 +12739,7 @@ class State
                 }
                 str = left.stringGetData();
                 leftlen = left.stringGetLength();
-                ix = (int)Value::asNumber(index);
+                ix = (int)index.asNumber();
                 if(ix >= 0 && ix < leftlen)
                 {
                     resstr[0] = str[ix];
@@ -11673,7 +12785,7 @@ class State
             const char* indextypename;
             const char* lefttypename;
             Value oldvalue;
-            if(lefttype != Value::VALTYP_ARRAY && lefttype != Value::VALTYP_MAP)
+            if(lefttype != Value::VT_ARRAY && lefttype != Value::VT_MAP)
             {
                 lefttypename = Value::getTypename(lefttype);
                 #if 0
@@ -11686,32 +12798,34 @@ class State
                 pushError(Error::ERRTYP_RUNTIME, m_execstate.currframe->getPosition(), "setindexpartial: type %s is not indexable", lefttypename);
                 return false;
             }
-            if(lefttype == Value::VALTYP_ARRAY)
+            if(lefttype == Value::VT_ARRAY)
             {
-                if(indextype != Value::VALTYP_NUMBER)
+                if(indextype != Value::VT_NUMBER)
                 {
                     lefttypename = Value::getTypename(lefttype);
                     indextypename = Value::getTypename(indextype);
                     pushError(Error::ERRTYP_RUNTIME, m_execstate.currframe->getPosition(), "cannot set index of %s with %s", lefttypename, indextypename);
                     return false;
                 }
-                ix = (int)Value::asNumber(index);                        
-                ok = Value::arraySetValue(left, ix, nvalue);
-                alen = Value::arrayGetLength(left);
+                ix = (int)index.asNumber();
+                auto arr = left.asArray();
+                ok = arr->set(ix, nvalue);
+                alen = arr->size();
                 if(!ok)
                 {
                     pushError(Error::ERRTYP_RUNTIME, m_execstate.currframe->getPosition(), "failed to set array index %d (of %d)", ix, alen);
                     return false;
                 }
             }
-            else if(lefttype == Value::VALTYP_MAP)
+            else if(lefttype == Value::VT_MAP)
             {
-                oldvalue = Value::mapGetValue(left, index);
+                auto m = left.asMap();
+                oldvalue = m->getValue(index);
                 if(!vmCheckAssign(oldvalue, nvalue))
                 {
                     return false;
                 }
-                if(!Value::mapSetValue(left, index, nvalue))
+                if(!left.asMap()->setKV(index, nvalue))
                 {
                     return false;
                 }
@@ -11751,34 +12865,36 @@ class State
             left = vmStackPop();
             lefttype = left.getType();
             indextype= index.getType();
-            if(lefttype != Value::VALTYP_ARRAY && lefttype != Value::VALTYP_MAP && lefttype != Value::VALTYP_STRING)
+            if(lefttype != Value::VT_ARRAY && lefttype != Value::VT_MAP && lefttype != Value::VT_STRING)
             {
                 lefttypename = Value::getTypename(lefttype);
                 pushError(Error::ERRTYP_RUNTIME, m_execstate.currframe->getPosition(), "getvalueatfull: type %s is not indexable", lefttypename);
                 return false;
             }
             res = Value::makeNull();
-            if(indextype != Value::VALTYP_NUMBER)
+            if(indextype != Value::VT_NUMBER)
             {
                 lefttypename = Value::getTypename(lefttype);
                 indextypename = Value::getTypename(indextype);
                 pushError(Error::ERRTYP_RUNTIME, m_execstate.currframe->getPosition(), "cannot get full index %s with %s", lefttypename, indextypename);
                 return false;
             }
-            ix = (int)Value::asNumber(index);
-            if(lefttype == Value::VALTYP_ARRAY)
+            ix = (int)index.asNumber();
+            if(lefttype == Value::VT_ARRAY)
             {
-                res = Value::arrayGetValue(left, ix);
+                auto arr = left.asArray();
+                res = arr->get(ix);
             }
-            else if(lefttype == Value::VALTYP_MAP)
+            else if(lefttype == Value::VT_MAP)
             {
-                res = Value::mapGetetKVPairAt(left, ix);
+                auto m = left.asMap();
+                res = m->getKVPairAt(ix);
             }
-            else if(lefttype == Value::VALTYP_STRING)
+            else if(lefttype == Value::VT_STRING)
             {
                 str = left.stringGetData();
                 leftlen = left.stringGetLength();
-                ix = (int)Value::asNumber(index);
+                ix = (int)index.asNumber();
                 if(ix >= 0 && ix < leftlen)
                 {
                     resstr[0] = str[ix];
@@ -11788,9 +12904,6 @@ class State
             vmStackPush(res);
             return true;
         }
-
-        // xxvmhere
-
 
         MC_INLINE bool hasErrors()
         {
@@ -11850,792 +12963,19 @@ void GCMemory::wrapDestroyObjData(Object* data)
     Value::destroyObjData(data);
 }
 
-
-void Value::valPrintObjError(Printer* pr, const Value& obj)
+void Value::ValPrinter::valPrintObjError(IOPrinter* pr, const Value& obj)
 {
     Error::printUserError(pr, obj);
 }
 
 AstExpression* AstUtilCopyExpression(AstExpression* expr)
 {
-    AstExpression* res;
-    if(!expr)
-    {
-        return nullptr;
-    }
-    res = nullptr;
-    switch(expr->m_exprtype)
-    {
-        case AstExpression::EXPR_NONE:
-            {
-                MC_ASSERT(false);
-            }
-            break;
-        case AstExpression::EXPR_IDENT:
-            {
-                AstExpression::Identifier* ident;
-                auto actual = static_cast<ExprIdent*>(expr);
-                ident = AstExpression::Identifier::copy(actual->m_expridvalue);
-                res = AstParser::makeAstItemIdent(ident);
-            }
-            break;
-        case AstExpression::EXPR_NUMBERLITERAL:
-            {
-                auto actual = static_cast<ExprLiteralNumber*>(expr);
-                res = AstParser::makeAstItemLiteralNumber(actual->m_exprnumber);
-            }
-            break;
-        case AstExpression::EXPR_BOOLLITERAL:
-            {
-                auto actual = static_cast<ExprLiteralBool*>(expr);
-                res = AstParser::makeAstItemLiteralBool(actual->m_exprbool);
-            }
-            break;
-        case AstExpression::EXPR_STRINGLITERAL:
-            {
-                char* stringcopy;
-                auto actual = static_cast<ExprLiteralString*>(expr);
-                stringcopy = mc_util_strndup(actual->m_strexprdata, actual->m_strexprlength);
-                res = AstParser::makeAstItemLiteralString(stringcopy, actual->m_strexprlength);
-            }
-            break;
-
-        case AstExpression::EXPR_NULLLITERAL:
-            {
-                res = AstParser::makeAstItemLiteralNull();
-            }
-            break;
-        case AstExpression::EXPR_ARRAYLITERAL:
-            {
-                auto actual = static_cast<ExprLiteralArray*>(expr);
-                auto valuescopy = actual->m_litarritems.copyToStack(AstUtilCopyExpression, AstUtilDestroyExpression);
-                res = AstParser::makeAstItemLiteralArray(valuescopy);
-            }
-            break;
-
-        case AstExpression::EXPR_MAPLITERAL:
-            {
-                auto actual = static_cast<ExprLiteralMap*>(expr);
-                auto keyscopy = actual->m_litmapkeys.copyToStack(AstUtilCopyExpression, AstUtilDestroyExpression);
-                auto valuescopy = actual->m_litmapvalues.copyToStack(AstUtilCopyExpression, AstUtilDestroyExpression);
-                res = AstParser::makeAstItemLiteralMap(keyscopy, valuescopy);
-            }
-            break;
-        case AstExpression::EXPR_PREFIX:
-            {
-                AstExpression* rightcopy;
-                auto actual = static_cast<ExprPrefix*>(expr);
-                rightcopy = AstUtilCopyExpression(actual->right);
-                res = AstParser::makeAstItemPrefix(actual->op, rightcopy);
-            }
-            break;
-        case AstExpression::EXPR_INFIX:
-            {
-                AstExpression* leftcopy;
-                AstExpression* rightcopy;
-                auto actual = static_cast<ExprInfix*>(expr);
-                leftcopy = AstUtilCopyExpression(actual->left);
-                rightcopy = AstUtilCopyExpression(actual->right);
-                res = AstParser::makeAstItemInfix(actual->op, leftcopy, rightcopy);
-            }
-            break;
-        case AstExpression::EXPR_FUNCTIONLITERAL:
-            {
-                char* namecopy;
-                AstExpression::CodeBlock* bodycopy;
-                auto actual = static_cast<ExprLiteralFunction*>(expr);
-                auto pacopy = actual->funcparamlist.copyToStack(ExprFuncParam::copy, ExprFuncParam::destroy);
-                bodycopy = AstExpression::CodeBlock::copy(actual->body);
-                namecopy = mc_util_strdup(actual->name);
-                res = AstParser::makeAstItemLiteralFunction(pacopy, bodycopy);
-                actual->name = namecopy;
-            }
-            break;
-        case AstExpression::EXPR_CALL:
-            {
-                AstExpression* fcopy;
-                auto actual = static_cast<ExprCall*>(expr);
-                fcopy = AstUtilCopyExpression(actual->function);
-                auto argscopy = actual->m_callargs.copyToStack(AstUtilCopyExpression, AstUtilDestroyExpression);
-                res = AstParser::makeAstItemCallExpr(fcopy, argscopy);
-            }
-            break;
-        case AstExpression::EXPR_INDEX:
-            {
-                AstExpression* leftcopy;
-                AstExpression* indexcopy;
-                auto actual = static_cast<ExprIndex*>(expr);
-                leftcopy = AstUtilCopyExpression(actual->left);
-                indexcopy = AstUtilCopyExpression(actual->index);
-                res = AstParser::makeAstItemIndex(leftcopy, indexcopy, false);
-            }
-            break;
-        case AstExpression::EXPR_ASSIGN:
-            {
-                AstExpression* destcopy;
-                AstExpression* sourcecopy;
-                auto actual = static_cast<ExprAssign*>(expr);
-                destcopy = AstUtilCopyExpression(actual->dest);
-                sourcecopy = AstUtilCopyExpression(actual->source);
-                res = AstParser::makeAstItemAssign(destcopy, sourcecopy, actual->is_postfix);
-            }
-            break;
-        case AstExpression::EXPR_LOGICAL:
-            {
-                AstExpression* leftcopy;
-                auto actual = static_cast<ExprLogical*>(expr);
-                AstExpression* rightcopy;
-                leftcopy = AstUtilCopyExpression(actual->left);
-                rightcopy = AstUtilCopyExpression(actual->right);
-                res = AstParser::makeAstItemLogical(actual->op, leftcopy, rightcopy);
-            }
-            break;
-        case AstExpression::EXPR_TERNARY:
-            {
-                AstExpression* testcopy;
-                AstExpression* iftruecopy;
-                AstExpression* iffalsecopy;
-                auto actual = static_cast<ExprTernary*>(expr);
-                testcopy = AstUtilCopyExpression(actual->tercond);
-                iftruecopy = AstUtilCopyExpression(actual->teriftrue);
-                iffalsecopy = AstUtilCopyExpression(actual->teriffalse);
-                res = AstParser::makeAstItemTernary(testcopy, iftruecopy, iffalsecopy);
-            }
-            break;
-        case AstExpression::EXPR_STMTDEFINE:
-            {
-                AstExpression* valuecopy;
-                auto actual = static_cast<ExprDefine*>(expr);
-                valuecopy = AstUtilCopyExpression(actual->value);
-                res = AstParser::makeAstItemDefine(AstExpression::Identifier::copy(actual->name), valuecopy, actual->assignable);
-            }
-            break;
-        case AstExpression::EXPR_STMTIF:
-            {
-                AstExpression::CodeBlock* alternativecopy;
-                auto actual = static_cast<ExprIfStmt*>(expr);
-                auto casescopy = actual->m_ifcases.copyToStack(ExprIfCase::copy, ExprIfCase::destroy);
-                alternativecopy = AstExpression::CodeBlock::copy(actual->m_ifstmtelsestmt);
-                res = AstParser::makeAstItemIfStmt(casescopy, alternativecopy);
-            }
-            break;
-        case AstExpression::EXPR_STMTRETURN:
-            {
-                AstExpression* valuecopy;
-                auto actual = static_cast<ExprReturnStmt*>(expr);
-                valuecopy = AstUtilCopyExpression(actual->m_exprretvalue);
-                res = AstParser::makeAstItemReturnStmt(valuecopy);
-            }
-            break;
-        case AstExpression::EXPR_STMTEXPRESSION:
-            {
-                AstExpression* valuecopy;
-                auto actual = static_cast<ExprExpression*>(expr);
-                valuecopy = AstUtilCopyExpression(actual->m_exprexprvalue);
-                res = AstParser::makeAstItemExprStmt(valuecopy);
-            }
-            break;
-        case AstExpression::EXPR_STMTLOOPWHILE:
-            {
-                AstExpression* testcopy;
-                AstExpression::CodeBlock* bodycopy;
-                auto actual = static_cast<ExprWhileStmt*>(expr);
-                testcopy = AstUtilCopyExpression(actual->loopcond);
-                bodycopy = AstExpression::CodeBlock::copy(actual->body);
-                res = AstParser::makeAstItemWhileStmt(testcopy, bodycopy);
-            }
-            break;
-        case AstExpression::EXPR_STMTBREAK:
-            {
-                res = AstParser::makeAstItemBreakStmt();
-            }
-            break;
-        case AstExpression::EXPR_STMTCONTINUE:
-            {
-                res = AstParser::makeAstItemContinueStmt();
-            }
-            break;
-        case AstExpression::EXPR_STMTLOOPFOREACH:
-            {
-                AstExpression* sourcecopy;
-                AstExpression::CodeBlock* bodycopy;
-                auto actual = static_cast<ExprForeachStmt*>(expr);
-                sourcecopy = AstUtilCopyExpression(actual->source);
-                bodycopy = AstExpression::CodeBlock::copy(actual->body);
-                res = AstParser::makeAstItemForeachStmt(AstExpression::Identifier::copy(actual->iterator), sourcecopy, bodycopy);
-            }
-            break;
-        case AstExpression::EXPR_STMTLOOPFORCLASSIC:
-            {
-                AstExpression* initcopy;
-                AstExpression* testcopy;
-                AstExpression* updatecopy;
-                AstExpression::CodeBlock* bodycopy;
-                auto actual = static_cast<ExprLoopStmt*>(expr);
-                initcopy= AstUtilCopyExpression(actual->init);
-                testcopy = AstUtilCopyExpression(actual->loopcond);
-                updatecopy = AstUtilCopyExpression(actual->update);
-                bodycopy = AstExpression::CodeBlock::copy(actual->body);
-                res = AstParser::makeAstItemForLoopStmt(initcopy, testcopy, updatecopy, bodycopy);
-            }
-            break;
-        case AstExpression::EXPR_STMTBLOCK:
-            {
-                AstExpression::CodeBlock* blockcopy;
-                auto actual = static_cast<ExprBlock*>(expr);
-                blockcopy = AstExpression::CodeBlock::copy(actual->m_exprblockvalue);
-                res = AstParser::makeAstItemBlockStmt(blockcopy);
-            }
-            break;
-        case AstExpression::EXPR_STMTIMPORT:
-            {
-                char* pathcopy;
-                auto actual = static_cast<ExprImportStmt*>(expr);
-                pathcopy = mc_util_strdup(actual->path);
-                res = AstParser::makeAstItemImportExpr(pathcopy);
-            }
-            break;
-        case AstExpression::EXPR_STMTRECOVER:
-            {
-                AstExpression::CodeBlock* bodycopy;
-                AstExpression::Identifier* erroridentcopy;
-                auto actual = static_cast<ExprRecover*>(expr);
-                bodycopy = AstExpression::CodeBlock::copy(actual->body);
-                erroridentcopy = AstExpression::Identifier::copy(actual->errident);
-                res = AstParser::makeAstItemRecover(erroridentcopy, bodycopy);
-            }
-            break;
-        default:
-            {
-            }
-            break;
-    }
-    if(!res)
-    {
-        return nullptr;
-    }
-    res->m_exprpos = expr->m_exprpos;
-    return res;
+    return AstParser::copyExpression(expr);
 }
 
 void AstUtilDestroyExpression(AstExpression* expr)
 {
-    if(expr != nullptr)
-    {
-        switch(expr->m_exprtype)
-        {
-            case AstExpression::EXPR_NONE:
-                {
-                    MC_ASSERT(false);
-                }
-                break;
-            case AstExpression::EXPR_IDENT:
-                {
-                    auto actual = static_cast<ExprIdent*>(expr);
-                    Memory::destroy(actual->m_expridvalue);
-                }
-                break;
-            case AstExpression::EXPR_NUMBERLITERAL:
-            case AstExpression::EXPR_BOOLLITERAL:
-                {
-                }
-                break;
-            case AstExpression::EXPR_STRINGLITERAL:
-                {
-                    auto actual = static_cast<ExprLiteralString*>(expr);
-                    mc_memory_free(actual->m_strexprdata);
-                }
-                break;
-            case AstExpression::EXPR_NULLLITERAL:
-                {
-                }
-                break;
-            case AstExpression::EXPR_ARRAYLITERAL:
-                {
-                    auto actual = static_cast<ExprLiteralArray*>(expr);
-                    actual->m_litarritems.deInit(AstUtilDestroyExpression);
-                }
-                break;
-            case AstExpression::EXPR_MAPLITERAL:
-                {
-                    auto actual = static_cast<ExprLiteralMap*>(expr);
-                    actual->m_litmapkeys.deInit(AstUtilDestroyExpression);
-                    actual->m_litmapvalues.deInit(AstUtilDestroyExpression);
-                }
-                break;
-            case AstExpression::EXPR_PREFIX:
-                {
-                    auto actual = static_cast<ExprPrefix*>(expr);
-                    AstUtilDestroyExpression(actual->right);
-                }
-                break;
-            case AstExpression::EXPR_INFIX:
-                {
-                    auto actual = static_cast<ExprInfix*>(expr);
-                    AstUtilDestroyExpression(actual->left);
-                    AstUtilDestroyExpression(actual->right);
-                }
-                break;
-            case AstExpression::EXPR_FUNCTIONLITERAL:
-                {
-                    ExprLiteralFunction* fn;
-                    fn = static_cast<ExprLiteralFunction*>(expr);
-                    mc_memory_free(fn->name);
-                    fn->funcparamlist.deInit(ExprFuncParam::destroy);
-                    Memory::destroy(fn->body);
-                }
-                break;
-            case AstExpression::EXPR_CALL:
-                {
-                    auto actual = static_cast<ExprCall*>(expr);
-                    actual->m_callargs.deInit(AstUtilDestroyExpression);
-                    AstUtilDestroyExpression(actual->function);
-                }
-                break;
-            case AstExpression::EXPR_INDEX:
-                {
-                    auto actual = static_cast<ExprIndex*>(expr);
-                    AstUtilDestroyExpression(actual->left);
-                    AstUtilDestroyExpression(actual->index);
-                }
-                break;
-            case AstExpression::EXPR_ASSIGN:
-                {
-                    auto actual = static_cast<ExprAssign*>(expr);
-                    AstUtilDestroyExpression(actual->dest);
-                    AstUtilDestroyExpression(actual->source);
-                }
-                break;
-            case AstExpression::EXPR_LOGICAL:
-                {
-                    auto actual = static_cast<ExprLogical*>(expr);
-                    AstUtilDestroyExpression(actual->left);
-                    AstUtilDestroyExpression(actual->right);
-                }
-                break;
-            case AstExpression::EXPR_TERNARY:
-                {
-                    auto actual = static_cast<ExprTernary*>(expr);
-                    AstUtilDestroyExpression(actual->tercond);
-                    AstUtilDestroyExpression(actual->teriftrue);
-                    AstUtilDestroyExpression(actual->teriffalse);
-                }
-                break;
-            case AstExpression::EXPR_STMTDEFINE:
-                {
-                    auto actual = static_cast<ExprDefine*>(expr);
-                    Memory::destroy(actual->name);
-                    AstUtilDestroyExpression(actual->value);
-                }
-                break;
-            case AstExpression::EXPR_STMTIF:
-                {
-                    auto actual = static_cast<ExprIfStmt*>(expr);
-                    actual->m_ifcases.deInit(ExprIfCase::destroy);
-                    Memory::destroy(actual->m_ifstmtelsestmt);
-                }
-                break;
-            case AstExpression::EXPR_STMTRETURN:
-                {
-                    auto actual = static_cast<ExprReturnStmt*>(expr);
-                    AstUtilDestroyExpression(actual->m_exprretvalue);
-                }
-                break;
-            case AstExpression::EXPR_STMTEXPRESSION:
-                {
-                    auto actual = static_cast<ExprExpression*>(expr);
-                    AstUtilDestroyExpression(actual->m_exprexprvalue);
-                }
-                break;
-            case AstExpression::EXPR_STMTLOOPWHILE:
-                {
-                    auto actual = static_cast<ExprWhileStmt*>(expr);
-                    AstUtilDestroyExpression(actual->loopcond);
-                    Memory::destroy(actual->body);
-                }
-                break;
-            case AstExpression::EXPR_STMTBREAK:
-                {
-                }
-                break;
-            case AstExpression::EXPR_STMTCONTINUE:
-                {
-                }
-                break;
-            case AstExpression::EXPR_STMTLOOPFOREACH:
-                {
-                    auto actual = static_cast<ExprForeachStmt*>(expr);
-                    Memory::destroy(actual->iterator);
-                    AstUtilDestroyExpression(actual->source);
-                    Memory::destroy(actual->body);
-                }
-                break;
-            case AstExpression::EXPR_STMTLOOPFORCLASSIC:
-                {
-                    auto actual = static_cast<ExprLoopStmt*>(expr);
-                    AstUtilDestroyExpression(actual->init);
-                    AstUtilDestroyExpression(actual->loopcond);
-                    AstUtilDestroyExpression(actual->update);
-                    Memory::destroy(actual->body);
-                }
-                break;
-            case AstExpression::EXPR_STMTBLOCK:
-                {
-                    auto actual = static_cast<ExprBlock*>(expr);
-                    Memory::destroy(actual->m_exprblockvalue);
-                }
-                break;
-            case AstExpression::EXPR_STMTIMPORT:
-                {
-                    auto actual = static_cast<ExprImportStmt*>(expr);
-                    mc_memory_free(actual->path);
-                }
-                break;
-            case AstExpression::EXPR_STMTRECOVER:
-                {
-                    auto actual = static_cast<ExprRecover*>(expr);
-                    Memory::destroy(actual->body);
-                    Memory::destroy(actual->errident);
-                }
-                break;
-            default:
-                {
-                }
-                break;
-        }
-        Memory::destroy(expr);
-        expr = nullptr;
-    }
-}
-
-
-
-char* mc_util_readhandle(FILE* hnd, size_t* dlen)
-{
-    long rawtold;
-    /*
-    * the value returned by ftell() may not necessarily be the same as
-    * the amount that can be read.
-    * since we only ever read a maximum of $toldlen, there will
-    * be no memory trashing.
-    */
-    size_t toldlen;
-    size_t actuallen;
-    char* buf;
-    if(fseek(hnd, 0, SEEK_END) == -1)
-    {
-        return nullptr;
-    }
-    if((rawtold = ftell(hnd)) == -1)
-    {
-        return nullptr;
-    }
-    toldlen = rawtold;
-    if(fseek(hnd, 0, SEEK_SET) == -1)
-    {
-        return nullptr;
-    }
-    buf = (char*)mc_memory_malloc(toldlen + 1);
-    memset(buf, 0, toldlen+1);
-    if(buf != nullptr)
-    {
-        actuallen = fread(buf, sizeof(char), toldlen, hnd);
-        /*
-        // optionally, read remainder:
-        size_t tmplen;
-        if(actuallen < toldlen)
-        {
-            tmplen = actuallen;
-            actuallen += fread(buf+tmplen, sizeof(char), actuallen-toldlen, hnd);
-            ...
-        }
-        // unlikely to be necessary, so not implemented.
-        */
-        if(dlen != nullptr)
-        {
-            *dlen = actuallen;
-        }
-        return buf;
-    }
-    return nullptr;
-}
-
-char* mc_util_readfile(const char* filename, size_t* dlen)
-{
-    char* b;
-    FILE* fh;
-    if((fh = fopen(filename, "rb")) == nullptr)
-    {
-        return nullptr;
-    }
-    b = mc_util_readhandle(fh, dlen);
-    fclose(fh);
-    return b;
-}
-
-char* mc_fsutil_fileread(const char* filename, size_t* flen)
-{
-    return mc_util_readfile(filename, flen);
-}
-
-size_t mc_fsutil_filewrite(const char* strpath, const char* string, size_t stringsize)
-{
-    size_t printedsz;
-    FILE* fp;
-    fp = fopen(strpath, "w");
-    if(fp == nullptr)
-    {
-        return 0;
-    }
-    printedsz = fwrite(string, 1, stringsize, fp);
-    fclose(fp);
-    return printedsz;
-}
-
-size_t mc_util_strlen(const char* str)
-{
-    size_t len;
-    if(str == nullptr)
-    {
-        return 0;
-    }
-    for(len=0; str[len] != 0; len++)
-    {
-    }
-    return len;
-}
-
-char* mc_util_strndup(const char* string, size_t n)
-{
-    char* outputstring;
-    outputstring = (char*)mc_memory_malloc(n + 1);
-    if(outputstring == nullptr)
-    {
-        return nullptr;
-    }
-    outputstring[n] = '\0';
-    memcpy(outputstring, string, n);
-    return outputstring;
-}
-
-char* mc_util_strdup(const char* string)
-{
-    if(string == nullptr)
-    {
-        return nullptr;
-    }
-    return mc_util_strndup(string, mc_util_strlen(string));
-}
-
-bool mc_util_strequal(const char* a, const char* b)
-{
-    return strcmp(a, b) == 0;
-}
-
-bool mc_util_strnequal(const char* a, const char* b, size_t len)
-{
-    return strncmp(a, b, len) == 0;
-}
-
-bool mc_util_splitstring(GenericList<StrView>* dest, const char* str, const char* delimiter)
-{
-    size_t i;
-    long len;
-    long restlen;
-    char* reststr;
-    char* line;
-    const char* lineend;
-    const char* linestart;
-    reststr = nullptr;
-    if(str == nullptr)
-    {
-        return false;
-    }
-    linestart = str;
-    lineend = strstr(linestart, delimiter);
-    while(lineend != nullptr)
-    {
-        len = lineend - linestart;
-        line = mc_util_strndup(linestart, len);
-        if(line == nullptr)
-        {
-            goto err;
-        }
-        dest->push(StrView(line, len));
-        linestart = lineend + 1;
-        lineend = strstr(linestart, delimiter);
-    }
-    reststr = mc_util_strdup(linestart);
-    if(reststr == nullptr)
-    {
-        goto err;
-    }
-    restlen = strlen(reststr);
-    dest->push(StrView(reststr, restlen));
-    return true;
-err:
-    mc_memory_free(reststr);
-    if(dest->count() > 0)
-    {
-        for(i = 0; i < dest->count(); i++)
-        {
-            auto spitem = dest->getp(i);
-            spitem->deAlloc();
-        }
-    }
-    return false;
-}
-
-char* mc_util_joinstringarray(GenericList<StrView>* items, const char* joinee, size_t jlen)
-{
-    size_t i;
-    Printer* res;
-    res = Memory::make<Printer>(nullptr);
-    for(i = 0; i < items->count(); i++)
-    {
-        auto item = items->get(i);
-        res->put(item.data(), item.length());
-        if(i < (items->count() - 1))
-        {
-            res->put(joinee, jlen);
-        }
-    }
-    return res->getStringAndDestroy(nullptr);
-}
-
-char* mc_util_canonpath(const char* strpath)
-{
-    size_t i;
-    char* joined;
-    const char* tmpstr;
-    GenericList<StrView> spvals;
-    if((strchr(strpath, '/') == nullptr) || ((strstr(strpath, "/../") == nullptr) && (strstr(strpath, "./") == nullptr)))
-    {
-        return mc_util_strdup(strpath);
-    }
-    if(!mc_util_splitstring(&spvals, strpath, "/"))
-    {
-        return nullptr;
-    }
-    for(i = 0; i < spvals.count() - 1; i++)
-    {
-        auto stritem = spvals.get(i);
-        auto nextitem = spvals.get(i + 1);
-        if(mc_util_strequal(stritem.data(), "."))
-        {
-            stritem.deAlloc();
-            spvals.removeAt(i);
-            i = -1;
-            continue;
-        }
-        if(mc_util_strequal(nextitem.data(), ".."))
-        {
-            stritem.deAlloc();
-            nextitem.deAlloc();
-            spvals.removeAt(i);
-            spvals.removeAt(i);
-            i = -1;
-        }
-    }
-    tmpstr = "/";
-    joined = mc_util_joinstringarray(&spvals, tmpstr, strlen(tmpstr));
-    /*
-    for(i = 0; i < spvals.count(); i++)
-    {
-        auto item = spvals.get(i);
-        item.deAlloc();
-    }
-    */
-    return joined;
-}
-
-bool mc_util_pathisabsolute(const char* strpath)
-{
-    return strpath[0] == '/';
-}
-
-size_t mc_util_hashdata(const void* ptr, size_t len)
-{
-    /* djb2 */
-    size_t i;
-    size_t hash;
-    uint8_t val;
-    const uint8_t* up;
-    up = (const uint8_t*)ptr;
-    hash = 5381;
-    for(i = 0; i < len; i++)
-    {
-        val = up[i];
-        hash = ((hash << 5) + hash) + val;
-    }
-    return hash;
-}
-
-size_t mc_util_hashdouble(NumFloat val)
-{
-    /* djb2 */
-    size_t hash;
-    uint32_t* valptr;
-    valptr = (uint32_t*)&val;
-    hash = 5381;
-    hash = ((hash << 5) + hash) + valptr[0];
-    hash = ((hash << 5) + hash) + valptr[1];
-    return hash;
-}
-
-size_t mc_util_upperpowoftwo(size_t v)
-{
-    v--;
-    v |= v >> 1;
-    v |= v >> 2;
-    v |= v >> 4;
-    v |= v >> 8;
-    v |= v >> 16;
-    v++;
-    return v;
-}
-
-NumFloat mc_util_strtod(const char* str, size_t slen, char** endptr)
-{
-    const unsigned char* p;
-    const unsigned char* end; 
-    p = (const unsigned char*)str;
-    end = (const unsigned char*)str + slen;
-    if((str[0] == '0') && (str[1] == 'x'))
-    {
-        return strtod(str, endptr);
-    }
-    if(endptr != nullptr)
-    {
-        *endptr = (char*)end;
-    }
-    return stod_strtod(&p, end, 1);
-}
-
-
-
-template<typename... ArgsT>
-void mc_util_complain(SourceLocation pos, const char *fmt, ArgsT&&... args)
-{
-    static auto tmpfprintf = fprintf;
-    int ncol;
-    int nline;
-    const char* fname;
-    fname = "unknown";
-    ncol = 0;
-    nline = 0;
-    if(pos.m_locfile != nullptr)
-    {
-        if(pos.m_locfile->path() != nullptr)
-        {
-            fname = pos.m_locfile->path();
-        }
-        nline = pos.m_locline;
-        ncol = pos.m_loccolumn;
-    }
-    fprintf(stderr, "**WARNING** [%s:%d:%d] ", fname, nline, ncol);
-    tmpfprintf(stderr, fmt, args...);
-    fprintf(stderr, "\n");
+    AstParser::destroyExpression(expr);
 }
 
 #if 1
@@ -12696,481 +13036,6 @@ bool mc_argcheck_checkactual(State* state, bool generateerror, size_t argc, Valu
     return true;
 }
 
-
-
-void mc_state_gcunmarkall()
-{
-    size_t i;
-    Object* data;
-    for(i = 0; i < GCMemory::get()->m_gcobjliststored->count(); i++)
-    {
-        data = GCMemory::get()->m_gcobjliststored->get(i);
-        data->m_gcmark = 0;
-    }
-}
-
-void mc_state_gcmarkobjlist(Value* objects, size_t count)
-{
-    size_t i;
-    Value obj;
-    for(i = 0; i < count; i++)
-    {
-        obj = objects[i];
-        mc_state_gcmarkobject(obj);
-    }
-}
-
-void mc_state_gcmarkobject(Value obj)
-{
-    int i;
-    int len;
-    Value key;
-    Value mapval;
-    Value freeval;
-    Object* data;
-    Object* valdata;
-    Object* keydata;
-    Object* freevaldata;
-    if(obj.isAllocated())
-    {
-        data = obj.getAllocatedData<Object>();
-        if(data->m_gcmark == 0)
-        {
-            data->m_gcmark = 1;
-            switch(obj.getType())
-            {
-                case Value::VALTYP_MAP:
-                    {
-                        auto m = obj.asMap();
-                        len = m->count();
-                        for(i = 0; i < len; i++)
-                        {
-                            key = Value::mapGetKeyAt(obj, i);
-                            if(key.isAllocated())
-                            {
-                                keydata = key.getAllocatedData<Object>();
-                                if(keydata->m_gcmark == 0)
-                                {
-                                    mc_state_gcmarkobject(key);
-                                }
-                            }
-                            mapval = Value::mapGetValueAt(obj, i);
-                            if(mapval.isAllocated())
-                            {
-                                valdata = mapval.getAllocatedData<Object>();
-                                if(valdata->m_gcmark == 0)
-                                {
-                                    mc_state_gcmarkobject(mapval);
-                                }
-                            }
-                        }
-                    }
-                    break;
-                case Value::VALTYP_ARRAY:
-                    {
-                        len = Value::arrayGetLength(obj);
-                        for(i = 0; i < len; i++)
-                        {
-                            auto itm = Value::arrayGetValue(obj, i);
-                            if(itm.isAllocated())
-                            {
-                                valdata = itm.getAllocatedData<Object>();
-                                if(valdata->m_gcmark == 0)
-                                {
-                                    mc_state_gcmarkobject(itm);
-                                }
-                            }
-                        }
-                    }
-                    break;
-                case Value::VALTYP_FUNCSCRIPT:
-                    {
-                        break;
-                        auto function = Value::asFunction(obj);
-                        for(i = 0; i < function->m_funcdata.valscriptfunc.freevalscount; i++)
-                        {
-                            freeval = Value::functionGetFreeValAt(obj, i);
-                            mc_state_gcmarkobject(freeval);
-                            if(freeval.isAllocated())
-                            {
-                                freevaldata = freeval.getAllocatedData<Object>();
-                                if(freevaldata->m_gcmark == 0)
-                                {
-                                    mc_state_gcmarkobject(freeval);
-                                }
-                            }
-                        }
-                    }
-                    break;
-                default:
-                    {
-                    }
-                    break;
-            }
-        }
-    }
-}
-
-void mc_state_gcsweep()
-{
-    size_t i;
-    Object* data;
-    GCMemory::DataPool* pool;
-    auto vd = GCMemory::get()->m_gcobjlistremains.data();
-    auto cnt = GCMemory::get()->m_gcobjlistremains.count();
-    mc_state_gcmarkobjlist(static_cast<Value*>(vd), cnt);
-    MC_ASSERT(GCMemory::get()->m_gcobjlistback->count() >= GCMemory::get()->m_gcobjliststored->count());
-    GCMemory::get()->m_gcobjlistback->clear();
-    for(i = 0; i < GCMemory::get()->m_gcobjliststored->count(); i++)
-    {
-        data = GCMemory::get()->m_gcobjliststored->get(i);
-        if(data->m_gcmark != 0)
-        {
-            /*
-            * this should never fail because m_gcobjlistback's size should be equal to objects
-            */
-            GCMemory::get()->m_gcobjlistback->push(data);
-        }
-        else
-        {
-            if(Value::canStoreInPool(data))
-            {
-                pool = GCMemory::get()->getPoolForType(data->m_odtype);
-                pool->m_pooldata.set(pool->m_poolitemcount, data);
-                pool->m_poolitemcount++;
-            }
-            else
-            {
-                Value::destroyObjData(data);
-                /*
-                if(GCMemory::get()->m_poolonlydata.m_poolitemcount < GCMemory::MinPoolSize)
-                {
-                */
-                    GCMemory::get()->m_poolonlydata.m_pooldata.set(GCMemory::get()->m_poolonlydata.m_poolitemcount, data);
-                    GCMemory::get()->m_poolonlydata.m_poolitemcount++;
-                /*
-                }
-                else
-                {
-                    Memory::destroy(data);
-                    data = nullptr;
-                }
-                */
-            }
-        }
-    }
-    auto objstemp = GCMemory::get()->m_gcobjliststored;
-    GCMemory::get()->m_gcobjliststored = GCMemory::get()->m_gcobjlistback;
-    GCMemory::get()->m_gcobjlistback = objstemp;
-    GCMemory::get()->m_allocssincesweep = 0;
-}
-
-int mc_state_gcshouldsweep()
-{
-    return static_cast<int>(GCMemory::get()->m_allocssincesweep > GCMemory::SweepInterval);
-}
-
-bool mc_state_gcdisablefor(Value obj)
-{
-    MC_ASSERT(false && "mc_state_gcdisablefor() is broken!");
-    #if 1
-        (void)obj;
-    #else
-    Object* data;
-    if(!obj.isAllocated())
-    {
-        return false;
-    }
-    data = obj.getAllocatedData<Object>();
-    if(data->m_objmem->m_gcobjlistremains.contains(&obj))
-    {
-        return false;
-    }
-    return data->m_objmem->m_gcobjlistremains.push(obj);
-    #endif
-    return false;
-}
-
-void mc_state_gcenablefor(Value obj)
-{
-    MC_ASSERT(false && "mc_state_gcenablefor() is broken!");
-    #if 1
-        (void)obj;
-    #else
-    Object* data;
-    if(obj.isAllocated())
-    {
-        data = obj.getAllocatedData<Object>();
-        data->m_objmem->m_gcobjlistremains.removeItem(&obj);
-    }
-    #endif
-}
-
-
-
-void mc_vm_setoverloadkey(State* state, Instruction::Code opc, const char* rawstr)
-{
-    Value keyobj;
-    keyobj = Value::makeString(rawstr);
-    state->m_operoverloadkeys[(int)opc] = keyobj;
-}
-
-bool mc_vm_init(State* state)
-{
-    int i;
-    state->m_hadrecovered = false;
-    state->m_globalvalcount = 0;
-    state->m_execstate.vsposition = 0;
-    state->m_execstate.thisstpos = 0;
-    state->m_execstate.lastpopped = Value::makeNull();
-    state->m_running = false;
-    for(i = 0; i < State::MaxOperOverloads; i++)
-    {
-        state->m_operoverloadkeys[i] = Value::makeNull();
-    }
-    mc_vm_setoverloadkey(state, Instruction::OPCODE_ADD, "__operator_add__");
-    mc_vm_setoverloadkey(state, Instruction::OPCODE_SUB, "__operator_sub__");
-    mc_vm_setoverloadkey(state, Instruction::OPCODE_MUL, "__operator_mul__");
-    mc_vm_setoverloadkey(state, Instruction::OPCODE_DIV, "__operator_div__");
-    mc_vm_setoverloadkey(state, Instruction::OPCODE_MOD, "__operator_mod__");
-    mc_vm_setoverloadkey(state, Instruction::OPCODE_BINOR, "__operator_or__");
-    mc_vm_setoverloadkey(state, Instruction::OPCODE_BINXOR, "__operator_xor__");
-    mc_vm_setoverloadkey(state, Instruction::OPCODE_BINAND, "__operator_and__");
-    mc_vm_setoverloadkey(state, Instruction::OPCODE_LSHIFT, "__operator_lshift__");
-    mc_vm_setoverloadkey(state, Instruction::OPCODE_RSHIFT, "__operator_rshift__");
-    mc_vm_setoverloadkey(state, Instruction::OPCODE_MINUS, "__operator_minus__");
-    mc_vm_setoverloadkey(state, Instruction::OPCODE_BINNOT, "__operator_binnot__");
-    mc_vm_setoverloadkey(state, Instruction::OPCODE_BANG, "__operator_bang__");
-    mc_vm_setoverloadkey(state, Instruction::OPCODE_COMPARE, "__cmp__");
-    return true;
-}
-
-void mc_vm_reset(State* state)
-{
-    state->m_execstate.vsposition = 0;
-    state->m_execstate.thisstpos = 0;
-    while(state->m_execstate.framestack.count() > 0)
-    {
-        state->vmPopFrame();
-    }
-}
-
-
-MC_INLINE void mc_vm_rungc(State* state, GenericList<Value>* constants)
-{
-    size_t i;
-    VMFrame* frame;
-    mc_state_gcunmarkall();
-    mc_state_gcmarkobjlist(state->m_vmglobalstore->getData(), state->m_vmglobalstore->getCount());
-    mc_state_gcmarkobjlist(constants->data(), constants->count());
-    mc_state_gcmarkobjlist(state->m_globalvalstack.data(), state->m_globalvalcount);
-    for(i = 0; i < state->m_execstate.framestack.count(); i++)
-    {
-        frame = state->m_execstate.framestack.getp(i);
-        mc_state_gcmarkobject(frame->m_function);
-    }
-    mc_state_gcmarkobjlist(state->m_execstate.valuestack.data(), state->m_execstate.vsposition);
-    mc_state_gcmarkobjlist(state->m_execstate.valthisstack.data(), state->m_execstate.thisstpos);
-    mc_state_gcmarkobject(state->m_execstate.lastpopped);
-    mc_state_gcmarkobjlist(state->m_operoverloadkeys, State::MaxOperOverloads);
-    mc_state_gcsweep();
-}
-
-static MC_INLINE bool mc_vmdo_makefunction(State* state, GenericList<Value>* constants)
-{
-    int i;
-    OPValCode numfree;
-    uint16_t constantix;
-    const char* fname;
-    const char* tname;
-    Value::Type constanttype;
-    Value freeval;
-    Value functionobj;
-    Value* constant;
-    constantix = state->m_execstate.currframe->readUint16();
-    numfree = state->m_execstate.currframe->readUint8();
-    constant = constants->getp(constantix);
-    if(constant == nullptr)
-    {
-        state->pushError(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "constant %d not found", constantix);
-        return false;
-    }
-    constanttype = (*constant).getType();
-    if(constanttype != Value::VALTYP_FUNCSCRIPT)
-    {
-        tname = Value::getTypename(constanttype);
-        state->pushError(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "%s is not a function", tname);
-        return false;
-    }
-    auto constfun = Value::asFunction(*constant);
-    fname = Value::functionGetName(*constant);
-    functionobj = Value::makeFuncScript(fname, constfun->m_funcdata.valscriptfunc.compiledprogcode, false, constfun->m_funcdata.valscriptfunc.numlocals, constfun->m_funcdata.valscriptfunc.numargs, numfree);
-    if(functionobj.isNull())
-    {
-        return false;
-    }
-    for(i = 0; i < numfree; i++)
-    {
-        freeval = state->m_execstate.valuestack.get(state->m_execstate.vsposition - numfree + i);
-        Value::functionSetFreeValAt(functionobj, i, freeval);
-    }
-    state->setStackPos(state->m_execstate.vsposition - numfree);
-    state->vmStackPush(functionobj);
-    return true;
-}
-
-static MC_INLINE bool mc_vmdo_docmpvalue(State* state, Instruction::Code opcode)
-{
-    bool ok;
-    bool isoverloaded;
-    const char* lefttname;
-    const char* righttname;
-    Value::CompareResult cres;
-    Value res;
-    Value left;
-    Value right;
-    right = state->vmStackPop();
-    left = state->vmStackPop();
-    isoverloaded = false;
-    if(!state->vmTryOverloadOperator(left, right, Instruction::OPCODE_COMPARE, &isoverloaded))
-    {
-        return false;
-    }
-    if(!isoverloaded)
-    {
-        ok = Value::compare(left, right, &cres);
-        #if 0
-        fprintf(stderr, "compare: ok=%d cres.result=%g\n", ok, cres.result);
-        #endif
-        if(ok || (opcode == Instruction::OPCODE_COMPAREEQ))
-        {
-            res = Value::makeNumber(cres.result);
-            state->vmStackPush(res);
-        }
-        else
-        {
-            righttname = Value::getTypename(right.getType());
-            lefttname = Value::getTypename(left.getType());
-            state->pushError(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "cannot compare %s and %s", lefttname, righttname);
-            return false;
-        }
-    }
-    return true;
-}
-
-static MC_INLINE bool mc_vmdo_docmpvalgreater(State* state, Instruction::Code opcode)
-{
-    bool resval;
-    NumFloat comparisonres;
-    Value res;
-    Value value;
-    value = state->vmStackPop();
-    comparisonres = Value::asNumber(value);
-    resval = false;
-    switch(opcode)
-    {
-        case Instruction::OPCODE_EQUAL:
-            {
-                resval = MC_UTIL_CMPFLOAT(comparisonres, 0);
-            }
-            break;
-        case Instruction::OPCODE_NOTEQUAL:
-            {
-                resval = !MC_UTIL_CMPFLOAT(comparisonres, 0);
-            }
-            break;
-        case Instruction::OPCODE_GREATERTHAN:
-            {
-                resval = comparisonres > 0;
-            }
-            break;
-        case Instruction::OPCODE_GREATERTHANEQUAL:
-            {
-                resval = comparisonres > 0 || MC_UTIL_CMPFLOAT(comparisonres, 0);
-            }
-            break;
-        default:
-            {
-                MC_ASSERT(false);
-            }
-            break;
-    }
-    res = Value::makeBool(resval);
-    state->vmStackPush(res);
-    return true;
-}
-
-static MC_INLINE bool mc_vmdo_makearray(State* state)
-{
-    int i;
-    uint16_t count;
-    Value item;
-    Value arrayobj;
-    Value* items;
-    count = state->m_execstate.currframe->readUint16();
-    arrayobj = Value::makeArray(count);
-    if(arrayobj.isNull())
-    {
-        return false;
-    }
-    items = state->m_execstate.valuestack.data() + state->m_execstate.vsposition - count;
-    for(i = 0; i < count; i++)
-    {
-        item = items[i];
-        Value::arrayPush(arrayobj, item);
-    }
-    state->setStackPos(state->m_execstate.vsposition - count);
-    state->vmStackPush(arrayobj);
-    return true;
-}
-
-static MC_INLINE bool mc_vmdo_makemapstart(State* state)
-{
-    uint16_t count;
-    Value mapobj;
-    count = state->m_execstate.currframe->readUint16();
-    mapobj = Value::makeMap(count);
-    if(mapobj.isNull())
-    {
-        return false;
-    }
-    state->vmStackThisPush(mapobj);
-    return true;
-}
-
-static MC_INLINE bool mc_vmdo_makemapend(State* state)
-{
-    int i;
-    uint16_t kvpcount;
-    uint16_t itemscount;
-    const char* keytypename;
-    Value::Type keytype;
-    Value mapkey;
-    Value mapval;
-    Value mapobj;
-    Value* kvpairs;
-    kvpcount = state->m_execstate.currframe->readUint16();
-    itemscount = kvpcount * 2;
-    mapobj = state->vmStackThisPop();
-    kvpairs = state->m_execstate.valuestack.data() + state->m_execstate.vsposition - itemscount;
-    for(i = 0; i < itemscount; i += 2)
-    {
-        mapkey = kvpairs[i];
-        if(!Value::isHashable(mapkey))
-        {
-            keytype = mapkey.getType();
-            keytypename = Value::getTypename(keytype);
-            state->pushError(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), "key of type %s is not hashable", keytypename);
-            return false;
-        }
-        mapval = kvpairs[i + 1];
-        Value::mapSetValue(mapobj, mapkey, mapval);
-    }
-    state->setStackPos(state->m_execstate.vsposition - itemscount);
-    state->vmStackPush(mapobj);
-    return true;
-}
-
 #if (defined(__GNUC__) || defined(__CLANG__) || defined(__TINYC__)) && !defined(__CPPCHECK__)
     #define MC_CONF_USECOMPUTEDGOTOS 1
 #else
@@ -13186,7 +13051,6 @@ static MC_INLINE bool mc_vmdo_makemapend(State* state)
 
 #define mc_vmmac_break() \
     goto readnextop
-
 
 void mc_vmutil_getopinfo(Instruction::Code opc, const char** oname)
 {
@@ -13281,7 +13145,7 @@ bool State::execVM(const Value& function, GenericList<Value>* constants, bool ne
     }
     #endif
     /* naming is hard */
-    targetfunction = Value::asFunction(function);
+    targetfunction = function.asFunction();
     if(!VMFrame::init(&createdframe, function, m_execstate.vsposition - targetfunction->m_funcdata.valscriptfunc.numargs))
     {
         fprintf(stderr, "failed to init frames!\n");
@@ -13411,7 +13275,7 @@ bool State::execVM(const Value& function, GenericList<Value>* constants, bool ne
             mcvm_case(OPCODE_COMPARE):
             mcvm_case(OPCODE_COMPAREEQ):
                 {
-                    if(!mc_vmdo_docmpvalue(this, (Instruction::Code)opcode))
+                    if(!vmDoCompareValues((Instruction::Code)opcode))
                     {
                         goto onexecerror;
                     }
@@ -13422,7 +13286,7 @@ bool State::execVM(const Value& function, GenericList<Value>* constants, bool ne
             mcvm_case(OPCODE_GREATERTHAN):
             mcvm_case(OPCODE_GREATERTHANEQUAL):
                 {
-                    if(!mc_vmdo_docmpvalgreater(this, (Instruction::Code)opcode))
+                    if(!vmDoCompareValGreater((Instruction::Code)opcode))
                     {
                         goto onexecerror;
                     }
@@ -13438,9 +13302,9 @@ bool State::execVM(const Value& function, GenericList<Value>* constants, bool ne
                     Value operand;
                     operand = vmStackPop();
                     opertype = operand.getType();
-                    if(mc_util_likely(opertype == Value::VALTYP_NUMBER))
+                    if(mc_util_likely(opertype == Value::VT_NUMBER))
                     {
-                        val = Value::asNumber(operand);
+                        val = operand.asNumber();
                         res = Value::makeNumber(-val);
                         vmStackPush(res);
                     }
@@ -13470,9 +13334,9 @@ bool State::execVM(const Value& function, GenericList<Value>* constants, bool ne
                     Value operand;
                     operand = vmStackPop();
                     opertype = operand.getType();
-                    if(opertype == Value::VALTYP_NUMBER)
+                    if(opertype == Value::VT_NUMBER)
                     {
-                        val = Value::asNumber(operand);
+                        val = operand.asNumber();
                         res = Value::makeNumber(~val);
                         vmStackPush(res);
                     }
@@ -13500,12 +13364,12 @@ bool State::execVM(const Value& function, GenericList<Value>* constants, bool ne
                     Value::Type type;
                     operand = vmStackPop();
                     type = operand.getType();
-                    if(type == Value::VALTYP_BOOL)
+                    if(type == Value::VT_BOOL)
                     {
-                        res = Value::makeBool(!Value::asBool(operand));
+                        res = Value::makeBool(!operand.asBool());
                         vmStackPush(res);
                     }
-                    else if(type == Value::VALTYP_NULL)
+                    else if(type == Value::VT_NULL)
                     {
                         res = Value::makeBool(true);
                         vmStackPush(res);
@@ -13538,7 +13402,7 @@ bool State::execVM(const Value& function, GenericList<Value>* constants, bool ne
                     Value test;
                     pos = frame->readUint16();
                     test = vmStackPop();
-                    if(!Value::asBool(test))
+                    if(!test.asBool())
                     {
                         frame->m_bcposition = pos;
                     }
@@ -13550,7 +13414,7 @@ bool State::execVM(const Value& function, GenericList<Value>* constants, bool ne
                     Value test;
                     pos = frame->readUint16();
                     test = vmStackPop();
-                    if(Value::asBool(test))
+                    if(test.asBool())
                     {
                         frame->m_bcposition = pos;
                     }
@@ -13596,7 +13460,7 @@ bool State::execVM(const Value& function, GenericList<Value>* constants, bool ne
                 mc_vmmac_break();
             mcvm_case(OPCODE_ARRAY):
                 {
-                    if(!mc_vmdo_makearray(this))
+                    if(!vmDoMakeArray())
                     {
                         goto onexecerror;
                     }
@@ -13604,7 +13468,7 @@ bool State::execVM(const Value& function, GenericList<Value>* constants, bool ne
                 mc_vmmac_break();
             mcvm_case(OPCODE_MAPSTART):
                 {
-                    if(!mc_vmdo_makemapstart(this))
+                    if(!vmDoMakeMapStart())
                     {
                         goto onexecerror;
                     }
@@ -13612,7 +13476,7 @@ bool State::execVM(const Value& function, GenericList<Value>* constants, bool ne
                 mc_vmmac_break();
             mcvm_case(OPCODE_MAPEND):
                 {
-                    if(!mc_vmdo_makemapend(this))
+                    if(!vmDoMakeMapEnd())
                     {
                         goto onexecerror;
                     }
@@ -13670,7 +13534,7 @@ bool State::execVM(const Value& function, GenericList<Value>* constants, bool ne
                     val = m_execstate.valuestack.get(finalpos);
                     #if 0
                     {
-                        Printer* pr = m_stderrprinter;
+                        IOPrinter* pr = m_stderrprinter;
                         pr->format("GETLOCAL: finalpos=%ld val=<<<", finalpos);
                         Value::printValue(pr, val, true);
                         pr->format(">>>\n");
@@ -13698,7 +13562,7 @@ bool State::execVM(const Value& function, GenericList<Value>* constants, bool ne
 
             mcvm_case(OPCODE_FUNCTION):
                 {
-                    if(!mc_vmdo_makefunction(this, constants))
+                    if(!vmDoMakeFunction(constants))
                     {
                         goto onexecerror;
                     }
@@ -13709,7 +13573,7 @@ bool State::execVM(const Value& function, GenericList<Value>* constants, bool ne
                     uint16_t freeix;
                     Value val;
                     freeix = frame->readUint8();
-                    val = Value::functionGetFreeValAt(frame->m_function, freeix);
+                    val = frame->m_function.asFunction()->getFreeValAt(freeix);
                     vmStackPush(val);
                 }
                 mc_vmmac_break();
@@ -13719,7 +13583,7 @@ bool State::execVM(const Value& function, GenericList<Value>* constants, bool ne
                     Value val;
                     freeix = frame->readUint8();
                     val = vmStackPop();
-                    Value::functionSetFreeValAt(frame->m_function, freeix, val);
+                    frame->m_function.asFunction()->setFreeValAt(freeix, val);
                 }
                 mc_vmmac_break();
             mcvm_case(OPCODE_CURRENTFUNCTION):
@@ -13776,15 +13640,16 @@ bool State::execVM(const Value& function, GenericList<Value>* constants, bool ne
                     val = vmStackPop();
                     len = 0;
                     type = val.getType();
-                    if(type == Value::VALTYP_ARRAY)
+                    if(type == Value::VT_ARRAY)
                     {
-                        len = Value::arrayGetLength(val);
+                        len = val.asArray()->size();
                     }
-                    else if(type == Value::VALTYP_MAP)
+                    else if(type == Value::VT_MAP)
                     {
-                        len = Value::mapGetLength(val);
+                        auto m = val.asMap();
+                        len = m->count();
                     }
-                    else if(type == Value::VALTYP_STRING)
+                    else if(type == Value::VT_STRING)
                     {
                         len = val.stringGetLength();
                     }
@@ -13866,9 +13731,9 @@ bool State::execVM(const Value& function, GenericList<Value>* constants, bool ne
                 goto onexecfinish;
             }
         }
-        if(mc_state_gcshouldsweep() != 0)
+        if(vmGCShouldSweep() != 0)
         {
-            mc_vm_rungc(this, constants);
+            vmGCRunCollector(constants);
         }
     }
 
@@ -13885,14 +13750,10 @@ onexecfinish:
             vmTracebackPush(err->m_traceback);
         }
     }
-    mc_vm_rungc(this, constants);
+    vmGCRunCollector(constants);
     m_running = false;
     return m_errorlist.count() == 0;
 }
-
-
-
-
 
 Value mc_scriptfn_typeof(State* state, void* data, Value thisval, size_t argc, Value* args)
 {
@@ -13903,7 +13764,7 @@ Value mc_scriptfn_typeof(State* state, void* data, Value thisval, size_t argc, V
     (void)state;
     (void)thisval;
     (void)argc;
-    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ANY))
+    if(!mc_argcheck_check(state, true, argc, args, Value::VT_ANY))
     {
         return Value::makeNull();
     }
@@ -13915,66 +13776,60 @@ Value mc_scriptfn_typeof(State* state, void* data, Value thisval, size_t argc, V
 
 Value mc_scriptfn_arrayfirst(State* state, void* data, Value thisval, size_t argc, Value* args)
 {
-    Value arg;
     (void)state;
     (void)data;
     (void)thisval;
     (void)argc;
-    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ARRAY))
+    if(!mc_argcheck_check(state, true, argc, args, Value::VT_ARRAY))
     {
         return Value::makeNull();
     }
-    arg = args[0];
-    return Value::arrayGetValue(arg, 0);
+    auto arr = args[0].asArray();
+    return arr->get(0);
 }
 
 Value mc_scriptfn_arraylast(State* state, void* data, Value thisval, size_t argc, Value* args)
 {
     int len;
-    Value arg;
     (void)state;
     (void)argc;
     (void)thisval;
     (void)data;
-    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ARRAY))
+    if(!mc_argcheck_check(state, true, argc, args, Value::VT_ARRAY))
     {
         return Value::makeNull();
     }
-    arg = args[0];
-    len = Value::arrayGetLength(arg);
-    return Value::arrayGetValue(arg, len - 1);
+    auto arr = args[0].asArray();
+    len = arr->size();
+    return arr->get(len - 1);
 }
 
 Value mc_scriptfn_arrayrest(State* state, void* data, Value thisval, size_t argc, Value* args)
 {
     int i;
     int len;
-    Value arg;
     Value res;
     Value item;
     (void)state;
     (void)argc;
     (void)thisval;
     (void)data;
-    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ARRAY))
+    if(!mc_argcheck_check(state, true, argc, args, Value::VT_ARRAY))
     {
         return Value::makeNull();
     }
-    arg = args[0];
-    len = Value::arrayGetLength(arg);
+    auto arg = args[0].asArray();
+    len = arg->size();
     if(len == 0)
     {
         return Value::makeNull();
     }
     res = Value::makeArray();
-    if(res.isNull())
-    {
-        return Value::makeNull();
-    }
+    auto arr = res.asArray();
     for(i = 1; i < len; i++)
     {
-        item = Value::arrayGetValue(arg, i);
-        Value::arrayPush(res, item);
+        item = arr->get(i);
+        arr->push(item);
     }
     return res;
 }
@@ -13993,31 +13848,28 @@ Value mc_scriptfn_reverse(State* state, void* data, Value thisval, size_t argc, 
     (void)argc;
     (void)thisval;
     (void)data;
-    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ARRAY | Value::VALTYP_STRING))
+    if(!mc_argcheck_check(state, true, argc, args, Value::VT_ARRAY | Value::VT_STRING))
     {
         return Value::makeNull();
     }
     arg = args[0];
     type = arg.getType();
-    if(type == Value::VALTYP_ARRAY)
+    if(type == Value::VT_ARRAY)
     {
-        inplen = Value::arrayGetLength(arg);
+        inplen = arg.asArray()->size();
         res = Value::makeArray(inplen);
-        if(res.isNull())
-        {
-            return Value::makeNull();
-        }
+        auto arr = res.asArray();
         for(i = 0; i < inplen; i++)
         {
-            obj = Value::arrayGetValue(arg, i);
-            if(!Value::arraySetValue(res, inplen - i - 1, obj))
+            obj = arr->get(i);
+            if(!arr->set(inplen - i - 1, obj))
             {
                 return Value::makeNull();
             }
         }
         return res;
     }
-    if(type == Value::VALTYP_STRING)
+    if(type == Value::VT_STRING)
     {
         inpstr = arg.stringGetData();
         inplen = arg.stringGetLength();
@@ -14050,20 +13902,17 @@ Value mc_scriptfn_makearray(State* state, void* data, Value thisval, size_t argc
     (void)data;
     if(argc == 1)
     {
-        if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+        if(!mc_argcheck_check(state, true, argc, args, Value::VT_NUMBER))
         {
             return Value::makeNull();
         }
-        capacity = (int)Value::asNumber(args[0]);
+        capacity = (int)args[0].asNumber();
         res = Value::makeArray(capacity);
-        if(res.isNull())
-        {
-            return Value::makeNull();
-        }
+        auto arr = res.asArray();
         objnull = Value::makeNull();
         for(i = 0; i < capacity; i++)
         {
-            if(!Value::arrayPush(res, objnull))
+            if(!arr->push(objnull))
             {
                 return Value::makeNull();
             }
@@ -14072,26 +13921,23 @@ Value mc_scriptfn_makearray(State* state, void* data, Value thisval, size_t argc
     }
     if(argc == 2)
     {
-        if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER, Value::VALTYP_ANY))
+        if(!mc_argcheck_check(state, true, argc, args, Value::VT_NUMBER, Value::VT_ANY))
         {
             return Value::makeNull();
         }
-        capacity = (int)Value::asNumber(args[0]);
+        capacity = (int)args[0].asNumber();
         res = Value::makeArray(capacity);
-        if(res.isNull())
-        {
-            return Value::makeNull();
-        }
+        auto arr = res.asArray();
         for(i = 0; i < capacity; i++)
         {
-            if(!Value::arrayPush(res, args[1]))
+            if(!arr->push(args[1]))
             {
                 return Value::makeNull();
             }
         }
         return res;
     }
-    mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER);
+    mc_argcheck_check(state, true, argc, args, Value::VT_NUMBER);
     return Value::makeNull();
 }
 
@@ -14120,23 +13966,22 @@ Value mc_scriptfn_vec2add(State *state, void *data, Value thisval, size_t argc, 
     (void)thisval;
     (void)argc;
     (void)data;
-    if (!mc_argcheck_check(state, true, argc, args, Value::VALTYP_MAP, Value::VALTYP_MAP))
+    if (!mc_argcheck_check(state, true, argc, args, Value::VT_MAP, Value::VT_MAP))
     {
         return Value::makeNull();
     }
     keyx = Value::makeString("x");
     keyy = Value::makeString("y");
-    a_x = Value::asNumber(Value::mapGetValue(args[0], keyx));
-    a_y = Value::asNumber(Value::mapGetValue(args[0], keyy));
-    b_x = Value::asNumber(Value::mapGetValue(args[1], keyx));
-    b_y = Value::asNumber(Value::mapGetValue(args[1], keyy));
+    auto m1 = args[0].asMap();
+    auto m2 = args[1].asMap();
+    a_x = m1->getValue(keyx).asNumber();
+    a_y = m1->getValue(keyy).asNumber();
+    b_x = m2->getValue(keyx).asNumber();
+    b_y = m2->getValue(keyy).asNumber();
     res = Value::makeMap();
-    if (res.getType() == Value::VALTYP_NULL)
-    {
-        return res;
-    }
-    Value::mapSetValue(res, keyx, Value::makeNumber(a_x + b_x));
-    Value::mapSetValue(res, keyy, Value::makeNumber(a_y + b_y));
+    auto m = res.asMap();
+    m->setKV(keyx, Value::makeNumber(a_x + b_x));
+    m->setKV(keyy, Value::makeNumber(a_y + b_y));
     return res;
 }
 
@@ -14153,19 +13998,22 @@ Value mc_scriptfn_vec2sub(State *state, void *data, Value thisval, size_t argc, 
     (void)thisval;
     (void)argc;
     (void)data;
-    if (!mc_argcheck_check(state, true, argc, args, Value::VALTYP_MAP, Value::VALTYP_MAP))
+    if (!mc_argcheck_check(state, true, argc, args, Value::VT_MAP, Value::VT_MAP))
     {
         return Value::makeNull();
     }
     keyx = Value::makeString("x");
     keyy = Value::makeString("y");
-    a_x = Value::asNumber(Value::mapGetValue(args[0], keyx));
-    a_y = Value::asNumber(Value::mapGetValue(args[0], keyy));
-    b_x = Value::asNumber(Value::mapGetValue(args[1], keyx));
-    b_y = Value::asNumber(Value::mapGetValue(args[1], keyy));
+    auto m1 = args[0].asMap();
+    auto m2 = args[1].asMap();
+    a_x = m1->getValue(keyx).asNumber();
+    a_y = m1->getValue(keyy).asNumber();
+    b_x = m2->getValue(keyx).asNumber();
+    b_y = m2->getValue(keyy).asNumber();
     res = Value::makeMap();
-    Value::mapSetValue(res, keyx, Value::makeNumber(a_x - b_x));
-    Value::mapSetValue(res, keyy, Value::makeNumber(a_y - b_y));
+    auto m = res.asMap();
+    m->setKV(keyx, Value::makeNumber(a_x - b_x));
+    m->setKV(keyy, Value::makeNumber(a_y - b_y));
     return res;
 }
 
@@ -14177,19 +14025,18 @@ Value mc_scriptfn_testcheckargs(State* state, void *data, Value thisval, size_t 
     (void)argc;
     (void)data;
     if (!mc_argcheck_check(state, true, argc, args,
-                  Value::VALTYP_NUMBER,
-                  Value::VALTYP_ARRAY | Value::VALTYP_MAP,
-                  Value::VALTYP_MAP,
-                  Value::VALTYP_STRING,
-                  Value::VALTYP_NUMBER | Value::VALTYP_BOOL,
-                  Value::VALTYP_FUNCSCRIPT | Value::VALTYP_FUNCNATIVE,
-                  Value::VALTYP_ANY))
+                  Value::VT_NUMBER,
+                  Value::VT_ARRAY | Value::VT_MAP,
+                  Value::VT_MAP,
+                  Value::VT_STRING,
+                  Value::VT_NUMBER | Value::VT_BOOL,
+                  Value::VT_FUNCSCRIPT | Value::VT_FUNCNATIVE,
+                  Value::VT_ANY))
     {
         return Value::makeNull();
     }
     return Value::makeNumber(42);
 }
-
 
 Value mc_scriptfn_maketestdict(State *state, void *data, Value thisval, size_t argc, Value *args)
 {
@@ -14208,24 +14055,21 @@ Value mc_scriptfn_maketestdict(State *state, void *data, Value thisval, size_t a
         state->pushRuntimeError("invalid type passed to maketestdict, got %d, expected 1", argc);
         return Value::makeNull();
     }    
-    if (args[0].getType() != Value::VALTYP_NUMBER)
+    if (args[0].getType() != Value::VT_NUMBER)
     {
         tname = Value::getTypename(args[0].getType());
         state->pushRuntimeError("invalid type passed to maketestdict, got %s", tname);
         return Value::makeNull();
     }
-    numitems = Value::asNumber(args[0]);
+    numitems = args[0].asNumber();
     res = Value::makeMap();
-    if (res.getType() == Value::VALTYP_NULL)
-    {
-        return Value::makeNull();
-    }
+    auto m = res.asMap();
     for (i = 0; i < numitems; i++)
     {
         blen = sprintf(keybuf, "%d", i);
         mapkeystr = Value::makeString(keybuf, blen);
         mapvalstr = Value::makeNumber(i);
-        Value::mapSetValue(res, mapkeystr, mapvalstr);
+        m->setKV(mapkeystr, mapvalstr);
     }
     return res;
 }
@@ -14239,16 +14083,17 @@ Value mc_scriptfn_squarearray(State *state, void *data, Value thisval, size_t ar
     (void)data;
     (void)thisval;
     res = Value::makeArray(argc);
+    auto arr = res.asArray();
     for(i = 0; i < argc; i++)
     {
-        if(args[i].getType() != Value::VALTYP_NUMBER)
+        if(args[i].getType() != Value::VT_NUMBER)
         {
             state->pushRuntimeError("invalid type passed to squarearray");
             return Value::makeNull();
         }
-        num = Value::asNumber(args[i]);
+        num = args[i].asNumber();
         resitem = Value::makeNumber(num * num);
-        Value::arrayPush(res, resitem);
+        arr->push(resitem);
     }
     return res;
 }
@@ -14257,7 +14102,7 @@ Value mc_scriptfn_print(State* state, void* data, Value thisval, size_t argc, Va
 {
     size_t i;
     Value arg;
-    Printer* pr;
+    IOPrinter* pr;
     (void)data;
     (void)thisval;
     (void)thisval;
@@ -14287,23 +14132,23 @@ Value mc_scriptfn_tostring(State* state, void* data, Value thisval, size_t argc,
     const char* resstr;
     Value arg;
     Value res;
-    Printer pr;
+    IOPrinter pr;
     (void)state;
     (void)argc;
     (void)data;
     (void)thisval;
     arg = args[0];
-    Printer::initFromStack(&pr, nullptr, true);
+    IOPrinter::initFromStack(&pr, nullptr, true);
     Value::printValue(&pr, arg, false);
     if(pr.m_prfailed)
     {
-        Printer::releaseFromPtr(&pr, false);
+        IOPrinter::releaseFromPtr(&pr, false);
         return Value::makeNull();
     }
     resstr = pr.getString();
     reslen = pr.getLength();
     res = Value::makeString(resstr, reslen);
-    Printer::releaseFromPtr(&pr, false);
+    IOPrinter::releaseFromPtr(&pr, false);
     return res;
 }
 
@@ -14313,28 +14158,27 @@ Value mc_nsfnjson_stringify(State* state, void* data, Value thisval, size_t argc
     const char* resstr;
     Value arg;
     Value res;
-    Printer pr;
+    IOPrinter pr;
     (void)state;
     (void)argc;
     (void)data;
     (void)thisval;
     arg = args[0];
-    Printer::initFromStack(&pr, nullptr, true);
+    IOPrinter::initFromStack(&pr, nullptr, true);
     pr.m_prconfig.verbosefunc = false;
     pr.m_prconfig.quotstring = true;
     Value::printValue(&pr, arg, false);
     if(pr.m_prfailed)
     {
-        Printer::releaseFromPtr(&pr, false);
+        IOPrinter::releaseFromPtr(&pr, false);
         return Value::makeNull();
     }
     resstr = pr.getString();
     reslen = pr.getLength();
     res = Value::makeString(resstr, reslen);
-    Printer::releaseFromPtr(&pr, false);
+    IOPrinter::releaseFromPtr(&pr, false);
     return res;
 }
-
 
 Value mc_objfnnumber_chr(State* state, void* data, Value thisval, size_t argc, Value* args)
 {
@@ -14344,7 +14188,7 @@ Value mc_objfnnumber_chr(State* state, void* data, Value thisval, size_t argc, V
     (void)argc;
     (void)data;
     (void)args;
-    val = Value::asNumber(thisval);
+    val = thisval.asNumber();
     c = (char)val;
     return Value::makeString(&c, 1);
 }
@@ -14387,7 +14231,7 @@ Value mc_objfnstring_indexof(State* state, void* data, Value thisval, size_t arg
     startindex = 0;
     searchval = args[0];
     searchtype = searchval.getType();
-    if(searchtype == Value::VALTYP_NULL)
+    if(searchtype == Value::VT_NULL)
     {
         return Value::makeNumber(-1);
     }
@@ -14395,14 +14239,14 @@ Value mc_objfnstring_indexof(State* state, void* data, Value thisval, size_t arg
     searchlen = 0;
     inpstr = thisval.stringGetData();
     inplen = thisval.stringGetLength();
-    MC_ASSERT((searchtype == Value::VALTYP_NUMBER) || (searchtype == Value::VALTYP_STRING));
-    if(searchtype == Value::VALTYP_NUMBER)
+    MC_ASSERT((searchtype == Value::VT_NUMBER) || (searchtype == Value::VT_STRING));
+    if(searchtype == Value::VT_NUMBER)
     {
-        tmpch = Value::asNumber(searchval);
+        tmpch = searchval.asNumber();
         inpstr = &tmpch;
         inplen = 1;
     }
-    else if(searchtype == Value::VALTYP_STRING)
+    else if(searchtype == Value::VT_STRING)
     {
         searchstr = searchval.stringGetData();
         searchlen = searchval.stringGetLength();
@@ -14438,7 +14282,6 @@ Value mc_objfnstring_charcodefirst(State* state, void* data, Value thisval, size
     return Value::makeNumber(ch);
 }
 
-
 Value mc_objfnstring_charcodeat(State* state, void* data, Value thisval, size_t argc, Value* args)
 {
     char ch;
@@ -14454,7 +14297,7 @@ Value mc_objfnstring_charcodeat(State* state, void* data, Value thisval, size_t 
     sval = thisval;
     str = sval.stringGetData();
     len = sval.stringGetLength();
-    idx = Value::asNumber(args[0]);
+    idx = args[0].asNumber();
     if(idx >= (long)len)
     {
         return Value::makeNull();
@@ -14462,7 +14305,6 @@ Value mc_objfnstring_charcodeat(State* state, void* data, Value thisval, size_t 
     ch = str[idx];
     return Value::makeNumber(ch);
 }
-
 
 Value mc_objfnstring_charat(State* state, void* data, Value thisval, size_t argc, Value* args)
 {
@@ -14479,7 +14321,7 @@ Value mc_objfnstring_charat(State* state, void* data, Value thisval, size_t argc
     sval = thisval;
     str = sval.stringGetData();
     len = sval.stringGetLength();
-    idx = Value::asNumber(args[0]);
+    idx = args[0].asNumber();
     if(idx >= (long)len)
     {
         return Value::makeNull();
@@ -14555,13 +14397,13 @@ Value mc_objfnstring_left(State* state, void* data, Value thisval, size_t argc, 
     Value posval;
     (void)data;
     (void)state;
-    if(argc > 0 && args[0].getType() == Value::VALTYP_NUMBER)
+    if(argc > 0 && args[0].getType() == Value::VT_NUMBER)
     {
         inpval = thisval;
         posval = args[0];
         inpstr = inpval.stringGetData();
         inplen = inpval.stringGetLength();
-        startpos = Value::asNumber(posval);
+        startpos = posval.asNumber();
         /*
         * If the requested startpos is longer than the string then return a new string
         * of the full length.
@@ -14605,13 +14447,13 @@ Value mc_objfnstring_right(State* state, void* data, Value thisval, size_t argc,
     (void)state;
     (void)data;
     (void)thisval;
-    if(argc > 0 && args[1].getType() == Value::VALTYP_NUMBER)
+    if(argc > 0 && args[1].getType() == Value::VT_NUMBER)
     {
         inpval = thisval;
         idxval = args[0];
         inpstr = inpval.stringGetData();
         inplen = inpval.stringGetLength();
-        startpos = Value::asNumber(idxval);
+        startpos = idxval.asNumber();
         /*
         * If the requested startpos is longer than the string then return a new string
         * of the full length.
@@ -14664,7 +14506,7 @@ Value mc_objfnstring_replaceall(State* state, void* data, Value thisval, size_t 
     (void)state;
     (void)data;
     (void)argc;
-    if(args[0].getType() == Value::VALTYP_STRING && args[1].getType() == Value::VALTYP_STRING)
+    if(args[0].getType() == Value::VT_STRING && args[1].getType() == Value::VT_STRING)
     {
         inpval = thisval;
         searchval = args[0];
@@ -14737,7 +14579,7 @@ Value mc_objfnstring_replacefirst(State* state, void* data, Value thisval, size_
     (void)state;
     (void)data;
     (void)argc;
-    if(args[0].getType() == Value::VALTYP_STRING && args[1].getType() == Value::VALTYP_STRING)
+    if(args[0].getType() == Value::VT_STRING && args[1].getType() == Value::VT_STRING)
     {
         inpval = thisval;
         searchval = args[0];
@@ -14891,7 +14733,6 @@ Value mc_objfnstring_tolower(State* state, void* data, Value thisval, size_t arg
     return resstr;
 }
 
-
 Value mc_objfnstring_toupper(State* state, void* data, Value thisval, size_t argc, Value* args)
 {
     int inplen;
@@ -14959,11 +14800,9 @@ Value mc_objfnarray_length(State* state, void* data, Value thisval, size_t argc,
     (void)data;
     (void)argc;
     (void)args;
-    len = Value::arrayGetLength(thisval);
+    len = thisval.asArray()->size();
     return Value::makeNumber(len);
 }
-
-
 
 Value mc_objfnarray_map(State* state, void* data, Value thisval, size_t argc, Value* args)
 {
@@ -15012,18 +14851,19 @@ Value mc_objfnarray_push(State* state, void* data, Value thisval, size_t argc, V
     (void)thisval;
     (void)argc;
     (void)data;
-    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ARRAY, Value::VALTYP_ANY))
+    if(!mc_argcheck_check(state, true, argc, args, Value::VT_ARRAY, Value::VT_ANY))
     {
         return Value::makeNull();
     }
+    auto arr = thisval.asArray();
     for(i=0; i<argc; i++)
     {
-        if(!Value::arrayPush(thisval, args[i]))
+        if(!arr->push(args[i]))
         {
             return Value::makeNull();
         }
     }
-    len = Value::arrayGetLength(thisval);
+    len = arr->size();
     return Value::makeNumber(len);
 }
 
@@ -15034,7 +14874,7 @@ Value mc_objfnarray_pop(State* state, void* data, Value thisval, size_t argc, Va
     (void)thisval;
     (void)argc;
     (void)data;
-    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ARRAY, Value::VALTYP_ANY))
+    if(!mc_argcheck_check(state, true, argc, args, Value::VT_ARRAY, Value::VT_ANY))
     {
         return Value::makeNull();
     }
@@ -15051,29 +14891,28 @@ Value mc_objfnarray_join(State* state, void* data, Value thisval, size_t argc, V
     const char* str;
     Value rt;
     Value item;
-    Value array;
     Value joinee;
-    Printer pr;
+    IOPrinter pr;
     (void)state;
     (void)thisval;
     (void)argc;
     (void)data;
     havejoinee = false;
-    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ARRAY, Value::VALTYP_ANY))
+    if(!mc_argcheck_check(state, true, argc, args, Value::VT_ARRAY, Value::VT_ANY))
     {
         return Value::makeNull();
     }
-    array= thisval;
+    auto array = thisval.asArray();
     if(argc > 0)
     {
         havejoinee = true;
         joinee = args[0];
     }
-    alen = Value::arrayGetLength(array);
-    Printer::initFromStack(&pr, nullptr, true);
+    alen = array->size();
+    IOPrinter::initFromStack(&pr, nullptr, true);
     for(i=0; i<alen; i++)
     {
-        item = Value::arrayGetValue(array, i);
+        item = array->get(i);
         Value::printValue(&pr, item, false);
         if(havejoinee)
         {
@@ -15086,7 +14925,7 @@ Value mc_objfnarray_join(State* state, void* data, Value thisval, size_t argc, V
     str = pr.m_prdestbuf->data();
     slen = pr.m_prdestbuf->length();
     rt = Value::makeString(str, slen);
-    Printer::releaseFromPtr(&pr, false);
+    IOPrinter::releaseFromPtr(&pr, false);
     return rt;
 }
 
@@ -15097,7 +14936,8 @@ Value mc_objfnmap_length(State* state, void* data, Value thisval, size_t argc, V
     (void)data;
     (void)argc;
     (void)args;
-    len = Value::mapGetLength(thisval);
+    auto m = thisval.asMap();
+    len = m->count();
     return Value::makeNumber(len);
 }
 
@@ -15106,21 +14946,20 @@ Value mc_objfnmap_keys(State* state, void* data, Value thisval, size_t argc, Val
     int i;
     int len;
     Value strval;
-    Value arr;
-    Value map;
     (void)state;
     (void)data;
     (void)argc;
     (void)args;
-    map = thisval;
-    len = Value::mapGetLength(map);
-    arr = Value::makeArray();
+    auto map = thisval.asMap();
+    len = map->count();
+    auto aval = Value::makeArray();
+    auto arr = aval.asArray();
     for(i=0; i<len; i++)
     {
-        strval = Value::mapGetKeyAt(map, i);
-        Value::arrayPush(arr, strval);
+        strval = map->getKeyAt(i);
+        arr->push(strval);
     }
-    return arr;
+    return aval;
 }
 
 Value mc_objfnutil_istype(State* state, void* data, Value thisval, size_t argc, Value* args, Value::Type vt)
@@ -15143,112 +14982,112 @@ Value mc_objfnobject_iscallable(State* state, void* data, Value thisval, size_t 
 
 Value mc_objfnobject_isstring(State* state, void* data, Value thisval, size_t argc, Value* args)
 {
-    return mc_objfnutil_istype(state, data, thisval, argc, args, Value::VALTYP_STRING);
+    return mc_objfnutil_istype(state, data, thisval, argc, args, Value::VT_STRING);
 }
 
 Value mc_objfnobject_isarray(State* state, void* data, Value thisval, size_t argc, Value* args)
 {
-    return mc_objfnutil_istype(state, data, thisval, argc, args, Value::VALTYP_ARRAY);
+    return mc_objfnutil_istype(state, data, thisval, argc, args, Value::VT_ARRAY);
 }
 
 Value mc_objfnobject_ismap(State* state, void* data, Value thisval, size_t argc, Value* args)
 {
-    return mc_objfnutil_istype(state, data, thisval, argc, args, Value::VALTYP_MAP);
+    return mc_objfnutil_istype(state, data, thisval, argc, args, Value::VT_MAP);
 }
 
 Value mc_objfnobject_isnumber(State* state, void* data, Value thisval, size_t argc, Value* args)
 {
-    return mc_objfnutil_istype(state, data, thisval, argc, args, Value::VALTYP_NUMBER);
+    return mc_objfnutil_istype(state, data, thisval, argc, args, Value::VT_NUMBER);
 }
 
 Value mc_objfnobject_isbool(State* state, void* data, Value thisval, size_t argc, Value* args)
 {
-    return mc_objfnutil_istype(state, data, thisval, argc, args, Value::VALTYP_BOOL);
+    return mc_objfnutil_istype(state, data, thisval, argc, args, Value::VT_BOOL);
 }
 
 Value mc_objfnobject_isnull(State* state, void* data, Value thisval, size_t argc, Value* args)
 {
-    return mc_objfnutil_istype(state, data, thisval, argc, args, Value::VALTYP_NULL);
+    return mc_objfnutil_istype(state, data, thisval, argc, args, Value::VT_NULL);
 }
 
 Value mc_objfnobject_isfuncscript(State* state, void* data, Value thisval, size_t argc, Value* args)
 {
-    return mc_objfnutil_istype(state, data, thisval, argc, args, Value::VALTYP_FUNCSCRIPT);
+    return mc_objfnutil_istype(state, data, thisval, argc, args, Value::VT_FUNCSCRIPT);
 }
 
 Value mc_objfnobject_isexternal(State* state, void* data, Value thisval, size_t argc, Value* args)
 {
-    return mc_objfnutil_istype(state, data, thisval, argc, args, Value::VALTYP_EXTERNAL);
+    return mc_objfnutil_istype(state, data, thisval, argc, args, Value::VT_EXTERNAL);
 }
 
 Value mc_objfnobject_iserror(State* state, void* data, Value thisval, size_t argc, Value* args)
 {
-    return mc_objfnutil_istype(state, data, thisval, argc, args, Value::VALTYP_ERROR);
+    return mc_objfnutil_istype(state, data, thisval, argc, args, Value::VT_ERROR);
 }
 
 Value mc_objfnobject_isfuncnative(State* state, void* data, Value thisval, size_t argc, Value* args)
 {
-    return mc_objfnutil_istype(state, data, thisval, argc, args, Value::VALTYP_FUNCNATIVE);
+    return mc_objfnutil_istype(state, data, thisval, argc, args, Value::VT_FUNCNATIVE);
 }
 
-void mc_state_makestdclasses(State* state)
+void State::makeDefaultClasses()
 {
     {
-        state->m_stdobjectobject = Memory::make<ObjClass>("Object", nullptr);
-        state->m_stdobjectobject->addMember("isString", mc_objfnobject_isstring);
-        state->m_stdobjectobject->addMember("isNumber", mc_objfnobject_isnumber);
-        state->m_stdobjectobject->addMember("isArray", mc_objfnobject_isarray);
-        state->m_stdobjectobject->addMember("isMap", mc_objfnobject_ismap);
-        state->m_stdobjectobject->addMember("isFuncNative", mc_objfnobject_isfuncnative);
-        state->m_stdobjectobject->addMember("isFuncScript", mc_objfnobject_isfuncscript);
-        state->m_stdobjectobject->addMember("isExternal", mc_objfnobject_isexternal);
-        state->m_stdobjectobject->addMember("isError", mc_objfnobject_iserror);
-        state->m_stdobjectobject->addMember("isNull", mc_objfnobject_isnull);
-        state->m_stdobjectobject->addMember("isBool", mc_objfnobject_isbool);
-        state->m_stdobjectobject->addMember("isCallable", mc_objfnobject_iscallable);
+        m_stdobjectobject = Memory::make<ObjClass>("Object", nullptr);
+        m_stdobjectobject->addMember("isString", mc_objfnobject_isstring);
+        m_stdobjectobject->addMember("isNumber", mc_objfnobject_isnumber);
+        m_stdobjectobject->addMember("isArray", mc_objfnobject_isarray);
+        m_stdobjectobject->addMember("isMap", mc_objfnobject_ismap);
+        m_stdobjectobject->addMember("isFuncNative", mc_objfnobject_isfuncnative);
+        m_stdobjectobject->addMember("isFuncScript", mc_objfnobject_isfuncscript);
+        m_stdobjectobject->addMember("isExternal", mc_objfnobject_isexternal);
+        m_stdobjectobject->addMember("isError", mc_objfnobject_iserror);
+        m_stdobjectobject->addMember("isNull", mc_objfnobject_isnull);
+        m_stdobjectobject->addMember("isBool", mc_objfnobject_isbool);
+        m_stdobjectobject->addMember("isCallable", mc_objfnobject_iscallable);
 
     }
     {
-        state->m_stdobjectnumber = Memory::make<ObjClass>("Number", state->m_stdobjectobject);
-        state->m_stdobjectnumber->addMember("chr", mc_objfnnumber_chr);
+        m_stdobjectnumber = Memory::make<ObjClass>("Number", m_stdobjectobject);
+        m_stdobjectnumber->addMember("chr", mc_objfnnumber_chr);
         
     }
     {
-        state->m_stdobjectstring = Memory::make<ObjClass>("String", state->m_stdobjectobject);
-        state->m_stdobjectstring->addPseudo("length", mc_objfnstring_length);
-        state->m_stdobjectstring->addMember("getself", mc_objfnstring_getself);
-        state->m_stdobjectstring->addMember("toNumber", mc_objfnstring_tonumber);
-        state->m_stdobjectstring->addMember("ord", mc_objfnstring_charcodefirst);
-        state->m_stdobjectstring->addMember("charCodeAt", mc_objfnstring_charcodeat);
-        state->m_stdobjectstring->addMember("charAt", mc_objfnstring_charat);
-        state->m_stdobjectstring->addMember("indexOf", mc_objfnstring_indexof);
-        state->m_stdobjectstring->addMember("left", mc_objfnstring_left);
-        state->m_stdobjectstring->addMember("right", mc_objfnstring_right);
-        state->m_stdobjectstring->addMember("replace", mc_objfnstring_replaceall);
-        state->m_stdobjectstring->addMember("replacefirst", mc_objfnstring_replacefirst);
-        state->m_stdobjectstring->addMember("match", mc_objfnstring_matchglobcase);
-        state->m_stdobjectstring->addMember("imatch", mc_objfnstring_matchglobicase);
-        state->m_stdobjectstring->addMember("trim", mc_objfnstring_trim);
-        state->m_stdobjectstring->addMember("toLower", mc_objfnstring_tolower);
-        state->m_stdobjectstring->addMember("toUpper", mc_objfnstring_toupper);
-        state->m_stdobjectstring->addMember("split", mc_objfnstring_split);
+        m_stdobjectstring = Memory::make<ObjClass>("String", m_stdobjectobject);
+        m_stdobjectstring->addPseudo("length", mc_objfnstring_length);
+        m_stdobjectstring->addMember("getself", mc_objfnstring_getself);
+        m_stdobjectstring->addMember("toNumber", mc_objfnstring_tonumber);
+        m_stdobjectstring->addMember("ord", mc_objfnstring_charcodefirst);
+        m_stdobjectstring->addMember("charCodeAt", mc_objfnstring_charcodeat);
+        m_stdobjectstring->addMember("charAt", mc_objfnstring_charat);
+        m_stdobjectstring->addMember("indexOf", mc_objfnstring_indexof);
+        m_stdobjectstring->addMember("left", mc_objfnstring_left);
+        m_stdobjectstring->addMember("right", mc_objfnstring_right);
+        m_stdobjectstring->addMember("replace", mc_objfnstring_replaceall);
+        m_stdobjectstring->addMember("replacefirst", mc_objfnstring_replacefirst);
+        m_stdobjectstring->addMember("match", mc_objfnstring_matchglobcase);
+        m_stdobjectstring->addMember("imatch", mc_objfnstring_matchglobicase);
+        m_stdobjectstring->addMember("trim", mc_objfnstring_trim);
+        m_stdobjectstring->addMember("toLower", mc_objfnstring_tolower);
+        m_stdobjectstring->addMember("toUpper", mc_objfnstring_toupper);
+        m_stdobjectstring->addMember("split", mc_objfnstring_split);
 
     }
     {
-        state->m_stdobjectarray = Memory::make<ObjClass>("Array", state->m_stdobjectobject);
-        state->m_stdobjectarray->addPseudo("length", mc_objfnarray_length);
-        state->m_stdobjectarray->addMember("push", mc_objfnarray_push);
-        state->m_stdobjectarray->addMember("pop", mc_objfnarray_pop);
-        state->m_stdobjectarray->addMember("join", mc_objfnarray_join);
-        state->m_stdobjectarray->addMember("map", mc_objfnarray_map);
+        m_stdobjectarray = Memory::make<ObjClass>("Array", m_stdobjectobject);
+        m_stdobjectarray->addPseudo("length", mc_objfnarray_length);
+        m_stdobjectarray->addMember("push", mc_objfnarray_push);
+        m_stdobjectarray->addMember("pop", mc_objfnarray_pop);
+        m_stdobjectarray->addMember("join", mc_objfnarray_join);
+        m_stdobjectarray->addMember("map", mc_objfnarray_map);
     }
     {
-        state->m_stdobjectmap = Memory::make<ObjClass>("Map", state->m_stdobjectobject);
-        state->m_stdobjectmap->addPseudo("length", mc_objfnmap_length);
-        state->m_stdobjectmap->addMember("keys", mc_objfnmap_keys);
+        m_stdobjectmap = Memory::make<ObjClass>("Map", m_stdobjectobject);
+        m_stdobjectmap->addPseudo("length", mc_objfnmap_length);
+        m_stdobjectmap->addMember("keys", mc_objfnmap_keys);
     }
     {
-        state->m_stdobjectfunction = Memory::make<ObjClass>("Function", state->m_stdobjectobject);
+        m_stdobjectfunction = Memory::make<ObjClass>("Function", m_stdobjectobject);
     }
 }
 
@@ -15260,11 +15099,11 @@ Value mc_scriptfn_isnan(State* state, void* data, Value thisval, size_t argc, Va
     (void)argc;
     (void)data;
     (void)thisval;
-    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+    if(!mc_argcheck_check(state, true, argc, args, Value::VT_NUMBER))
     {
         return Value::makeNull();
     }
-    val = Value::asNumber(args[0]);
+    val = args[0].asNumber();
     b = false;
     if(val != val)
     {
@@ -15290,10 +15129,10 @@ Value mc_scriptfn_range(State* state, void* data, Value thisval, size_t argc, Va
     for(ai = 0; ai < argc; ai++)
     {
         type = args[ai].getType();
-        if(type != Value::VALTYP_NUMBER)
+        if(type != Value::VT_NUMBER)
         {
             typestr = Value::getTypename(type);
-            expectedstr = Value::getTypename(Value::VALTYP_NUMBER);
+            expectedstr = Value::getTypename(Value::VT_NUMBER);
             state->pushError(Error::ERRTYP_RUNTIME, SourceLocation::Invalid(), "invalid argument %d passed to range, got %s instead of %s", ai, typestr, expectedstr);
             return Value::makeNull();
         }
@@ -15303,18 +15142,18 @@ Value mc_scriptfn_range(State* state, void* data, Value thisval, size_t argc, Va
     step = 1;
     if(argc == 1)
     {
-        end = (int)Value::asNumber(args[0]);
+        end = (int)args[0].asNumber();
     }
     else if(argc == 2)
     {
-        start = (int)Value::asNumber(args[0]);
-        end = (int)Value::asNumber(args[1]);
+        start = (int)args[0].asNumber();
+        end = (int)args[1].asNumber();
     }
     else if(argc == 3)
     {
-        start = (int)Value::asNumber(args[0]);
-        end = (int)Value::asNumber(args[1]);
-        step = (int)Value::asNumber(args[2]);
+        start = (int)args[0].asNumber();
+        end = (int)args[1].asNumber();
+        step = (int)args[2].asNumber();
     }
     else
     {
@@ -15327,6 +15166,7 @@ Value mc_scriptfn_range(State* state, void* data, Value thisval, size_t argc, Va
         return Value::makeNull();
     }
     res = Value::makeArray();
+    auto arr = res.asArray();
     if(res.isNull())
     {
         return Value::makeNull();
@@ -15334,7 +15174,7 @@ Value mc_scriptfn_range(State* state, void* data, Value thisval, size_t argc, Va
     for(i = start; i < end; i += step)
     {
         item = Value::makeNumber(i);
-        if(!Value::arrayPush(res, item))
+        if(!arr->push(item))
         {
             return Value::makeNull();
         }
@@ -15353,21 +15193,19 @@ Value mc_scriptfn_keys(State* state, void* data, Value thisval, size_t argc, Val
     (void)argc;
     (void)data;
     (void)thisval;
-    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_MAP))
+    if(!mc_argcheck_check(state, true, argc, args, Value::VT_MAP))
     {
         return Value::makeNull();
     }
     arg = args[0];
     res = Value::makeArray();
-    if(res.isNull())
-    {
-        return Value::makeNull();
-    }
-    len = Value::mapGetLength(arg);
+    auto arr = res.asArray();
+    auto m = arg.asMap();
+    len = m->count();
     for(i = 0; i < len; i++)
     {
-        mapkey = Value::mapGetKeyAt(arg, i);
-        if(!Value::arrayPush(res, mapkey))
+        mapkey = m->getKeyAt(i);
+        if(!arr->push(mapkey))
         {
             return Value::makeNull();
         }
@@ -15386,21 +15224,19 @@ Value mc_scriptfn_values(State* state, void* data, Value thisval, size_t argc, V
     (void)argc;
     (void)data;
     (void)thisval;
-    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_MAP))
+    if(!mc_argcheck_check(state, true, argc, args, Value::VT_MAP))
     {
         return Value::makeNull();
     }
     arg = args[0];
     res = Value::makeArray();
-    if(res.isNull())
-    {
-        return Value::makeNull();
-    }
-    len = Value::mapGetLength(arg);
+    auto arr = res.asArray();
+    auto m = arg.asMap();
+    len = m->count();
     for(i = 0; i < len; i++)
     {
-        mapval = Value::mapGetValueAt(arg, i);
-        if(!Value::arrayPush(res, mapval))
+        mapval = m->getValueAt(i);
+        if(!arr->push(mapval))
         {
             return Value::makeNull();
         }
@@ -15414,7 +15250,7 @@ Value mc_scriptfn_copy(State* state, void* data, Value thisval, size_t argc, Val
     (void)argc;
     (void)data;
     (void)thisval;
-    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ANY))
+    if(!mc_argcheck_check(state, true, argc, args, Value::VT_ANY))
     {
         return Value::makeNull();
     }
@@ -15427,7 +15263,7 @@ Value mc_scriptfn_copydeep(State* state, void* data, Value thisval, size_t argc,
     (void)state;
     (void)argc;
     (void)thisval;
-    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ANY))
+    if(!mc_argcheck_check(state, true, argc, args, Value::VT_ANY))
     {
         return Value::makeNull();
     }
@@ -15437,21 +15273,22 @@ Value mc_scriptfn_copydeep(State* state, void* data, Value thisval, size_t argc,
 Value mc_scriptfn_remove(State* state, void* data, Value thisval, size_t argc, Value* args)
 {
     bool res;
-    int i;
     int ix;
+    size_t i;
     Value obj;
     (void)data;
     (void)state;
     (void)argc;
     (void)thisval;
-    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ARRAY, Value::VALTYP_ANY))
+    if(!mc_argcheck_check(state, true, argc, args, Value::VT_ARRAY, Value::VT_ANY))
     {
         return Value::makeNull();
     }
     ix = -1;
-    for(i = 0; i < Value::arrayGetLength(args[0]); i++)
+    auto arr = args[0].asArray();;
+    for(i = 0; i < arr->size(); i++)
     {
-        obj = Value::arrayGetValue(args[0], i);
+        obj = arr->get(i);
         if(Value::equalsTo(obj, args[1]))
         {
             ix = i;
@@ -15475,15 +15312,15 @@ Value mc_scriptfn_removeat(State* state, void* data, Value thisval, size_t argc,
     (void)state;
     (void)argc;
     (void)thisval;
-    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_ARRAY, Value::VALTYP_NUMBER))
+    if(!mc_argcheck_check(state, true, argc, args, Value::VT_ARRAY, Value::VT_NUMBER))
     {
         return Value::makeNull();
     }
     type= args[0].getType();
-    ix = (int)Value::asNumber(args[1]);
+    ix = (int)args[1].asNumber();
     switch(type)
     {
-        case Value::VALTYP_ARRAY:
+        case Value::VT_ARRAY:
             {
                 res = Value::arrayRemoveAt(args[0], ix);
                 return Value::makeBool(res);
@@ -15502,7 +15339,7 @@ Value mc_scriptfn_error(State* state, void* data, Value thisval, size_t argc, Va
     (void)state;
     (void)data;
     (void)thisval;
-    if(argc == 1 && args[0].getType() == Value::VALTYP_STRING)
+    if(argc == 1 && args[0].getType() == Value::VT_STRING)
     {
         return Value::makeError(args[0].stringGetData());
     }
@@ -15513,7 +15350,7 @@ Value mc_scriptfn_crash(State* state, void* data, Value thisval, size_t argc, Va
 {
     (void)data;
     (void)thisval;
-    if(argc == 1 && args[0].getType() == Value::VALTYP_STRING)
+    if(argc == 1 && args[0].getType() == Value::VT_STRING)
     {
         state->m_errorlist.pushMessage(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), args[0].stringGetData());
     }
@@ -15530,11 +15367,11 @@ Value mc_scriptfn_assert(State* state, void* data, Value thisval, size_t argc, V
     (void)state;
     (void)argc;
     (void)thisval;
-    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_BOOL))
+    if(!mc_argcheck_check(state, true, argc, args, Value::VT_BOOL))
     {
         return Value::makeNull();
     }
-    if(!Value::asBool(args[0]))
+    if(!args[0].asBool())
     {
         state->m_errorlist.pushFormat(Error::ERRTYP_RUNTIME, SourceLocation::Invalid(), "assertion failed");
         return Value::makeNull();
@@ -15549,11 +15386,11 @@ Value mc_scriptfn_randseed(State* state, void* data, Value thisval, size_t argc,
     (void)state;
     (void)argc;
     (void)thisval;
-    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+    if(!mc_argcheck_check(state, true, argc, args, Value::VT_NUMBER))
     {
         return Value::makeNull();
     }
-    seed = (int)Value::asNumber(args[0]);
+    seed = (int)args[0].asNumber();
     srand(seed);
     return Value::makeBool(true);
 }
@@ -15575,12 +15412,12 @@ Value mc_scriptfn_random(State* state, void* data, Value thisval, size_t argc, V
     }
     if(argc == 2)
     {
-        if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER, Value::VALTYP_NUMBER))
+        if(!mc_argcheck_check(state, true, argc, args, Value::VT_NUMBER, Value::VT_NUMBER))
         {
             return Value::makeNull();
         }
-        min = Value::asNumber(args[0]);
-        max = Value::asNumber(args[1]);
+        min = args[0].asNumber();
+        max = args[1].asNumber();
         if(min >= max)
         {
             state->m_errorlist.pushFormat(Error::ERRTYP_RUNTIME, SourceLocation::Invalid(), "max is bigger than min");
@@ -15605,8 +15442,8 @@ Value mc_scriptutil_slicearray(State* state, void* data, Value thisval, size_t a
     (void)data;
     (void)argc;
     (void)thisval;
-    index = (int)Value::asNumber(args[1]);
-    len = Value::arrayGetLength(args[0]);
+    index = (int)args[1].asNumber();
+    len = args[0].asArray()->size();
     if(index < 0)
     {
         index = len + index;
@@ -15616,14 +15453,15 @@ Value mc_scriptutil_slicearray(State* state, void* data, Value thisval, size_t a
         }
     }
     res = Value::makeArray(len - index);
+    auto arr = res.asArray();
     if(res.isNull())
     {
         return Value::makeNull();
     }
     for(i = index; i < len; i++)
     {
-        item = Value::arrayGetValue(args[0], i);
-        if(!Value::arrayPush(res, item))
+        item = arr->get(i);
+        if(!arr->push(item))
         {
             return Value::makeNull();
         }
@@ -15643,7 +15481,7 @@ Value mc_scriptutil_slicestring(State* state, void* data, Value thisval, size_t 
     (void)data;
     (void)argc;
     (void)thisval;
-    index = (int)Value::asNumber(args[1]);
+    index = (int)args[1].asNumber();
     str = args[0].stringGetData();
     len = args[0].stringGetLength();
     if(index < 0)
@@ -15679,16 +15517,16 @@ Value mc_scriptfn_slice(State* state, void* data, Value thisval, size_t argc, Va
     (void)state;
     (void)argc;
     (void)thisval;
-    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_STRING | Value::VALTYP_ARRAY, Value::VALTYP_NUMBER))
+    if(!mc_argcheck_check(state, true, argc, args, Value::VT_STRING | Value::VT_ARRAY, Value::VT_NUMBER))
     {
         return Value::makeNull();
     }
     argtype = args[0].getType();
-    if(argtype == Value::VALTYP_ARRAY)
+    if(argtype == Value::VT_ARRAY)
     {
         return mc_scriptutil_slicearray(state, data, thisval, argc, args);
     }
-    if(argtype == Value::VALTYP_STRING)
+    if(argtype == Value::VT_STRING)
     {
         return mc_scriptutil_slicestring(state, data, thisval, argc, args);
     }
@@ -15705,11 +15543,11 @@ Value mc_nsfnmath_sqrt(State* state, void* data, Value thisval, size_t argc, Val
     (void)state;
     (void)argc;
     (void)thisval;
-    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+    if(!mc_argcheck_check(state, true, argc, args, Value::VT_NUMBER))
     {
         return Value::makeNull();
     }
-    arg = Value::asNumber(args[0]);
+    arg = args[0].asNumber();
     res = sqrt(arg);
     return Value::makeNumber(res);
 }
@@ -15723,12 +15561,12 @@ Value mc_nsfnmath_pow(State* state, void* data, Value thisval, size_t argc, Valu
     (void)state;
     (void)argc;
     (void)thisval;
-    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER, Value::VALTYP_NUMBER))
+    if(!mc_argcheck_check(state, true, argc, args, Value::VT_NUMBER, Value::VT_NUMBER))
     {
         return Value::makeNull();
     }
-    arg1 = Value::asNumber(args[0]);
-    arg2 = Value::asNumber(args[1]);
+    arg1 = args[0].asNumber();
+    arg2 = args[1].asNumber();
     res = pow(arg1, arg2);
     return Value::makeNumber(res);
 }
@@ -15741,11 +15579,11 @@ Value mc_nsfnmath_sin(State* state, void* data, Value thisval, size_t argc, Valu
     (void)state;
     (void)argc;
     (void)thisval;
-    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+    if(!mc_argcheck_check(state, true, argc, args, Value::VT_NUMBER))
     {
         return Value::makeNull();
     }
-    arg = Value::asNumber(args[0]);
+    arg = args[0].asNumber();
     res = sin(arg);
     return Value::makeNumber(res);
 }
@@ -15758,11 +15596,11 @@ Value mc_nsfnmath_cos(State* state, void* data, Value thisval, size_t argc, Valu
     (void)state;
     (void)argc;
     (void)thisval;
-    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+    if(!mc_argcheck_check(state, true, argc, args, Value::VT_NUMBER))
     {
         return Value::makeNull();
     }
-    arg = Value::asNumber(args[0]);
+    arg = args[0].asNumber();
     res = cos(arg);
     return Value::makeNumber(res);
 }
@@ -15775,11 +15613,11 @@ Value mc_nsfnmath_tan(State* state, void* data, Value thisval, size_t argc, Valu
     (void)state;
     (void)argc;
     (void)thisval;
-    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+    if(!mc_argcheck_check(state, true, argc, args, Value::VT_NUMBER))
     {
         return Value::makeNull();
     }
-    arg = Value::asNumber(args[0]);
+    arg = args[0].asNumber();
     res = tan(arg);
     return Value::makeNumber(res);
 }
@@ -15792,11 +15630,11 @@ Value mc_nsfnmath_log(State* state, void* data, Value thisval, size_t argc, Valu
     (void)state;
     (void)argc;
     (void)thisval;
-    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+    if(!mc_argcheck_check(state, true, argc, args, Value::VT_NUMBER))
     {
         return Value::makeNull();
     }
-    arg = Value::asNumber(args[0]);
+    arg = args[0].asNumber();
     res = log(arg);
     return Value::makeNumber(res);
 }
@@ -15809,11 +15647,11 @@ Value mc_nsfnmath_ceil(State* state, void* data, Value thisval, size_t argc, Val
     (void)state;
     (void)argc;
     (void)thisval;
-    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+    if(!mc_argcheck_check(state, true, argc, args, Value::VT_NUMBER))
     {
         return Value::makeNull();
     }
-    arg = Value::asNumber(args[0]);
+    arg = args[0].asNumber();
     res = ceil(arg);
     return Value::makeNumber(res);
 }
@@ -15826,11 +15664,11 @@ Value mc_nsfnmath_floor(State* state, void* data, Value thisval, size_t argc, Va
     (void)state;
     (void)argc;
     (void)thisval;
-    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+    if(!mc_argcheck_check(state, true, argc, args, Value::VT_NUMBER))
     {
         return Value::makeNull();
     }
-    arg = Value::asNumber(args[0]);
+    arg = args[0].asNumber();
     res = floor(arg);
     return Value::makeNumber(res);
 }
@@ -15843,11 +15681,11 @@ Value mc_nsfnmath_abs(State* state, void* data, Value thisval, size_t argc, Valu
     (void)state;
     (void)argc;
     (void)thisval;
-    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER))
+    if(!mc_argcheck_check(state, true, argc, args, Value::VT_NUMBER))
     {
         return Value::makeNull();
     }
-    arg = Value::asNumber(args[0]);
+    arg = args[0].asNumber();
     res = fabs(arg);
     return Value::makeNumber(res);
 }
@@ -15861,12 +15699,12 @@ Value mc_nsfnmath_hypot(State* state, void* data, Value thisval, size_t argc, Va
     (void)state;
     (void)argc;
     (void)thisval;
-    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_NUMBER, Value::VALTYP_NUMBER))
+    if(!mc_argcheck_check(state, true, argc, args, Value::VT_NUMBER, Value::VT_NUMBER))
     {
         return Value::makeNull();
     }
-    arg1 = Value::asNumber(args[0]);
-    arg2 = Value::asNumber(args[1]);
+    arg1 = args[0].asNumber();
+    arg2 = args[1].asNumber();
     res = hypot(arg1, arg2);
     return Value::makeNumber(res);
 }
@@ -15881,7 +15719,7 @@ Value mc_nsfnfile_writefile(State* state, void* data, Value thisval, size_t argc
     (void)argc;
     (void)data;
     (void)thisval;
-    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_STRING, Value::VALTYP_STRING))
+    if(!mc_argcheck_check(state, true, argc, args, Value::VT_STRING, Value::VT_STRING))
     {
         return Value::makeNull();
     }
@@ -15902,7 +15740,7 @@ Value mc_nsfnfile_readfile(State* state, void* data, Value thisval, size_t argc,
     (void)argc;
     (void)data;
     (void)thisval;
-    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_STRING))
+    if(!mc_argcheck_check(state, true, argc, args, Value::VT_STRING))
     {
         return Value::makeNull();
     }
@@ -15946,7 +15784,7 @@ Value mc_nsfnfile_isdirectory(State* state, void* data, Value thisval, size_t ar
     (void)argc;
     (void)data;
     (void)thisval;
-    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_STRING))
+    if(!mc_argcheck_check(state, true, argc, args, Value::VT_STRING))
     {
         return Value::makeNull();
     }
@@ -15961,7 +15799,7 @@ Value mc_nsfnfile_isfile(State* state, void* data, Value thisval, size_t argc, V
     (void)argc;
     (void)data;
     (void)thisval;
-    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_STRING))
+    if(!mc_argcheck_check(state, true, argc, args, Value::VT_STRING))
     {
         return Value::makeNull();
     }
@@ -15980,7 +15818,7 @@ Value mc_nsfnfile_stat(State* state, void* data, Value thisval, size_t argc, Val
     (void)data;
     (void)thisval;
     char fpbuffer[1024];
-    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_STRING))
+    if(!mc_argcheck_check(state, true, argc, args, Value::VT_STRING))
     {
         return Value::makeNull();
     }
@@ -15988,15 +15826,16 @@ Value mc_nsfnfile_stat(State* state, void* data, Value thisval, size_t argc, Val
     if(stat(path, &st) == 0)
     {
         resmap = Value::makeMap();
+        auto m = resmap.asMap();
         fullpath = osfn_realpath(path, fpbuffer);
-        Value::mapSetValString(resmap, "dev", Value::makeNumber(st.st_dev));
-        Value::mapSetValString(resmap, "ino", Value::makeNumber(st.st_ino));
-        Value::mapSetValString(resmap, "mode", Value::makeNumber(st.st_mode));
-        Value::mapSetValString(resmap, "nlink", Value::makeNumber(st.st_nlink));
-        Value::mapSetValString(resmap, "uid", Value::makeNumber(st.st_uid));
-        Value::mapSetValString(resmap, "gid", Value::makeNumber(st.st_gid));
-        Value::mapSetValString(resmap, "size", Value::makeNumber(st.st_size));
-        Value::mapSetValString(resmap, "path", Value::makeString(fullpath));
+        m->setValString("dev", Value::makeNumber(st.st_dev));
+        m->setValString("ino", Value::makeNumber(st.st_ino));
+        m->setValString("mode", Value::makeNumber(st.st_mode));
+        m->setValString("nlink", Value::makeNumber(st.st_nlink));
+        m->setValString("uid", Value::makeNumber(st.st_uid));
+        m->setValString("gid", Value::makeNumber(st.st_gid));
+        m->setValString("size", Value::makeNumber(st.st_size));
+        m->setValString("path", Value::makeString(fullpath));
         return resmap;
     }
     return Value::makeNull();
@@ -16019,7 +15858,7 @@ Value mc_nsfndir_readdir(State* state, void* data, Value thisval, size_t argc, V
     (void)data;
     (void)thisval;
     joinpaths = false;
-    if(!mc_argcheck_check(state, true, argc, args, Value::VALTYP_STRING, Value::VALTYP_BOOL))
+    if(!mc_argcheck_check(state, true, argc, args, Value::VT_STRING, Value::VT_BOOL))
     {
         return Value::makeNull();
     }
@@ -16027,11 +15866,12 @@ Value mc_nsfndir_readdir(State* state, void* data, Value thisval, size_t argc, V
     path = vpath.stringGetData();
     if(argc > 1)
     {
-        joinpaths = Value::asBool(args[1]);
+        joinpaths = args[1].asBool();
     }
     if(reader.openDir(path))
     {
         res = Value::makeArray();
+        auto arr = res.asArray();
         while(reader.readItem(&ent))
         {
             isdot = ((strcmp(ent.name, ".") == 0) || (strcmp(ent.name, "..") == 0));
@@ -16049,7 +15889,7 @@ Value mc_nsfndir_readdir(State* state, void* data, Value thisval, size_t argc, V
                 vfullpath.stringAppendValue(vjustname);
                 vrespath = vfullpath;
             }
-            Value::arrayPush(res, vrespath);
+            arr->push(vrespath);
         }
         reader.closeDir();
         return res;
@@ -16122,7 +15962,8 @@ void mc_cli_installjsondummy(State* state)
 {
     Value jmap;
     jmap = Value::makeMap();
-    Value::mapSetStrFunc(jmap, "stringify", mc_nsfnjson_stringify);
+    auto m = jmap.asMap();
+    m->setStrFunc("stringify", mc_nsfnjson_stringify);
     state->setGlobalValue("JSON", jmap);
 }
 
@@ -16130,7 +15971,8 @@ void mc_cli_installjsconsole(State* state)
 {
     Value jmap;
     jmap = Value::makeMap();
-    Value::mapSetStrFunc(jmap, "log", mc_scriptfn_println);
+    auto m = jmap.asMap();
+    m->setStrFunc("log", mc_scriptfn_println);
     state->setGlobalValue("console", jmap);
 }
 
@@ -16138,16 +15980,17 @@ void mc_cli_installmath(State* state)
 {
     Value jmap;
     jmap = Value::makeMap();
-    Value::mapSetStrFunc(jmap, "sqrt", mc_nsfnmath_sqrt);
-    Value::mapSetStrFunc(jmap, "pow", mc_nsfnmath_pow);
-    Value::mapSetStrFunc(jmap, "sin", mc_nsfnmath_sin);
-    Value::mapSetStrFunc(jmap, "cos", mc_nsfnmath_cos);
-    Value::mapSetStrFunc(jmap, "tan", mc_nsfnmath_tan);
-    Value::mapSetStrFunc(jmap, "log", mc_nsfnmath_log);
-    Value::mapSetStrFunc(jmap, "ceil", mc_nsfnmath_ceil);
-    Value::mapSetStrFunc(jmap, "floor", mc_nsfnmath_floor);
-    Value::mapSetStrFunc(jmap, "abs", mc_nsfnmath_abs);
-    Value::mapSetStrFunc(jmap, "hypot", mc_nsfnmath_hypot);
+    auto m = jmap.asMap();
+    m->setStrFunc("sqrt", mc_nsfnmath_sqrt);
+    m->setStrFunc("pow", mc_nsfnmath_pow);
+    m->setStrFunc("sin", mc_nsfnmath_sin);
+    m->setStrFunc("cos", mc_nsfnmath_cos);
+    m->setStrFunc("tan", mc_nsfnmath_tan);
+    m->setStrFunc("log", mc_nsfnmath_log);
+    m->setStrFunc("ceil", mc_nsfnmath_ceil);
+    m->setStrFunc("floor", mc_nsfnmath_floor);
+    m->setStrFunc("abs", mc_nsfnmath_abs);
+    m->setStrFunc("hypot", mc_nsfnmath_hypot);
     state->setGlobalValue("Math", jmap);
 }
 
@@ -16162,13 +16005,14 @@ void mc_cli_installfileio(State* state)
 {
     Value map;
     map = Value::makeMap();
-    Value::mapSetStrFunc(map, "read", mc_nsfnfile_readfile);
-    Value::mapSetStrFunc(map, "write", mc_nsfnfile_writefile);
-    Value::mapSetStrFunc(map, "put", mc_nsfnfile_writefile);
-    Value::mapSetStrFunc(map, "join", mc_nsfnfile_join);
-    Value::mapSetStrFunc(map, "isDirectory", mc_nsfnfile_isdirectory);
-    Value::mapSetStrFunc(map, "isFile", mc_nsfnfile_isfile);
-    Value::mapSetStrFunc(map, "stat", mc_nsfnfile_stat);
+    auto m = map.asMap();
+    m->setStrFunc("read", mc_nsfnfile_readfile);
+    m->setStrFunc("write", mc_nsfnfile_writefile);
+    m->setStrFunc("put", mc_nsfnfile_writefile);
+    m->setStrFunc("join", mc_nsfnfile_join);
+    m->setStrFunc("isDirectory", mc_nsfnfile_isdirectory);
+    m->setStrFunc("isFile", mc_nsfnfile_isfile);
+    m->setStrFunc("stat", mc_nsfnfile_stat);
     state->setGlobalValue("File", map);
 }
 
@@ -16176,7 +16020,8 @@ void mc_cli_installdir(State* state)
 {
     Value map;
     map = Value::makeMap();
-    Value::mapSetStrFunc(map, "read", mc_nsfndir_readdir);
+    auto m = map.asMap();
+    m->setStrFunc("read", mc_nsfndir_readdir);
     state->setGlobalValue("Dir", map);
 }
 
@@ -16184,13 +16029,14 @@ void mc_cli_installvmvar(State* state)
 {
     Value map;
     map = Value::makeMap();
-    Value::mapSetStrFunc(map, "hadRecovered", mc_nsfnvm_hadrecovered);
+    auto m = map.asMap();
+    m->setStrFunc("hadRecovered", mc_nsfnvm_hadrecovered);
     state->setGlobalValue("VM", map);
 }
 
-
 static int g_extfnvar;
 
+/* use by sanity.mc */
 void mc_cli_installotherstuff(State* state)
 {
     state->setGlobalValue("test", Value::makeNumber(42));
@@ -16202,7 +16048,6 @@ void mc_cli_installotherstuff(State* state)
     mc_cli_installdir(state);
     mc_cli_installvmvar(state);
 }
-
 
 bool mc_cli_compileandrunsource(State* state, Value* vdest, const char* source, const char* filename)
 {
@@ -16254,10 +16099,11 @@ void mc_cli_installargv(State* state, int argc, char** argv, int beginat)
     Value strval;
     Value argvobj;
     argvobj = Value::makeArray();
+    auto arr = argvobj.asArray();
     for(i=beginat; i<argc; i++)
     {
         strval = Value::makeString(argv[i]);
-        Value::arrayPush(argvobj, strval);
+        arr->push(strval);
     }
     state->setGlobalValue("ARGV", argvobj);
 }
@@ -16281,8 +16127,8 @@ void mc_cli_printtypesizes()
     printtypesize(Value::CompareResult);
     printtypesize(StrDict<char*, int>);
     printtypesize(ValDict<Value, Value>);
-    printtypesize(Printer::Config);
-    printtypesize(Printer);
+    printtypesize(IOPrinter::Config);
+    printtypesize(IOPrinter);
     printtypesize(Error);
     printtypesize(Traceback);
     printtypesize(SourceFile);
@@ -16300,7 +16146,7 @@ void mc_cli_printtypesizes()
     printtypesize(AstSymbol);
     printtypesize(SourceLocation);
     printtypesize(AstToken);
-    printtypesize(AstExpression::CodeBlock);
+    printtypesize(AstCodeBlock);
     printtypesize(ExprLiteralMap);
     printtypesize(ExprLiteralArray);
     printtypesize(ExprLiteralString);
@@ -16313,7 +16159,7 @@ void mc_cli_printtypesizes()
     printtypesize(ExprAssign);
     printtypesize(ExprLogical);
     printtypesize(ExprTernary);
-    printtypesize(AstExpression::Identifier);
+    printtypesize(AstIdentifier);
     printtypesize(ExprFuncParam);
     printtypesize(ExprDefine);
     printtypesize(ExprIfStmt);
@@ -16338,8 +16184,6 @@ void mc_cli_printtypesizes()
     printtypesize(int16_t);
     printtypesize(uint8_t);
     printtypesize(int8_t);
-
-
 }
 
 static OptParser::LongFlags longopts[] =

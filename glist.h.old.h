@@ -1,10 +1,10 @@
 
-template<typename ValType>
+template<typename StoredTyp>
 class GenericList
 {
     public:
-        using OnCopyFN = std::function<ValType(ValType)>;
-        using OnDestroyFN = std::function<void(ValType)>;
+        using OnCopyFN = std::function<StoredTyp(StoredTyp)>;
+        using OnDestroyFN = std::function<void(StoredTyp)>;
 
 
 
@@ -52,13 +52,13 @@ class GenericList
             size_t i;
             GenericList* arrcopy;
             (void)ok;
-            arrcopy = Memory::make<GenericList<ValType>>(m_listcapacity);
+            arrcopy = Memory::make<GenericList<StoredTyp>>(m_listcapacity);
             for(i = 0; i < count(); i++)
             {
-                auto item = (ValType)get(i);
+                auto item = (StoredTyp)get(i);
                 if(copyfn)
                 {
-                    auto itemcopy = (ValType)copyfn(item);
+                    auto itemcopy = (StoredTyp)copyfn(item);
                     if(!arrcopy->push(itemcopy))
                     {
                         goto listcopyfailed;
@@ -93,10 +93,10 @@ class GenericList
             (void)dfn;
             for(i = 0; i < count(); i++)
             {
-                auto item = (ValType)get(i);
+                auto item = (StoredTyp)get(i);
                 if(copyfn)
                 {
-                    auto itemcopy = (ValType)copyfn(item);
+                    auto itemcopy = (StoredTyp)copyfn(item);
                     if(!dest->push(itemcopy))
                     {
                         goto listcopyfailed;
@@ -139,7 +139,7 @@ class GenericList
     private:
         size_t m_listcapacity;
         size_t m_listcount;
-        ValType* m_listitems;
+        StoredTyp* m_listitems;
 
     private:
         bool removeAtIntern(unsigned int ix)
@@ -152,15 +152,15 @@ class GenericList
                 m_listcount--;
                 return true;
             }
-            tomovebytes = (m_listcount - 1 - ix) * sizeof(ValType);
-            dest = m_listitems + (ix * sizeof(ValType));
-            src = m_listitems + ((ix + 1) * sizeof(ValType));
+            tomovebytes = (m_listcount - 1 - ix) * sizeof(StoredTyp);
+            dest = m_listitems + (ix * sizeof(StoredTyp));
+            src = m_listitems + ((ix + 1) * sizeof(StoredTyp));
             memmove(dest, src, tomovebytes);
             m_listcount--;
             return true;
         }
 
-        void ensureCapacity(size_t needsize, const ValType& fillval, bool first)
+        void ensureCapacity(size_t needsize, const StoredTyp& fillval, bool first)
         {
             size_t i;
             size_t ncap;
@@ -173,11 +173,11 @@ class GenericList
                 m_listcapacity = ncap;
                 if(m_listitems == nullptr)
                 {
-                    m_listitems = (ValType*)mc_memory_malloc(sizeof(ValType) * ncap);
+                    m_listitems = (StoredTyp*)mc_memory_malloc(sizeof(StoredTyp) * ncap);
                 }
                 else
                 {
-                    m_listitems = (ValType*)mc_memory_realloc(m_listitems, sizeof(ValType) * ncap);
+                    m_listitems = (StoredTyp*)mc_memory_realloc(m_listitems, sizeof(StoredTyp) * ncap);
                 }
                 for(i = oldcap; i < ncap; i++)
                 {
@@ -216,7 +216,7 @@ class GenericList
             m_listitems = nullptr;
             if(initialsize > 0)
             {
-                if constexpr(std::is_pointer<ValType>::value)
+                if constexpr(std::is_pointer<StoredTyp>::value)
                 {
                     ensureCapacity(initialsize, nullptr, true);
                 }
@@ -284,26 +284,26 @@ class GenericList
             return m_listcapacity;
         }
 
-        ValType* data() const
+        StoredTyp* data() const
         {
             return m_listitems;
         }
 
-        ValType get(size_t idx) const
+        StoredTyp get(size_t idx) const
         {
             return m_listitems[idx];
         }
 
-        ValType* getp(size_t idx) const
+        StoredTyp* getp(size_t idx) const
         {
             return &m_listitems[idx];
         }
 
-        ValType top() const
+        StoredTyp top() const
         {
             if(m_listcount == 0)
             {
-                if constexpr(std::is_pointer<ValType>::value)
+                if constexpr(std::is_pointer<StoredTyp>::value)
                 {
                     return nullptr;
                 }
@@ -315,7 +315,7 @@ class GenericList
             return get(m_listcount - 1);
         }
 
-        ValType* topp() const
+        StoredTyp* topp() const
         {
             int ofs = 0;
             if(m_listcount == 0)
@@ -330,13 +330,13 @@ class GenericList
         }
 
 
-        ValType* set(size_t idx, const ValType& val)
+        StoredTyp* set(size_t idx, const StoredTyp& val)
         {
             size_t need;
             need = idx + 1;
             if(((idx == 0) || (m_listcapacity == 0)) || (idx >= m_listcapacity))
             {
-                if constexpr(std::is_pointer<ValType>::value)
+                if constexpr(std::is_pointer<StoredTyp>::value)
                 {
                     ensureCapacity(need, nullptr, false);
                 }
@@ -353,7 +353,7 @@ class GenericList
             return &m_listitems[idx];
         }
 
-        bool push(const ValType& value)
+        bool push(const StoredTyp& value)
         {
             size_t oldcap;
             if(m_listcapacity < m_listcount + 1)
@@ -362,11 +362,11 @@ class GenericList
                 m_listcapacity = MC_UTIL_INCCAPACITY(oldcap);
                 if(m_listitems == nullptr)
                 {
-                    m_listitems = (ValType*)mc_memory_malloc(sizeof(ValType) * m_listcapacity);
+                    m_listitems = (StoredTyp*)mc_memory_malloc(sizeof(StoredTyp) * m_listcapacity);
                 }
                 else
                 {
-                    m_listitems = (ValType*)mc_memory_realloc(m_listitems, sizeof(ValType) * m_listcapacity);
+                    m_listitems = (StoredTyp*)mc_memory_realloc(m_listitems, sizeof(StoredTyp) * m_listcapacity);
                 }
             }
             m_listitems[m_listcount] = value;
@@ -374,7 +374,7 @@ class GenericList
             return true;
         }
 
-        bool pop(ValType* dest)
+        bool pop(StoredTyp* dest)
         {
             if(m_listcount > 0)
             {
@@ -396,7 +396,7 @@ class GenericList
             }
             if(ix == 0)
             {
-                m_listitems += sizeof(ValType);
+                m_listitems += sizeof(StoredTyp);
                 m_listcapacity--;
                 m_listcount--;
                 return true;
@@ -408,7 +408,7 @@ class GenericList
         {
             if((m_listcapacity > 0) && (m_listitems != nullptr))
             {
-                memset(m_listitems, 0, sizeof(ValType) * m_listcapacity);
+                memset(m_listitems, 0, sizeof(StoredTyp) * m_listcapacity);
             }
             m_listcount = 0;
             m_listcapacity = 0;

@@ -23,7 +23,7 @@ function recursivescan(path, recursive, fn)
     }
 }
 
-recursivescan("infer-out", true, function(fp, isfile)
+recursivescan("cver", true, function(fp, isfile)
 {
     if(isfile)
     {

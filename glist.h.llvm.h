@@ -1807,14 +1807,14 @@ namespace llvm
 
         };
 
-template <typename ValType>
+template <typename StoredTyp>
 class GenericList
 {
     public:
-        using VecType = StackVector<ValType>; 
+        using VecType = StackVector<StoredTyp>; 
 
-        using OnCopyFN = std::function<ValType(ValType)>;
-        using OnDestroyFN = std::function<void(ValType)>;
+        using OnCopyFN = std::function<StoredTyp(StoredTyp)>;
+        using OnDestroyFN = std::function<void(StoredTyp)>;
 
     public:
         static void destroy(GenericList* list)
@@ -1860,13 +1860,13 @@ class GenericList
             size_t i;
             GenericList* arrcopy;
             (void)ok;
-            arrcopy = Memory::make<GenericList<ValType>>(capacity());
+            arrcopy = Memory::make<GenericList<StoredTyp>>(capacity());
             for(i = 0; i < count(); i++)
             {
-                auto item = (ValType)get(i);
+                auto item = (StoredTyp)get(i);
                 if(copyfn)
                 {
-                    auto itemcopy = (ValType)copyfn(item);
+                    auto itemcopy = (StoredTyp)copyfn(item);
                     if(!arrcopy->push(itemcopy))
                     {
                         goto listcopyfailed;
@@ -1901,10 +1901,10 @@ class GenericList
             (void)dfn;
             for(i = 0; i < count(); i++)
             {
-                auto item = (ValType)get(i);
+                auto item = (StoredTyp)get(i);
                 if(copyfn)
                 {
-                    auto itemcopy = (ValType)copyfn(item);
+                    auto itemcopy = (StoredTyp)copyfn(item);
                     if(!dest->push(itemcopy))
                     {
                         goto listcopyfailed;
@@ -1948,7 +1948,7 @@ class GenericList
         /*
         size_t m_listcapacity;
         size_t m_listcount;
-        ValType* m_listitems;
+        StoredTyp* m_listitems;
         */
         VecType* m_listvector;
 
@@ -2045,27 +2045,27 @@ class GenericList
             return vec().capacity();
         }
 
-        ValType* data()
+        StoredTyp* data()
         {
             return vec().data();
         }
 
-        const ValType* data() const
+        const StoredTyp* data() const
         {
             return vec().data();
         }
 
-        ValType get(size_t idx)
+        StoredTyp get(size_t idx)
         {
             return vec()[idx];
         }
 
-        ValType get(size_t idx) const
+        StoredTyp get(size_t idx) const
         {
             return vec()[idx];
         }
 
-        ValType* getp(size_t idx)
+        StoredTyp* getp(size_t idx)
         {
             #if 0
                 if(idx > count())
@@ -2076,7 +2076,7 @@ class GenericList
             return &vec()[idx];
         }
 
-        ValType* getp(size_t idx) const
+        StoredTyp* getp(size_t idx) const
         {
             #if 0
                 if(idx > count())
@@ -2087,7 +2087,7 @@ class GenericList
             return &vec()[idx];
         }
 
-        ValType top()
+        StoredTyp top()
         {
             #if 1
                 return vec().back();
@@ -2101,7 +2101,7 @@ class GenericList
             #endif
         }
 
-        ValType top() const
+        StoredTyp top() const
         {
             #if 1
                 return vec().back();
@@ -2115,7 +2115,7 @@ class GenericList
             #endif
         }
 
-        ValType* topp()
+        StoredTyp* topp()
         {
             int ofs = 0;
             if(count() > 0)
@@ -2125,7 +2125,7 @@ class GenericList
             return getp(ofs);
         }
 
-        const ValType* topp() const
+        const StoredTyp* topp() const
         {
             int ofs = 0;
             if(count() > 0)
@@ -2135,7 +2135,7 @@ class GenericList
             return getp(ofs);
         }
 
-        ValType* set(size_t idx, const ValType& val)
+        StoredTyp* set(size_t idx, const StoredTyp& val)
         {
             size_t need;
             need = idx + 1;
@@ -2156,13 +2156,13 @@ class GenericList
             return &vec()[idx];
         }
 
-        bool push(const ValType& value)
+        bool push(const StoredTyp& value)
         {
             vec().push_back(value);
             return true;
         }
 
-        bool pop(ValType* dest)
+        bool pop(StoredTyp* dest)
         {
             if(dest != nullptr)
             {
@@ -2181,7 +2181,7 @@ class GenericList
             }
             if(ix == 0)
             {
-                m_listitems += sizeof(ValType);
+                m_listitems += sizeof(StoredTyp);
                 m_listcapacity--;
                 m_listcount--;
                 return true;
@@ -2201,7 +2201,7 @@ class GenericList
             /*
             if((m_listcapacity > 0) && (m_listitems != nullptr))
             {
-                memset(m_listitems, 0, sizeof(ValType) * m_listcapacity);
+                memset(m_listitems, 0, sizeof(StoredTyp) * m_listcapacity);
             }
             m_listcount = 0;
             m_listcapacity = 0;

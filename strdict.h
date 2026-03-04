@@ -1,10 +1,10 @@
 
-template<typename KeyType, typename ValType>
+template<typename SDTypKey, typename SDTypVal>
 class StrDict
 {
     #if 0
-    using KeyType = char*;
-    using ValType = void*;
+    using SDTypKey = char*;
+    using SDTypVal = void*;
     #endif
     public:
         enum
@@ -29,8 +29,8 @@ class StrDict
             dict->m_funccopyfn = copyfn;
             dict->m_funcdestroyfn = dfn;
             dict->m_gdcells = (unsigned int*)mc_memory_malloc(dict->m_gdcellcapacity * sizeof(*dict->m_gdcells));
-            dict->m_gdkeys = (KeyType*)mc_memory_malloc(dict->m_gditemcapacity * sizeof(KeyType));
-            dict->m_gdvalues = (ValType*)mc_memory_malloc(dict->m_gditemcapacity * sizeof(ValType));
+            dict->m_gdkeys = (SDTypKey*)mc_memory_malloc(dict->m_gditemcapacity * sizeof(SDTypKey));
+            dict->m_gdvalues = (SDTypVal*)mc_memory_malloc(dict->m_gditemcapacity * sizeof(SDTypVal));
             dict->m_gdcellindices = (unsigned int*)mc_memory_malloc(dict->m_gditemcapacity * sizeof(*dict->m_gdcellindices));
             dict->m_gdhashes = (long unsigned int*)mc_memory_malloc(dict->m_gditemcapacity * sizeof(*dict->m_gdhashes));
             if(dict->m_gdcells == nullptr || dict->m_gdkeys == nullptr || dict->m_gdvalues == nullptr || dict->m_gdcellindices == nullptr || dict->m_gdhashes == nullptr)
@@ -92,8 +92,8 @@ class StrDict
     public:
         unsigned int* m_gdcells;
         unsigned long* m_gdhashes;
-        KeyType* m_gdkeys;
-        ValType* m_gdvalues;
+        SDTypKey* m_gdkeys;
+        SDTypVal* m_gdvalues;
         unsigned int* m_gdcellindices;
         unsigned int m_gdcount;
         unsigned int m_gditemcapacity;
@@ -197,11 +197,11 @@ class StrDict
             return GDInvalidIndex;
         }
 
-        bool setIntern(unsigned int cellix, unsigned long hash, const KeyType ckey, KeyType mkey, ValType value)
+        bool setIntern(unsigned int cellix, unsigned long hash, const SDTypKey ckey, SDTypKey mkey, SDTypVal value)
         {
             bool ok;
             bool found;
-            KeyType keycopy;
+            SDTypKey keycopy;
             (void)ok;
             if(m_gdcount >= m_gditemcapacity)
             {
@@ -215,7 +215,7 @@ class StrDict
             }
             else
             {
-                keycopy = mc_util_strdup(ckey);
+                keycopy = Util::strDuplicate(ckey);
                 if(keycopy == nullptr)
                 {
                     return false;
@@ -230,13 +230,13 @@ class StrDict
             return true;
         }
 
-        bool setActual(KeyType ckey, KeyType mkey, ValType value)
+        bool setActual(SDTypKey ckey, SDTypKey mkey, SDTypVal value)
         {
             bool found;
             unsigned int cellix;
             unsigned int itemix;
             unsigned long hash;
-            hash = mc_util_hashdata(ckey, mc_util_strlen(ckey));
+            hash = Util::hashData(ckey, strlen(ckey));
             found = false;
             cellix = getCellIndex(ckey, hash, &found);
             if(found)
@@ -248,19 +248,19 @@ class StrDict
             return setIntern(cellix, hash, ckey, mkey, value);
         }
 
-        bool set(KeyType key, ValType value)
+        bool set(SDTypKey key, SDTypVal value)
         {
             return setActual(key, nullptr, value);
         }
 
         template<typename InKeyT>
-        ValType get(InKeyT key)
+        SDTypVal get(InKeyT key)
         {
             bool found;
             unsigned int itemix;
             unsigned long hash;
             unsigned long cellix;
-            hash = mc_util_hashdata(key, mc_util_strlen(key));
+            hash = Util::hashData(key, strlen(key));
             found = false;
             cellix = getCellIndex(key, hash, &found);
             if(!found)
@@ -271,7 +271,7 @@ class StrDict
             return m_gdvalues[itemix];
         }
 
-        ValType getValueAt(unsigned int ix)
+        SDTypVal getValueAt(unsigned int ix)
         {
             if(ix >= m_gdcount)
             {
@@ -280,7 +280,7 @@ class StrDict
             return m_gdvalues[ix];
         }
 
-        KeyType getKeyAt(unsigned int ix)
+        SDTypKey getKeyAt(unsigned int ix)
         {
             if(ix >= m_gdcount)
             {
@@ -294,7 +294,7 @@ class StrDict
             return m_gdcount;
         }
 
-        bool removeByKey(const KeyType key)
+        bool removeByKey(const SDTypKey key)
         {
             bool found;
             unsigned int x;
@@ -305,7 +305,7 @@ class StrDict
             unsigned int itemix;
             unsigned int lastitemix;
             unsigned long hash;
-            hash = mc_util_hashdata(key, mc_util_strlen(key));
+            hash = Util::hashData(key, strlen(key));
             found = false;
             cell = getCellIndex(key, hash, &found);
             if(!found)
@@ -360,7 +360,7 @@ class StrDict
             {
                 auto key = getKeyAt(i);
                 auto item = getValueAt(i);
-                auto itemcopy = (ValType)dictcopy->m_funccopyfn(item);
+                auto itemcopy = (SDTypVal)dictcopy->m_funccopyfn(item);
                 if((item != nullptr) && (itemcopy == nullptr))
                 {
                     StrDict::destroyItemsAndDictIntern(dictcopy);
