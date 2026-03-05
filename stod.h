@@ -267,6 +267,7 @@ static mcstoddiyfp_t stod_diyfp_read(const unsigned char* start, size_t length, 
     return stod_makediyfp(significand, 0);
 }
 
+/* clang-format disable */
 static const mcstodcpe_t stod_cached_powers[] = {
     { stod_makeuint64(0xfa8fd5a0, 0x081c0288), -1220, -348 }, { stod_makeuint64(0xbaaee17f, 0xa23ebf76), -1193, -340 },
     { stod_makeuint64(0x8b16fb20, 0x3055ac76), -1166, -332 }, { stod_makeuint64(0xcf42894a, 0x5dce35ea), -1140, -324 },
@@ -313,7 +314,7 @@ static const mcstodcpe_t stod_cached_powers[] = {
     { stod_makeuint64(0x9e19db92, 0xb4e31ba9), 1013, 324 },   { stod_makeuint64(0xeb96bf6e, 0xbadf77d9), 1039, 332 },
     { stod_makeuint64(0xaf87023b, 0x9bf0ee6b), 1066, 340 },
 };
-
+/* clang-format enable */
 
 mcstoddiyfp_t stod_cached_power_dec(int exp, int* dec_exp)
 {

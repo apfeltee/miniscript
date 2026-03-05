@@ -26,8 +26,16 @@ allunflags = $(unflags)
 #allunflags = $(unflags) 
 
 WFLAGS = -Wall -Wextra -Wshadow -Wpointer-arith -Wuninitialized -Winit-self  $(allunflags)
-#WFLAGS += -Wmaybe-uninitialized -Wjump-misses-init
-#WFLAGS += -ansi -pedantic
+WFLAGS += -Wmaybe-uninitialized  -Wnull-dereference -Wduplicated-cond
+WFLAGS +=  -Wwrite-strings
+
+## very verbose
+#WFLAGS += -Wconversion
+
+## will complain about computed gotos
+#WFLAGS += -pedantic
+
+## also very verbose
 #WFLAGS += -Weffc++
 
 #WFLAGS = -w
@@ -35,6 +43,7 @@ WFLAGS = -Wall -Wextra -Wshadow -Wpointer-arith -Wuninitialized -Winit-self  $(a
 
 OPTFLAGS = -O0
 #OPTFLAGS = -O5 -funroll-loops -flto -ffast-math 
+
 
 ## empty by default
 EXTRAFLAGS =

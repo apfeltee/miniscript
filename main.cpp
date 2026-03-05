@@ -80,11 +80,11 @@ THE SOFTWARE.
 #endif
 
 #if defined(__GNUC__) || defined(__clang__)
-    #define mc_util_likely(x)   (__builtin_expect(!!(x), 1))
-    #define mc_util_unlikely(x) (__builtin_expect(!!(x), 0))
+    #define MC_LIKELY(x)   (__builtin_expect(!!(x), 1))
+    #define MC_UNLIKELY(x) (__builtin_expect(!!(x), 0))
 #else
-    #define mc_util_likely(x)   (x)
-    #define mc_util_unlikely(x) (x)
+    #define MC_LIKELY(x)   (x)
+    #define MC_UNLIKELY(x) (x)
 #endif
 
 #if 1
@@ -555,8 +555,6 @@ class GenericList
         using OnCopyFN = std::function<StoredTyp(StoredTyp)>;
         using OnDestroyFN = std::function<void(StoredTyp)>;
 
-
-
     public:
         static void destroy(GenericList* list)
         {
@@ -595,7 +593,145 @@ class GenericList
             list->clear();
         }
 
-        GenericList* copyToHeap(OnCopyFN copyfn, OnDestroyFN dfn)
+    private:
+        size_t m_listcapacity;
+        size_t m_listcount;
+        StoredTyp* m_listitems;
+
+    private:
+        MC_INLINE bool removeAtIntern(unsigned int ix)
+        {
+            size_t tomovebytes;
+            void* src;
+            void* dest;
+            if(ix == (m_listcount - 1))
+            {
+                m_listcount--;
+                return true;
+            }
+            tomovebytes = (m_listcount - 1 - ix) * sizeof(StoredTyp);
+            dest = m_listitems + (ix * sizeof(StoredTyp));
+            src = m_listitems + ((ix + 1) * sizeof(StoredTyp));
+            memmove(dest, src, tomovebytes);
+            m_listcount--;
+            return true;
+        }
+
+        MC_INLINE void ensureCapacity(size_t needsize, const StoredTyp& fillval, bool first)
+        {
+            size_t i;
+            size_t ncap;
+            size_t oldcap;
+            (void)first;
+            if(m_listcapacity < needsize)
+            {
+                oldcap = m_listcapacity;
+                ncap = MC_UTIL_INCCAPACITY(m_listcapacity + needsize);
+                m_listcapacity = ncap;
+                if(m_listitems == nullptr)
+                {
+                    m_listitems = (StoredTyp*)mc_memory_malloc(sizeof(StoredTyp) * ncap);
+                }
+                else
+                {
+                    m_listitems = (StoredTyp*)mc_memory_realloc(m_listitems, sizeof(StoredTyp) * ncap);
+                }
+                for(i = oldcap; i < ncap; i++)
+                {
+                    m_listitems[i] = fillval;
+                }
+            }
+        }
+
+        template<typename OtherT>
+        MC_INLINE void moveFrom(OtherT* other)
+        {
+            m_listcount = other->m_listcount;
+            m_listcapacity = other->m_listcapacity;
+            m_listitems = other->m_listitems;
+        }
+
+    public:
+        MC_INLINE GenericList(): GenericList(0)
+        {
+        }
+
+        MC_INLINE GenericList(GenericList&& other)
+        {
+            moveFrom(&other);
+        }
+
+        MC_INLINE GenericList(const GenericList& other)
+        {
+            moveFrom(&other);
+        }
+
+        MC_INLINE GenericList(size_t initialsize)
+        {
+            m_listcount = 0;
+            m_listcapacity = 0;
+            m_listitems = nullptr;
+            if(initialsize > 0)
+            {
+                if constexpr(std::is_pointer<StoredTyp>::value)
+                {
+                    ensureCapacity(initialsize, nullptr, true);
+                }
+                else
+                {
+                    ensureCapacity(initialsize, {}, true);                    
+                }
+            }
+        }
+
+        MC_INLINE ~GenericList()
+        {
+            //deInit();
+        }
+
+        MC_INLINE GenericList& operator=(const GenericList& other)
+        {
+            moveFrom(&other);
+            return *this;
+        }
+
+        MC_INLINE void orphanData()
+        {
+            #if 1
+            m_listcount = 0;
+            m_listcapacity = 0;
+            m_listitems = nullptr;
+            #endif
+        }
+
+        MC_INLINE void deInit(OnDestroyFN dfn)
+        {
+            size_t i;
+            for(i=0; i<m_listcount; i++)
+            {
+                auto item = get(i);
+                dfn(item);
+            }
+            deInit();
+        }
+
+        MC_INLINE void deInit()
+        {
+            if(m_listitems != nullptr)
+            {
+                mc_memory_free(m_listitems);
+            }
+            m_listitems = nullptr;
+            m_listcount = 0;
+            m_listcapacity = 0;
+        }
+
+        MC_INLINE void clear()
+        {
+            m_listcount = 0;
+        }
+
+        MC_INLINE GenericList* copyToHeap(OnCopyFN copyfn, OnDestroyFN dfn)
         {
             bool ok;
             size_t i;
@@ -627,14 +763,14 @@ class GenericList
             return nullptr;
         }
 
-        GenericList* copyToHeap()
+        MC_INLINE GenericList* copyToHeap()
         {
             OnCopyFN dummycopy = nullptr;
             OnDestroyFN dummydel = nullptr;
             return copyToHeap(dummycopy, dummydel);
         }
 
-        bool copyToStack(GenericList* dest, OnCopyFN copyfn, OnDestroyFN dfn)
+        MC_INLINE bool copyToStack(GenericList* dest, OnCopyFN copyfn, OnDestroyFN dfn)
         {
             bool ok;
             size_t i;
@@ -664,191 +800,53 @@ class GenericList
             return false;
         }
 
-        bool copyToStack(GenericList* dest)
+        MC_INLINE bool copyToStack(GenericList* dest)
         {
             OnCopyFN dummycopy = nullptr;
             OnDestroyFN dummydel = nullptr;
             return copyToStack(dest, dummycopy, dummydel);
         }
 
-        GenericList copyToStack(OnCopyFN copyfn, OnDestroyFN dfn)
+        MC_INLINE GenericList copyToStack(OnCopyFN copyfn, OnDestroyFN dfn)
         {
             GenericList dest;
             copyToStack(&dest, copyfn, dfn);
             return dest;
         }
 
-        GenericList copyToStack()
+        MC_INLINE GenericList copyToStack()
         {
             GenericList dest;
             copyToStack(&dest);
             return dest;
         }
 
-    private:
-        size_t m_listcapacity;
-        size_t m_listcount;
-        StoredTyp* m_listitems;
-
-    private:
-        bool removeAtIntern(unsigned int ix)
-        {
-            size_t tomovebytes;
-            void* src;
-            void* dest;
-            if(ix == (m_listcount - 1))
-            {
-                m_listcount--;
-                return true;
-            }
-            tomovebytes = (m_listcount - 1 - ix) * sizeof(StoredTyp);
-            dest = m_listitems + (ix * sizeof(StoredTyp));
-            src = m_listitems + ((ix + 1) * sizeof(StoredTyp));
-            memmove(dest, src, tomovebytes);
-            m_listcount--;
-            return true;
-        }
-
-        void ensureCapacity(size_t needsize, const StoredTyp& fillval, bool first)
-        {
-            size_t i;
-            size_t ncap;
-            size_t oldcap;
-            (void)first;
-            if(m_listcapacity < needsize)
-            {
-                oldcap = m_listcapacity;
-                ncap = MC_UTIL_INCCAPACITY(m_listcapacity + needsize);
-                m_listcapacity = ncap;
-                if(m_listitems == nullptr)
-                {
-                    m_listitems = (StoredTyp*)mc_memory_malloc(sizeof(StoredTyp) * ncap);
-                }
-                else
-                {
-                    m_listitems = (StoredTyp*)mc_memory_realloc(m_listitems, sizeof(StoredTyp) * ncap);
-                }
-                for(i = oldcap; i < ncap; i++)
-                {
-                    m_listitems[i] = fillval;
-                }
-            }
-        }
-
-        template<typename OtherT>
-        void moveFrom(OtherT* other)
-        {
-            m_listcount = other->m_listcount;
-            m_listcapacity = other->m_listcapacity;
-            m_listitems = other->m_listitems;
-        }
-
-    public:
-        GenericList(): GenericList(0)
-        {
-        }
-
-        GenericList(GenericList&& other)
-        {
-            moveFrom(&other);
-        }
-
-        GenericList(const GenericList& other)
-        {
-            moveFrom(&other);
-        }
-
-        GenericList(size_t initialsize)
-        {
-            m_listcount = 0;
-            m_listcapacity = 0;
-            m_listitems = nullptr;
-            if(initialsize > 0)
-            {
-                if constexpr(std::is_pointer<StoredTyp>::value)
-                {
-                    ensureCapacity(initialsize, nullptr, true);
-                }
-                else
-                {
-                    ensureCapacity(initialsize, {}, true);                    
-                }
-            }
-        }
-
-        ~GenericList()
-        {
-            //deInit();
-        }
-
-        GenericList& operator=(const GenericList& other)
-        {
-            moveFrom(&other);
-            return *this;
-        }
-
-        void orphanData()
-        {
-            #if 1
-            m_listcount = 0;
-            m_listcapacity = 0;
-            m_listitems = nullptr;
-            #endif
-        }
-
-        void deInit(OnDestroyFN dfn)
-        {
-            size_t i;
-            for(i=0; i<m_listcount; i++)
-            {
-                auto item = get(i);
-                dfn(item);
-            }
-            deInit();
-        }
-
-        void deInit()
-        {
-            if(m_listitems != nullptr)
-            {
-                mc_memory_free(m_listitems);
-            }
-            m_listitems = nullptr;
-            m_listcount = 0;
-            m_listcapacity = 0;
-        }
-
-        void clear()
-        {
-            m_listcount = 0;
-        }
-
-        size_t count() const
+        MC_INLINE size_t count() const
         {
             return m_listcount;
         }
 
-        size_t capacity() const
+        MC_INLINE size_t capacity() const
         {
             return m_listcapacity;
         }
 
-        StoredTyp* data() const
+        MC_INLINE StoredTyp* data() const
         {
             return m_listitems;
         }
 
-        StoredTyp get(size_t idx) const
+        MC_INLINE StoredTyp get(size_t idx) const
         {
             return m_listitems[idx];
         }
 
-        StoredTyp* getp(size_t idx) const
+        MC_INLINE StoredTyp* getp(size_t idx) const
         {
             return &m_listitems[idx];
         }
 
-        StoredTyp top() const
+        MC_INLINE StoredTyp top() const
         {
             if(m_listcount == 0)
             {
@@ -878,8 +876,7 @@ class GenericList
             return getp(ofs);
         }
 
-
-        StoredTyp* set(size_t idx, const StoredTyp& val)
+        MC_INLINE StoredTyp* set(size_t idx, const StoredTyp& val)
         {
             size_t need;
             need = idx + 1;
@@ -902,7 +899,7 @@ class GenericList
             return &m_listitems[idx];
         }
 
-        bool push(const StoredTyp& value)
+        MC_INLINE bool push(const StoredTyp& value)
         {
             size_t oldcap;
             if(m_listcapacity < m_listcount + 1)
@@ -923,7 +920,7 @@ class GenericList
             return true;
         }
 
-        bool pop(StoredTyp* dest)
+        MC_INLINE bool pop(StoredTyp* dest)
         {
             if(m_listcount > 0)
             {
@@ -937,7 +934,7 @@ class GenericList
             return false;
         }
 
-        bool removeAt(unsigned int ix)
+        MC_INLINE bool removeAt(unsigned int ix)
         {
             if(ix >= m_listcount)
             {
@@ -953,7 +950,7 @@ class GenericList
             return removeAtIntern(ix);
         }
 
-        void setEmpty()
+        MC_INLINE void setEmpty()
         {
             if((m_listcapacity > 0) && (m_listitems != nullptr))
             {
@@ -964,10 +961,748 @@ class GenericList
         }
 };
 
+template<typename SDTypKey, typename SDTypVal>
+class StrDict
+{
+    #if 0
+    using SDTypKey = char*;
+    using SDTypVal = void*;
+    #endif
+    public:
+        enum
+        {
+            GDInvalidIndex = (UINT_MAX),
+            DefaultInitSize = (32),
+        };
 
+    public:
+        static bool initValues(StrDict* dict, unsigned int initialcapacity, CallbackCopyFN copyfn, CallbackDestroyFN dfn)
+        {
+            unsigned int i;
+            dict->m_gdcells = nullptr;
+            dict->m_gdkeys = nullptr;
+            dict->m_gdvalues = nullptr;
+            dict->m_gdcellindices = nullptr;
+            dict->m_gdhashes = nullptr;
+            dict->m_gdcount = 0;
+            dict->m_gdcellcapacity = 0;
+            dict->m_gdcellcapacity += initialcapacity;
+            dict->m_gditemcapacity = (unsigned int)(initialcapacity * 0.7f);
+            dict->m_funccopyfn = copyfn;
+            dict->m_funcdestroyfn = dfn;
+            dict->m_gdcells = (unsigned int*)mc_memory_malloc(dict->m_gdcellcapacity * sizeof(*dict->m_gdcells));
+            dict->m_gdkeys = (SDTypKey*)mc_memory_malloc(dict->m_gditemcapacity * sizeof(SDTypKey));
+            dict->m_gdvalues = (SDTypVal*)mc_memory_malloc(dict->m_gditemcapacity * sizeof(SDTypVal));
+            dict->m_gdcellindices = (unsigned int*)mc_memory_malloc(dict->m_gditemcapacity * sizeof(*dict->m_gdcellindices));
+            dict->m_gdhashes = (long unsigned int*)mc_memory_malloc(dict->m_gditemcapacity * sizeof(*dict->m_gdhashes));
+            if(dict->m_gdcells == nullptr || dict->m_gdkeys == nullptr || dict->m_gdvalues == nullptr || dict->m_gdcellindices == nullptr || dict->m_gdhashes == nullptr)
+            {
+                goto dictallocfailed;
+            }
+            for(i = 0; i < dict->m_gdcellcapacity; i++)
+            {
+                dict->m_gdcells[i] = GDInvalidIndex;
+            }
+            return true;
+        dictallocfailed:
+            mc_memory_free(dict->m_gdcells);
+            mc_memory_free(dict->m_gdkeys);
+            mc_memory_free(dict->m_gdvalues);
+            mc_memory_free(dict->m_gdcellindices);
+            mc_memory_free(dict->m_gdhashes);
+            return false;
+        }
 
-#include "strdict.h"
-#include "valdict.h"
+        static void deinitValues(StrDict* dict, bool freekeys)
+        {
+            unsigned int i;
+            if(freekeys)
+            {
+                for(i = 0; i < dict->m_gdcount; i++)
+                {
+                    if(dict->m_gdkeys[i] != nullptr)
+                    {
+                        mc_memory_free(dict->m_gdkeys[i]);
+                        dict->m_gdkeys[i] = nullptr;
+                    }
+                }
+            }
+            dict->m_gdcount = 0;
+            dict->m_gditemcapacity = 0;
+            dict->m_gdcellcapacity = 0;
+            mc_memory_free(dict->m_gdcells);
+            mc_memory_free(dict->m_gdkeys);
+            mc_memory_free(dict->m_gdvalues);
+            mc_memory_free(dict->m_gdcellindices);
+            mc_memory_free(dict->m_gdhashes);
+            dict->m_gdcells = nullptr;
+            dict->m_gdkeys = nullptr;
+            dict->m_gdvalues = nullptr;
+            dict->m_gdcellindices = nullptr;
+            dict->m_gdhashes = nullptr;
+        }
+
+        static void destroy(StrDict* dict)
+        {
+            if(dict != nullptr)
+            {
+                StrDict::deinitValues(dict, true);
+                mc_memory_free(dict);
+            }
+        }
+
+    public:
+        unsigned int* m_gdcells;
+        unsigned long* m_gdhashes;
+        SDTypKey* m_gdkeys;
+        SDTypVal* m_gdvalues;
+        unsigned int* m_gdcellindices;
+        unsigned int m_gdcount;
+        unsigned int m_gditemcapacity;
+        unsigned int m_gdcellcapacity;
+        CallbackCopyFN m_funccopyfn;
+        CallbackDestroyFN m_funcdestroyfn;
+
+    public:
+        StrDict(): StrDict(nullptr, nullptr)
+        {
+        }
+
+        StrDict(size_t cap, CallbackCopyFN copyfn, CallbackDestroyFN dfn)
+        {
+            bool ok;
+            (void)ok;
+            ok = StrDict::initValues(this, cap, copyfn, dfn);
+            MC_ASSERT(ok);
+        }
+
+        StrDict(CallbackCopyFN copyfn, CallbackDestroyFN dfn)
+        {
+            bool ok;
+            (void)ok;
+            ok = StrDict::initValues(this, DefaultInitSize, copyfn, dfn);
+            MC_ASSERT(ok);
+        }
+
+        static void destroyItemsAndDictIntern(StrDict* dict)
+        {
+            unsigned int i;
+            if(dict != nullptr)
+            {    
+                if(dict->m_funcdestroyfn != nullptr)
+                {
+                    for(i = 0; i < dict->m_gdcount; i++)
+                    {
+                        dict->m_funcdestroyfn(dict->m_gdvalues[i]);
+                    }
+                }
+                StrDict::destroy(dict);
+            }
+        }
+
+        void destroyItemsAndDict()
+        {
+            return destroyItemsAndDictIntern(this);
+        }
+
+        bool growAndRehash()
+        {
+            bool ok;
+            unsigned int i;
+
+            size_t ncap;
+            (void)ok;
+            ncap = MC_UTIL_INCCAPACITY(m_gdcellcapacity);
+            StrDict newdict(ncap, m_funccopyfn, m_funcdestroyfn);
+            for(i = 0; i < m_gdcount; i++)
+            {
+                auto key = m_gdkeys[i];
+                auto value = m_gdvalues[i];
+                ok = newdict.setActual(key, key, value);
+            }
+            StrDict::deinitValues(this, false);
+            *this = newdict;
+            return true;
+        }
+
+        unsigned int getCellIndex(const void* key, unsigned long hash, bool* outfound)
+        {
+            unsigned int i;
+            unsigned int ix;
+            unsigned int cell;
+            unsigned int cellix;
+            unsigned long hashtocheck;
+            const void* keytocheck;
+            *outfound = false;
+            cellix = (unsigned int)hash & (m_gdcellcapacity - 1);
+            for(i = 0; i < m_gdcellcapacity; i++)
+            {
+                ix = (cellix + i) & (m_gdcellcapacity - 1);
+                cell = m_gdcells[ix];
+                if(cell == GDInvalidIndex)
+                {
+                    return ix;
+                }
+                hashtocheck = m_gdhashes[cell];
+                if(hash != hashtocheck)
+                {
+                    continue;
+                }
+                keytocheck = m_gdkeys[cell];
+                if(strcmp((const char*)key, (const char*)keytocheck) == 0)
+                {
+                    *outfound = true;
+                    return ix;
+                }
+            }
+            return GDInvalidIndex;
+        }
+
+        bool setIntern(unsigned int cellix, unsigned long hash, const SDTypKey ckey, SDTypKey mkey, SDTypVal value)
+        {
+            bool ok;
+            bool found;
+            SDTypKey keycopy;
+            (void)ok;
+            if(m_gdcount >= m_gditemcapacity)
+            {
+                if(!growAndRehash())
+                {
+                    return false;
+                }
+                cellix = getCellIndex(ckey, hash, &found);
+            }
+            if(mkey != nullptr)
+            {
+                m_gdkeys[m_gdcount] = mkey;
+            }
+            else
+            {
+                keycopy = Util::strDuplicate(ckey);
+                if(keycopy == nullptr)
+                {
+                    return false;
+                }
+                m_gdkeys[m_gdcount] = keycopy;
+            }
+            m_gdcells[cellix] = m_gdcount;
+            m_gdvalues[m_gdcount] = value;
+            m_gdcellindices[m_gdcount] = cellix;
+            m_gdhashes[m_gdcount] = hash;
+            m_gdcount++;
+            return true;
+        }
+
+        bool setActual(SDTypKey ckey, SDTypKey mkey, SDTypVal value)
+        {
+            bool found;
+            unsigned int cellix;
+            unsigned int itemix;
+            unsigned long hash;
+            hash = Util::hashData(ckey, strlen(ckey));
+            found = false;
+            cellix = getCellIndex(ckey, hash, &found);
+            if(found)
+            {
+                itemix = m_gdcells[cellix];
+                m_gdvalues[itemix] = value;
+                return true;
+            }
+            return setIntern(cellix, hash, ckey, mkey, value);
+        }
+
+        bool set(SDTypKey key, SDTypVal value)
+        {
+            return setActual(key, nullptr, value);
+        }
+
+        template<typename InKeyT>
+        SDTypVal get(InKeyT key)
+        {
+            bool found;
+            unsigned int itemix;
+            unsigned long hash;
+            unsigned long cellix;
+            hash = Util::hashData(key, strlen(key));
+            found = false;
+            cellix = getCellIndex(key, hash, &found);
+            if(!found)
+            {
+                return nullptr;
+            }
+            itemix = m_gdcells[cellix];
+            return m_gdvalues[itemix];
+        }
+
+        SDTypVal getValueAt(unsigned int ix)
+        {
+            if(ix >= m_gdcount)
+            {
+                return nullptr;
+            }
+            return m_gdvalues[ix];
+        }
+
+        SDTypKey getKeyAt(unsigned int ix)
+        {
+            if(ix >= m_gdcount)
+            {
+                return nullptr;
+            }
+            return m_gdkeys[ix];
+        }
+
+        size_t count()
+        {
+            return m_gdcount;
+        }
+
+        bool removeByKey(const SDTypKey key)
+        {
+            bool found;
+            unsigned int x;
+            unsigned int k;
+            unsigned int i;
+            unsigned int j;
+            unsigned int cell;
+            unsigned int itemix;
+            unsigned int lastitemix;
+            unsigned long hash;
+            hash = Util::hashData(key, strlen(key));
+            found = false;
+            cell = getCellIndex(key, hash, &found);
+            if(!found)
+            {
+                return false;
+            }
+            itemix = m_gdcells[cell];
+            mc_memory_free(m_gdkeys[itemix]);
+            lastitemix = m_gdcount - 1;
+            if(itemix < lastitemix)
+            {
+                m_gdkeys[itemix] = m_gdkeys[lastitemix];
+                m_gdvalues[itemix] = m_gdvalues[lastitemix];
+                m_gdcellindices[itemix] = m_gdcellindices[lastitemix];
+                m_gdhashes[itemix] = m_gdhashes[lastitemix];
+                m_gdcells[m_gdcellindices[itemix]] = itemix;
+            }
+            m_gdcount--;
+            i = cell;
+            j = i;
+            for(x = 0; x < (m_gdcellcapacity - 1); x++)
+            {
+                j = (j + 1) & (m_gdcellcapacity - 1);
+                if(m_gdcells[j] == GDInvalidIndex)
+                {
+                    break;
+                }
+                k = (unsigned int)(m_gdhashes[m_gdcells[j]]) & (m_gdcellcapacity - 1);
+                if((j > i && (k <= i || k > j)) || (j < i && (k <= i && k > j)))
+                {
+                    m_gdcellindices[m_gdcells[j]] = i;
+                    m_gdcells[i] = m_gdcells[j];
+                    i = j;
+                }
+            }
+            m_gdcells[i] = GDInvalidIndex;
+            return true;
+        }
+
+        StrDict* copy()
+        {
+            bool ok;
+            size_t i;
+            StrDict* dictcopy;
+            (void)ok;
+            if((m_funccopyfn == nullptr) || (m_funcdestroyfn == nullptr))
+            {
+                return nullptr;
+            }
+            dictcopy = Memory::make<StrDict>((CallbackCopyFN)m_funccopyfn, (CallbackDestroyFN)m_funcdestroyfn);
+            for(i = 0; i < count(); i++)
+            {
+                auto key = getKeyAt(i);
+                auto item = getValueAt(i);
+                auto itemcopy = (SDTypVal)dictcopy->m_funccopyfn(item);
+                if((item != nullptr) && (itemcopy == nullptr))
+                {
+                    StrDict::destroyItemsAndDictIntern(dictcopy);
+                    return nullptr;
+                }
+                ok = dictcopy->set(key, itemcopy);
+            }
+            return dictcopy;
+        }
+};
+
+template<typename VDTypKey, typename VDTypVal>
+class ValDict
+{
+    public:
+        enum
+        {
+            VDInvalidIndex = (UINT_MAX),
+            DefaultInitSize = (32),
+
+        };
+
+    public:
+        static MC_INLINE bool initDict(ValDict* dict, unsigned int initialcapacity)
+        {
+            unsigned int i;
+            dict->m_vdcells = nullptr;
+            dict->m_vdkeys = nullptr;
+            dict->m_vdvalues = nullptr;
+            dict->m_vdcellindices = nullptr;
+            dict->m_vdhashes = nullptr;
+            dict->m_vdcount = 0;
+            dict->m_vdcellcapacity = initialcapacity;
+            dict->m_vditemcapacity = (unsigned int)(initialcapacity * 0.7f);
+            dict->m_funckeyequalsfn = nullptr;
+            dict->m_funchashfn = nullptr;
+            dict->m_vdcells = (unsigned int*)mc_memory_malloc(dict->m_vdcellcapacity * sizeof(unsigned int));
+            dict->m_vdkeys = (char**)mc_memory_malloc(dict->m_vditemcapacity * sizeof(VDTypKey));
+            dict->m_vdvalues = (void**)mc_memory_malloc(dict->m_vditemcapacity * sizeof(VDTypVal));
+            dict->m_vdcellindices = (unsigned int*)mc_memory_malloc(dict->m_vditemcapacity * sizeof(unsigned int));
+            dict->m_vdhashes = (long unsigned int*)mc_memory_malloc(dict->m_vditemcapacity * sizeof(unsigned long));
+            if(dict->m_vdcells == nullptr || dict->m_vdkeys == nullptr || dict->m_vdvalues == nullptr || dict->m_vdcellindices == nullptr || dict->m_vdhashes == nullptr)
+            {
+                goto dictallocfailed;
+            }
+            for(i = 0; i < dict->m_vdcellcapacity; i++)
+            {
+                dict->m_vdcells[i] = VDInvalidIndex;
+            }
+            return true;
+        dictallocfailed:
+            mc_memory_free(dict->m_vdcells);
+            mc_memory_free(dict->m_vdkeys);
+            mc_memory_free(dict->m_vdvalues);
+            mc_memory_free(dict->m_vdcellindices);
+            mc_memory_free(dict->m_vdhashes);
+            return false;
+        }
+
+        static MC_INLINE void deinit(ValDict* dict)
+        {
+            dict->m_vdcount = 0;
+            dict->m_vditemcapacity = 0;
+            dict->m_vdcellcapacity = 0;
+            mc_memory_free(dict->m_vdcells);
+            mc_memory_free(dict->m_vdkeys);
+            mc_memory_free(dict->m_vdvalues);
+            mc_memory_free(dict->m_vdcellindices);
+            mc_memory_free(dict->m_vdhashes);
+            dict->m_vdcells = nullptr;
+            dict->m_vdkeys = nullptr;
+            dict->m_vdvalues = nullptr;
+            dict->m_vdcellindices = nullptr;
+            dict->m_vdhashes = nullptr;
+        }
+
+        static MC_INLINE void destroy(ValDict* dict)
+        {
+            if(dict != nullptr)
+            {
+                ValDict::deinit(dict);
+                mc_memory_free(dict);
+            }
+        }
+
+    public:
+        unsigned int* m_vdcells;
+        unsigned long* m_vdhashes;
+        char** m_vdkeys;
+        void** m_vdvalues;
+        unsigned int* m_vdcellindices;
+        unsigned int m_vdcount;
+        unsigned int m_vditemcapacity;
+        unsigned int m_vdcellcapacity;
+        CallbackHashItemFN m_funchashfn;
+        CallbackCompareFN m_funckeyequalsfn;
+
+    public:
+        MC_INLINE ValDict(): ValDict(DefaultInitSize)
+        {
+        }
+
+        MC_INLINE ValDict(unsigned int mincapacity)
+        {
+            bool ok;
+            unsigned int capacity;
+            (void)ok;
+            capacity = Util::upperPowerOfTwo(mincapacity * 2);
+            ok = ValDict::initDict(this, capacity);
+            MC_ASSERT(ok);
+        }
+
+        MC_INLINE void setHashFunction(CallbackHashItemFN hashfn)
+        {
+            m_funchashfn = hashfn;
+        }
+
+        MC_INLINE void setEqualsFunction(CallbackCompareFN equalsfn)
+        {
+            m_funckeyequalsfn = equalsfn;
+        }
+
+        MC_INLINE bool setKVIntern(unsigned int cellix, unsigned long hash, void* key, void* value)
+        {
+            bool ok;
+            bool found;
+            unsigned int lastix;
+            (void)ok;
+            if(m_vdcount >= m_vditemcapacity)
+            {
+                if(!growAndRehash())
+                {
+                    return false;
+                }
+                cellix = getCellIndex(key, hash, &found);
+            }
+            lastix = m_vdcount;
+            m_vdcount++;
+            m_vdcells[cellix] = lastix;
+            setKeyAt(lastix, key);
+            setValueAt(lastix, value);
+            m_vdcellindices[lastix] = cellix;
+            m_vdhashes[lastix] = hash;
+            return true;
+        }
+
+        bool setKV(void* key, void* value)
+        {
+            bool found;
+            unsigned long hash;
+            unsigned int cellix;
+            unsigned int itemix;
+            hash = hashKey(key);
+            found = false;
+            cellix = getCellIndex(key, hash, &found);
+            if(found)
+            {
+                itemix = m_vdcells[cellix];
+                setValueAt(itemix, value);
+                return true;
+            }
+            return setKVIntern(cellix, hash, key, value);
+        }
+
+        MC_INLINE VDTypVal* get(VDTypKey* key)
+        {
+            bool found;
+            unsigned int itemix;
+            unsigned long hash;
+            unsigned long cellix;
+            if(m_vdcount == 0)
+            {
+                return nullptr;
+            }
+            hash = hashKey(key);
+            found = false;
+            cellix = getCellIndex(key, hash, &found);
+            if(!found)
+            {
+                return nullptr;
+            }
+            itemix = m_vdcells[cellix];
+            return getValueAt(itemix);
+        }
+
+        MC_INLINE VDTypKey* getKeyAt(unsigned int ix)
+        {
+            if(ix >= m_vdcount)
+            {
+                return nullptr;
+            }
+            return (VDTypKey*)((char*)m_vdkeys + (sizeof(VDTypKey) * ix));
+        }
+
+        MC_INLINE VDTypVal* getValueAt(unsigned int ix)
+        {
+            if(ix >= m_vdcount)
+            {
+                return nullptr;
+            }
+            return (VDTypVal*)((char*)m_vdvalues + (sizeof(VDTypVal) * ix));
+        }
+
+        MC_INLINE unsigned int getCapacity()
+        {
+            return m_vditemcapacity;
+        }
+
+        template<typename InputValT>
+        MC_INLINE bool setValueAt(unsigned int ix, InputValT value)
+        {
+            size_t offset;
+            if(ix >= m_vdcount)
+            {
+                return false;
+            }
+            offset = ix * sizeof(VDTypVal);
+            memcpy((char*)m_vdvalues + offset, value, sizeof(VDTypVal));
+            return true;
+        }
+
+        MC_INLINE int count()
+        {
+            return m_vdcount;
+        }
+
+        MC_INLINE bool removeByKey(void* key)
+        {
+            bool found;
+            unsigned int x;
+            unsigned int k;
+            unsigned int i;
+            unsigned int j;
+            unsigned int cell;
+            unsigned int itemix;
+            unsigned int lastitemix;
+            unsigned long hash;
+            void* lastkey;
+            void* lastvalue;
+            hash = hashKey(key);
+            found = false;
+            cell = getCellIndex(key, hash, &found);
+            if(!found)
+            {
+                return false;
+            }
+            itemix = m_vdcells[cell];
+            lastitemix = m_vdcount - 1;
+            if(itemix < lastitemix)
+            {
+                lastkey = getKeyAt(lastitemix);
+                setKeyAt(itemix, lastkey);
+                lastvalue = getKeyAt(lastitemix);
+                setValueAt(itemix, lastvalue);
+                m_vdcellindices[itemix] = m_vdcellindices[lastitemix];
+                m_vdhashes[itemix] = m_vdhashes[lastitemix];
+                m_vdcells[m_vdcellindices[itemix]] = itemix;
+            }
+            m_vdcount--;
+            i = cell;
+            j = i;
+            for(x = 0; x < (m_vdcellcapacity - 1); x++)
+            {
+                j = (j + 1) & (m_vdcellcapacity - 1);
+                if(m_vdcells[j] == VDInvalidIndex)
+                {
+                    break;
+                }
+                k = (unsigned int)(m_vdhashes[m_vdcells[j]]) & (m_vdcellcapacity - 1);
+                if((j > i && (k <= i || k > j)) || (j < i && (k <= i && k > j)))
+                {
+                    m_vdcellindices[m_vdcells[j]] = i;
+                    m_vdcells[i] = m_vdcells[j];
+                    i = j;
+                }
+            }
+            m_vdcells[i] = VDInvalidIndex;
+            return true;
+        }
+
+        MC_INLINE void clear()
+        {
+            unsigned int i;
+            m_vdcount = 0;
+            for(i = 0; i < m_vdcellcapacity; i++)
+            {
+                m_vdcells[i] = VDInvalidIndex;
+            }
+        }
+
+        MC_INLINE unsigned int getCellIndex(void* key, unsigned long hash, bool* outfound)
+        {
+            bool areequal;
+            unsigned int i;
+            unsigned int ix;
+            unsigned int cell;
+            unsigned int cellix;
+            unsigned long hashtocheck;
+            void* keytocheck;
+            *outfound = false;
+            cellix = (unsigned int)hash & (m_vdcellcapacity - 1);
+            for(i = 0; i < m_vdcellcapacity; i++)
+            {
+                ix = (cellix + i) & (m_vdcellcapacity - 1);
+                cell = m_vdcells[ix];
+                if(cell == VDInvalidIndex)
+                {
+                    return ix;
+                }
+                hashtocheck = m_vdhashes[cell];
+                if(hash != hashtocheck)
+                {
+                    continue;
+                }
+                keytocheck = getKeyAt(cell);
+                areequal = keysAreEqual(key, keytocheck);
+                if(areequal)
+                {
+                    *outfound = true;
+                    return ix;
+                }
+            }
+            return VDInvalidIndex;
+        }
+
+        MC_INLINE bool growAndRehash()
+        {
+            bool ok;
+            unsigned int i;
+            unsigned ncap;
+            char* key;
+            void* value;
+            (void)ok;
+            ncap = MC_UTIL_INCCAPACITY(m_vdcellcapacity);    
+            ValDict newdict(ncap);
+            newdict.m_funckeyequalsfn = m_funckeyequalsfn;
+            newdict.m_funchashfn = m_funchashfn;
+            for(i = 0; i < m_vdcount; i++)
+            {
+                key = (char*)getKeyAt(i);
+                value = getValueAt(i);
+                ok = newdict.setKV(key, value);
+            }
+            ValDict::deinit(this);
+            *this = newdict;
+            return true;
+        }
+
+        template<typename InputKeyT>
+        MC_INLINE bool setKeyAt(unsigned int ix, InputKeyT key)
+        {
+            size_t offset;
+            if(ix >= m_vdcount)
+            {
+                return false;
+            }
+            offset = ix * sizeof(VDTypKey);
+            memcpy((char*)m_vdkeys + offset, key, sizeof(VDTypKey));
+            return true;
+        }
+
+        MC_INLINE bool keysAreEqual(void* a, void* b)
+        {
+            if(m_funckeyequalsfn != nullptr)
+            {
+                return m_funckeyequalsfn(a, b);
+            }
+            return memcmp(a, b, sizeof(VDTypKey)) == 0;
+        }
+
+        MC_INLINE unsigned long hashKey(void* key)
+        {
+            if(m_funchashfn != nullptr)
+            {
+                return m_funchashfn(key);
+            }
+            return Util::hashData(key, sizeof(VDTypKey));
+        }
+};
 
 class StrView
 {
@@ -1785,49 +2520,36 @@ class Instruction
 
 struct RuntimeConfig
 {
+    /* whether to dump the AST */
     bool dumpast;
+
+    /* if dumpast is true, whether to quit after dumping (to check memory use) */
     bool exitafterastdump;
+
+    /* whether to dump bytecode prior to execution */
     bool dumpbytecode;
+
+    /* whether to print instructions during execution */
     bool printinstructions;
+
+    /* whether complains should halt the parser and/or compiler */
     bool fatalcomplaints;
+
+    /* wheter to quit after compiling (to check memory use)*/
     bool exitaftercompiling;
+
+    /* whether to enforce declaring of symbols */
     bool strictmode;
+
     /* allows redefinition of symbols */
     bool replmode;
 };
 
-
-
+/* needed for inline elements o ObjFunction */
 class ValData
 {
     public:
-        /* can NOT be an enum class, because values must be combinable */
-        enum Type
-        {
-            VT_NONE,
-            VT_ERROR,
-            VT_NUMBER,
-            VT_BOOL,
-            VT_STRING,
-            VT_NULL,
-            VT_FUNCNATIVE,
-            VT_ARRAY,
-            VT_MAP,
-            VT_FUNCSCRIPT,
-            VT_EXTERNAL,
-            VT_FREED,
-            /* for checking types with & */
-            VT_ANY
-        };
-
-
-        struct CompareResult
-        {
-            NumFloat result;
-        };
-
-    public:
-        Type m_valtype;
+        uint8_t m_valtype;
         bool m_isallocated;        
         union
         {
@@ -1946,64 +2668,218 @@ class GCMemory
             initPool(&m_poolstring);
             initPool(&m_poolscriptfuncs);
         }
-
-        template<typename VType>
-        MC_INLINE DataPool* getPoolForType(VType type)
-        {
-            switch(type)
-            {
-                case ValData::VT_FUNCSCRIPT:
-                    return &m_poolscriptfuncs;
-                case ValData::VT_ARRAY:
-                    return &m_poolarray;
-                case ValData::VT_MAP:
-                    return &m_poolmap;
-                case ValData::VT_STRING:
-                    return &m_poolstring;
-                default:
-                    break;
-            }
-            return nullptr;
-        }
 };
 
 class Object
 {
     public:
-        static Object* getDataFromPool(ValData::Type type)
-        {
-            Object* data;
-            GCMemory::DataPool* pool;
-            pool = GCMemory::get()->getPoolForType(type);
-            if((pool == nullptr) || pool->m_poolitemcount <= 0)
-            {
-                return nullptr;
-            }
-            data = pool->m_pooldata.get(pool->m_poolitemcount - 1);
-            /*
-            * we want to make sure that appending to m_gcobjlistback never fails in sweep
-            * so this only reserves space there.
-            */
-            GCMemory::get()->m_gcobjlistback->push(data);
-            GCMemory::get()->m_gcobjliststored->push(data);
-            pool->m_poolitemcount--;
-            return data;
-        }
-
-    public:
         int8_t m_odtype;
         int8_t m_gcmark;
         GCMemory* m_objmem;
+};
+
+class Traceback
+{
+    public:
+        class Item
+        {
+            public:
+                friend class Traceback;
+
+            protected:
+                char* m_tbtracefuncname;
+                SourceLocation m_tbpos;
+
+            public:
+                const char* getTraceFunctionName()
+                {
+                    return m_tbtracefuncname;
+                }
+
+                const char* getSourceLine()
+                {
+                    const char* line;
+                    if(m_tbpos.m_locfile == nullptr)
+                    {
+                        return nullptr;
+                    }
+                    auto lines = &m_tbpos.m_locfile->m_srclines;
+                    if((size_t)m_tbpos.m_locline >= (size_t)lines->count())
+                    {
+                        return nullptr;
+                    }
+                    line = (const char*)lines->get(m_tbpos.m_locline);
+                    return line;
+                }
+
+                const char* getSourceFilename()
+                {
+                    if(m_tbpos.m_locfile == nullptr)
+                    {
+                        return nullptr;
+                    }
+                    return m_tbpos.m_locfile->path();
+                }
+        };
+        friend class Item;
+
+    private:
+        GenericList<Item> m_tbitems;
 
     public:
-        MC_INLINE Object()
+        Traceback()
         {
+        }
+
+        static void destroy(Traceback* traceback)
+        {
+            size_t i;
+            if(traceback != nullptr)
+            {
+                for(i = 0; i < traceback->m_tbitems.count(); i++)
+                {
+                    auto item = traceback->m_tbitems.getp(i);
+                    mc_memory_free(item->m_tbtracefuncname);
+                    item->m_tbtracefuncname = nullptr;
+                }
+                traceback->m_tbitems.deInit();
+                mc_memory_free(traceback);
+            }
+        }
+
+        bool push(const char* fname, SourceLocation pos)
+        {
+            bool ok;
+            Item item;
+            (void)ok;
+            item.m_tbtracefuncname = Util::strDuplicate(fname);
+            if(item.m_tbtracefuncname == nullptr)
+            {
+                return false;
+            }
+            item.m_tbpos = pos;
+            ok = m_tbitems.push(item);
+            return true;
+        }
+
+        int getDepth()
+        {
+            return m_tbitems.count();
+        }
+
+        const char* getSourceFilename(int depth)
+        {
+            Item* item;
+            item = m_tbitems.getp(depth);
+            if(item == nullptr)
+            {
+                return nullptr;
+            }
+            return item->getSourceFilename();
+        }
+
+        const char* getSourceLineCode(int depth)
+        {
+            Item* item;
+            item = m_tbitems.getp(depth);
+            if(item == nullptr)
+            {
+                return nullptr;
+            }
+            return item->getSourceLine();
+        }
+
+        int getSourceLineNumber(int depth)
+        {
+            Item* item;
+            item = m_tbitems.getp(depth);
+            if(item == nullptr)
+            {
+                return -1;
+            }
+            return item->m_tbpos.m_locline;
+        }
+
+        int getSourceColumn(int depth)
+        {
+            Item* item;
+            item = m_tbitems.getp(depth);
+            if(item == nullptr)
+            {
+                return -1;
+            }
+            return item->m_tbpos.m_loccolumn;
+        }
+
+        const char* getFunctionName(int depth)
+        {
+            Item* item;
+            item = m_tbitems.getp(depth);
+            if(item == nullptr)
+            {
+                return "";
+            }
+            return item->getTraceFunctionName();
+        }
+
+        bool printTo(IOHandle* pr, Console::Color* mcc)
+        {
+            int i;
+            int depth;
+            const char* cblue;
+            const char* cyell;
+            const char* creset;
+            const char* filename;
+            Item* item;
+            cblue = mcc->get('b');
+            cyell = mcc->get('y');
+            creset = mcc->get('0');
+            depth = m_tbitems.count();
+            for(i = 0; i < depth; i++)
+            {
+                item = m_tbitems.getp(i);
+                filename = item->getSourceFilename();
+                pr->format("  function %s%s%s", cblue, item->m_tbtracefuncname, creset);
+                if(item->m_tbpos.m_locline >= 0 && item->m_tbpos.m_loccolumn >= 0)
+                {
+                    pr->format(" in %s%s:%d:%d%s", cyell, filename, item->m_tbpos.m_locline, item->m_tbpos.m_loccolumn, creset);
+                }
+                else
+                {
+                }
+                pr->format("\n");
+            }
+            return !pr->m_prfailed;
         }
 };
 
 class Value: public ValData
 {
     public:
+        /* can NOT be an enum class, because values must be combinable */
+        enum Type
+        {
+            VT_NONE,
+            VT_ERROR,
+            VT_NUMBER,
+            VT_BOOL,
+            VT_STRING,
+            VT_NULL,
+            VT_FUNCNATIVE,
+            VT_ARRAY,
+            VT_MAP,
+            VT_FUNCSCRIPT,
+            VT_EXTERNAL,
+            VT_FREED,
+            /* for checking types with & */
+            VT_ANY
+        };
+
+        struct CompareResult
+        {
+            NumFloat result;
+        };
+
         class ObjError: public Object
         {
             public:
@@ -2011,6 +2887,23 @@ class Value: public ValData
                 Traceback* traceback;
 
             public:
+                bool printSelfValue(IOHandle* pr)
+                {
+                    const char* cred;
+                    const char* creset;
+                    static const char eprefix[] = "script error";
+                    Console::Color mcc(fileno(stdout));
+                    cred = mcc.get('r');
+                    creset = mcc.get('0');
+                    pr->format("%s%s:%s %s\n", cred, eprefix, creset, message);
+                    MC_ASSERT(traceback != nullptr);
+                    if(traceback != nullptr)
+                    {
+                        pr->format("%sTraceback:%s\n", cred, creset);
+                        traceback->printTo(pr, &mcc);
+                    }
+                    return true;
+                }
         };
 
         class ObjString: public Object
@@ -2020,7 +2913,115 @@ class Value: public ValData
                 StringBuffer* m_strbuf;
 
             public:
+                MC_INLINE unsigned long hash() const
+                {
+                    return m_hashval;
+                }
 
+                MC_INLINE char* mutableData()
+                {
+                    return m_strbuf->data();
+                }
+
+                MC_INLINE char* data()
+                {
+                    return m_strbuf->data();
+                }
+
+                MC_INLINE char* data() const
+                {
+                    return m_strbuf->data();
+                }
+
+                MC_INLINE size_t length()
+                {
+                    return m_strbuf->length();
+                }
+
+                MC_INLINE size_t length() const
+                {
+                    return m_strbuf->length();
+                }
+
+                MC_INLINE bool reHash()
+                {
+                    size_t len;
+                    const char* str;
+                    len = length();
+                    str = data();
+                    m_hashval = Util::hashData(str, len);
+                    return true;
+                }
+
+                MC_INLINE void setLength(int len)
+                {
+                    m_strbuf->setLength(len);
+                    reHash();
+                }
+
+                MC_INLINE bool append(const char* src, size_t len)
+                {
+                    m_strbuf->append(src, len);
+                    reHash();
+                    return true;
+                }
+
+                MC_INLINE bool append(const char* src)
+                {
+                    return append(src, strlen(src));
+                }
+
+                template<typename... ArgsT>
+                MC_INLINE bool appendFormat(const char* fmt, ArgsT&&... args)
+                {
+                    m_strbuf->appendFormat(fmt, args...);
+                    reHash();
+                    return true;
+                }
+
+                MC_INLINE bool appendValue(Value val)
+                {
+                    bool ok;
+                    int vlen;
+                    const char* vstr;
+                    (void)ok;
+                    if(val.getType() == VT_NUMBER)
+                    {
+                        appendFormat("%g", val.asNumber());
+                        goto finished;
+                    }
+                    if(val.getType() == VT_STRING)
+                    {
+                        vlen = val.asString()->length();
+                        vstr = val.asString()->data();
+                        ok = append(vstr, vlen);
+                        if(!ok)
+                        {
+                            return false;
+                        }
+                        goto finished;
+                    }
+                    return false;
+                    finished:
+                    reHash();
+                    return true;
+                }
+
+                void printSelfValue(IOHandle* pr)
+                {
+                    size_t len;
+                    const char* str;
+                    str = data();
+                    len = length();
+                    if(pr->m_prconfig.quotstring)
+                    {
+                        pr->printEscapedString(str, len);
+                    }
+                    else
+                    {
+                        pr->put(str, len);
+                    }
+                }
         };
 
         class ObjFunction: public Object
@@ -2115,6 +3116,32 @@ class Value: public ValData
                     }
                     return (Value*)m_funcdata.valscriptfunc.ufv.freevalsstack;
                 }
+
+                void printSelfValue(IOHandle* pr)
+                {
+                    const char* fname;
+                    fname = getName();
+                    auto numlocals = m_funcdata.valscriptfunc.numlocals;
+                    auto numargs = m_funcdata.valscriptfunc.numargs;
+                    auto freevc = m_funcdata.valscriptfunc.freevalscount;
+                    pr->format("<scriptfunction '%s' locals=%d argc=%d fvc=%d", fname, numlocals, numargs, freevc);
+                    #if 1
+                    if(pr->m_prconfig.verbosefunc)
+                    {
+                        auto code = m_funcdata.valscriptfunc.compiledprogcode->m_compiledbytecode;
+                        auto poslist = m_funcdata.valscriptfunc.compiledprogcode->m_progsrcposlist;
+                        auto count = m_funcdata.valscriptfunc.compiledprogcode->m_compiledcount;
+                        pr->put(" [");
+                        Instruction::bcPrintByteCodeTo(pr, code, poslist, count, true);
+                        pr->put(" ]");
+                    }
+                    else
+                    #endif
+                    {
+                    }
+                    pr->put(">");
+                }
+
         };
 
         class ObjUserdata: public Object
@@ -2210,6 +3237,47 @@ class Value: public ValData
                 {
                     return m_actualarray->removeAt(ix);
                 }
+
+                void printSelfValue(IOHandle* pr)
+                {
+                    bool recursion;
+                    size_t i;
+                    size_t alen;
+                    bool prevquot;
+                    Value iobj;
+                    alen = size();
+                    pr->put("[");
+                    for(i = 0; i < alen; i++)
+                    {
+                        recursion = false;
+                        iobj = get(i);
+                        if(iobj.getType() == VT_ARRAY)
+                        {
+                            auto otherary = iobj.asArray();
+                            if(otherary == this)
+                            {
+                                recursion = true;
+                            }
+                        }
+                        prevquot = pr->m_prconfig.quotstring;
+                        pr->m_prconfig.quotstring = true;
+                        if(recursion)
+                        {
+                            pr->put("<recursion>");
+                        }
+                        else
+                        {
+                            printValue(pr, iobj, false);
+                        }
+                        pr->m_prconfig.quotstring = prevquot;
+                        if(i < (alen - 1))
+                        {
+                            pr->put(", ");
+                        }
+                    }
+                    pr->put("]");
+                }
+
         };
 
         class ObjMap: public Object
@@ -2333,97 +3401,25 @@ class Value: public ValData
                     m->setKV(valobj, val);
                     return res;
                 }
-        };
 
-        class ValPrinter
-        {
-            public:
-                static void valPrintObjFuncScript(IOHandle* pr, const Value& val)
-                {
-                    const char* fname;
-                    auto fn = val.asFunction();
-                    fname = fn->getName();
-                    auto numlocals = fn->m_funcdata.valscriptfunc.numlocals;
-                    auto numargs = fn->m_funcdata.valscriptfunc.numargs;
-                    auto freevc = fn->m_funcdata.valscriptfunc.freevalscount;
-                    pr->format("<scriptfunction '%s' locals=%d argc=%d fvc=%d", fname, numlocals, numargs, freevc);
-                    #if 1
-                    if(pr->m_prconfig.verbosefunc)
-                    {
-                        auto code = fn->m_funcdata.valscriptfunc.compiledprogcode->m_compiledbytecode;
-                        auto poslist = fn->m_funcdata.valscriptfunc.compiledprogcode->m_progsrcposlist;
-                        auto count = fn->m_funcdata.valscriptfunc.compiledprogcode->m_compiledcount;
-                        pr->put(" [");
-                        Instruction::bcPrintByteCodeTo(pr, code, poslist, count, true);
-                        pr->put(" ]");
-                    }
-                    else
-                    #endif
-                    {
-                    }
-                    pr->put(">");
-                }
-
-                static void valPrintObjArray(IOHandle* pr, const Value& val)
-                {
-                    bool recursion;
-                    size_t i;
-                    size_t alen;
-                    bool prevquot;
-                    Value iobj;
-                    auto actualary = val.asArray();
-                    alen = actualary->size();
-                    pr->put("[");
-                    for(i = 0; i < alen; i++)
-                    {
-                        recursion = false;
-                        iobj = actualary->get(i);
-                        if(iobj.getType() == VT_ARRAY)
-                        {
-                            auto otherary = iobj.asArray();
-                            if(otherary == actualary)
-                            {
-                                recursion = true;
-                            }
-                        }
-                        prevquot = pr->m_prconfig.quotstring;
-                        pr->m_prconfig.quotstring = true;
-                        if(recursion)
-                        {
-                            pr->put("<recursion>");
-                        }
-                        else
-                        {
-                            doPrintValue(pr, iobj, false);
-                        }
-                        pr->m_prconfig.quotstring = prevquot;
-                        if(i < (alen - 1))
-                        {
-                            pr->put(", ");
-                        }
-                    }
-                    pr->put("]");
-                }
-
-                static void valPrintObjMap(IOHandle* pr, const Value& val)
+                void printSelfValue(IOHandle* pr)
                 {
                     bool prevquot;
                     size_t i;
                     size_t alen;
                     Value mapkey;
                     Value mapval;
-                    auto m = val.asMap();
-                    alen = m->count();
+                    alen = count();
                     pr->put("{");
                     for(i = 0; i < alen; i++)
                     {
-                        mapkey = m->getKeyAt(i);
-                        mapval = m->getValueAt(i);
+                        mapkey = getKeyAt(i);
+                        mapval = getValueAt(i);
                         prevquot = pr->m_prconfig.quotstring;
                         pr->m_prconfig.quotstring = true;
-                        doPrintValue(pr, mapkey, false);
+                        printValue(pr, mapkey, false);
                         pr->put(": ");
-                        doPrintValue(pr, mapval, false);
+                        printValue(pr, mapval, false);
                         pr->m_prconfig.quotstring = prevquot;
                         if(i < (alen - 1))
                         {
@@ -2432,88 +3428,127 @@ class Value: public ValData
                     }
                     pr->put("}");
                 }
-
-                MC_PROTO static void valPrintObjError(IOHandle* pre, const Value& val);
-
-                static void doPrintValue(IOHandle* pr, const Value& val, bool accurate)
-                {
-                    Type type;
-                    (void)accurate;
-                    type = val.getType();
-                    switch(type)
-                    {
-                        case VT_FREED:
-                            {
-                                pr->put("FREED");
-                            }
-                            break;
-                        case VT_NONE:
-                            {
-                                pr->put("NONE");
-                            }
-                            break;
-                        case VT_NUMBER:
-                            {
-                                NumFloat number;
-                                number = val.asNumber();
-                                pr->printNumFloat(number);
-                            }
-                            break;
-                        case VT_BOOL:
-                            {
-                                pr->put(val.asBool() ? "true" : "false");
-                            }
-                            break;
-                        case VT_STRING:
-                            {
-                                valPrintObjString(pr, val);
-                            }
-                            break;
-                        case VT_NULL:
-                            {
-                                pr->put("null");
-                            }
-                            break;
-                        case VT_FUNCSCRIPT:
-                            {
-                                valPrintObjFuncScript(pr, val);
-                            }
-                            break;
-                        case VT_ARRAY:
-                            {
-                                valPrintObjArray(pr, val);
-                            }
-                            break;
-                        case VT_MAP:
-                            {
-                                valPrintObjMap(pr, val);
-                            }
-                            break;
-                        case VT_FUNCNATIVE:
-                            {
-                                pr->put("FUNCNATIVE");
-                            }
-                            break;
-                        case VT_EXTERNAL:
-                            {
-                                pr->put("EXTERNAL");
-                            }
-                            break;
-                        case VT_ERROR:
-                            {
-                                valPrintObjError(pr, val);
-                            }
-                            break;
-                        case VT_ANY:
-                            {
-                                MC_ASSERT(false);
-                            }
-                            break;
-                    }
-                }
         };
 
+        static void printValue(IOHandle* pr, const Value& val, bool accurate)
+        {
+            Type type;
+            (void)accurate;
+            type = val.getType();
+            switch(type)
+            {
+                case VT_FREED:
+                    {
+                        pr->put("FREED");
+                    }
+                    break;
+                case VT_NONE:
+                    {
+                        pr->put("NONE");
+                    }
+                    break;
+                case VT_NUMBER:
+                    {
+                        NumFloat number;
+                        number = val.asNumber();
+                        pr->printNumFloat(number);
+                    }
+                    break;
+                case VT_BOOL:
+                    {
+                        pr->put(val.asBool() ? "true" : "false");
+                    }
+                    break;
+                case VT_STRING:
+                    {
+                        val.asString()->printSelfValue(pr);
+                    }
+                    break;
+                case VT_NULL:
+                    {
+                        pr->put("null");
+                    }
+                    break;
+                case VT_FUNCSCRIPT:
+                    {
+                        val.asFunction()->printSelfValue(pr);
+                    }
+                    break;
+                case VT_ARRAY:
+                    {
+                        val.asArray()->printSelfValue(pr);
+                    }
+                    break;
+                case VT_MAP:
+                    {
+                        val.asMap()->printSelfValue(pr);
+                    }
+                    break;
+                case VT_FUNCNATIVE:
+                    {
+                        pr->put("FUNCNATIVE");
+                    }
+                    break;
+                case VT_EXTERNAL:
+                    {
+                        pr->put("EXTERNAL");
+                    }
+                    break;
+                case VT_ERROR:
+                    {
+                        val.asError()->printSelfValue(pr);
+                    }
+                    break;
+                case VT_ANY:
+                    {
+                        MC_ASSERT(false);
+                    }
+                    break;
+            }
+        }
+
     public:
+        template<typename VType>
+        MC_INLINE static GCMemory::DataPool* getPoolForType(VType type)
+        {
+            auto m = GCMemory::get();
+            switch(type)
+            {
+                case VT_FUNCSCRIPT:
+                    return &m->m_poolscriptfuncs;
+                case VT_ARRAY:
+                    return &m->m_poolarray;
+                case VT_MAP:
+                    return &m->m_poolmap;
+                case VT_STRING:
+                    return &m->m_poolstring;
+                default:
+                    break;
+            }
+            return nullptr;
+        }
+
+        static Object* getDataFromPool(Type type)
+        {
+            Object* data;
+            GCMemory::DataPool* pool;
+            pool = getPoolForType(type);
+            if((pool == nullptr) || pool->m_poolitemcount <= 0)
+            {
+                return nullptr;
+            }
+            data = pool->m_pooldata.get(pool->m_poolitemcount - 1);
+            /*
+            * we want to make sure that appending to m_gcobjlistback never fails in sweep
+            * so this only reserves space there.
+            */
+            GCMemory::get()->m_gcobjlistback->push(data);
+            GCMemory::get()->m_gcobjliststored->push(data);
+            pool->m_poolitemcount--;
+            return data;
+        }
+
+
         static void markObject(Value obj)
         {
             int i;
@@ -2618,10 +3653,10 @@ class Value: public ValData
         }
 
         template<typename DerivTyp>
-        static DerivTyp* makeObjData(ValData::Type typ)
+        static DerivTyp* makeObjData(Type typ)
         {
             Object* data;
-            data = Object::getDataFromPool(typ);
+            data = getDataFromPool(typ);
             if(data != nullptr)
             {
                 data->m_odtype = typ;
@@ -2652,17 +3687,17 @@ class Value: public ValData
         {
             switch(data->m_odtype)
             {
-                case ValData::VT_FREED:
+                case VT_FREED:
                     {
                         MC_ASSERT(false);
                     }
                     break;
-                case ValData::VT_STRING:
+                case VT_STRING:
                     {
                         StringBuffer::destroy(((ObjString*)data)->m_strbuf);
                     }
                     break;
-                case ValData::VT_FUNCSCRIPT:
+                case VT_FUNCSCRIPT:
                     {
                         auto fn = (ObjFunction*)data;
                         if(fn->m_funcdata.valscriptfunc.ownsdata)
@@ -2676,27 +3711,27 @@ class Value: public ValData
                         }
                     }
                     break;
-                case ValData::VT_ARRAY:
+                case VT_ARRAY:
                     {
                         auto arr = (ObjArray*)data;
                         Memory::destroy(arr->m_actualarray);
                         //Memory::destroy(arr);
                     }
                     break;
-                case ValData::VT_MAP:
+                case VT_MAP:
                     {
                         auto m = (ObjMap*)data;
                         Memory::destroy(m->m_actualmap);
                         //Memory::destroy(m);
                     }
                     break;
-                case ValData::VT_FUNCNATIVE:
+                case VT_FUNCNATIVE:
                     {
                         auto fn = (ObjFunction*)data;
                         mc_memory_free(fn->m_funcdata.valnativefunc.natfnname);
                     }
                     break;
-                case ValData::VT_EXTERNAL:
+                case VT_EXTERNAL:
                     {
                         auto ud = (ObjUserdata*)data;
                         if(ud->datadestroyfn != nullptr)
@@ -2705,7 +3740,7 @@ class Value: public ValData
                         }
                     }
                     break;
-                case ValData::VT_ERROR:
+                case VT_ERROR:
                     {
                         auto e = (ObjError*)data;
                         mc_memory_free(e->message);
@@ -2717,7 +3752,7 @@ class Value: public ValData
                     }
                     break;
             }
-            data->m_odtype = ValData::VT_FREED;
+            data->m_odtype = VT_FREED;
         }
 
         static bool canStoreInPool(Object* data)
@@ -2767,7 +3802,7 @@ class Value: public ValData
                     break;
             }
             #endif
-            pool= GCMemory::get()->getPoolForType(data->m_odtype);
+            pool= getPoolForType(data->m_odtype);
             if(pool == nullptr)
             {
                 return false;
@@ -2898,22 +3933,22 @@ class Value: public ValData
             }
             if(atype == btype && atype == VT_STRING)
             {
-                alen = a.stringGetLength();
-                blen = b.stringGetLength();
+                alen = a.asString()->length();
+                blen = b.asString()->length();
                 if(alen != blen)
                 {
                     cres->result = alen - blen;
                     return false;
                 }
-                ahash = a.stringGetHash();
-                bhash = b.stringGetHash();
+                ahash = a.asString()->hash();
+                bhash = b.asString()->hash();
                 if(ahash != bhash)
                 {
                     cres->result = ahash - bhash;
                     return false;
                 }
-                astring = a.stringGetData();
-                bstring = b.stringGetData();
+                astring = a.asString()->data();
+                bstring = b.asString()->data();
                 if(strncmp(astring, bstring, alen) == 0)
                 {
                     cres->result = 0;
@@ -2985,7 +4020,7 @@ class Value: public ValData
                     break;
                 case VT_STRING:
                     {
-                        return obj.stringGetHash();
+                        return obj.asString()->hash();
                     }
                     break;
                 default:
@@ -3174,8 +4209,8 @@ class Value: public ValData
                         int len;
                         const char* str;
                         (void)ok;
-                        str = obj.stringGetData();
-                        len = obj.stringGetLength();
+                        str = obj.asString()->data();
+                        len = obj.asString()->length();
                         copy = makeString(str, len);
                         ok = targetdict->setKV(&obj, &copy);
                         return copy;
@@ -3251,8 +4286,8 @@ class Value: public ValData
                     {
                         size_t len;
                         const char* str;
-                        str = obj.stringGetData();
-                        len = obj.stringGetLength();
+                        str = obj.asString()->data();
+                        len = obj.asString()->length();
                         copy = makeString(str, len);
                     }
                     break;
@@ -3381,7 +4416,7 @@ class Value: public ValData
         static Value makeStrFormat(const char* fmt, ArgsT&&... args)
         {
             Value res;
-            auto data = (ObjString*)Object::getDataFromPool(VT_STRING);
+            auto data = (ObjString*)getDataFromPool(VT_STRING);
             res = makeStrEmptyCapacity(0);
             if(res.isNull())
             {
@@ -3399,7 +4434,7 @@ class Value: public ValData
             {
                 return res;
             }
-            if(!res.stringAppend(string, len))
+            if(!res.asString()->append(string, len))
             {
                 return makeNull();
             }
@@ -3562,21 +4597,6 @@ class Value: public ValData
             return makeValueFromObject(obj);
         }
 
-        static void valPrintObjString(IOHandle* pr, const Value& val)
-        {
-            size_t len;
-            const char* str;
-            str = val.stringGetData();
-            len = val.stringGetLength();
-            if(pr->m_prconfig.quotstring)
-            {
-                pr->printEscapedString(str, len);
-            }
-            else
-            {
-                pr->put(str, len);
-            }
-        }
 
         static bool userdataSetData(Value selfval, void* extdata)
         {
@@ -3654,15 +4674,10 @@ class Value: public ValData
             return array->removeAt(ix);
         }
 
-        static void printValue(IOHandle* pr, const Value& val, bool accurate)
-        {
-            ValPrinter::doPrintValue(pr, val, accurate);
-        }
-
     public:
         MC_INLINE Type getType() const
         {
-            return m_valtype;
+            return (Type)m_valtype;
         }
 
         template<typename ActualT>
@@ -3778,8 +4793,7 @@ class Value: public ValData
 
         MC_INLINE ObjArray* asArray() const
         {
-            auto data = getAllocatedData<ObjArray>();
-            return data;
+            return getAllocatedData<ObjArray>();
         }
 
         MC_INLINE ObjMap* asMap()
@@ -3792,115 +4806,26 @@ class Value: public ValData
             return getAllocatedData<ObjMap>();
         }
 
-        MC_INLINE char* getStringDataIntern()
+        MC_INLINE ObjString* asString()
         {
-            auto data = getAllocatedData<ObjString>();
-            return data->m_strbuf->data();
+            return getAllocatedData<ObjString>();
         }
 
-        MC_INLINE char* getStringDataIntern() const
+        MC_INLINE ObjString* asString() const
         {
-            auto data = getAllocatedData<ObjString>();
-            return data->m_strbuf->data();
+            return getAllocatedData<ObjString>();
         }
 
-        MC_INLINE const char* stringGetData() const
+        MC_INLINE ObjError* asError()
         {
-            return getStringDataIntern();
+            return getAllocatedData<ObjError>();
         }
 
-        MC_INLINE int stringGetLength() const
+        MC_INLINE ObjError* asError() const
         {
-            auto data = getAllocatedData<ObjString>();
-            return data->m_strbuf->length();
+            return getAllocatedData<ObjError>();
         }
 
-        MC_INLINE void stringSetLength(int len)
-        {
-            auto data = getAllocatedData<ObjString>();
-            data->m_strbuf->setLength(len);
-            this->stringRehash();
-        }
-
-        MC_INLINE char* stringGetMutableData()
-        {
-            return getStringDataIntern();
-        }
-
-        MC_INLINE bool stringAppend(const char* src, size_t len)
-        {
-            auto string = getAllocatedData<ObjString>();
-            string->m_strbuf->append(src, len);
-            this->stringRehash();
-            return true;
-        }
-
-        MC_INLINE bool stringAppend(const char* src)
-        {
-            return this->stringAppend(src, strlen(src));
-        }
-
-        template<typename... ArgsT>
-        MC_INLINE bool stringAppendFmt(const char* fmt, ArgsT&&... args)
-        {
-            auto string = getAllocatedData<ObjString>();
-            string->m_strbuf->appendFormat(fmt, args...);
-            this->stringRehash();
-            return true;
-        }
-
-        MC_INLINE bool stringAppendValue(Value val)
-        {
-            bool ok;
-            int vlen;
-            const char* vstr;
-            (void)ok;
-            if(val.getType() == VT_NUMBER)
-            {
-                this->stringAppendFmt("%g", val.asNumber());
-                goto finished;
-            }
-            if(val.getType() == VT_STRING)
-            {
-                vlen = val.stringGetLength();
-                vstr = val.stringGetData();
-                ok = this->stringAppend(vstr, vlen);
-                if(!ok)
-                {
-                    return false;
-                }
-                goto finished;
-            }
-            return false;
-            finished:
-            this->stringRehash();
-            return true;
-        }
-
-        MC_INLINE size_t stringGetHash() const
-        {
-            size_t len;
-            const char* str;
-            auto data = getAllocatedData<ObjString>();
-            if(data->m_hashval == 0)
-            {
-                len = this->stringGetLength();
-                str = this->stringGetData();
-                data->m_hashval = Util::hashData(str, len);
-            }
-            return data->m_hashval;
-        }
-
-        MC_INLINE bool stringRehash()
-        {
-            size_t len;
-            const char* str;
-            auto data = getAllocatedData<ObjString>();
-            len = this->stringGetLength();
-            str = this->stringGetData();
-            data->m_hashval = Util::hashData(str, len);
-            return true;
-        }
 };
 
 /*
@@ -3961,181 +4886,6 @@ class ObjClass
         }
 };
 
-class Traceback
-{
-    public:
-        class Item
-        {
-            public:
-                friend class Traceback;
-
-            protected:
-                char* m_tbtracefuncname;
-                SourceLocation m_tbpos;
-
-            public:
-                const char* getTraceFunctionName()
-                {
-                    return m_tbtracefuncname;
-                }
-
-                const char* getSourceLine()
-                {
-                    const char* line;
-                    if(m_tbpos.m_locfile == nullptr)
-                    {
-                        return nullptr;
-                    }
-                    auto lines = &m_tbpos.m_locfile->m_srclines;
-                    if((size_t)m_tbpos.m_locline >= (size_t)lines->count())
-                    {
-                        return nullptr;
-                    }
-                    line = (const char*)lines->get(m_tbpos.m_locline);
-                    return line;
-                }
-
-                const char* getSourceFilename()
-                {
-                    if(m_tbpos.m_locfile == nullptr)
-                    {
-                        return nullptr;
-                    }
-                    return m_tbpos.m_locfile->path();
-                }
-        };
-        friend class Item;
-
-    private:
-        GenericList<Item> m_tbitems;
-
-    public:
-        Traceback()
-        {
-        }
-
-        static void destroy(Traceback* traceback)
-        {
-            size_t i;
-            if(traceback != nullptr)
-            {
-                for(i = 0; i < traceback->m_tbitems.count(); i++)
-                {
-                    auto item = traceback->m_tbitems.getp(i);
-                    mc_memory_free(item->m_tbtracefuncname);
-                    item->m_tbtracefuncname = nullptr;
-                }
-                traceback->m_tbitems.deInit();
-                mc_memory_free(traceback);
-            }
-        }
-
-        bool push(const char* fname, SourceLocation pos)
-        {
-            bool ok;
-            Item item;
-            (void)ok;
-            item.m_tbtracefuncname = Util::strDuplicate(fname);
-            if(item.m_tbtracefuncname == nullptr)
-            {
-                return false;
-            }
-            item.m_tbpos = pos;
-            ok = m_tbitems.push(item);
-            return true;
-        }
-
-        int getDepth()
-        {
-            return m_tbitems.count();
-        }
-
-        const char* getSourceFilename(int depth)
-        {
-            Item* item;
-            item = m_tbitems.getp(depth);
-            if(item == nullptr)
-            {
-                return nullptr;
-            }
-            return item->getSourceFilename();
-        }
-
-        const char* getSourceLineCode(int depth)
-        {
-            Item* item;
-            item = m_tbitems.getp(depth);
-            if(item == nullptr)
-            {
-                return nullptr;
-            }
-            return item->getSourceLine();
-        }
-
-        int getSourceLineNumber(int depth)
-        {
-            Item* item;
-            item = m_tbitems.getp(depth);
-            if(item == nullptr)
-            {
-                return -1;
-            }
-            return item->m_tbpos.m_locline;
-        }
-
-        int getSourceColumn(int depth)
-        {
-            Item* item;
-            item = m_tbitems.getp(depth);
-            if(item == nullptr)
-            {
-                return -1;
-            }
-            return item->m_tbpos.m_loccolumn;
-        }
-
-        const char* getFunctionName(int depth)
-        {
-            Item* item;
-            item = m_tbitems.getp(depth);
-            if(item == nullptr)
-            {
-                return "";
-            }
-            return item->getTraceFunctionName();
-        }
-
-        bool printTo(IOHandle* pr, Console::Color* mcc)
-        {
-            int i;
-            int depth;
-            const char* cblue;
-            const char* cyell;
-            const char* creset;
-            const char* filename;
-            Item* item;
-            cblue = mcc->get('b');
-            cyell = mcc->get('y');
-            creset = mcc->get('0');
-            depth = m_tbitems.count();
-            for(i = 0; i < depth; i++)
-            {
-                item = m_tbitems.getp(i);
-                filename = item->getSourceFilename();
-                pr->format("  function %s%s%s", cblue, item->m_tbtracefuncname, creset);
-                if(item->m_tbpos.m_locline >= 0 && item->m_tbpos.m_loccolumn >= 0)
-                {
-                    pr->format(" in %s%s:%d:%d%s", cyell, filename, item->m_tbpos.m_locline, item->m_tbpos.m_loccolumn, creset);
-                }
-                else
-                {
-                }
-                pr->format("\n");
-            }
-            return !pr->m_prfailed;
-        }
-};
-
 class Error
 {
     public:
@@ -4178,25 +4928,6 @@ class Error
             return "NONE";
         }
 
-        static bool printUserError(IOHandle* pr, const Value& val)
-        {
-            const char* cred;
-            const char* creset;
-            Traceback* traceback;
-            static const char eprefix[] = "script error";
-            Console::Color mcc(fileno(stdout));
-            cred = mcc.get('r');
-            creset = mcc.get('0');
-            pr->format("%s%s:%s %s\n", cred, eprefix, creset, Value::errorGetMessage(val));
-            traceback = Value::errorGetTraceback(val);
-            MC_ASSERT(traceback != nullptr);
-            if(traceback != nullptr)
-            {
-                pr->format("%sTraceback:%s\n", cred, creset);
-                traceback->printTo(pr, &mcc);
-            }
-            return true;
-        }
 
         static bool printErrorTo(Error* err, IOHandle* pr)
         {
@@ -6041,45 +6772,6 @@ class AstLexer: public AstLexData
         }
 };
 
-class AstIdentifier
-{
-    public:
-        char* m_identvalue = nullptr;
-        SourceLocation m_exprpos = SourceLocation::Invalid();
-
-    public:
-        AstIdentifier()
-        {
-        }
-
-        AstIdentifier(AstToken tok)
-        {
-            m_identvalue = tok.dupLiteralString();
-            m_exprpos = tok.m_tokpos;
-        }
-
-        static AstIdentifier* copy(AstIdentifier* ident)
-        {
-            AstIdentifier* res = Memory::make<AstIdentifier>();
-            res->m_identvalue = Util::strDuplicate(ident->m_identvalue);
-            res->m_exprpos = ident->m_exprpos;
-            return res;
-        }
-
-        static void destroy(AstIdentifier* ident)
-        {
-            if(ident != nullptr)
-            {
-                mc_memory_free(ident->m_identvalue);
-                ident->m_identvalue = nullptr;
-                ident->m_exprpos = SourceLocation::Invalid();
-                mc_memory_free(ident);
-            }
-        }
-};
-
-
-
 class AstExpression
 {
     public:
@@ -6141,6 +6833,137 @@ class AstExpression
             MATHOP_RIGHTSHIFT
         };
 
+        class PrintAst
+        {
+            public:
+                static const char* getMathOpString(AstExpression::MathOpType op)
+                {
+                    switch(op)
+                    {
+                        case AstExpression::MATHOP_NONE:
+                            return "AstExpression::MATHOP_NONE";
+                        case AstExpression::MATHOP_ASSIGN:
+                            return "=";
+                        case AstExpression::MATHOP_PLUS:
+                            return "+";
+                        case AstExpression::MATHOP_MINUS:
+                            return "-";
+                        case AstExpression::MATHOP_BANG:
+                            return "!";
+                        case AstExpression::MATHOP_ASTERISK:
+                            return "*";
+                        case AstExpression::MATHOP_SLASH:
+                            return "/";
+                        case AstExpression::MATHOP_LESSTHAN:
+                            return "<";
+                        case AstExpression::MATHOP_GREATERTHAN:
+                            return ">";
+                        case AstExpression::MATHOP_EQUAL:
+                            return "==";
+                        case AstExpression::MATHOP_NOTEQUAL:
+                            return "!=";
+                        case AstExpression::MATHOP_MODULUS:
+                            return "%";
+                        case AstExpression::MATHOP_LOGICALAND:
+                            return "&&";
+                        case AstExpression::MATHOP_LOGICALOR:
+                            return "||";
+                        case AstExpression::MATHOP_BINAND:
+                            return "&";
+                        case AstExpression::MATHOP_BINOR:
+                            return "|";
+                        case AstExpression::MATHOP_BINXOR:
+                            return "^";
+                        case AstExpression::MATHOP_LEFTSHIFT:
+                            return "<<";
+                        case AstExpression::MATHOP_RIGHTSHIFT:
+                            return ">>";
+                        case AstExpression::MATHOP_LESSEQUAL:
+                            return "<=";
+                        case AstExpression::MATHOP_GREATEREQAL:
+                            return ">=";
+                        case AstExpression::MATHOP_BINNOT:
+                            return "~";
+                    }
+                    return "AstExpression::MATHOP_UNKNOWN";
+                }
+
+            public:
+                IOHandle* m_pdest;
+                bool m_pseudolisp;
+
+            public:
+                PrintAst(IOHandle* pr)
+                {
+                    m_pseudolisp = false;
+                    m_pdest = pr;
+                }
+
+                void putl(const char* str, size_t len)
+                {
+                    m_pdest->put(str, len);
+                }
+
+                template<size_t len>
+                void put(const char (&str)[len])
+                {
+                    m_pdest->put(str, len);
+                }
+
+                void put(const char* str)
+                {
+                    m_pdest->put(str, strlen(str));
+                }
+
+                void put(AstExpression* expr)
+                {
+                    expr->printTo(*this);
+                }
+
+                template<typename InputT>
+                PrintAst& operator<<(const InputT& input)
+                {
+                    put(input);
+                    return *this;
+                }
+
+                template<typename... ArgsT>
+                void putfmt(const char* fmt, ArgsT&&... args)
+                {
+                    m_pdest->format(fmt, args...);
+                }
+
+                void beginPrint(GenericList<AstExpression*>* statements)
+                {
+                    m_pdest->m_prconfig.quotstring = true;
+                    fprintf(stderr, "---AST dump begin---\n");
+                    printStmtList(statements);
+                    fprintf(stderr, "\n---AST dump end---\n");
+                    m_pdest->m_prconfig.quotstring = false;
+                }
+
+                void printStmtList(GenericList<AstExpression*>* statements)
+                {
+                    int i;
+                    int count;
+                    count = statements->count();
+                    for(i = 0; i < count; i++)
+                    {
+                        auto subex = statements->get(i);
+                        subex->printTo(*this);
+                        if(i < (count - 1))
+                        {
+                            put("\n");
+                        }
+                    }
+                }
+
+                void printExpression(AstExpression* astexpr)
+                {
+                    astexpr->printTo(*this);
+                }
+        };
+
     public:
         static AstExpression* copyExpression(AstExpression* expr)
         {
@@ -6150,7 +6973,6 @@ class AstExpression
             }
             return expr->copy();
         }
-
 
         static void destroyExpression(AstExpression* expr)
         {
@@ -6176,6 +6998,11 @@ class AstExpression
         {
         }
 
+        virtual void printTo(PrintAst& apr)
+        {
+            (void)apr;
+        }
+
         template<typename TargetTyp, typename... ArgsT>
         static TargetTyp* make(ArgsT&&... args)
         {
@@ -6183,6 +7010,43 @@ class AstExpression
             auto res = Memory::make<TargetTyp>(args...);
             res->m_exprpos = SourceLocation::Invalid();
             return res;
+        }
+};
+
+class AstIdentifier
+{
+    public:
+        char* m_identvalue = nullptr;
+        SourceLocation m_exprpos = SourceLocation::Invalid();
+
+    public:
+        AstIdentifier()
+        {
+        }
+
+        AstIdentifier(AstToken tok)
+        {
+            m_identvalue = tok.dupLiteralString();
+            m_exprpos = tok.m_tokpos;
+        }
+
+        static AstIdentifier* copy(AstIdentifier* ident)
+        {
+            AstIdentifier* res = Memory::make<AstIdentifier>();
+            res->m_identvalue = Util::strDuplicate(ident->m_identvalue);
+            res->m_exprpos = ident->m_exprpos;
+            return res;
+        }
+
+        static void destroy(AstIdentifier* ident)
+        {
+            if(ident != nullptr)
+            {
+                mc_memory_free(ident->m_identvalue);
+                ident->m_identvalue = nullptr;
+                ident->m_exprpos = SourceLocation::Invalid();
+                mc_memory_free(ident);
+            }
         }
 };
 
@@ -6218,6 +7082,22 @@ class AstCodeBlock
             auto res = Memory::make<AstCodeBlock>(statementscopy);
             return res;
         }
+
+
+        void printTo(AstExpression::PrintAst& apr)
+        {
+            size_t i;
+            size_t cnt;
+            cnt = m_blockstatements.count();
+            apr << "{ ";
+            for(i = 0; i < cnt; i++)
+            {
+                auto istmt = m_blockstatements.get(i);
+                istmt->printTo(apr);
+                apr << "\n";
+            }
+            apr << " }";
+        }
 };
 
 class ExprLiteralNull: public AstExpression
@@ -6231,6 +7111,11 @@ class ExprLiteralNull: public AstExpression
         AstExpression* copy()
         {
             return AstExpression::make<ExprLiteralNull>();
+        }
+
+        void printTo(AstExpression::PrintAst& apr)
+        {
+            apr << "null";
         }
 };
 
@@ -6250,6 +7135,11 @@ class ExprLiteralNumber: public AstExpression
         {
             return AstExpression::make<ExprLiteralNumber>(m_exprnumber);
         }
+
+        void printTo(AstExpression::PrintAst& apr)
+        {
+            apr.putfmt("%1.17g", m_exprnumber);
+        }
 };
 
 class ExprLiteralBool: public AstExpression
@@ -6267,6 +7157,11 @@ class ExprLiteralBool: public AstExpression
         AstExpression* copy()
         {
             return AstExpression::make<ExprLiteralBool>(m_exprbool);
+        }
+
+        void printTo(AstExpression::PrintAst& apr)
+        {
+            apr.putfmt("%s", m_exprbool ? "true" : "false");
         }
 };
 
@@ -6293,6 +7188,20 @@ class ExprReturnStmt: public AstExpression
         {
             AstExpression::destroyExpression(m_exprretvalue);
         }
+
+        void printTo(AstExpression::PrintAst& apr)
+        {
+            if(m_exprretvalue != nullptr)
+            {
+                apr << "return ";
+                m_exprretvalue->printTo(apr);
+                apr << ";";
+            }
+            else
+            {
+                apr << "return;";
+            }
+        }
 };
 
 class ExprExpression: public AstExpression
@@ -6318,6 +7227,14 @@ class ExprExpression: public AstExpression
         {
             AstExpression::destroyExpression(m_exprexprvalue);
         }
+
+        void printTo(AstExpression::PrintAst& apr)
+        {
+            if(m_exprexprvalue != nullptr)
+            {
+                m_exprexprvalue->printTo(apr);
+            }
+        }
 };
 
 class ExprBreakStmt: public AstExpression
@@ -6333,6 +7250,10 @@ class ExprBreakStmt: public AstExpression
             return AstExpression::make<ExprBreakStmt>();
         }
 
+        void printTo(AstExpression::PrintAst& apr)
+        {
+            apr << "break";
+        }
 };
 
 class ExprContinueStmt: public AstExpression
@@ -6348,6 +7269,10 @@ class ExprContinueStmt: public AstExpression
             return AstExpression::make<ExprContinueStmt>();
         }
 
+        void printTo(AstExpression::PrintAst& apr)
+        {
+            apr << "continue";
+        }
 };
 
 class ExprIdent: public AstExpression
@@ -6374,6 +7299,10 @@ class ExprIdent: public AstExpression
             Memory::destroy(m_expridvalue);
         }
 
+        void printTo(AstExpression::PrintAst& apr)
+        {
+            apr << m_expridvalue->m_identvalue;
+        }
 };
 
 class ExprBlock: public AstExpression
@@ -6398,6 +7327,11 @@ class ExprBlock: public AstExpression
         void destroy()
         {
             Memory::destroy(m_exprblockvalue);
+        }
+
+        void printTo(AstExpression::PrintAst& apr)
+        {
+            m_exprblockvalue->printTo(apr);
         }
 };
 
@@ -6484,6 +7418,28 @@ class ExprIfStmt: public AstExpression
             Memory::destroy(m_exprifelse);
         }
 
+        void printTo(AstExpression::PrintAst& apr)
+        {
+            size_t i;
+            auto ifcase = m_exprifcases.get(0);
+            apr << "if (";
+            ifcase->m_exprifcond->printTo(apr);
+            apr << ") ";
+            ifcase->m_exprifthen->printTo(apr);
+            for(i = 1; i < m_exprifcases.count(); i++)
+            {
+                auto elifcase = m_exprifcases.get(i);
+                apr << " else if (";
+                elifcase->m_exprifcond->printTo(apr);
+                apr << ") ";
+                elifcase->m_exprifthen->printTo(apr);
+            }
+            if(m_exprifelse != nullptr)
+            {
+                apr << " else ";
+                m_exprifelse->printTo(apr);
+            }
+        }
 };
 
 class ExprLiteralMap: public AstExpression
@@ -6513,6 +7469,24 @@ class ExprLiteralMap: public AstExpression
             m_exprlitmapvalues.deInit(AstExpression::destroyExpression);
         }
 
+        void printTo(AstExpression::PrintAst& apr)
+        {
+            size_t i;
+            apr << "{";
+            for(i = 0; i < m_exprlitmapkeys.count(); i++)
+            {
+                auto keyexpr = m_exprlitmapkeys.get(i);
+                auto valexpr = m_exprlitmapvalues.get(i);
+                keyexpr->printTo(apr);
+                apr << " : ";
+                valexpr->printTo(apr);
+                if(i < (m_exprlitmapkeys.count() - 1))
+                {
+                    apr << ", ";
+                }
+            }
+            apr << "}";
+        }
 };
 
 class ExprLiteralArray: public AstExpression
@@ -6537,6 +7511,25 @@ class ExprLiteralArray: public AstExpression
         {
             m_exprlitarritems.deInit(AstExpression::destroyExpression);
         }
+
+        void printTo(AstExpression::PrintAst& apr)
+        {
+            size_t i;
+            size_t len;
+            auto vl = &m_exprlitarritems;
+            len = vl->count();
+            apr << "[";
+            for(i = 0; i < len; i++)
+            {
+                auto itemex = vl->get(i);
+                itemex->printTo(apr);
+                if(i < (len - 1))
+                {
+                    apr << ", ";
+                }
+            }
+            apr << "]";
+        }
 };
 
 class ExprLiteralString: public AstExpression
@@ -6551,7 +7544,6 @@ class ExprLiteralString: public AstExpression
             m_exprtype = AstExpression::EXPR_LITERALSTRING;
             m_exprstrdata = value;
             m_exprstrlength = len;
-
         }
 
         AstExpression* copy()
@@ -6566,6 +7558,21 @@ class ExprLiteralString: public AstExpression
             mc_memory_free(m_exprstrdata);
         }
 
+        void printTo(AstExpression::PrintAst& apr)
+        {
+            size_t slen;
+            const char* sdata;
+            sdata = m_exprstrdata;
+            slen = m_exprstrlength;
+            if(apr.m_pdest->m_prconfig.quotstring)
+            {
+                apr.m_pdest->printEscapedString(sdata, slen);
+            }
+            else
+            {
+                apr.putl(sdata, slen);
+            }
+        }
 };
 
 class ExprPrefix: public AstExpression
@@ -6593,6 +7600,12 @@ class ExprPrefix: public AstExpression
         {
             AstExpression::destroyExpression(m_exprprefixright);
         }
+
+        void printTo(AstExpression::PrintAst& apr)
+        {
+            apr << "(" << apr.getMathOpString(m_exprprefixoper) << m_exprprefixright << ")";
+            
+        }
 };
 
 class ExprInfix: public AstExpression
@@ -6609,7 +7622,6 @@ class ExprInfix: public AstExpression
             m_exprinfixoper = op;
             m_exprinfixleft = left;
             m_exprinfixright = right;
-
         }
 
         AstExpression* copy()
@@ -6625,6 +7637,11 @@ class ExprInfix: public AstExpression
         {
             AstExpression::destroyExpression(m_exprinfixleft);
             AstExpression::destroyExpression(m_exprinfixright);
+        }
+
+        void printTo(AstExpression::PrintAst& apr)
+        {
+            apr << "(" << m_exprinfixleft << " " << apr.getMathOpString(m_exprinfixoper) << " " << m_exprinfixright << ")";
         }
 };
 
@@ -6660,7 +7677,6 @@ class ExprFuncParam
                 mc_memory_free(param);
             }
         }
-
 };
 
 class ExprLiteralFunction: public AstExpression
@@ -6695,6 +7711,30 @@ class ExprLiteralFunction: public AstExpression
             m_exprfnparamlist.deInit(ExprFuncParam::destroy);
             Memory::destroy(m_exprfnbody);
         }
+
+        void printTo(AstExpression::PrintAst& apr)
+        {
+            size_t i;
+            if(apr.m_pseudolisp)
+            {
+                apr << "(deffunction '(";
+            }
+            else
+            {
+                apr << "function(";
+            }
+            for(i = 0; i < m_exprfnparamlist.count(); i++)
+            {
+                auto param = m_exprfnparamlist.get(i);
+                apr << param->m_exprfnparamident->m_identvalue;
+                if(i < (m_exprfnparamlist.count() - 1))
+                {
+                    apr << ", ";
+                }
+            }
+            apr << ") ";
+            m_exprfnbody->printTo(apr);
+        }
 };
 
 class ExprCall: public AstExpression
@@ -6723,6 +7763,23 @@ class ExprCall: public AstExpression
         {
             m_exprcallargs.deInit(AstExpression::destroyExpression);
             AstExpression::destroyExpression(m_exprcallfunction);
+        }
+
+        void printTo(AstExpression::PrintAst& apr)
+        {
+            size_t i;
+            m_exprcallfunction->printTo(apr);
+            apr << "(";
+            for(i = 0; i < m_exprcallargs.count(); i++)
+            {
+                auto arg = m_exprcallargs.get(i);
+                arg->printTo(apr);
+                if(i < (m_exprcallargs.count() - 1))
+                {
+                    apr << ", ";
+                }
+            }
+            apr << ")";
         }
 };
 
@@ -6756,6 +7813,25 @@ class ExprIndex: public AstExpression
             AstExpression::destroyExpression(m_exprindexleft);
             AstExpression::destroyExpression(m_exprindexindex);
         }
+
+        void printTo(AstExpression::PrintAst& apr)
+        {
+            bool prevquot;
+            apr << "(" << m_exprindexleft;
+            if(m_exprindexisdot)
+            {
+                apr << ".";
+                prevquot = apr.m_pdest->m_prconfig.quotstring;
+                apr.m_pdest->m_prconfig.quotstring = false;
+                m_exprindexindex->printTo(apr);
+                apr.m_pdest->m_prconfig.quotstring = prevquot;
+            }
+            else
+            {
+                apr << "[" << m_exprindexindex << "]";
+            }
+            apr << ")";
+        }
 };
 
 class ExprAssign: public AstExpression
@@ -6788,6 +7864,11 @@ class ExprAssign: public AstExpression
             AstExpression::destroyExpression(m_exprassigndest);
             AstExpression::destroyExpression(m_exprassignsource);
         }
+
+        void printTo(AstExpression::PrintAst& apr)
+        {
+            apr << m_exprassigndest << " = " << m_exprassignsource;
+        }
 };
 
 class ExprLogical: public AstExpression
@@ -6804,7 +7885,6 @@ class ExprLogical: public AstExpression
             m_exprlogoper = op;
             m_exprlogleft = left;
             m_exprlogright = right;
-
         }
 
         AstExpression* copy()
@@ -6820,6 +7900,11 @@ class ExprLogical: public AstExpression
         {
             AstExpression::destroyExpression(m_exprlogleft);
             AstExpression::destroyExpression(m_exprlogright);
+        }
+
+        void printTo(AstExpression::PrintAst& apr)
+        {
+            apr << m_exprlogleft << " " << apr.getMathOpString(m_exprlogoper) << " " << m_exprlogright;
         }
 };
 
@@ -6856,6 +7941,11 @@ class ExprTernary: public AstExpression
             AstExpression::destroyExpression(m_exprterniftrue);
             AstExpression::destroyExpression(m_exprterniffalse);
         }
+
+        void printTo(AstExpression::PrintAst& apr)
+        {
+            apr << m_exprterncond << " ? " << m_exprterniftrue << " : " << m_exprterniffalse;
+        }
 };
 
 class ExprDefine: public AstExpression
@@ -6874,7 +7964,6 @@ class ExprDefine: public AstExpression
             m_exprdefassignable = assignable;
         }
 
-
         AstExpression* copy()
         {
             AstExpression* valuecopy;
@@ -6886,6 +7975,23 @@ class ExprDefine: public AstExpression
         {
             Memory::destroy(m_exprdefname);
             AstExpression::destroyExpression(m_exprdefvalue);
+        }
+
+        void printTo(AstExpression::PrintAst& apr)
+        {
+            if(m_exprdefassignable)
+            {
+                apr << "var ";
+            }
+            else
+            {
+                apr << "const ";
+            }
+            apr << m_exprdefname->m_identvalue << " = ";
+            if(m_exprdefvalue != nullptr)
+            {
+                m_exprdefvalue->printTo(apr);
+            }
         }
 };
 
@@ -6918,6 +8024,11 @@ class ExprWhileStmt: public AstExpression
             Memory::destroy(m_exprwhilebody);
         }
 
+        void printTo(AstExpression::PrintAst& apr)
+        {
+            apr << "while (" << m_exprwhilecond << ")";
+            m_exprwhilebody->printTo(apr);
+        }
 };
 
 class ExprForeachStmt: public AstExpression
@@ -6934,7 +8045,6 @@ class ExprForeachStmt: public AstExpression
             m_exprforeachiterator = iterator;
             m_exprforeachsource = source;
             m_exprforeachbody = body;
-
         }
 
         AstExpression* copy()
@@ -6951,6 +8061,13 @@ class ExprForeachStmt: public AstExpression
             Memory::destroy(m_exprforeachiterator);
             AstExpression::destroyExpression(m_exprforeachsource);
             Memory::destroy(m_exprforeachbody);
+        }
+
+        void printTo(AstExpression::PrintAst& apr)
+        {
+            apr << "for (" << m_exprforeachiterator->m_identvalue << " in " << m_exprforeachsource << ")";
+            m_exprforeachbody->printTo(apr);
+
         }
 };
 
@@ -6970,7 +8087,6 @@ class ExprLoopStmt: public AstExpression
             m_exprforloopcond = test;
             m_exprforloopupdate = update;
             m_exprforloopbody = body;
-
         }
 
         AstExpression* copy()
@@ -6994,6 +8110,32 @@ class ExprLoopStmt: public AstExpression
             Memory::destroy(m_exprforloopbody);
         }
 
+        void printTo(AstExpression::PrintAst& apr)
+        {
+            apr << "for (";
+            if(m_exprforloopinit != nullptr)
+            {
+                apr << m_exprforloopinit << " ";
+            }
+            else
+            {
+                apr << ";";
+            }
+            if(m_exprforloopcond != nullptr)
+            {
+                apr << m_exprforloopcond << "; ";
+            }
+            else
+            {
+                apr << ";";
+            }
+            if(m_exprforloopupdate != nullptr)
+            {
+                m_exprforloopupdate->printTo(apr);
+            }
+            apr << ")";
+            m_exprforloopbody->printTo(apr);
+        }
 };
 
 class ExprImportStmt: public AstExpression
@@ -7018,6 +8160,11 @@ class ExprImportStmt: public AstExpression
         void destroy()
         {
             mc_memory_free(m_exprimportpath);
+        }
+
+        void printTo(AstExpression::PrintAst& apr)
+        {
+            apr.putfmt("import \"%s\"", m_exprimportpath);
         }
 };
 
@@ -7048,6 +8195,12 @@ class ExprRecover: public AstExpression
         {
             Memory::destroy(m_exprrecoverbody);
             Memory::destroy(m_exprrecovererrident);
+        }
+
+        void printTo(AstExpression::PrintAst& apr)
+        {
+            apr.putfmt("recover (%s)", m_exprrecovererrident->m_identvalue);
+            m_exprrecoverbody->printTo(apr);
         }
 };
 
@@ -7671,6 +8824,7 @@ class AstParser
         {
             AstExpression* test;
             AstCodeBlock* body;
+            body = nullptr;
             test = nullptr;
             m_lexer.nextToken();
             if(!m_lexer.expectCurrent(AstToken::Type::T_PARENOPEN))
@@ -7845,6 +8999,7 @@ class AstParser
             init = nullptr;
             test = nullptr;
             update = nullptr;
+            body = nullptr;
             if(!m_lexer.currentTokenIs(AstToken::Type::T_SEMICOLON))
             {
                 if(!parseStatement(&init))
@@ -8793,582 +9948,6 @@ class AstParser
         }
 };
 
-class AstPrinter
-{
-    public:
-        static const char* getMathOpString(AstExpression::MathOpType op)
-        {
-            switch(op)
-            {
-                case AstExpression::MATHOP_NONE:
-                    return "AstExpression::MATHOP_NONE";
-                case AstExpression::MATHOP_ASSIGN:
-                    return "=";
-                case AstExpression::MATHOP_PLUS:
-                    return "+";
-                case AstExpression::MATHOP_MINUS:
-                    return "-";
-                case AstExpression::MATHOP_BANG:
-                    return "!";
-                case AstExpression::MATHOP_ASTERISK:
-                    return "*";
-                case AstExpression::MATHOP_SLASH:
-                    return "/";
-                case AstExpression::MATHOP_LESSTHAN:
-                    return "<";
-                case AstExpression::MATHOP_GREATERTHAN:
-                    return ">";
-                case AstExpression::MATHOP_EQUAL:
-                    return "==";
-                case AstExpression::MATHOP_NOTEQUAL:
-                    return "!=";
-                case AstExpression::MATHOP_MODULUS:
-                    return "%";
-                case AstExpression::MATHOP_LOGICALAND:
-                    return "&&";
-                case AstExpression::MATHOP_LOGICALOR:
-                    return "||";
-                case AstExpression::MATHOP_BINAND:
-                    return "&";
-                case AstExpression::MATHOP_BINOR:
-                    return "|";
-                case AstExpression::MATHOP_BINXOR:
-                    return "^";
-                case AstExpression::MATHOP_LEFTSHIFT:
-                    return "<<";
-                case AstExpression::MATHOP_RIGHTSHIFT:
-                    return ">>";
-                case AstExpression::MATHOP_LESSEQUAL:
-                    return "<=";
-                case AstExpression::MATHOP_GREATEREQAL:
-                    return ">=";
-                case AstExpression::MATHOP_BINNOT:
-                    return "~";
-            }
-            return "AstExpression::MATHOP_UNKNOWN";
-        }
-
-    public:
-        IOHandle* m_pdest;
-        bool m_pseudolisp;
-
-    public:
-        AstPrinter(IOHandle* pr)
-        {
-            m_pseudolisp = false;
-            m_pdest = pr;
-        }
-
-        void putl(const char* str, size_t len)
-        {
-            m_pdest->put(str, len);
-        }
-
-        template<size_t len>
-        void put(const char (&str)[len])
-        {
-            m_pdest->put(str, len);
-        }
-
-        void put(const char* str)
-        {
-            m_pdest->put(str, strlen(str));
-        }
-
-        template<typename... ArgsT>
-        void putfmt(const char* fmt, ArgsT&&... args)
-        {
-            m_pdest->format(fmt, args...);
-        }
-
-        void beginPrint(GenericList<AstExpression*>* statements)
-        {
-            m_pdest->m_prconfig.quotstring = true;
-            fprintf(stderr, "---AST dump begin---\n");
-            printStmtList(statements);
-            fprintf(stderr, "\n---AST dump end---\n");
-            m_pdest->m_prconfig.quotstring = false;
-        }
-
-        void printStmtList(GenericList<AstExpression*>* statements)
-        {
-            int i;
-            int count;
-            count = statements->count();
-            for(i = 0; i < count; i++)
-            {
-                auto subex = statements->get(i);
-                printExpression(subex);
-                if(i < (count - 1))
-                {
-                    put("\n");
-                }
-            }
-        }
-
-        void printFuncLiteral(AstExpression* astexpr)
-        {
-            size_t i;
-            auto ex = static_cast<ExprLiteralFunction*>(astexpr);
-            if(m_pseudolisp)
-            {
-                putfmt("(deffunction '(");
-            }
-            else
-            {
-                put("function(");
-            }
-            for(i = 0; i < ex->m_exprfnparamlist.count(); i++)
-            {
-                auto param = ex->m_exprfnparamlist.get(i);
-                put(param->m_exprfnparamident->m_identvalue);
-                if(i < (ex->m_exprfnparamlist.count() - 1))
-                {
-                    put(", ");
-                }
-            }
-            put(") ");
-            printCodeblock(ex->m_exprfnbody);
-        }
-
-        void printCall(AstExpression* astexpr)
-        {
-            size_t i;
-            auto ex = static_cast<ExprCall*>(astexpr);
-            printExpression(ex->m_exprcallfunction);
-            put("(");
-            for(i = 0; i < ex->m_exprcallargs.count(); i++)
-            {
-                auto arg = ex->m_exprcallargs.get(i);
-                printExpression(arg);
-                if(i < (ex->m_exprcallargs.count() - 1))
-                {
-                    put(", ");
-                }
-            }
-            put(")");
-        }
-
-        void printArrayLiteral(AstExpression* astexpr)
-        {
-            size_t i;
-            size_t len;
-            auto ex = static_cast<ExprLiteralArray*>(astexpr);
-            auto vl = &ex->m_exprlitarritems;
-            len = vl->count();
-            put("[");
-            for(i = 0; i < len; i++)
-            {
-                auto itemex = vl->get(i);
-                printExpression(itemex);
-                if(i < (len - 1))
-                {
-                    put(", ");
-                }
-            }
-            put("]");
-        }
-
-        void printStringLiteral(AstExpression* astexpr)
-        {
-            size_t slen;
-            const char* sdata;
-            auto ex = static_cast<ExprLiteralString*>(astexpr);
-            sdata = ex->m_exprstrdata;
-            slen = ex->m_exprstrlength;
-            if(m_pdest->m_prconfig.quotstring)
-            {
-                m_pdest->printEscapedString(sdata, slen);
-            }
-            else
-            {
-                putl(sdata, slen);
-            }
-        }
-
-        void printMapLiteral(AstExpression* astexpr)
-        {
-            size_t i;
-            auto ex = static_cast<ExprLiteralMap*>(astexpr);
-            put("{");
-            for(i = 0; i < ex->m_exprlitmapkeys.count(); i++)
-            {
-                auto keyexpr = ex->m_exprlitmapkeys.get(i);
-                auto valexpr = ex->m_exprlitmapvalues.get(i);
-                printExpression(keyexpr);
-                put(" : ");
-                printExpression(valexpr);
-                if(i < (ex->m_exprlitmapkeys.count() - 1))
-                {
-                    put(", ");
-                }
-            }
-            put("}");
-        }
-
-        void printPrefix(AstExpression* astexpr)
-        {
-            auto ex = static_cast<ExprPrefix*>(astexpr);
-            put("(");
-            put(getMathOpString(ex->m_exprprefixoper));
-            printExpression(ex->m_exprprefixright);
-            put(")");
-        }
-
-        void printInfix(AstExpression* astexpr)
-        {
-            auto ex = static_cast<ExprInfix*>(astexpr);
-            put("(");
-            printExpression(ex->m_exprinfixleft);
-            put(" ");
-            put(getMathOpString(ex->m_exprinfixoper));
-            put(" ");
-            printExpression(ex->m_exprinfixright);
-            put(")");
-        }
-
-        void printIndex(AstExpression* astexpr)
-        {
-            bool prevquot;
-            auto ex = static_cast<ExprIndex*>(astexpr);
-            put("(");
-            printExpression(ex->m_exprindexleft);
-            if(ex->m_exprindexisdot)
-            {
-                put(".");
-                prevquot = m_pdest->m_prconfig.quotstring;
-                m_pdest->m_prconfig.quotstring = false;
-                printExpression(ex->m_exprindexindex);
-                m_pdest->m_prconfig.quotstring = prevquot;
-            }
-            else
-            {
-                put("[");
-                printExpression(ex->m_exprindexindex);
-                put("]");
-            }
-            put(")");
-        }
-
-        void printAssign(AstExpression* astexpr)
-        {
-            auto ex = static_cast<ExprAssign*>(astexpr);
-            printExpression(ex->m_exprassigndest);
-            put(" = ");
-            printExpression(ex->m_exprassignsource);
-        }
-
-        void printLogical(AstExpression* astexpr)
-        {
-            auto ex = static_cast<ExprLogical*>(astexpr);
-            printExpression(ex->m_exprlogleft);
-            put(" ");
-            put(getMathOpString(ex->m_exprlogoper));
-            put(" ");
-            printExpression(ex->m_exprlogright);
-        }
-
-        void printTernary(AstExpression* astexpr)
-        {
-            auto ex = static_cast<ExprTernary*>(astexpr);
-            printExpression(ex->m_exprterncond);
-            put(" ? ");
-            printExpression(ex->m_exprterniftrue);
-            put(" : ");
-            printExpression(ex->m_exprterniffalse);
-        }
-
-        void printDefine(AstExpression* astexpr)
-        {
-            auto ex = static_cast<ExprDefine*>(astexpr);
-            if(ex->m_exprdefassignable)
-            {
-                put("var ");
-            }
-            else
-            {
-                put("const ");
-            }
-            put(ex->m_exprdefname->m_identvalue);
-            put(" = ");
-            if(ex->m_exprdefvalue != nullptr)
-            {
-                printExpression(ex->m_exprdefvalue);
-            }
-        }
-
-        void printIf(AstExpression* astexpr)
-        {
-            size_t i;
-            auto ex = static_cast<ExprIfStmt*>(astexpr);
-            auto ifcase = ex->m_exprifcases.get(0);
-            put("if (");
-            printExpression(ifcase->m_exprifcond);
-            put(") ");
-            printCodeblock(ifcase->m_exprifthen);
-            for(i = 1; i < ex->m_exprifcases.count(); i++)
-            {
-                auto elifcase = ex->m_exprifcases.get(i);
-                put(" elif (");
-                printExpression(elifcase->m_exprifcond);
-                put(") ");
-                printCodeblock(elifcase->m_exprifthen);
-            }
-            if(ex->m_exprifelse != nullptr)
-            {
-                put(" else ");
-                printCodeblock(ex->m_exprifelse);
-            }
-        }
-
-        void printWhile(AstExpression* astexpr)
-        {
-            auto ex = static_cast<ExprWhileStmt*>(astexpr);
-            put("while (");
-            printExpression(ex->m_exprwhilecond);
-            put(")");
-            printCodeblock(ex->m_exprwhilebody);
-        }
-
-        void printForClassic(AstExpression* astexpr)
-        {
-            auto ex = static_cast<ExprLoopStmt*>(astexpr);
-            put("for (");
-            if(ex->m_exprforloopinit != nullptr)
-            {
-                printExpression(ex->m_exprforloopinit);
-                put(" ");
-            }
-            else
-            {
-                put(";");
-            }
-            if(ex->m_exprforloopcond != nullptr)
-            {
-                printExpression(ex->m_exprforloopcond);
-                put("; ");
-            }
-            else
-            {
-                put(";");
-            }
-            if(ex->m_exprforloopupdate != nullptr)
-            {
-                printExpression(ex->m_exprforloopupdate);
-            }
-            put(")");
-            printCodeblock(ex->m_exprforloopbody);
-        }
-
-        void printForeach(AstExpression* astexpr)
-        {
-            auto ex = static_cast<ExprForeachStmt*>(astexpr);
-            put("for (");
-            putfmt("%s", ex->m_exprforeachiterator->m_identvalue);
-            put(" in ");
-            printExpression(ex->m_exprforeachsource);
-            put(")");
-            printCodeblock(ex->m_exprforeachbody);
-        }
-
-        void printImport(AstExpression* astexpr)
-        {
-            auto ex = static_cast<ExprImportStmt*>(astexpr);
-            putfmt("import \"%s\"", ex->m_exprimportpath);
-        }
-
-        void printRecover(AstExpression* astexpr)
-        {
-            auto ex = static_cast<ExprRecover*>(astexpr);
-            putfmt("recover (%s)", ex->m_exprrecovererrident->m_identvalue);
-            printCodeblock(ex->m_exprrecoverbody);
-        }
-
-        void printCodeblock(AstCodeBlock* blockexpr)
-        {
-            size_t i;
-            size_t cnt;
-            cnt = blockexpr->m_blockstatements.count();
-            put("{ ");
-            for(i = 0; i < cnt; i++)
-            {
-                auto istmt = blockexpr->m_blockstatements.get(i);
-                printExpression(istmt);
-                put("\n");
-            }
-            put(" }");
-        }
-
-        void printExpression(AstExpression* astexpr)
-        {
-            switch(astexpr->m_exprtype)
-            {
-                case AstExpression::EXPR_IDENT:
-                    {
-                        auto ex = static_cast<ExprIdent*>(astexpr)->m_expridvalue;
-                        put(ex->m_identvalue);
-                    }
-                    break;
-                case AstExpression::EXPR_LITERALNUMBER:
-                    {
-                        auto fl = static_cast<ExprLiteralNumber*>(astexpr)->m_exprnumber;
-                        putfmt("%1.17g", fl);
-                    }
-                    break;
-                case AstExpression::EXPR_LITERALBOOL:
-                    {
-                        auto bl = static_cast<ExprLiteralBool*>(astexpr)->m_exprbool;
-                        putfmt("%s", bl ? "true" : "false");
-                    }
-                    break;
-                case AstExpression::EXPR_LITERALSTRING:
-                    {
-                        printStringLiteral(astexpr);
-                    }
-                    break;
-                case AstExpression::EXPR_LITERALNULL:
-                    {
-                        put("null");
-                    }
-                    break;
-                case AstExpression::EXPR_LITERALARRAY:
-                    {
-                        printArrayLiteral(astexpr);
-                    }
-                    break;
-                case AstExpression::EXPR_LITERALMAP:
-                    {
-                        printMapLiteral(astexpr);
-                    }
-                    break;
-                case AstExpression::EXPR_PREFIX:
-                    {
-                        printPrefix(astexpr);
-                    }
-                    break;
-                case AstExpression::EXPR_INFIX:
-                    {
-                        printInfix(astexpr);
-                    }
-                    break;
-                case AstExpression::EXPR_LITERALFUNCTION:
-                    {
-                        printFuncLiteral(astexpr);
-                    }
-                    break;
-                case AstExpression::EXPR_CALL:
-                    {
-                        printCall(astexpr);
-                    }
-                    break;
-                case AstExpression::EXPR_INDEX:
-                    {
-                        printIndex(astexpr);
-                    }
-                    break;
-                case AstExpression::EXPR_ASSIGN:
-                    {
-                        printAssign(astexpr);
-                    }
-                    break;
-                case AstExpression::EXPR_LOGICAL:
-                    {
-                        printLogical(astexpr);
-                    }
-                    break;
-                case AstExpression::EXPR_TERNARY:
-                    {
-                        printTernary(astexpr);
-                    }
-                    break;
-                case AstExpression::EXPR_STMTDEFINE:
-                    {
-                        printDefine(astexpr);
-                    }
-                    break;
-                case AstExpression::EXPR_STMTIF:
-                    {
-                        printIf(astexpr);
-                    }
-                    break;
-                case AstExpression::EXPR_STMTRETURN:
-                    {
-                        auto ex = static_cast<ExprReturnStmt*>(astexpr)->m_exprretvalue;
-                        if(ex != nullptr)
-                        {
-                            put("return ");
-                            printExpression(ex);
-                            put(";");
-                        }
-                        else
-                        {
-                            put("return;");
-                        }
-                    }
-                    break;
-                case AstExpression::EXPR_STMTEXPRESSION:
-                    {
-                        auto ex = static_cast<ExprExpression*>(astexpr)->m_exprexprvalue;
-                        if(ex != nullptr)
-                        {
-                            printExpression(ex);
-                        }
-                    }
-                    break;
-                case AstExpression::EXPR_STMTLOOPWHILE:
-                    {
-                        printWhile(astexpr);
-                    }
-                    break;
-                case AstExpression::EXPR_STMTLOOPFORCLASSIC:
-                    {
-                        printForClassic(astexpr);
-                    }
-                    break;
-                case AstExpression::EXPR_STMTLOOPFOREACH:
-                    {
-                        printForeach(astexpr);
-                    }
-                    break;
-                case AstExpression::EXPR_STMTBLOCK:
-                    {
-                        AstCodeBlock* ex;
-                        ex = static_cast<ExprBlock*>(astexpr)->m_exprblockvalue;
-                        printCodeblock(ex);
-                    }
-                    break;
-                case AstExpression::EXPR_STMTBREAK:
-                    {
-                        put("break");
-                    }
-                    break;
-                case AstExpression::EXPR_STMTCONTINUE:
-                    {
-                        put("continue");
-                    }
-                    break;
-                case AstExpression::EXPR_STMTIMPORT:
-                    {
-                        printImport(astexpr);
-                    }
-                    break;
-                case AstExpression::EXPR_NONE:
-                    {
-                        put("AstExpression::EXPR_NONE");
-                    }
-                    break;
-                case AstExpression::EXPR_STMTRECOVER:
-                    {
-                        printRecover(astexpr);
-                    }
-                    break;
-                default:
-                    break;
-            }
-        }
-
-};
-
 class Module
 {
     public:
@@ -9799,7 +10378,7 @@ class AstCompiler
             }
             if(m_config->dumpast)
             {
-                AstPrinter apr(m_filestderr);
+                AstExpression::PrintAst apr(m_filestderr);
                 apr.beginPrint(&statements);
             }
             if(m_config->exitafterastdump)
@@ -11723,54 +12302,9 @@ class State
             }
         }
 
+    public:
         MC_PROTO void makeDefaultClasses();
 
-        void setOverloadKey(Instruction::Code opc, const char* rawstr)
-        {
-            Value keyobj;
-            keyobj = Value::makeString(rawstr);
-            m_operoverloadkeys[(int)opc] = keyobj;
-        }
-
-        bool vmInit()
-        {
-            int i;
-            m_hadrecovered = false;
-            m_globalvalcount = 0;
-            m_execstate.vsposition = 0;
-            m_execstate.thisstpos = 0;
-            m_execstate.lastpopped = Value::makeNull();
-            m_running = false;
-            for(i = 0; i < State::MaxOperOverloads; i++)
-            {
-                m_operoverloadkeys[i] = Value::makeNull();
-            }
-            setOverloadKey(Instruction::OPCODE_ADD, "__operator_add__");
-            setOverloadKey(Instruction::OPCODE_SUB, "__operator_sub__");
-            setOverloadKey(Instruction::OPCODE_MUL, "__operator_mul__");
-            setOverloadKey(Instruction::OPCODE_DIV, "__operator_div__");
-            setOverloadKey(Instruction::OPCODE_MOD, "__operator_mod__");
-            setOverloadKey(Instruction::OPCODE_BINOR, "__operator_or__");
-            setOverloadKey(Instruction::OPCODE_BINXOR, "__operator_xor__");
-            setOverloadKey(Instruction::OPCODE_BINAND, "__operator_and__");
-            setOverloadKey(Instruction::OPCODE_LSHIFT, "__operator_lshift__");
-            setOverloadKey(Instruction::OPCODE_RSHIFT, "__operator_rshift__");
-            setOverloadKey(Instruction::OPCODE_MINUS, "__operator_minus__");
-            setOverloadKey(Instruction::OPCODE_BINNOT, "__operator_binnot__");
-            setOverloadKey(Instruction::OPCODE_BANG, "__operator_bang__");
-            setOverloadKey(Instruction::OPCODE_COMPARE, "__cmp__");
-            return true;
-        }
-
-        void vmReset()
-        {
-            m_execstate.vsposition = 0;
-            m_execstate.thisstpos = 0;
-            while(m_execstate.framestack.count() > 0)
-            {
-                vmPopFrame();
-            }
-        }
 
         MC_INLINE bool vmDoMakeFunction(GenericList<Value>* constants)
         {
@@ -12003,7 +12537,7 @@ class State
                 {
                     if(Value::canStoreInPool(data))
                     {
-                        pool = GCMemory::get()->getPoolForType(data->m_odtype);
+                        pool = Value::getPoolForType(data->m_odtype);
                         pool->m_pooldata.set(pool->m_poolitemcount, data);
                         pool->m_poolitemcount++;
                     }
@@ -12094,6 +12628,65 @@ class State
             vmGCSweep();
         }
 
+        void setOverloadKey(Instruction::Code opc, const char* rawstr)
+        {
+            Value keyobj;
+            keyobj = Value::makeString(rawstr);
+            m_operoverloadkeys[(int)opc] = keyobj;
+        }
+
+        bool vmInit()
+        {
+            int i;
+            m_hadrecovered = false;
+            m_globalvalcount = 0;
+            m_execstate.vsposition = 0;
+            m_execstate.thisstpos = 0;
+            m_execstate.lastpopped = Value::makeNull();
+            m_running = false;
+            for(i = 0; i < State::MaxOperOverloads; i++)
+            {
+                m_operoverloadkeys[i] = Value::makeNull();
+            }
+            setOverloadKey(Instruction::OPCODE_ADD, "__operator_add__");
+            setOverloadKey(Instruction::OPCODE_SUB, "__operator_sub__");
+            setOverloadKey(Instruction::OPCODE_MUL, "__operator_mul__");
+            setOverloadKey(Instruction::OPCODE_DIV, "__operator_div__");
+            setOverloadKey(Instruction::OPCODE_MOD, "__operator_mod__");
+            setOverloadKey(Instruction::OPCODE_BINOR, "__operator_or__");
+            setOverloadKey(Instruction::OPCODE_BINXOR, "__operator_xor__");
+            setOverloadKey(Instruction::OPCODE_BINAND, "__operator_and__");
+            setOverloadKey(Instruction::OPCODE_LSHIFT, "__operator_lshift__");
+            setOverloadKey(Instruction::OPCODE_RSHIFT, "__operator_rshift__");
+            setOverloadKey(Instruction::OPCODE_MINUS, "__operator_minus__");
+            setOverloadKey(Instruction::OPCODE_BINNOT, "__operator_binnot__");
+            setOverloadKey(Instruction::OPCODE_BANG, "__operator_bang__");
+            setOverloadKey(Instruction::OPCODE_COMPARE, "__cmp__");
+            return true;
+        }
+
+        void vmReset()
+        {
+            m_execstate.vsposition = 0;
+            m_execstate.thisstpos = 0;
+            while(m_execstate.framestack.count() > 0)
+            {
+                vmPopFrame();
+            }
+        }
+
+        void setDefaultConfig()
+        {
+            m_config.replmode = false;
+            m_config.dumpast = false;
+            m_config.exitafterastdump = false;
+            m_config.dumpbytecode = false;
+            m_config.fatalcomplaints = false;
+            m_config.exitaftercompiling = false;
+            m_config.printinstructions = false;
+            m_config.strictmode = false;
+        }
+
     public:
         RuntimeConfig m_config;
         ErrList m_errorlist;
@@ -12153,17 +12746,6 @@ class State
             vmReset();
         }
 
-        void setDefaultConfig()
-        {
-            m_config.replmode = false;
-            m_config.dumpast = false;
-            m_config.exitafterastdump = false;
-            m_config.dumpbytecode = false;
-            m_config.fatalcomplaints = false;
-            m_config.exitaftercompiling = false;
-            m_config.printinstructions = false;
-            m_config.strictmode = false;
-        }
 
         template<typename... ArgsT>
         void pushError(Error::Type type, SourceLocation pos, const char* fmt, ArgsT&&... args)
@@ -12475,7 +13057,7 @@ class State
             auto nativefun = callee.asFunction();
             auto uptr = nativefun->m_funcdata.valnativefunc.userpointer;
             res = nativefun->m_funcdata.valnativefunc.natptrfn(this, uptr, selfval, argc, args);
-            if(mc_util_unlikely(m_errorlist.count() > 0))
+            if(MC_UNLIKELY(m_errorlist.count() > 0))
             {
                 err = m_errorlist.getLast();
                 err->m_pos = srcpos;
@@ -12487,7 +13069,7 @@ class State
                 return Value::makeNull();
             }
             restype = res.getType();
-            if(mc_util_unlikely(restype == Value::VT_ERROR))
+            if(MC_UNLIKELY(restype == Value::VT_ERROR))
             {
                 traceback = Memory::make<Traceback>();
                 if(traceback != nullptr)
@@ -12740,8 +13322,8 @@ class State
             (void)opcode;
             (void)righttype;
             nstring = Value::makeStrEmptyCapacity(0);
-            nstring.stringAppendValue(valleft);
-            nstring.stringAppendValue(valright);
+            nstring.asString()->appendValue(valleft);
+            nstring.asString()->appendValue(valright);
             vmStackPush(nstring);
             return true;
         }
@@ -12925,7 +13507,7 @@ class State
             return nullptr;
         }
 
-        inline ObjClass::Field* vmGetClassMember(ObjClass* cl, const char* name)
+        ObjClass::Field* vmGetClassMember(ObjClass* cl, const char* name)
         {
             size_t i;
             for(i=0; i<cl->m_memberfields.count(); i++)
@@ -12956,7 +13538,7 @@ class State
             cl = vmFindClassFor(left.getType());
             if(cl != nullptr)
             {
-                idxname = index.stringGetData();
+                idxname = index.asString()->data();
                 vdest = vmGetClassMember(cl, idxname);
                 if(vdest == nullptr)
                 {
@@ -13024,7 +13606,7 @@ class State
                     {
                         res = Value::makeNull();
                         lefttypename = Value::getTypename(lefttype);
-                        pushError(Error::ERRTYP_RUNTIME, m_execstate.currframe->getPosition(), "object type '%s' has no field '%s'", lefttypename, index.stringGetData());
+                        pushError(Error::ERRTYP_RUNTIME, m_execstate.currframe->getPosition(), "object type '%s' has no field '%s'", lefttypename, index.asString()->data());
                         vmStackPush(res);
                         return false;
                     }
@@ -13066,8 +13648,8 @@ class State
                     pushError(Error::ERRTYP_RUNTIME, m_execstate.currframe->getPosition(), "cannot index %s with %s", lefttypename, indextypename);
                     return false;
                 }
-                str = left.stringGetData();
-                leftlen = left.stringGetLength();
+                str = left.asString()->data();
+                leftlen = left.asString()->length();
                 ix = (int)index.asNumber();
                 if(ix >= 0 && ix < leftlen)
                 {
@@ -13221,8 +13803,8 @@ class State
             }
             else if(lefttype == Value::VT_STRING)
             {
-                str = left.stringGetData();
-                leftlen = left.stringGetLength();
+                str = left.asString()->data();
+                leftlen = left.asString()->length();
                 ix = (int)index.asNumber();
                 if(ix >= 0 && ix < leftlen)
                 {
@@ -13292,10 +13874,6 @@ void GCMemory::wrapDestroyObjData(Object* data)
     Value::destroyObjData(data);
 }
 
-void Value::ValPrinter::valPrintObjError(IOHandle* pr, const Value& obj)
-{
-    Error::printUserError(pr, obj);
-}
 
 
 #if 1
@@ -13458,7 +14036,7 @@ bool State::execVM(const Value& function, GenericList<Value>* constants, bool ne
         };
     #endif
     #if 0
-    if(mc_util_unlikely(m_running))
+    if(MC_UNLIKELY(m_running))
     {
         pushError(Error::ERRTYP_USER, SourceLocation::Invalid(), "state is already executing code");
         return false;
@@ -13491,7 +14069,7 @@ bool State::execVM(const Value& function, GenericList<Value>* constants, bool ne
             goto onexecfinish;
         }
         opcode = (OPValCode)frame->readOpCode();
-        if(mc_util_unlikely(m_config.printinstructions))
+        if(MC_UNLIKELY(m_config.printinstructions))
         {
             mc_vmutil_getopinfo((Instruction::Code)opcode, &oname);
             fprintf(stderr, "opcode=%d (%s)\n", opcode, oname);
@@ -13622,7 +14200,7 @@ bool State::execVM(const Value& function, GenericList<Value>* constants, bool ne
                     Value operand;
                     operand = vmStackPop();
                     opertype = operand.getType();
-                    if(mc_util_likely(opertype == Value::VT_NUMBER))
+                    if(MC_LIKELY(opertype == Value::VT_NUMBER))
                     {
                         val = operand.asNumber();
                         res = Value::makeNumber(-val);
@@ -13971,7 +14549,7 @@ bool State::execVM(const Value& function, GenericList<Value>* constants, bool ne
                     }
                     else if(type == Value::VT_STRING)
                     {
-                        len = val.stringGetLength();
+                        len = val.asString()->length();
                     }
                     else
                     {
@@ -14191,20 +14769,20 @@ Value mc_scriptfn_reverse(State* state, void* data, Value thisval, size_t argc, 
     }
     if(type == Value::VT_STRING)
     {
-        inpstr = arg.stringGetData();
-        inplen = arg.stringGetLength();
+        inpstr = arg.asString()->data();
+        inplen = arg.asString()->length();
         res = Value::makeStrEmptyCapacity(inplen);
         if(res.isNull())
         {
             return Value::makeNull();
         }
-        resbuf = res.stringGetMutableData();
+        resbuf = res.asString()->mutableData();
         for(i = 0; i < inplen; i++)
         {
             resbuf[inplen - i - 1] = inpstr[i];
         }
         resbuf[inplen] = '\0';
-        res.stringSetLength(inplen);
+        res.asString()->setLength(inplen);
         return res;
     }
     return Value::makeNull();
@@ -14517,7 +15095,7 @@ Value mc_objfnstring_length(State* state, void* data, Value thisval, size_t argc
     (void)data;
     (void)argc;
     (void)args;
-    len = thisval.stringGetLength();
+    len = thisval.asString()->length();
     return Value::makeNumber(len);
 }
 
@@ -14554,8 +15132,8 @@ Value mc_objfnstring_indexof(State* state, void* data, Value thisval, size_t arg
     }
     searchstr = nullptr;
     searchlen = 0;
-    inpstr = thisval.stringGetData();
-    inplen = thisval.stringGetLength();
+    inpstr = thisval.asString()->data();
+    inplen = thisval.asString()->length();
     MC_ASSERT((searchtype == Value::VT_NUMBER) || (searchtype == Value::VT_STRING));
     if(searchtype == Value::VT_NUMBER)
     {
@@ -14565,8 +15143,8 @@ Value mc_objfnstring_indexof(State* state, void* data, Value thisval, size_t arg
     }
     else if(searchtype == Value::VT_STRING)
     {
-        searchstr = searchval.stringGetData();
-        searchlen = searchval.stringGetLength();
+        searchstr = searchval.asString()->data();
+        searchlen = searchval.asString()->length();
     }
 
     result = (char*)strstr(inpstr + startindex, searchstr);
@@ -14589,8 +15167,8 @@ Value mc_objfnstring_charcodefirst(State* state, void* data, Value thisval, size
     (void)argc;
     (void)args;
     sval = thisval;
-    str = sval.stringGetData();
-    len = sval.stringGetLength();
+    str = sval.asString()->data();
+    len = sval.asString()->length();
     ch = 0;
     if(len > 0)
     {
@@ -14612,8 +15190,8 @@ Value mc_objfnstring_charcodeat(State* state, void* data, Value thisval, size_t 
     (void)argc;
     (void)args;
     sval = thisval;
-    str = sval.stringGetData();
-    len = sval.stringGetLength();
+    str = sval.asString()->data();
+    len = sval.asString()->length();
     idx = args[0].asNumber();
     if(idx >= (long)len)
     {
@@ -14636,8 +15214,8 @@ Value mc_objfnstring_charat(State* state, void* data, Value thisval, size_t argc
     (void)argc;
     (void)args;
     sval = thisval;
-    str = sval.stringGetData();
-    len = sval.stringGetLength();
+    str = sval.asString()->data();
+    len = sval.asString()->length();
     idx = args[0].asNumber();
     if(idx >= (long)len)
     {
@@ -14654,7 +15232,7 @@ Value mc_objfnstring_getself(State* state, void* data, Value thisval, size_t arg
     (void)data;
     (void)argc;
     (void)args;
-    str = thisval.stringGetData();
+    str = thisval.asString()->data();
     fprintf(stderr, "objfnstring_getself: str=\"%s\"\n", str);
     return thisval;
 }
@@ -14672,8 +15250,8 @@ Value mc_objfnstring_tonumber(State* state, void* data, Value thisval, size_t ar
     (void)args;
     result = 0;
     string = "";
-    stringlen = thisval.stringGetLength();
-    string = thisval.stringGetData();
+    stringlen = thisval.asString()->length();
+    string = thisval.asString()->data();
     errno = 0;
     result = mc_util_strtod(string, stringlen, &end);
     if(errno == ERANGE && (result <= -HUGE_VAL || result >= HUGE_VAL))
@@ -14718,8 +15296,8 @@ Value mc_objfnstring_left(State* state, void* data, Value thisval, size_t argc, 
     {
         inpval = thisval;
         posval = args[0];
-        inpstr = inpval.stringGetData();
-        inplen = inpval.stringGetLength();
+        inpstr = inpval.asString()->data();
+        inplen = inpval.asString()->length();
         startpos = posval.asNumber();
         /*
         * If the requested startpos is longer than the string then return a new string
@@ -14768,8 +15346,8 @@ Value mc_objfnstring_right(State* state, void* data, Value thisval, size_t argc,
     {
         inpval = thisval;
         idxval = args[0];
-        inpstr = inpval.stringGetData();
-        inplen = inpval.stringGetLength();
+        inpstr = inpval.asString()->data();
+        inplen = inpval.asString()->length();
         startpos = idxval.asNumber();
         /*
         * If the requested startpos is longer than the string then return a new string
@@ -14828,12 +15406,12 @@ Value mc_objfnstring_replaceall(State* state, void* data, Value thisval, size_t 
         inpval = thisval;
         searchval = args[0];
         repval = args[1];
-        inpstr = inpval.stringGetData();
-        searchstr = searchval.stringGetData();
-        replacestr = repval.stringGetData();
-        inplen = inpval.stringGetLength();
-        searchlen = searchval.stringGetLength();
-        replacelen = repval.stringGetLength();
+        inpstr = inpval.asString()->data();
+        searchstr = searchval.asString()->data();
+        replacestr = repval.asString()->data();
+        inplen = inpval.asString()->length();
+        searchlen = searchval.asString()->length();
+        replacelen = repval.asString()->length();
         count = 0;
         temp = inpstr;
         /* Count number of occurrences of searchstr in inpstr */
@@ -14901,12 +15479,12 @@ Value mc_objfnstring_replacefirst(State* state, void* data, Value thisval, size_
         inpval = thisval;
         searchval = args[0];
         repval = args[1];
-        inpstr = inpval.stringGetData();
-        searchstr = searchval.stringGetData();
-        replacestr = repval.stringGetData();
-        inplen = inpval.stringGetLength();
-        searchlen = searchval.stringGetLength();
-        replacelen = repval.stringGetLength();
+        inpstr = inpval.asString()->data();
+        searchstr = searchval.asString()->data();
+        replacestr = repval.asString()->data();
+        inplen = inpval.asString()->length();
+        searchlen = searchval.asString()->length();
+        replacelen = repval.asString()->length();
         temp = strstr(inpstr, searchstr);
         if(temp == nullptr)
         {
@@ -14954,8 +15532,8 @@ Value mc_objfnstring_trim(State* state, void* data, Value thisval, size_t argc, 
     (void)argc;
     (void)args;
     inpval = thisval;
-    inpstr = inpval.stringGetData();
-    inplen = inpval.stringGetLength();
+    inpstr = inpval.asString()->data();
+    inplen = inpval.asString()->length();
     if(inplen == 0)
     {
         return Value::makeString("", 0);
@@ -15010,10 +15588,10 @@ Value mc_objfnstring_matchhelper(State* state, void* data, Value thisval, size_t
     flags = 0;
     inpval = thisval;
     patval = args[0];
-    inpstr = inpval.stringGetData();
-    inplen = inpval.stringGetLength();
-    patstr = patval.stringGetData();
-    patlen = patval.stringGetLength();
+    inpstr = inpval.asString()->data();
+    inplen = inpval.asString()->length();
+    patstr = patval.asString()->data();
+    patlen = patval.asString()->length();
     if(icase)
     {
         flags |= STRFNM_FLAG_CASEFOLD;
@@ -15043,8 +15621,8 @@ Value mc_objfnstring_tolower(State* state, void* data, Value thisval, size_t arg
     (void)argc;
     (void)args;
     inpval = thisval;
-    inpstr = inpval.stringGetData();
-    inplen = inpval.stringGetLength();
+    inpstr = inpval.asString()->data();
+    inplen = inpval.asString()->length();
     resstr = Value::makeString(inpstr, inplen);
     resstr.getAllocatedData<Value::ObjString>()->m_strbuf->toLowercase();
     return resstr;
@@ -15061,8 +15639,8 @@ Value mc_objfnstring_toupper(State* state, void* data, Value thisval, size_t arg
     (void)argc;
     (void)args;
     inpval = thisval;
-    inpstr = inpval.stringGetData();
-    inplen = inpval.stringGetLength();
+    inpstr = inpval.asString()->data();
+    inplen = inpval.asString()->length();
     resstr = Value::makeString(inpstr, inplen);
     resstr.getAllocatedData<Value::ObjString>()->m_strbuf->toUppercase();
 
@@ -15080,14 +15658,14 @@ Value mc_objfnstring_split(State* state, void* data, Value thisval, size_t argc,
     GenericList<StrView> spvals;
     auto inpval = thisval;
     auto delimval = args[0];
-    auto inpstr = inpval.stringGetData();
-    auto inplen = inpval.stringGetLength();
+    auto inpstr = inpval.asString()->data();
+    auto inplen = inpval.asString()->length();
     if(inplen == 0)
     {
         return Value::makeNull();
     }
-    auto delimstr = delimval.stringGetData();
-    auto delimlen = delimval.stringGetLength();
+    auto delimstr = delimval.asString()->data();
+    auto delimlen = delimval.asString()->length();
     auto arr = Memory::make<GenericList<Value>>();
     if((delimstr == nullptr) || (delimlen == 0))
     {
@@ -15657,7 +16235,7 @@ Value mc_scriptfn_error(State* state, void* data, Value thisval, size_t argc, Va
     (void)thisval;
     if(argc == 1 && args[0].getType() == Value::VT_STRING)
     {
-        return Value::makeError(args[0].stringGetData());
+        return Value::makeError(args[0].asString()->data());
     }
     return Value::makeError("");
 }
@@ -15668,7 +16246,7 @@ Value mc_scriptfn_crash(State* state, void* data, Value thisval, size_t argc, Va
     (void)thisval;
     if(argc == 1 && args[0].getType() == Value::VT_STRING)
     {
-        state->m_errorlist.pushMessage(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), args[0].stringGetData());
+        state->m_errorlist.pushMessage(Error::ERRTYP_RUNTIME, state->m_execstate.currframe->getPosition(), args[0].asString()->data());
     }
     else
     {
@@ -15798,8 +16376,8 @@ Value mc_scriptutil_slicestring(State* state, void* data, Value thisval, size_t 
     (void)argc;
     (void)thisval;
     index = (int)args[1].asNumber();
-    str = args[0].stringGetData();
-    len = args[0].stringGetLength();
+    str = args[0].asString()->data();
+    len = args[0].asString()->length();
     if(index < 0)
     {
         index = len + index;
@@ -15820,7 +16398,7 @@ Value mc_scriptutil_slicestring(State* state, void* data, Value thisval, size_t 
     for(i = index; i < len; i++)
     {
         c = str[i];
-        res.stringAppend(&c, 1);
+        res.asString()->append(&c, 1);
     }
     return res;
 }
@@ -16039,9 +16617,9 @@ Value mc_nsfnfile_writefile(State* state, void* data, Value thisval, size_t argc
     {
         return Value::makeNull();
     }
-    path = args[0].stringGetData();
-    string = args[1].stringGetData();
-    slen = args[1].stringGetLength();
+    path = args[0].asString()->data();
+    string = args[1].asString()->data();
+    slen = args[1].asString()->length();
     printedsz = mc_fsutil_filewrite(path, string, slen);
     return Value::makeNumber(printedsz);
 }
@@ -16060,7 +16638,7 @@ Value mc_nsfnfile_readfile(State* state, void* data, Value thisval, size_t argc,
     {
         return Value::makeNull();
     }
-    path = args[0].stringGetData();
+    path = args[0].asString()->data();
     contents = mc_fsutil_fileread(path, &flen);
     if(contents == nullptr)
     {
@@ -16084,10 +16662,10 @@ Value mc_nsfnfile_join(State* state, void* data, Value thisval, size_t argc, Val
     for(i=0; i<argc; i++)
     {
         arg = args[i];
-        res.stringAppendValue(arg);
+        res.asString()->appendValue(arg);
         if((i + 1) < argc)
         {
-            res.stringAppend("/", 1);
+            res.asString()->append("/", 1);
         }
     }
     return res;
@@ -16104,7 +16682,7 @@ Value mc_nsfnfile_isdirectory(State* state, void* data, Value thisval, size_t ar
     {
         return Value::makeNull();
     }
-    path = args[0].stringGetData();
+    path = args[0].asString()->data();
     return Value::makeBool(osfn_pathisdirectory(path));
 }
 
@@ -16119,7 +16697,7 @@ Value mc_nsfnfile_isfile(State* state, void* data, Value thisval, size_t argc, V
     {
         return Value::makeNull();
     }
-    path = args[0].stringGetData();
+    path = args[0].asString()->data();
     return Value::makeBool(osfn_pathisfile(path));
 }
 
@@ -16138,7 +16716,7 @@ Value mc_nsfnfile_stat(State* state, void* data, Value thisval, size_t argc, Val
     {
         return Value::makeNull();
     }
-    path = args[0].stringGetData();
+    path = args[0].asString()->data();
     if(stat(path, &st) == 0)
     {
         resmap = Value::makeMap();
@@ -16179,7 +16757,7 @@ Value mc_nsfndir_readdir(State* state, void* data, Value thisval, size_t argc, V
         return Value::makeNull();
     }
     vpath = args[0];
-    path = vpath.stringGetData();
+    path = vpath.asString()->data();
     if(argc > 1)
     {
         joinpaths = args[1].asBool();
@@ -16200,9 +16778,9 @@ Value mc_nsfndir_readdir(State* state, void* data, Value thisval, size_t argc, V
             if(joinpaths)
             {
                 vfullpath = Value::makeString("", 0);
-                vfullpath.stringAppendValue(vpath);
-                vfullpath.stringAppend("/", 1);
-                vfullpath.stringAppendValue(vjustname);
+                vfullpath.asString()->appendValue(vpath);
+                vfullpath.asString()->append("/", 1);
+                vfullpath.asString()->appendValue(vjustname);
                 vrespath = vfullpath;
             }
             arr->push(vrespath);
